@@ -1,0 +1,15 @@
+.blog-container
+  .container
+    h1.column-title = @column.title
+
+    - if @headings.any?
+      .toc
+        h2.toc-title
+          | 目次
+        ul.toc-list
+          - @headings.each do |h|
+            li class="toc-item toc-level-#{h[:level]}"
+              a href="##{h[:id]}" = h[:text]
+
+    .column-body
+      == raw(@column_body_with_ids)

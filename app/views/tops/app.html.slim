@@ -1,0 +1,373 @@
+    header.custom-navbar.py-2
+      .container-fluid.d-flex.align-items-center.justify-content-between
+        .d-flex.align-items-center.logo-section
+          = image_tag "logo2.webp", class: "nav-logo me-2", alt: "Logo"
+          span.nav-subtext
+            |
+        nav.nav-menu.d-none.d-lg-flex
+          ul.d-flex.list-unstyled.mb-0
+            li
+              a.nav-link-custom[href="#"]
+                | サービス
+            li
+              a.nav-link-custom[href="#"]
+                | MiiTelとは
+            li
+              a.nav-link-custom[href="#"]
+                | 導入事例
+            li
+              a.nav-link-custom[href="#"]
+                | セミナー・イベント
+            li
+              a.nav-link-custom[href="#"]
+                | お役立ち記事
+        nav.mobile-nav.d-lg-none
+          #mobile-nav-toggle.mobile-nav-toggle
+            span.hamburger-line
+            span.hamburger-line
+            span.hamburger-line
+          #mobile-nav-menu.mobile-nav-menu
+            .mobile-nav-header
+              #mobile-nav-close.mobile-nav-close
+                span.close-line
+                span.close-line
+            ul.mobile-nav-list
+              li
+                a.mobile-nav-link[href="#"]
+                  | サービス
+              li
+                a.mobile-nav-link[href="#"]
+                  | MiiTelとは
+              li
+                a.mobile-nav-link[href="#"]
+                  | 導入事例
+              li
+                a.mobile-nav-link[href="#"]
+                  | セミナー・イベント
+              li
+                a.mobile-nav-link[href="#"]
+                  | お役立ち記事
+            .mobile-nav-actions
+              = image_tag "search.png", class: "search-icon", alt: "Search"
+              button.btn.login-btn
+                | ログイン
+              button.btn.contact-btn.d-flex.align-items-center.gap-2
+                |  資料請求・お問い合わせ 
+                = image_tag "arrow-down.png", class: "arrow-icon", alt: "Arrow"
+        .d-flex.align-items-center.gap-3.d-none.d-lg-flex
+          = image_tag "search.png", class: "search-icon", alt: "Search"
+          button.btn.login-btn
+            | ログイン
+          button.btn.contact-btn.d-flex.align-items-center.gap-2
+            |  資料請求・お問い合わせ 
+            = image_tag "arrow-down.png", class: "arrow-icon", alt: "Arrow"
+    section.hero-main-section.position-relative(style="background-image: url(#{asset_path('base.webp')});")
+      .container
+        .row.align-items-center.gy-4
+          .col-lg-6
+            .hero-main-left
+              .hero-main-top
+                button.hero-main-top-btn
+                  | 新規商談の開拓にお悩みの法人営業担当者へ
+              h1.hero-main-title.mt-4
+                span.noto
+                  | 成功報酬営業代行
+                  br/
+                  |『アポ匠』
+              h2.hero-main-subtitle.mt-3
+                span.noto
+                  | マーケティングのプロが質の高いアポ商談の場を提供
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 累計アポ40,000件超
+                p.hero-main-badge-text
+                  | 大企業からスタートアップまで
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 最高品質営業リスト
+                p.hero-main-badge-text
+                  | AI抽出する独自のプログラミング技術を活用したリスト
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 案件に応じた最適化
+                p.hero-main-badge-text
+                  | 企業の商材ニーズに応じた最適な提案をアシスト
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                p.hero-main-badge-text
+                  | 
+          .col-lg-6
+            .hero-main-right.p-4.rounded-3
+              h3.hero-main-trial.text-center
+                | ＼まずは無料で見積から／
+              form#hero-main-form.hero-main-form.mt-3.p-4.rounded-3
+                .row.g-3
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社名 
+                      span.required-badge
+                        | 必須
+                    input.form-control.hero-main-input[type="text" placeholder="株式会社〇〇〇〇" required=""]
+                  .col-12
+                    label.form-label.hero-main-label
+                      | お名前 
+                      span.required-badge
+                        | 必須
+                    input.form-control.hero-main-input[type="text" placeholder="山田太郎" required=""]
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社のメールアドレス 
+                      span.required-badge
+                        | 必須
+                    input.form-control.hero-main-input[type="email" placeholder="test@example.com" required=""]
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 電話番号 
+                      span.required-badge
+                        | 必須
+                    input.form-control.hero-main-input[type="tel" placeholder="050-1234-5678" required=""]
+                  .col-12
+                    button.btn.hero-main-submit.w-100[type="submit"]
+                      | まずは単価をお見積り
+      .hero-main-overlay
+    /section.brand-marquee-section.py-4
+      .brand-marquee
+        .brand-track
+          = image_tag "icon-1.png", alt: "Icon 1"
+          = image_tag "icon-2.png", alt: "Icon 2"
+          = image_tag "icon-3.png", alt: "Icon 3"
+          = image_tag "icon-4.png", alt: "Icon 4"
+          = image_tag "icon-5.png", alt: "Icon 5"
+          = image_tag "icon-6.png", alt: "Icon 6"
+          = image_tag "icon-7.png", alt: "Icon 7"
+          = image_tag "icon-8.png", alt: "Icon 8"
+          = image_tag "icon-9.png", alt: "Icon 9"
+          = image_tag "icon-10.png", alt: "Icon 10"
+          = image_tag "icon-1.png", alt: "Icon 1"
+          = image_tag "icon-2.png", alt: "Icon 2"
+          = image_tag "icon-3.png", alt: "Icon 3"
+          = image_tag "icon-4.png", alt: "Icon 4"
+          = image_tag "icon-5.png", alt: "Icon 5"
+          = image_tag "icon-6.png", alt: "Icon 6"
+          = image_tag "icon-7.png", alt: "Icon 7"
+          = image_tag "icon-8.png", alt: "Icon 8"
+          = image_tag "icon-9.png", alt: "Icon 9"
+          = image_tag "icon-10.png", alt: "Icon 10"
+    section.japan-notyo-section
+      .japan-notyo-container
+        .japan-notyo-column.japan-notyo-text-column
+          h2.japan-notyo-heading
+            | アポイントを安心の成果報酬で、リスクなく御社の新規商談を提供
+          h2.japan-notyo-heading
+            | 
+          p.japan-notyo-description
+            |  『アポ匠』は、営業代行として15年以上の累計実績を持つ
+            br
+            |  マーケティング企業です。御社の商材のターゲティング企画から受注し、
+            br
+            |  有効商談を獲得し提供します。
+        .japan-notyo-column.japan-notyo-image-column
+          = image_tag "image.png", class: "japan-notyo-image", alt: "Tool illustration"
+    section.jap-notto-section
+      .jap-notto-container
+        h2.jap-notto-heading
+          | こんなお悩みはありませんか？
+        .jap-notto-semicircle-wrapper
+          .jap-notto-image-container.jap-notto-image-1
+            = image_tag "mainn-app1.png", class: "jap-notto-image", alt: "Issue 1"
+          .jap-notto-image-container.jap-notto-image-2
+            = image_tag "mainn-app2.png", class: "jap-notto-image", alt: "Issue 2"
+          .jap-notto-image-container.jap-notto-image-3
+            = image_tag "mainn-app3.png", class: "jap-notto-image", alt: "Issue 3"
+          .jap-notto-image-container.jap-notto-image-4
+            = image_tag "mainn-app4.png", class: "jap-notto-image", alt: "Issue 4"
+          .jap-notto-image-container.jap-notto-image-5
+            = image_tag "mainn-app5.png", class: "jap-notto-image", alt: "Issue 5"
+          .jap-notto-center-image
+            = image_tag "mainn-7.png", class: "jap-notto-center-img", alt: "Center Image"
+    section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
+      .container.py-5.text-center
+        .ser-mos-headings.mb-4
+          .ser-mos-kicker
+            | テレマーケティング営業代行
+          h2.ser-mos-title
+            | アポ匠の獲得手法
+        .ser-mos-panel.mx-auto.p-4.rounded-4
+          .row.g-4
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-app1.png", class: "ser-mos-card-img", alt: "Service 1"
+                h3.ser-mos-card-title
+                  | テレマーケティング特化型ターゲット選定
+                p.ser-mos-card-desc
+                  |  アポ匠では、取引する全ての企業様のターゲット選定企画からコンサルティング。テレマーケティングに適したターゲットか否かの詳細なセグメントを行います。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-app2.png", class: "ser-mos-card-img", alt: "Service 2"
+                h3.ser-mos-card-title
+                  | ITプログラミング技術を活用したリスト選定
+                p.ser-mos-card-desc
+                  |  決定したターゲットから最適なWebサイトを選定し、御社の商材を欲するであろう企業リストを計画的に抽出します。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-app3.png", class: "ser-mos-card-img", alt: "Service 3"
+                h3.ser-mos-card-title
+                  | アプローチ結果を元にセグメント分析
+                p.ser-mos-card-desc
+                  |  実際の架電アプローチ結果を元にターゲットに対する指標分析を行い、業種別や規模別等の分析を実施
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-app4.png", class: "ser-mos-card-img", alt: "Service 4"
+                h3.ser-mos-card-title
+                  | 最良の指標を導きアポ量産へ
+                p.ser-mos-card-desc
+                  |  分析の結果から最適な情報を導き、更に深掘りしたアプローチを展開することで、アポ商談の最適化を行います。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+    section.main-moss-section
+      .container.text-center.main-moss-header
+        h2.main-moss-title
+          | 『アポ匠』が選ばれる理由
+        h3.main-moss-subtitle
+          | 
+      .container-fluid.main-moss-block
+        .row.align-items-center
+          .col-lg-6.text-center
+            = image_tag "main-app1.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | ニーズに沿ったアポ獲得で高い商談角度
+            p.main-moss-block-desc
+              |  アポ匠ではプッシュ型のしつこい提案は一切行いません。顧客ニーズに沿ったアポ取得を行うため、
+      .container-fluid.main-moss-block
+        .row.align-items-center.flex-row-reverse
+          .col-lg-6.text-center
+            = image_tag "main-app2.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 豊富な営業実績
+            p.main-moss-block-desc
+              |  当社では累計40,000件超のアポ獲得実績を活かした実績より、企業様に最適なアポイント取得の提案を行います。
+      .container-fluid.main-moss-block
+        .row.align-items-center
+          .col-lg-6.text-center
+            = image_tag "main-app3.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 安心の成功報酬モデル
+            p.main-moss-block-desc
+              |  当社は成功報酬で企業様のアポイントメントの獲得をサポートするので、リスクなくお客様の営業を代行します。
+    section.faq-japan-section.py-5
+      .container.text-center
+        h2.faq-japan-title.mb-5
+          | よくある質問
+        .faq-japan-container
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 1件あたりの成功報酬単価を教えてください。
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  1件あたりの成功報酬単価は、商材・ターゲット・エリア・獲得可能フェーズによって変動します。目安として、業務提携系や資料送付系アポの場合、5,000~12,000円、営業商談アポイントの場合、12,000~35,000円となり難易度によって変わります。また、35,000円を超えると想定される難易度の高いアポイントは、コール課金や定額でのご提案とさせていただいております。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 成果報酬で受付できないサービス・商材はありますか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  成果報酬プランでご利用頂く場合、『FC加盟店募集』『通信商材』『BtoCサービスの全て』『ホームページ制作やアプリ開発』等は潜在ニーズを探ることができず、受付対象外とさせて頂いております。これらの商材はコール課金テレアポにて承ることができます。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 契約になったらお金を払っても良いですか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  当社のサービスはあくまで商談の場の設定となっており、如何なる商材・サービスであっても成約における成果報酬制度を承ることはできません。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 『アポ匠』で結果が出やすいのはどんな会社ですか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  テレアポ代行『アポ匠』がテレアポの代行を行う結果が出やすい会社はズバリ、『ターゲット選定がしっかり出来ている会社』です。テレアポ代行は、『ニーズに対して適切なトークアプローチ』するロジックを組むことで、アポイントが獲得出来ます。このようなターゲットが決まっている会社は非常に結果が出やすいです。
+    section.cards-moos-section.py-5
+      .container.text-center
+        h2.cards-moos-title.mb-5
+          | 導入事例
+        .row.g-4.cards-moos-row.d-none.d-md-flex
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag "image-app1.png", class: "cards-moos-img", alt: "Case Study 1"
+              h3.cards-moos-heading
+                | 助成金コンサルティング業
+              p.cards-moos-desc
+                |  アポ匠をご利用いただきターゲット選定から代行し、アポイント獲得数累計1300件超・契約者数300件を2年で達成。売上1億円をテレアポのみで獲得しました。
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag "image-app2.png", class: "cards-moos-img", alt: "Case Study 2"
+              h3.cards-moos-heading
+                | 登録支援機関業
+              p.cards-moos-desc
+                |  難易度が特に高い外国人人材紹介業において、製造業に特化し全国架電を行い、累計600件を超えるアポイントメントを3.5年間で獲得。
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag "image-app3.png", class: "cards-moos-img", alt: "Case Study 3"
+              h3.cards-moos-heading
+                | Webマーケティング業
+              p.cards-moos-desc
+                |  当社でお取引頂く以前は4社を活用し累計20件のアポイントでしたが、アポ匠のターゲティング選定でアポ分析を行いリターゲティング、開始1週間で20件のアポイントを獲得。
+    section
+      .container
+        .col-lg-12
+          .hero-main-right.p-4.rounded-3
+            h3.hero-main-trial.text-center
+              | ＼まずは無料見積から／
+            form#hero-main-form.hero-main-form.mt-3.p-4.rounded-3
+              .row.g-3
+                .col-12
+                  label.form-label.hero-main-label
+                    | 会社名 
+                    span.required-badge
+                      | 必須
+                  input.form-control.hero-main-input[type="text" placeholder="株式会社〇〇〇〇" required=""]
+                .col-12
+                  label.form-label.hero-main-label
+                    | お名前 
+                    span.required-badge
+                      | 必須
+                  input.form-control.hero-main-input[type="text" placeholder="山田太郎" required=""]
+                .col-12
+                  label.form-label.hero-main-label
+                    | 会社のメールアドレス 
+                    span.required-badge
+                      | 必須
+                  input.form-control.hero-main-input[type="email" placeholder="test@example.com" required=""]
+                .col-12
+                  label.form-label.hero-main-label
+                    | 電話番号 
+                    span.required-badge
+                      | 必須
+                  input.form-control.hero-main-input[type="tel" placeholder="050-1234-5678" required=""]
+                .col-12
+                  button.btn.hero-main-submit.w-100[type="submit"]
+                    | まずは単価をお見積り
+    script[src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"]
+    script[src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"]
+    script[src="js/script.js"]

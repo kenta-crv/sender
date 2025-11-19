@@ -1,0 +1,24 @@
+.section-knowhow
+  .container
+    h1.section-title ドラフト一覧（Gemini生成）
+
+    - if @columns.empty?
+      p まだドラフトはありません
+      = link_to "Geminiで生成", generate_gemini_columns_path, method: :post, class: "btn btn-primary"
+    - else
+      table.table
+        thead
+          tr
+            th タイトル
+            th 説明
+            th キーワード
+            th 操作
+        tbody
+          - @columns.each do |column|
+            tr
+              td = column.title
+              td = truncate(strip_tags(column.description), length: 80)
+              td = column.keyword
+              td
+                = button_to "GhatGPT", approve_column_path(column), method: :patch, class: "btn btn-dark btn-sm"
+                = button_to "Delete", column_path(column), method: :delete, data: {confirm: "削除しますか？"}, class: "btn btn-danger btn-sm"

@@ -1,0 +1,300 @@
+    header.custom-navbar.py-2
+      .container-fluid.d-flex.align-items-center.justify-content-between
+        .d-flex.align-items-center.logo-section
+          = link_to root_path do
+            = image_tag 'logo.png', alt: 'Logo', class: 'nav-logo me-2'
+          span.nav-subtext 話す、聞く、価値になる
+
+        nav.nav-menu.d-none.d-lg-flex
+          ul.d-flex.list-unstyled.mb-0
+            li
+              a.nav-link-custom href="#" サービス
+            li
+              a.nav-link-custom href="#" MiiTelとは
+            li
+              a.nav-link-custom href="#" 導入事例
+            li
+              a.nav-link-custom href="#" セミナー・イベント
+            li
+              a.nav-link-custom href="#" お役立ち記事
+
+        .d-flex.align-items-center.gap-3
+          = image_tag 'search.png', alt: 'Search', class: 'search-icon'
+          button.btn.login-btn ログイン
+          button.btn.contact-btn.d-flex.align-items-center.gap-2
+            | 資料請求・お問い合わせ
+            = image_tag 'arrow-down.png', alt: 'Arrow', class: 'arrow-icon'
+    sectionimage_path.position-relative style="background-image: url(#{asset_path('bg-image.png')});"
+      .container
+        .row.align-items-center.gy-4
+          .col-lg-6
+            .hero-main-left
+              .hero-main-top
+                button.hero-main-top-btn 新規配送会社をお探しの企業様へ
+
+              h1.hero-main-title.mt-4
+                span.noto 御社のお荷物を責任を持ってお届け
+
+              h2.hero-main-subtitle.mt-3
+                span.noto 軽貨物配送なら『OK配送』
+
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge ✓ 安心安全
+                p.hero-main-badge-text お客様のお荷物を安心して配達
+
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge ✓ 豊富な人材
+                p.hero-main-badge-text 名古屋・大阪・福岡・関東対応！
+
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge ✓ 24時間365日
+                p.hero-main-badge-text いつでも御社をサポート
+
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                p.hero-main-badge-text 
+
+          .col-lg-6
+            .hero-main-right.p-4.rounded-3
+              h3.hero-main-trial.text-center ＼まずはご相談ください！／
+
+              form.hero-main-form.mt-3.p-4.rounded-3 id="hero-main-form"
+                .row.g-3
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社名 
+                      span.required-badge 必須
+                    input.form-control.hero-main-input type="text" placeholder="株式会社〇〇〇〇" required=""/
+
+                  .col-12
+                    label.form-label.hero-main-label
+                      | お名前 
+                      span.required-badge 必須
+                    input.form-control.hero-main-input type="text" placeholder="山田太郎" required=""/
+
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社のメールアドレス 
+                      span.required-badge 必須
+                    input.form-control.hero-main-input type="email" placeholder="test@example.com" required=""/
+
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 電話番号 
+                      span.required-badge 必須
+                    input.form-control.hero-main-input type="tel" placeholder="050-1234-5678" required=""/
+
+                  .col-12
+                    button.btn.hero-main-submit.w-100 type="submit" まずは気軽に相談から
+
+      .hero-main-overlay
+
+    section.brand-marquee-section.py-4
+      .brand-marquee
+        .brand-track
+          - 2.times do
+            = image_tag 'icon-1.png', alt: 'Icon 1'
+            = image_tag 'icon-2.png', alt: 'Icon 2'
+            = image_tag 'icon-3.png', alt: 'Icon 3'
+            = image_tag 'icon-4.png', alt: 'Icon 4'
+            = image_tag 'icon-5.png', alt: 'Icon 5'
+            = image_tag 'icon-6.png', alt: 'Icon 6'
+            = image_tag 'icon-7.png', alt: 'Icon 7'
+            = image_tag 'icon-8.png', alt: 'Icon 8'
+            = image_tag 'icon-9.png', alt: 'Icon 9'
+            = image_tag 'icon-10.png', alt: 'Icon 10'
+
+    section.ser-mos-section style="background-image: url(#{asset_path('bg-services.png')});"
+      .container.py-5.text-center
+        .ser-mos-headings.mb-4
+          .ser-mos-kicker Business
+          h2.ser-mos-title OK配送の事業内容
+
+        .ser-mos-panel.mx-auto.p-4.rounded-4
+          .row.g-4
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag 'ser-1.png', alt: 'Service 1', class: 'ser-mos-card-img'
+                h3.ser-mos-card-title 個人配送業
+                p.ser-mos-card-desc
+                  | お客様のご自宅にお荷物をお届けします。小口から大きなお荷物まで対応OK。
+                button.ser-mos-card-btn
+                  | 詳しく見る
+                  = image_tag 'left-icon.png', alt: 'arrow', class: 'ser-mos-btn-ic'
+
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag 'ser-2.png', alt: 'Service 2', class: 'ser-mos-card-img'
+                h3.ser-mos-card-title 法人配送
+                p.ser-mos-card-desc
+                  | 法人の企業様へのボリュームある荷物を定期的に配送します。一部スポット配送も受付OK。
+                button.ser-mos-card-btn
+                  | 詳しく見る
+                  = image_tag 'left-icon.png', alt: 'arrow', class: 'ser-mos-btn-ic'
+
+
+    section.main-moss-section
+      .container.text-center.main-moss-header
+        h2.main-moss-title 御社の物流を支える
+        h3.main-moss-subtitle 『OK配送』の魅力
+
+      .container-fluid.main-moss-block
+        .row.align-items-center
+          .col-lg-6.text-center
+            = image_tag 'main-2.png', alt: 'Feature Image', class: 'main-moss-img img-fluid'
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title 豊富な人材で対応
+            p.main-moss-block-desc
+              | 経験豊富なドライバーが多数在籍。
+              br/
+              | 案件内容に応じて最適な人材を手配します。
+
+      .container-fluid.main-moss-block
+        .row.align-items-center.flex-row-reverse
+          .col-lg-6.text-center
+            = image_tag 'main-1.png', alt: 'Feature Image', class: 'main-moss-img img-fluid'
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title 24時間365日体制
+            p.main-moss-block-desc
+              | 必要に応じて夜間・早朝も対応可能。スケジュールに合わせた柔軟な配送が可能です。
+
+      .container-fluid.main-moss-block
+        .row.align-items-center
+          .col-lg-6.text-center
+            = image_tag 'main-2.png', alt: 'Feature Image', class: 'main-moss-img img-fluid'
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title 名古屋・大阪・福岡・東京・千葉・埼玉・神奈川
+            p.main-moss-block-desc
+              | 各エリアに拠点を設け、お客様のニーズに合わせた配送を承ります。
+
+      .container-fluid.main-moss-block
+        .row.align-items-center.flex-row-reverse
+          .col-lg-6.text-center
+            = image_tag 'main-1.png', alt: 'Feature Image', class: 'main-moss-img img-fluid'
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title 地方の拠点作りもご相談OK
+            p.main-moss-block-desc
+              | 地方で配送を依頼できる会社が少ない。。。そんな企業様もご相談ください。長期契約なら物流拠点構築からサポート。
+
+
+    section.cards-moos-section.py-5
+      .container.text-center
+        h2.cards-moos-title.mb-5 導入事例
+
+        .row.g-4.cards-moos-row
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag 'image-1.png', alt: 'Case Study 1', class: 'cards-moos-img'
+              h3.cards-moos-heading 製造業A社様
+              p.cards-moos-desc
+                | 急ぎの定期便でしたが、ドライバーさんの対応も丁寧で安心できました。納品も予定通りで助かりました。
+
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag 'image-2.png', alt: 'Case Study 2', class: 'cards-moos-img'
+              h3.cards-moos-heading EC事業・B社様
+              p.cards-moos-desc
+                | 関西エリアの配送でお願いしました。スケジュールの変更にも対応してくれ、非常に助かりました。
+
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag 'image-3.png', alt: 'Case Study 3', class: 'cards-moos-img'
+              h3.cards-moos-heading 医療機器・E社様
+              p.cards-moos-desc
+                | 病院向け定期配送をお願いしています。時間通りに届けてもらえるので、納品遅延の心配がなくなりました。
+
+        .cards-moos-btn-wrap.mt-5
+          button.cards-moos-btn 導入事例を見る
+
+
+    section.faq-japan-section.py-5
+      .container.text-center
+        h2.faq-japan-title.mb-5 よくある質問
+
+        .faq-japan-container
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p どの地域まで対応可能ですか？
+              = image_tag 'closee.png', alt: 'toggle icon', class: 'faq-japan-icon'
+            .faq-japan-answer
+              p
+                | 名古屋・大阪・関東・福岡を中心に対応しています。
+                | 条件によりその他のエリアもご相談いただけます。
+
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p スポット対応は可能ですか？
+              = image_tag 'closee.png', alt: 'toggle icon', class: 'faq-japan-icon'
+            .faq-japan-answer
+              p
+                | はい、案件内容に応じて一時的なご依頼にも対応いたします。
+
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p 夜間や早朝の配送にも対応できますか？
+              = image_tag 'closee.png', alt: 'toggle icon', class: 'faq-japan-icon'
+            .faq-japan-answer
+              p
+                | はい、事前にご相談いただければ対応可能です。配送時間や曜日など柔軟に調整いたします。
+
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p 定期的な配送契約は可能ですか？
+              = image_tag 'closee.png', alt: 'toggle icon', class: 'faq-japan-icon'
+            .faq-japan-answer
+              p
+                | 可能です。週単位・月単位など、ご希望のスケジュールに合わせた契約形態で対応いたします。
+
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p どんな荷物を運べますか？
+              = image_tag 'closee.png', alt: 'toggle icon', class: 'faq-japan-icon'
+            .faq-japan-answer
+              p
+                | 軽貨物車両で運べる範囲（小口荷物・書類・商品・資材など）に対応しています。内容によっては確認が必要な場合があります。
+
+
+    section
+      .container
+        .col-lg-12
+          .hero-main-right.p-4.rounded-3
+            h3.hero-main-trial.text-center ＼今すぐ3日間無料体験／
+
+            form.hero-main-form.mt-3.p-4.rounded-3 id="hero-main-form"
+              .row.g-3
+                .col-12
+                  label.form-label.hero-main-label
+                    | 会社名 
+                    span.required-badge 必須
+                  input.form-control.hero-main-input type="text" placeholder="株式会社〇〇〇〇" required=""/
+
+                .col-12
+                  label.form-label.hero-main-label
+                    | 部署名 
+                    span.required-badge 必須
+                  input.form-control.hero-main-input type="text" placeholder="営業部" required=""/
+
+                .col-12
+                  label.form-label.hero-main-label
+                    | お名前 
+                    span.required-badge 必須
+                  input.form-control.hero-main-input type="text" placeholder="山田太郎" required=""/
+
+                .col-12
+                  label.form-label.hero-main-label
+                    | 会社のメールアドレス 
+                    span.required-badge 必須
+                  input.form-control.hero-main-input type="email" placeholder="test@example.com" required=""/
+
+                .col-12
+                  label.form-label.hero-main-label
+                    | 電話番号 
+                    span.required-badge 必須
+                  input.form-control.hero-main-input type="tel" placeholder="050-1234-5678" required=""/
+
+                .col-12
+                  button.btn.hero-main-submit.w-100 type="submit" 3日間無料で試してみる
+
+    script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    script src="js/script.slim"
