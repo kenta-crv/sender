@@ -4,9 +4,8 @@ require "openssl"
 
 class GptArticleGenerator
   # 修正1: 1セクションあたりの目標文字数を300文字に調整。
-  # この値は最低保証ではなく、「目標」として、最大文字数制限と併用します。
   TARGET_CHARS_PER_SECTION = 300 
-  # 修正2: 1セクションあたりの厳格な文字数上限。これを設定することで、総文字数を7,000文字以下に抑えることを目指します。
+  # 修正2: 1セクションあたりの厳格な文字数上限。
   MAX_CHARS_PER_SECTION = 500
   MODEL_NAME = "gpt-4o-mini" # 使用モデル
   
@@ -282,7 +281,8 @@ class GptArticleGenerator
     req.body = payload.to_json
 
     begin
-      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, read_timeout: 60) do |http| # タイムアウトを60秒に延長
+      # 🚨 修正箇所: open_timeout: 60 を追加しました。 接続確立を60秒待つ
+      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, read_timeout: 60, open_timeout: 60) do |http| 
         http.request(req)
       end
 
