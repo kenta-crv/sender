@@ -1,6 +1,3 @@
-# config/sidekiq.yml
-:concurrency: 10
 :queues:
-  - critical
-  - import
-  - article_generation # ウェイト指定なし。リストの上から順にチェックされる
+  - [article_generation, 5]
+  - [default, 1]
