@@ -3,13 +3,32 @@ class GeminiColumnGenerator
   require "net/http"
   require "json"
   require "openssl"
+  require "securerandom"
 
   GEMINI_API_KEY = ENV["GEMINI_API_KEY"]
   GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
   def self.generate_columns(batch_count: 100)
     batch_count.times do
-      prompt = "軽貨物配送サービスに関するブログ記事のテーマ、記事概要、SEOキーワード、およびカテゴリを日本語で生成してください。求職者に向けた発信ではありません。"
+      random_seed = SecureRandom.hex(4)
+
+      prompt = <<~PROMPT
+        軽貨物配送サービスに関するブログ記事のテーマ、記事概要、SEOキーワード、カテゴリを日本語で生成してください。
+        求職者に向けた内容ではなく、軽貨物業者・法人向けの情報提供を目的とします。
+
+        毎回必ず異なる視点・切り口で生成してください。
+        過去に存在しそうなテーマの重複は避け、発想を変えてユニークなテーマを作ってください。
+
+        ランダムシード: #{random_seed}
+
+        出力形式:
+        {
+          "title": "",
+          "description": "",
+          "keyword": "",
+          "choice": ""
+        }
+      PROMPT
 
       response_json_string = post_to_gemini(prompt)
       next unless response_json_string
@@ -21,7 +40,7 @@ class GeminiColumnGenerator
           title:       data["title"],
           description: data["description"],
           keyword:     data["keyword"],
-          choice:      data["choice"], 
+          choice:      data["choice"],
           status:      "draft"
         )
 
@@ -45,6 +64,9 @@ class GeminiColumnGenerator
     req.body = {
       contents: [ { parts: [ { text: prompt } ] } ],
       generationConfig: {
+        temperature: 1.1,  # ← 変化を強める
+        topP: 0.95,
+        topK: 40,
         "responseMimeType": "application/json",
         "responseSchema": {
           "type": "object",
@@ -52,7 +74,7 @@ class GeminiColumnGenerator
             "title":       { "type": "string" },
             "description": { "type": "string" },
             "keyword":     { "type": "string" },
-            "choice":    { "type": "string" }
+            "choice":      { "type": "string" }
           },
           "required": ["title", "description", "keyword", "choice"]
         }
