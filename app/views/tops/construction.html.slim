@@ -1,25 +1,22 @@
-    - set_meta_tags title: 'テレアポ代行のノウハウ知ろう｜アポ匠'
-    - set_meta_tags description: 'テレアポ代行のノウハウや選び方、基礎知識を紹介しています。'
-
-    section.hero-main-section.position-relative(style="background-image: url(#{asset_path('cargo-image.png')});")
+    section.hero-main-section.position-relative(style="background-image: url(#{asset_path('construction-image.png')});")
       .container
         .row.align-items-center.gy-4
           .col-lg-6
             .hero-main-left
               .hero-main-top
                 button.hero-main-top-btn
-                  | 新規配送会社をお探しの企業様へ
+                  | 建設業者会社をお探しの工務店・ゼネコン様へ
               h1.hero-main-title.mt-4
                 span.noto
-                  | 御社のお荷物を責任を持ってお届け
+                  | 建設の業務を責任を持って受託
               h2.hero-main-subtitle.mt-3
                 span.noto
-                  | 軽貨物配送なら『OK配送』
+                  | 建設業務なら『OK建設』
               .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
                 button.hero-main-badge
-                  |  ✓ 安心安全宅配
+                  |  ✓ 豊富な経験人材
                 p.hero-main-badge-text
-                  | お客様のお荷物を安心して配達！
+                  | 建設業歴3年以上の人材多数在籍！
               .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
                 button.hero-main-badge
                   |  ✓ 全国対応
@@ -91,13 +88,13 @@
       .japan-notyo-container
         .japan-notyo-column.japan-notyo-text-column
           h2.japan-notyo-heading
-            | 軽貨物配送『OK配送』とは？
+            | 建設業『OK建設』とは？
           h2.japan-notyo-heading
             | 
           p.japan-notyo-description
-            |  『OK配送』は、豊富な人材を活かし、全国の物流企業・軽貨物配送業者と提携をしている軽貨物事業者です。
+            |  『OK建設』は、豊富な人材を活かし、全国複数拠点に軸を置く建設事業者です。
             br
-            |  人材紹介会社からの事業展開を行なった特性上、人材の圧倒的な集客力を活かし、企業様の物流拠点の最短最速での構築をお手伝いします。
+            |  人材紹介会社からの事業展開を行なった特性上、人材の圧倒的な集客力を活かし、工務店様やゼネコン様と協業し、建設実務を行います。
         .japan-notyo-column.japan-notyo-image-column
           = image_tag "image.png", class: "japan-notyo-image", alt: "Tool illustration"
     section.jap-notto-section
@@ -123,59 +120,61 @@
           .ser-mos-kicker
             | 
           h2.ser-mos-title
-            | OK配送の事業内容
+            | OK建設の事業内容
         .ser-mos-panel.mx-auto.p-4.rounded-4
           .row.g-4
             .col-lg-6
               article.ser-mos-card
                 .ser-mos-card-media
-                  = image_tag "ser-cargo1.png", class: "ser-mos-card-img", alt: "Service 1"
+                  = image_tag "ser-construction1.png", class: "ser-mos-card-img", alt: "Service 1"
                 h3.ser-mos-card-title
-                  | 個人配送
+                  | 大工工事業
                 p.ser-mos-card-desc
-                  |  お客様のご自宅にお荷物をお届けします。小口から大きなお荷物まで対応OK。
+                  | 木造建築の骨組みから内装仕上げまで施工します。
                 /button.ser-mos-card-btn
                   | 詳しく見る 
                   = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
             .col-lg-6
               article.ser-mos-card
                 .ser-mos-card-media
-                  = image_tag "ser-cargo2.png", class: "ser-mos-card-img", alt: "Service 2"
+                  = image_tag "ser-construction2.png", class: "ser-mos-card-img", alt: "Service 2"
                 h3.ser-mos-card-title
-                  | 法人配送
+                  | 土工工事業
                 p.ser-mos-card-desc
-                  |  法人の企業様へのボリュームある荷物を定期的に配送します。一部スポット配送も受付OK。
+                  |  足場組立や鉄骨建方、土工事など現場基盤を担います。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+          .row.g-4
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-construction3.png", class: "ser-mos-card-img", alt: "Service 1"
+                h3.ser-mos-card-title
+                  | 型枠工事業
+                p.ser-mos-card-desc
+                  |  コンクリート構造の型枠組立と解体を専門的に実施。
                 /button.ser-mos-card-btn
                   | 詳しく見る 
                   = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
             .col-lg-6
               article.ser-mos-card
                 .ser-mos-card-media
-                  = image_tag "ser-cargo3.png", class: "ser-mos-card-img", alt: "Service 3"
+                  = image_tag "ser-construction4.png", class: "ser-mos-card-img", alt: "Service 2"
                 h3.ser-mos-card-title
-                  | 軽貨物事業者様への人材提供
+                  | 基礎工事業
                 p.ser-mos-card-desc
-                  | 当社の人材は軽貨物事業者様とのパートナーシップを結ぶことで、全国各地で軽貨物業務を行っております。
+                  |  建物を支える基礎の掘削・配筋・コンクリート施工。
                 /button.ser-mos-card-btn
                   | 詳しく見る 
                   = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
-            .col-lg-6
-              article.ser-mos-card
-                .ser-mos-card-media
-                  = image_tag "ser-cargo4.png", class: "ser-mos-card-img", alt: "Service 4"
-                h3.ser-mos-card-title
-                  | 都心部から地方まで全国対応
-                p.ser-mos-card-desc
-                  |  圧倒的な集客力を活かし、都心部から地方まで様々なエリアで軽貨物配送を承っております。
-                /button.ser-mos-card-btn
-                  | 詳しく見る 
-                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+
     section.main-moss-section
       .container.text-center.main-moss-header
         h2.main-moss-title
           | 御社の物流を支える
         h3.main-moss-subtitle
-          | 『OK配送』の魅力
+          | 『OK建設』の魅力
       .container-fluid.main-moss-block
         .row.align-items-center
           .col-lg-6.text-center
@@ -184,7 +183,7 @@
             h3.main-moss-block-title
               | 物流基盤を支える圧倒的豊富な人材で対応
             p.main-moss-block-desc
-              |  当社では豊富な人材集客を基盤に毎月多くの配送人材を手配できます。
+              |  当社では豊富な人材集客を基盤に毎月多くの建設人材を手配できます。
               br
               |  案件内容に応じて最適な人材を手配します。
       .container-fluid.main-moss-block
@@ -193,9 +192,9 @@
             = image_tag "main-cargo2.png", class: "main-moss-img img-fluid", alt: "Feature Image"
           .col-lg-6.text-center.main-moss-content
             h3.main-moss-block-title
-              | 24時間365日体制
+              | 豊富な経験者が多数在籍
             p.main-moss-block-desc
-              |  必要に応じて夜間・早朝も対応可能。スケジュールに合わせた柔軟な配送が可能です。
+              |  建設業界３年以上の経験者が多数在籍しているので、即戦力として活躍できます。
       .container-fluid.main-moss-block
         .row.align-items-center
           .col-lg-6.text-center
@@ -204,15 +203,15 @@
             h3.main-moss-block-title
               | 名古屋・大阪・福岡・東京・千葉・埼玉・神奈川
             p.main-moss-block-desc
-              |  各エリアに拠点を設け、お客様のニーズに合わせた配送を承ります。
+              |  各エリアに拠点を設け、お客様のニーズに合わせた建設を承ります。
       .container-fluid.main-moss-block
         .row.align-items-center.flex-row-reverse
           .col-lg-6.text-center
-            = image_tag 'main-cargo4.png', alt: 'Feature Image', class: 'main-moss-img img-fluid'
+            = image_tag 'main-construction4.png', alt: 'Feature Image', class: 'main-moss-img img-fluid'
           .col-lg-6.text-center.main-moss-content
             h3.main-moss-block-title 地方の拠点作りもご相談OK
             p.main-moss-block-desc
-              | 地方で配送を依頼できる会社が少ない。。。そんな企業様もご相談ください。長期契約で安定した物流拠点構築から運営までサポート。
+              | 地方で建設を依頼できる会社が少ない。。。そんな企業様もご相談ください。長期契約で安定した物流拠点構築から運営までサポート。
 
     section.faq-japan-section.py-5
       .container.text-center
@@ -238,27 +237,27 @@
           .faq-japan-item
             .faq-japan-question.d-flex.align-items-center.justify-content-between
               p
-                | 夜間や早朝の配送にも対応できますか？
+                | 図面を読める人材も手配可能ですか？
               = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
             .faq-japan-answer
               p
-                |  はい、事前にご相談いただければ対応可能です。配送時間や曜日など柔軟に調整いたします。
+                |  はい、事前にご相談いただければ対応可能です。
           .faq-japan-item
             .faq-japan-question.d-flex.align-items-center.justify-content-between
               p
-                | 定期的な配送契約は可能ですか？
+                | 定期的な建設業務の契約は可能ですか？
               = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
             .faq-japan-answer
               p
-                | 可能です。週単位・月単位など、ご希望のスケジュールに合わせた契約形態で対応いたします。
+                | もちろん可能です。月単位・年単位など、ご希望のスケジュールに合わせた契約形態で対応いたします。
           .faq-japan-item
             .faq-japan-question.d-flex.align-items-center.justify-content-between
               p
-                | どんな荷物を運べますか？
+                | 未経験も含めて数十名単位の人材を確保できますか？
               = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
             .faq-japan-answer
               p
-                | 軽貨物車両で運べる範囲（小口荷物・書類・商品・資材など）に対応しています。内容によっては確認が必要な場合があります。
+                | はい。当社は人材集客には非常に強いのが特徴となります。ぜひご依頼ください。
           .faq-japan-item
             .faq-japan-question.d-flex.align-items-center.justify-content-between
               p
@@ -276,32 +275,32 @@
         .row.g-4.cards-moos-row.d-none.d-md-flex
           .col-lg-4.col-md-6
             .cards-moos-card
-              = image_tag "image-cargo1.png", class: "cards-moos-img", alt: "Case Study 1"
+              = image_tag "image_construction1.png", class: "cards-moos-img", alt: "Case Study 1"
               h3.cards-moos-heading
-                | 製造業A社様
+                | 工務店A様
               p.cards-moos-desc
-                |  定期便の依頼でしたが、ドライバーさんの対応も丁寧で安心できました。納品も予定通りで助かりました。
+                |  建設現場で人材を集めるのに苦労している中で、OK建設さんをご紹介頂きました。即日３名をご紹介いただき大変驚くと共に助かりました。
           .col-lg-4.col-md-6
             .cards-moos-card
-              = image_tag "image-cargo2.png", class: "cards-moos-img", alt: "Case Study 2"
+              = image_tag "image_construction2.png", class: "cards-moos-img", alt: "Case Study 2"
               h3.cards-moos-heading
-                | EC事業・B社様
+                | ゼネコン様
               p.cards-moos-desc
-                |  既存の物流会社の倒産で急遽翌月から物流会社を探しておりましたが、すぐにドライバーさんを手配してくださいました。
+                |  社内案件の都合もあり、15名ほど人材確保したい事情がありましたが、二週間ほどの期間で確保をしていただくことが出来ました。
           .col-lg-4.col-md-6
             .cards-moos-card
-              = image_tag "image-cargo3.png", class: "cards-moos-img", alt: "Case Study 3"
+              = image_tag "image_construction3.png", class: "cards-moos-img", alt: "Case Study 3"
               h3.cards-moos-heading
-                | 医療機器・E社様
+                | 土木企業様
               p.cards-moos-desc
-                |  病院向け定期配送をお願いしています。交通渋滞によりエラーは仕方ないにしても、基本は時間通りに届けてもらえるので、納品遅延の心配がなくなりました。
+                |  急な人材の退職があり、ご相談したところ、すぐに動ける人材を手配いただき大変助かりました。
           .col-lg-4.col-md-6
             .cards-moos-card
-              = image_tag "image-cargo3.png", class: "cards-moos-img", alt: "Case Study 3"
+              = image_tag "image_construction3.png", class: "cards-moos-img", alt: "Case Study 3"
               h3.cards-moos-heading
-                | 軽貨物事業者様
+                | 山口県工務店様
               p.cards-moos-desc
-                |  取引開始より2週間で7名の人材を確保して頂けました。人材不足の業界でありながら、とても豊富な人材に驚きました。
+                |  建設人材が地方でなかなか集まらず苦労していましたが、二週間ほどで5名人材確保が出来ました。
 
 
     section#inquiry

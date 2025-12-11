@@ -9,6 +9,9 @@ Rails.application.routes.draw do
   
   root to: 'tops#index'
   get 'cargo', to: 'tops#cargo'
+  get 'security', to: 'tops#security'
+  get 'construction', to: 'tops#construction'
+  get 'cleaning', to: 'tops#cleaning'
   get 'recruit', to: 'tops#recruit'
   get 'app', to: 'tops#app'
   
