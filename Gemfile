@@ -85,3 +85,8 @@ gem 'sidekiq-cron'
 gem 'kramdown'
 
 gem 'openai'
+
+gem 'sitemap_generator'
+gem 'breadcrumbs_on_rails'
+gem 'friendly_id', '~> 5.5'
+gem 'carrierwave'

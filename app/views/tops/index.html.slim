@@ -238,6 +238,25 @@ section.main-moss-section
         p.main-moss-block-desc
           | 地方で多数人材が必要な場合でも、早期にスタッフを手配し、地方構築をサポートします。
 
+
+section#case.cards-moos-section.py-5
+  .container.text-center
+    h2.cards-moos-title.mb-5
+      | 記事一覧
+    .row.g-4.cards-moos-row.d-none.d-md-flex
+      - Column.order(created_at: :desc).limit(3).each do |column|
+        .col-lg-4.col-md-6
+          = link_to column_path(column) do
+            .cards-moos-card
+              - if column.file.present?
+               = image_tag column.file.to_s, width:"100%", class: 'column-thumb', alt: column.title
+              h3.cards-moos-heading
+                = column.title
+              p.cards-moos-desc
+                = column.description
+    .mt-4
+      = link_to "Column一覧", columns_path, class:"btn btn-primary"
+
 section.faq-japan-section.py-5
   .container.text-center
     h2.faq-japan-title.mb-5

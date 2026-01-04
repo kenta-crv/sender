@@ -17,7 +17,8 @@
       - @columns.presence&.each do |column|
         .column-card
           .column-image
-            /= link_to image_tag(column.file.to_s, class: 'column-thumb', alt: column.title), column_path(column)
+           - if column.file.present?
+            = image_tag column.file.to_s, width:"100%", class: 'column-thumb', alt: column.title
           .column-content
             h2.column-title
               = link_to column.title, column_path(column)

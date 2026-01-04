@@ -1,5 +1,3 @@
-# config/routes.rb
-
 Rails.application.routes.draw do
   # Deviseの管理者認証
   devise_for :admins, controllers: {
@@ -18,9 +16,10 @@ Rails.application.routes.draw do
   get 'logistics', to: 'tops#logistics'
   get 'recruit', to: 'tops#recruit'
   get 'app', to: 'tops#app'
+  get 'ads', to: 'tops#ads'
 
-  # --- SEO用: ジャンル別コラム階層 (/genre/columns と /genre/columns/:id) ---
-  # index（一覧）と show（詳細）の両方を許可します
+  # --- SEO用: ジャンル別コラム階層 (/genre/columns/:code) ---
+  # constraintsに一致する場合、こちらのルーティングが優先されます
   scope ':genre', constraints: { genre: /cargo|security|cleaning|app|construction/ } do
     resources :columns, only: [:index, :show], as: :nested_columns
   end
@@ -28,6 +27,7 @@ Rails.application.routes.draw do
   get 'draft/progress', to: 'draft#progress'
 
   # --- 管理機能・汎用リソースとしてのコラム ---
+  # 基本的なCRUDはこちらを使用
   resources :columns do
     collection do
       get :draft            # ドラフト一覧

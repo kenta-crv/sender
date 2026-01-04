@@ -4,7 +4,8 @@ class GeminiColumnGenerator
   require "openssl"
 
   GEMINI_API_KEY = ENV["GEMINI_API_KEY"]
-  GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
+  # 最新のモデル名（gemini-1.5-flashなど）に合わせて調整してください
+  GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
   MAX_RETRIES = 3
 
   GENRE_CONFIG = {
@@ -114,6 +115,13 @@ class GeminiColumnGenerator
       ・売り込みすぎず、実務目線で分かりやすく
       ・記事の最後は「#{config[:service_brand]}（#{config[:service_path]}）では〜」で締める
 
+      URL用コード（slug）生成のルール：
+      ・記事内容を英語で簡潔に表すURL用の文字列（code）を生成してください。
+      ・SEOを意識し、重要なキーワードを凝縮してください。
+      ・「a」「the」「is」「of」などの機能語（Stop words）は除外してください。
+      ・半角英小文字とハイフンのみを使用してください（アンダースコア禁止）。
+      ・単語間はハイフン「-」で繋いでください。
+
       keyword条件：
       ・SEOキーワードを3〜5個
       ・カンマ区切りのみ（説明文禁止）
@@ -124,6 +132,7 @@ class GeminiColumnGenerator
 
       {
         "title": "記事タイトル",
+        "code": "seo-friendly-english-slug",
         "description": "記事本文（800〜1200文字）",
         "keyword": "キーワード1,キーワード2,キーワード3"
       }
@@ -140,19 +149,20 @@ class GeminiColumnGenerator
       data = JSON.parse(json_text) rescue nil
       next if data.nil?
 
-      required_keys = %w[title description keyword]
+      required_keys = %w[title code description keyword]
       missing = required_keys.select { |k| data[k].blank? }
 
       if missing.empty?
         Column.create!(
           title:       data["title"],
+          code:        data["code"].downcase.strip, # 小文字化と空白除去
           description: data["description"],
           keyword:     data["keyword"],
           choice:      target_category,
           genre:       genre.to_s,
           status:      "draft"
         )
-        puts "成功: [#{genre}] #{data['title']}"
+        puts "成功: [#{genre}] #{data['title']} (URL: /columns/#{data['code']})"
         return true
       else
         retries += 1

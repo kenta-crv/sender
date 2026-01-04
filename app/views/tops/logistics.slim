@@ -177,6 +177,24 @@ section.main-moss-section
         p.main-moss-block-desc
           | 地方の倉庫や物流現場でも、経験豊富なスタッフを手配し、スムーズな作業をサポートします。
 
+    .section#case.cards-moos-section.py-5
+      .container.text-center
+        h2.cards-moos-title.mb-5
+          | 物流業記事一覧
+        .row.g-4.cards-moos-row.d-none.d-md-flex
+          - Column.where(genre: "logistics").order(created_at: :desc).limit(3).each do |column|
+            .col-lg-4.col-md-6
+              = link_to column_path(column) do
+                .cards-moos-card
+                  - if column.file.present?
+                   = image_tag column.file.to_s, width:"100%", class: 'column-thumb', alt: column.title
+                  h3.cards-moos-heading
+                    = column.title
+                  p.cards-moos-desc
+                    = column.description
+        .mt-4
+          = columns_index_link("logistics", "物流業の記事一覧を見る")
+
 section.faq-japan-section.py-5
   .container.text-center
     h2.faq-japan-title.mb-5

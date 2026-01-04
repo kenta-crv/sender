@@ -1,0 +1,8 @@
+nav.breadcrumbs
+ - breadcrumbs.each_with_index do |crumb, i|
+  - if crumb[:path].present?
+    = link_to crumb[:label], crumb[:path]
+  - else
+    = crumb[:label]
+  - unless i == breadcrumbs.size - 1
+    |  /

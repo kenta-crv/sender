@@ -9,7 +9,7 @@ class GeminiColumnGenerator
 
   # ジャンル定義（★ここを追加・編集するだけで多角化可能）
   GENRE_CONFIG = {
-    light_cargo: {
+    cargo: {
       service_name: "軽貨物配送サービス",
       target: "軽貨物事業者との取引や協業を検討している企業の担当者または経営層（荷主企業やITベンダーなど）",
       categories: [
@@ -88,7 +88,7 @@ class GeminiColumnGenerator
     }
   }.freeze
 
-  def self.generate_columns(genre: :light_cargo, batch_count: 100)
+  def self.generate_columns(genre: :cargo, batch_count: 100)
     config = GENRE_CONFIG.fetch(genre)
     category_list = config[:categories]
 

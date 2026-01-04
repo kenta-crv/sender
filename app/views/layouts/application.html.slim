@@ -5,5 +5,7 @@ html lang="ja"
 
   body
     = render "layouts/header"
+    .hero 
+     = render "shared/breadcrumbs" if breadcrumbs.any?
     = yield
     = javascript_include_tag "application", "data-turbolinks-track": "reload"

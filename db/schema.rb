@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2025_12_08_172754) do
+ActiveRecord::Schema.define(version: 2026_01_04_063939) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -36,7 +36,20 @@ ActiveRecord::Schema.define(version: 2025_12_08_172754) do
     t.datetime "updated_at", precision: 6, null: false
     t.string "service_type", default: "cargo", null: false
     t.string "genre"
+    t.string "code"
+    t.index ["code"], name: "index_columns_on_code", unique: true
     t.index ["service_type"], name: "index_columns_on_service_type"
+  end
+
+  create_table "friendly_id_slugs", force: :cascade do |t|
+    t.string "slug", null: false
+    t.integer "sluggable_id", null: false
+    t.string "sluggable_type", limit: 50
+    t.string "scope"
+    t.datetime "created_at"
+    t.index ["slug", "sluggable_type", "scope"], name: "index_friendly_id_slugs_on_slug_and_sluggable_type_and_scope", unique: true
+    t.index ["slug", "sluggable_type"], name: "index_friendly_id_slugs_on_slug_and_sluggable_type"
+    t.index ["sluggable_type", "sluggable_id"], name: "index_friendly_id_slugs_on_sluggable_type_and_sluggable_id"
   end
 
 end

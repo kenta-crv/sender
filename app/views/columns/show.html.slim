@@ -1,6 +1,9 @@
 .blog-container
   .container
     h1.column-title = @column.title
+    .center
+     - if @column.file.present?
+      = image_tag @column.file.to_s, width:"250px", class: 'column-thumb', alt: @column.title
 
     - if @headings.any?
       .toc

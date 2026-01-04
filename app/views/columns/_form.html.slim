@@ -8,6 +8,11 @@
         = f.label :title, "タイトル"
         = f.text_field :title, class: "form-control"
 
+      / code(slug)を手動でも編集・確認できるように追加
+      .form-group
+        = f.label :code, "URL用英字コード（SEO用）"
+        = f.text_field :code, class: "form-control", placeholder: "example-article-slug"
+
       .form-group
         = f.label :file, "画像"
         = f.file_field :file, accept: "image/*", class: "form-control"
@@ -20,7 +25,6 @@
         = f.label :body, "本文"
         = f.text_area :body, rows: 12, class: "form-control"
 
-      / index/show には出てこないが params にあるので念のため残す（必要なら）
       .form-group
         = f.label :choice, "カテゴリー（任意）"
         = f.text_field :choice, class: "form-control"
