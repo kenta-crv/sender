@@ -247,7 +247,7 @@
                   h3.cards-moos-heading
                     = column.title
                   p.cards-moos-desc
-                    = column.description
+                    = truncate(column.description, length: 200)
         .mt-4
           = columns_index_link("construction", "建設業の記事一覧を見る")
 
