@@ -3,9 +3,11 @@
 
 - if admin_signed_in?
  .row.center
-  .col-sm-6
-    = button_to "Geminiで大量生成", generate_gemini_columns_path(batch: 20), method: :post, class: "btn btn-primary"
-  .col-sm-6 
+  .col-sm-4
+    = button_to "親記事生成 (最大10件)", generate_pillar_columns_path(batch: 10), method: :post, class: "btn btn-warning"
+  .col-sm-4
+    = button_to "子記事生成 (最大25件)", generate_gemini_columns_path(batch: 20), method: :post, class: "btn btn-primary"
+  .col-sm-4 
     = link_to "ドラフト一覧を見る", draft_columns_path, class: "btn btn-secondary"
 
 .section-knowhow

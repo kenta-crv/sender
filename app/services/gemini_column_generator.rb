@@ -4,8 +4,8 @@ class GeminiColumnGenerator
   require "openssl"
 
   GEMINI_API_KEY = ENV["GEMINI_API_KEY"]
-  # 最新のモデル名（gemini-1.5-flashなど）に合わせて調整してください
-  GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+  # 最新の安定版モデルを指定
+  GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
   MAX_RETRIES = 3
 
   GENRE_CONFIG = {
@@ -61,118 +61,108 @@ class GeminiColumnGenerator
 
   def self.generate_columns(genre: nil, batch_count: 10)
     success_count = 0
+    genre_list = genre ? [genre.to_sym] : GENRE_CONFIG.keys.shuffle
+    processed = 0
 
-    if genre
-      config = GENRE_CONFIG.fetch(genre.to_sym)
-      categories = config[:categories]
-      index = 0
-
-      batch_count.times do |i|
-        target_category = categories[index]
-        index = (index + 1) % categories.size
-
-        success_count += 1 if execute_generation(genre.to_sym, target_category)
-        sleep 7 if i < batch_count - 1
+    while processed < batch_count
+      genre_list.each do |g|
+        break if processed >= batch_count
+        target_category = GENRE_CONFIG[g][:categories].sample
+        success_count += 1 if execute_generation(g, target_category)
+        processed += 1
+        sleep 3 # API負荷軽減
       end
-    else
-      genre_list = GENRE_CONFIG.keys.shuffle
-      processed = 0
-
-      while processed < batch_count
-        genre_list.each do |g|
-          break if processed >= batch_count
-
-          target_category = GENRE_CONFIG[g][:categories].sample
-          success_count += 1 if execute_generation(g, target_category)
-          processed += 1
-
-          sleep 7 if processed < batch_count
-        end
-        genre_list.shuffle!
-      end
+      genre_list.shuffle!
     end
 
+    puts "\n✅ 完了: #{success_count} / #{batch_count} 件の記事を保存しました。"
     success_count
   end
 
-  def self.execute_generation(genre, target_category)
-    config = GENRE_CONFIG.fetch(genre)
-    puts "--- [#{genre}] 生成開始 カテゴリ: #{target_category} ---"
+  def self.execute_generation(original_genre, target_category)
+    puts "\n--- [#{original_genre}] 生成開始 カテゴリ: #{target_category} ---"
 
-    prompt = <<~EOS
-      #{config[:service_name]}に関する企業向けブログ記事を日本語で作成してください。
-      ターゲット読者：#{config[:target]}
-      記事カテゴリ：「#{target_category}」
+    pillar = PillarSelector.select_available_pillar(original_genre)
+    if pillar.nil?
+      puts "❌ 親記事が見つかりません"
+      return false
+    end
 
-      記事タイトルには必ず「#{config[:service_name]}」という文言を含めてください。
+    actual_genre = pillar.genre.to_sym
+    config = GENRE_CONFIG[actual_genre]
 
-      記事の目的：
-      ・#{config[:service_brand]}のサービス内容を自然に理解してもらう
-      ・最終的に「問い合わせしてみよう」と思ってもらう
+    # プロンプトの改善：単一オブジェクトを強く要求
+    prompt = <<~PROMPT
+      以下の設定に基づき、ウェブ記事のメタ情報を「1つのJSONオブジェクト」として作成してください。
+      絶対に複数の記事を作成しないでください。配列（[]）も使わないでください。
 
-      重要な条件：
-      ・#{config[:exclude]}ではありません
-      ・売り込みすぎず、実務目線で分かりやすく
-      ・記事の最後は「#{config[:service_brand]}（#{config[:service_path]}）では〜」で締める
+      【設定】
+      サービス名: #{config[:service_name]} (#{config[:service_brand]})
+      ターゲット: #{config[:target]}
+      カテゴリー: #{target_category}
+      除外対象: #{config[:exclude]}
 
-      URL用コード（slug）生成のルール：
-      ・記事内容を英語で簡潔に表すURL用の文字列（code）を生成してください。
-      ・SEOを意識し、重要なキーワードを凝縮してください。
-      ・「a」「the」「is」「of」などの機能語（Stop words）は除外してください。
-      ・半角英小文字とハイフンのみを使用してください（アンダースコア禁止）。
-      ・単語間はハイフン「-」で繋いでください。
-
-      keyword条件：
-      ・SEOキーワードを3〜5個
-      ・カンマ区切りのみ（説明文禁止）
-
-      【出力ルール】
-      以下のJSONを完全にそのままの構造で出力してください。
-      キーの省略・追加は禁止です。
-
+      【出力JSON形式（必ず1つだけ）】
       {
-        "title": "記事タイトル",
-        "code": "seo-friendly-english-slug",
-        "description": "記事本文（800〜1200文字）",
-        "keyword": "キーワード1,キーワード2,キーワード3"
+        "title": "読者の課題を解決するタイトル",
+        "code": "url-slug-text",
+        "description": "120文字程度の要約",
+        "keyword": "キーワード1, キーワード2"
       }
-    EOS
+    PROMPT
 
     retries = 0
     loop do
       response_text = post_to_gemini(prompt)
-      return false unless response_text
+      return false if response_text.nil?
 
-      json_text = response_text[/\{.*\}/m]
-      next if json_text.nil?
+      # JSON部分の抽出ロジックの改善
+      # 配列 [] で返ってきた場合も考慮
+      json_match = response_text.match(/(\{.*\}|\[.*\])/m)
+      json_text = json_match ? json_match[0] : nil
 
-      data = JSON.parse(json_text) rescue nil
-      next if data.nil?
-
-      required_keys = %w[title code description keyword]
-      missing = required_keys.select { |k| data[k].blank? }
-
-      if missing.empty?
-        Column.create!(
-          title:       data["title"],
-          code:        data["code"].downcase.strip, # 小文字化と空白除去
-          description: data["description"],
-          keyword:     data["keyword"],
-          choice:      target_category,
-          genre:       genre.to_s,
-          status:      "draft"
-        )
-        puts "成功: [#{genre}] #{data['title']} (URL: /columns/#{data['code']})"
-        return true
-      else
+      if json_text.nil?
+        puts "❌ JSON抽出失敗"
         retries += 1
-        puts "不完全JSON #{retries}回目: missing=#{missing.join(', ')}"
-        sleep 3
         break if retries >= MAX_RETRIES
+        next
       end
-    end
 
-    puts "生成失敗: 必須キーが揃わず"
+      begin
+        parsed_data = JSON.parse(json_text)
+        
+        # 配列で返ってきた場合は最初の1件を取得
+        data = parsed_data.is_a?(Array) ? parsed_data.first : parsed_data
+
+        required_keys = %w[title code description keyword]
+        missing = required_keys.select { |k| data[k].to_s.strip.empty? }
+
+        if missing.empty?
+          Column.create!(
+            title:       data["title"],
+            code:        data["code"],
+            description: data["description"],
+            keyword:     data["keyword"],
+            choice:      target_category,
+            genre:       actual_genre.to_s,
+            status:      "draft",
+            article_type: "cluster",
+            parent_id:   pillar.id
+          )
+          puts "✅ 保存成功: #{data["title"]}"
+          return true
+        else
+          puts "❌ キー欠損: #{missing}"
+        end
+      rescue JSON::ParserError => e
+        puts "❌ JSONパースエラー: #{e.message}"
+        # パースに失敗した生データを少し表示してデバッグしやすくする
+        puts "【問題のデータ冒頭】: #{json_text[0..100]}..." 
+      end
+
+      retries += 1
+      break if retries >= MAX_RETRIES
+    end
     false
   end
 
@@ -181,10 +171,12 @@ class GeminiColumnGenerator
     uri.query = URI.encode_www_form(key: GEMINI_API_KEY)
 
     req = Net::HTTP::Post.new(uri, "Content-Type" => "application/json")
+    
+    # response_mime_type を指定することで、Geminiが文章を混ぜるのを防ぐ
     req.body = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        responseMimeType: "application/json"
+        response_mime_type: "application/json"
       }
     }.to_json
 
@@ -193,10 +185,11 @@ class GeminiColumnGenerator
     end
 
     return nil unless res.is_a?(Net::HTTPSuccess)
-
-    JSON.parse(res.body).dig("candidates", 0, "content", "parts", 0, "text")
+    
+    body = JSON.parse(res.body)
+    body.dig("candidates", 0, "content", "parts", 0, "text")
   rescue => e
-    puts "通信エラー: #{e.message}"
+    puts "❌ API通信エラー: #{e.message}"
     nil
   end
 end

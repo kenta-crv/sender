@@ -16,3 +16,13 @@
 
     .column-body
       == raw(@column_body_with_ids)
+
+    / ===== ここから追加ブロック =====
+    - if @column.article_type == "pillar" && @children.any?
+      .related-articles
+        h2 関連記事一覧
+        ul.related-list
+          - @children.each do |child|
+            li
+              = link_to child.title, column_path(child)
+    / ===== ここまで追加 =====

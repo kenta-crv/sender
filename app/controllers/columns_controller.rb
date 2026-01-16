@@ -16,21 +16,30 @@ class ColumnsController < ApplicationController
     @columns = columns.order(updated_at: :desc)
   end
 
-  # GET /:genre/columns/:id (実際は :id に code が入る)
+# GET /:genre/columns/:id (実際は :id に code が入る)
   def show
     # --- SEO対策: 正規URLへのリダイレクト ---
-    # genre が存在し、かつルーティング制約(cargo|security等)に合致する場合のみ階層ありURLを使用
+    # ジャンルが特定のリストに含まれるかチェック
     is_valid_genre = @column.genre.present? && @column.genre.match?(/cargo|security|cleaning|app|construction/)
     
+    # 【修正箇所】nested_columns_path (複数形) を nested_column_path (単数形) に変更
     correct_path = if is_valid_genre
-                     nested_columns_path(genre: @column.genre, id: @column)
+                     nested_column_path(genre: @column.genre, id: @column.code)
                    else
                      column_path(@column)
                    end
 
-    # 現在のURLパスが正規のパスと異なる場合のみ、301リダイレクトを実行
+    # 現在のアクセスURLが、計算した正規URLと異なる場合はリダイレクト
+    # これにより /columns/123 等のアクセスが /app/columns/code へ転送される
     if request.path != correct_path
       return redirect_to correct_path, status: :moved_permanently
+    end
+
+    # 親記事（pillar）の場合は子記事を取得
+    if @column.article_type == "pillar"
+      @children = @column.children.where(status: "approved").order(updated_at: :desc)
+    else
+      @children = []
     end
 
     markdown_body =
@@ -102,14 +111,17 @@ class ColumnsController < ApplicationController
     @columns = Column.where(status: "draft").order(created_at: :desc)
   end
 
+  # ----- 個別承認 -----
   def approve
     unless @column.approved?
       @column.update!(status: "approved")
+      # 親子判定で本文生成ジョブを呼ぶ
+      GenerateColumnBodyJob.perform_later(@column.id)
     end
-    GenerateColumnBodyJob.perform_later(@column.id)
     redirect_to columns_path, notice: "承認しました。本文生成を開始します。"
   end
 
+  # ----- 一括承認・削除 -----
   def bulk_update_drafts
     column_ids = params[:column_ids]
 
@@ -122,26 +134,32 @@ class ColumnsController < ApplicationController
     when "approve_bulk"
       columns = Column.where(id: column_ids)
       columns.each do |column|
-        unless column.approved?
-          column.update!(status: "approved")
-          GenerateColumnBodyJob.perform_later(column.id)
-        end
+        next if column.approved?
+        column.update!(status: "approved")
+        GenerateColumnBodyJob.perform_now(column.id)
       end
       redirect_to columns_path, notice: "#{columns.count}件のドラフトを承認しました。"
-
     when "delete_bulk"
       count = Column.where(id: column_ids).destroy_all
       redirect_to draft_columns_path, notice: "#{count}件のドラフトを削除しました。"
-
     else
       redirect_to draft_columns_path, alert: "無効な操作が選択されました。"
     end
   end
 
+  def generate_pillar
+  batch_count = params[:batch] || 5
+  genre = params[:genre] # 任意ジャンル指定可
+
+  # 親記事専用のGeminiクラスを呼び出す
+  created = GeminiPillarGenerator.generate_pillars(genre: genre, batch_count: batch_count.to_i)
+
+  redirect_to columns_path, notice: "親記事を#{created}件生成しました"
+end
+
   private
 
   def set_column
-    # friendly.find を使うことで、ID数値でも英字codeでも検索を可能にします
     @column = Column.friendly.find(params[:id])
   end
 
