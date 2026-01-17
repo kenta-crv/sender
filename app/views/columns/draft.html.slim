@@ -17,7 +17,9 @@
                 = check_box_tag "select_all", "1", false, class: "form-check-input", onclick: "toggleAll(this)"
               th タイトル
               th 説明
-              th キーワード
+              th ジャンル
+              th 分類
+              th 更新日
               th 操作
           tbody
             - @columns.each do |column|
@@ -26,8 +28,10 @@
                   = check_box_tag "column_ids[]", column.id, false, class: "form-check-input column-checkbox"
                 td = column.title
                 td = truncate(strip_tags(column.description), length: 80)
-                td = column.keyword
-                td
+                td = column.genre
+                td = column.article_type
+                td = column.updated_at
+                td 
                   = button_to "ChatGPT", approve_column_path(column), method: :patch, class: "btn btn-dark btn-sm"
                   = button_to "Delete", column_path(column), method: :delete, data: {confirm: "削除しますか？"}, class: "btn btn-danger btn-sm"
 

@@ -32,6 +32,8 @@
                 | ）
             - if admin_signed_in?
               .column-admin-links
+                .div.btn.btn-edit = column.genre
+                .div.btn.btn-edit = column.article_type
                 = link_to '編集', edit_column_path(column), class: 'btn-edit'
                 = link_to '削除', column_path(column), method: :delete, data: { confirm: '本当に削除しますか？' }, class: 'btn-delete'
                 - if column.status == "draft"

@@ -73,10 +73,6 @@ class Column < ApplicationRecord
     code_changed? || super
   end
 
-  def to_param
-  code
-  end
-
   before_validation :assign_random_file, on: :create
 
   private
