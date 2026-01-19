@@ -8,7 +8,7 @@ class GptArticleGenerator
   MAX_CHARS_PER_SECTION = 500
   MODEL_NAME = "gpt-4o-mini"
 
-  GPT_API_KEY = ENV["OPENAI_API_KEY"]
+  GPT_API_KEY = ENV["GPT_API_KEY"]
   GPT_API_URL = "https://api.openai.com/v1/chat/completions"
 
   # ==============================

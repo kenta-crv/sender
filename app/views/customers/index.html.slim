@@ -1,0 +1,162 @@
+- set_meta_tags noindex: true
+
+.tops-wrapper
+  h2.headline
+    | コールリスト
+    | (
+    = @customers.current_page * 100 - 99
+    | ~
+    = [@customers.page(1).per(100).total_count, @customers.current_page * 100].min
+    | 件/
+    = @customers.page(1).per(100).total_count
+    | 件中
+    | )
+
+= form_tag({ controller: :customers}, method: 'delete') do
+  .scroll.table-container
+    /= submit_tag '一括削除', style: 'width: 80px;margin: 0 0 10px 5%;font-size: 11px;'
+    table.table-container[width="90%" cellpadding="0" cellspacing="0"]
+      col[width="3%"]
+      col[width="10%"]
+      col[width="10%"]
+      col[width="15%"]
+      col[width="10%"]
+      col[width="7%"]
+      col[width="10%"]
+      col[width="10%"]
+      col[width="12%"]
+      col[width="6%"]
+      thead
+        tr
+          th
+            input.checkable_delete_all[type="checkbox"]
+          th 会社名
+          th 電話番号
+          th 住所
+          th ステータス
+          th 担当者
+          th= sort_link(@q, "最終コール日",  :created_at)
+          th= sort_link(@q, "インポート日", :updated_at)
+          th 編集/削除
+      tbody
+        - @customers.includes(:last_call).each_with_index do |customer, index|
+          tr
+            td= check_box_tag "deletes[#{customer.id}]", customer.id
+            td
+              - if customer.company.present?
+                = link_to customer.company, customer_path(customer, q: params[:q]&.permit!, last_call: params[:last_call]&.permit!)
+              - else
+                = link_to "未記入", customer_path(customer, q: params[:q]&.permit!, last_call: params[:last_call]&.permit!)
+            td= customer.tel
+            td= customer.address
+            td= customer.last_call&.status
+            td= customer.calls.last&.user&.user_name
+            td= customer.last_call&.created_at&.strftime("%Y年%m月%d日 %H時%M分%S秒")
+            td= customer.created_at.strftime("%Y年%m月%d日 %H時%M分%S秒")
+            td
+              = link_to '編集', edit_customer_path(customer, q: params[:q]&.permit!, last_call: params[:last_call]&.permit!), class: 'command'
+              = link_to '削除', customer_path(customer, q: params[:q]&.permit!, last_call: params[:last_call]&.permit!), method: :delete, class: 'command', data: { confirm: '本当に削除しますか？' }
+        tr
+          th[colspan="10"]
+            = paginate @customers
+
+#createTicket.modal.fade[tabindex="-1" role="dialog" aria-labelledby="dialogHeader" aria-hidden="true"]
+  .modal-dialog
+    .modal-content[style="width:900px; margin-left: -200px;"]
+      .modal-header
+        button.close[type="button" data-dismiss="modal" aria-hidden="true"]
+          | ×
+      .modal-body
+        = search_form_for @q do |f|
+          table.table-space[width="90%"]
+            col[width="20%"]
+            col[width="30%"]
+            col[width="20%"]
+            col[width="30%"]
+            tbody
+              tr
+                th[colspan="4"] 検索
+              tr
+                th 会社名
+                td= f.search_field :company_cont, type: "text"
+              tr
+                th 電話番号
+                td= f.search_field :tel_cont, type: "text"
+                th 検索条件
+                td= f.search_field :industry_cont, type: "text"
+              tr
+                th 住所
+                td= f.collection_select :address_cont_any, JpPrefecture::Prefecture.all, :name, :name, {include_blank: '選択してください'}, {class: 'form-control', id: 'search_prefecture', multiple: true}
+              tr
+                th 携帯番号
+                td= f.search_field :mobile_cont, type: "text"
+              tr
+                th 業種
+                td= f.search_field :business_cont, type: "text"
+                th 職種
+                td= f.search_field :genre_cont, type: "text"
+              tr
+                th 未コール
+                td= f.search_field :calls_id_null, type: 'checkbox', value: 'true'
+                th 最終コール状態
+                td= select_tag "last_call[status]", options_for_select([""] + Call.StatuItems, @last_call_params[:status]), multiple: true, class: "form-control"
+              tr
+                th 最終コール日時（最初）
+                td
+                  #created_at_from_datetimepicker.input-group.date
+                    = date_field_tag "last_call[created_at_from]", @last_call_params[:created_at_from], class: "form-control"
+                    span.input-group-addon
+                      span.glyphicon.glyphicon-calendar
+                th 最終コール日時（最後）
+                td
+                  #created_at_to_datetimepicker.input-group.date
+                    = date_field_tag "last_call[created_at_to]", @last_call_params[:created_at_to], class: "form-control"
+                    span.input-group-addon
+                      span.glyphicon.glyphicon-calendar
+              tr
+                th 最終インポート日時（最初）
+                td= f.date_field :created_at_gteq, class: 'date-picker form-control'
+                th 最終インポート日時（最後）
+                td= f.date_field :created_at_lteq, class: 'date-picker form-control'
+              tr
+                th 最終アップデート日時（最初）
+                td= f.date_field :updated_at_gteq, class: 'date-picker form-control'
+                th 最終アップデート日時（最後）
+                td= f.date_field :updated_at_lteq, class: 'date-picker form-control'
+              tr
+                th[colspan="4"]= f.submit '検索'
+
+- if admin_signed_in?
+  = form_with(url: import_customers_path, method: :post, local: true, multipart: true) do |f|
+    table.table-space[width="90%"]
+      tbody
+        tr
+          th CUSTOMER_CSV file Export
+          td
+            = link_to 'エクスポート', customers_path(format: :csv, q: params[:q]&.permit!, last_call: params[:last_call]&.permit!, search: params[:search]&.permit!, page: params[:page]), class: 'btn btn-success'
+
+javascript:
+  $(function() {
+    var allChecableBox = $('.checkable_delete_all');
+    var deleteCheckBoxs = $("[id^='deletes_']");
+
+    allChecableBox.change(function() {
+      if (this.checked) {
+        deleteCheckBoxs.prop('checked', true);
+      } else {
+        deleteCheckBoxs.prop('checked', false);
+      }
+    });
+
+    deleteCheckBoxs.change(function() {
+      var unCheckedExist = $("input:not(:checked)[id^='deletes_']").length > 0;
+      var checkedExist = $("input:checked[id^='deletes_']").length > 0;
+
+      if (checkedExist && unCheckedExist) {
+        allChecableBox.prop('indeterminate', true);
+      } else {
+        allChecableBox.prop('indeterminate', false);
+        allChecableBox.prop('checked', checkedExist);
+      }
+    });
+  });

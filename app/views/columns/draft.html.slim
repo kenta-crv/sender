@@ -6,9 +6,9 @@
       p まだドラフトはありません
     - else
       = form_with(url: bulk_update_drafts_columns_path, method: :post, local: true) do |form|
-        .d-flex.justify-content-start.mb-3
-          = form.button "選択をChat GPTに依頼", name: "action_type", value: "approve_bulk", class: "btn btn-dark me-2", data: { confirm: "選択されたドラフトを承認して本文生成を開始しますか？" }
-          = form.button "選択を削除", name: "action_type", value: "delete_bulk", class: "btn btn-danger", data: { confirm: "選択されたドラフトを一括削除しますか？" }
+        .d-flex.justify-content-start.mb-3 
+         = form.button "選択をChat GPTに依頼", name: "action_type", value: "approve_bulk", class: "btn btn-dark me-2", data: { confirm: "選択されたドラフトを承認して本文生成を開始しますか？" }
+         = form.button "選択を削除", name: "action_type", value: "delete_bulk", class: "btn btn-danger", data: { confirm: "選択されたドラフトを一括削除しますか？" }
 
         table.table
           thead

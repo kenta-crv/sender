@@ -136,7 +136,7 @@ class ColumnsController < ApplicationController
       columns.each do |column|
         next if column.approved?
         column.update!(status: "approved")
-        GenerateColumnBodyJob.perform_now(column.id)
+        GenerateColumnBodyJob.perform_later(column.id)
       end
       redirect_to columns_path, notice: "#{columns.count}件のドラフトを承認しました。"
     when "delete_bulk"
@@ -190,8 +190,6 @@ end
       :article_type,
       :parent_id, 
       :cluster_limit,
-      :article_type,
-      :parent_id,
     )
   end
 end

@@ -29,7 +29,9 @@ class TopsController < ApplicationController
   def ads
     @contract = Contract.new
   end
-
+  def short
+    @contract = Contract.new
+  end
   private
 
   def set_columns

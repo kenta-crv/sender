@@ -1,15 +1,14 @@
 require "net/http"
 require "json"
 require "openssl"
-require "openai"
 
 class GptPillarGenerator
-  MODEL_NAME = "gpt-4o-mini"
+  MODEL_NAME = "gpt-4.1-mini"
 
   TARGET_CHARS_PER_H2 = 1000
   MAX_CHARS_PER_H2 = 1400
 
-  GPT_API_KEY = ENV["OPENAI_API_KEY"]
+  GPT_API_KEY = ENV["GPT_API_KEY"]
   GPT_API_URL = "https://api.openai.com/v1/chat/completions"
 
   CATEGORY_KEYWORDS = {
@@ -27,36 +26,34 @@ class GptPillarGenerator
     category = detect_category(column.keyword)
 
     structure_prompt = pillar_structure_prompt(column, category, child_columns)
-    structure_response = call_gpt_api(structure_prompt, response_format: { type: "json_object" })
+    structure_response = call_gpt_api(structure_prompt)
 
     return column.body if structure_response.nil?
 
     json_str = structure_response.dig("choices", 0, "message", "content")
-    structure_data = JSON.parse(json_str)
+
+    begin
+      structure_data = JSON.parse(json_str)
+    rescue JSON::ParserError => e
+      Rails.logger.error("JSON parse failed: #{json_str}")
+      return nil
+    end
+
     structure = structure_data["structure"]
+    return nil unless structure.is_a?(Array)
 
     article = ""
 
-    # 1. 導入文
     article += call_section(introduction_prompt(column, category)) + "\n\n"
 
-    # 2. 各H2セクションの生成
     structure.each do |section|
-      # プログラム側で見出しを付与
       article += "## #{section["h2_title"]}\n\n"
-      # GPT側には本文のみを書かせる（見出しの重複防止）
       article += call_section(h2_content_prompt(column, category, section, child_columns)) + "\n\n"
       sleep(0.5)
     end
 
-    # 3. まとめ
     article += call_section(conclusion_prompt(column, category))
 
-    # =====================================================================
-    # 【最重要】既存の正規表現 /<(h[2-4])>/ にマッチさせるための処理
-    # KramdownがHTML変換時に見出しに自動で id 属性を付与するのを停止させます。
-    # これによりタグが <h2> になり、Controllerを変更せずとも抽出可能になります。
-    # =====================================================================
     article + "\n\n{::options auto_ids=\"false\" /}"
   end
 
@@ -69,10 +66,6 @@ class GptPillarGenerator
 
     "その他"
   end
-
-  # ==============================
-  # プロンプト群
-  # ==============================
 
   def self.pillar_structure_prompt(column, category, child_columns)
     child_titles = child_columns.map(&:title).join("\n- ")
@@ -146,22 +139,17 @@ class GptPillarGenerator
     PROMPT
   end
 
-  # ==============================
-  # GPT実行
-  # ==============================
-
   def self.call_section(prompt)
     response = call_gpt_api(prompt)
     response&.dig("choices", 0, "message", "content") || "（生成失敗）"
   end
 
-  def self.call_gpt_api(prompt, response_format: nil)
+  def self.call_gpt_api(prompt)
     uri = URI(GPT_API_URL)
 
-    req = Net::HTTP::Post.new(uri, {
-      "Content-Type" => "application/json",
-      "Authorization" => "Bearer #{GPT_API_KEY}"
-    })
+    req = Net::HTTP::Post.new(uri)
+    req["Content-Type"] = "application/json"
+    req["Authorization"] = "Bearer #{GPT_API_KEY}"
 
     payload = {
       model: MODEL_NAME,
@@ -172,13 +160,27 @@ class GptPillarGenerator
       temperature: 0.4
     }
 
-    payload[:response_format] = response_format if response_format.present?
     req.body = payload.to_json
 
-    res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, read_timeout: 150) do |http|
+    res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, open_timeout: 10, read_timeout: 120) do |http|
       http.request(req)
     end
 
-    res.is_a?(Net::HTTPSuccess) ? JSON.parse(res.body) : nil
+    unless res.is_a?(Net::HTTPSuccess)
+      Rails.logger.error("OpenAI API Error: #{res.code} #{res.body}")
+      return nil
+    end
+
+    JSON.parse(res.body)
+
+  rescue Net::OpenTimeout, Net::ReadTimeout => e
+    Rails.logger.error("OpenAI Timeout: #{e.class} #{e.message}")
+    nil
+  rescue JSON::ParserError => e
+    Rails.logger.error("OpenAI JSON Parse Error: #{e.message}")
+    nil
+  rescue => e
+    Rails.logger.error("OpenAI Unknown Error: #{e.class} #{e.message}")
+    nil
   end
 end
