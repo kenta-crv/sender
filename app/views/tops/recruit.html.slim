@@ -1,0 +1,407 @@
+    section.hero-main-section.position-relative(style="background-image: url(#{asset_path('cargo-image.png')});")
+      .container
+        .row.align-items-center.gy-4
+          .col-lg-6
+            .hero-main-left
+              .hero-main-top
+                button.hero-main-top-btn
+                  | 軽貨物求人のご案内
+              h1.hero-main-title.mt-4
+                span.noto
+                  | 永住ビザ外国人でも稼げるお仕事
+              h2.hero-main-subtitle.mt-3
+                span.noto
+                  | 平均月収40~70万円
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 稼ぎたい人を募集
+                p.hero-main-badge-text
+                  | 頑張って稼ぎたい人を全力で応援します！
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 全国対応
+                p.hero-main-badge-text
+                  | あなたがどこに住んでいてもお仕事が見つかる！
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ フォロー体制完備
+                p.hero-main-badge-text
+                  | 研修〜独り立ちまでしっかりサポート！
+          /.col-lg-6
+            .hero-main-right.p-4.rounded-3
+              h3.hero-main-trial.text-center
+                | ＼まずはご相談ください！／
+              form#hero-main-form.hero-main-form.mt-3.p-4.rounded-3
+                .row.g-3
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社名 
+                      span.required-badge
+                        | 必須
+                    input.form-control.hero-main-input[type="text" placeholder="株式会社〇〇〇〇" required=""]
+                  .col-12
+                    label.form-label.hero-main-label
+                      | お名前 
+                      span.required-badge
+                        | 必須
+                    input.form-control.hero-main-input[type="text" placeholder="山田太郎" required=""]
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社のメールアドレス 
+                      span.required-badge
+                        | 必須
+                    input.form-control.hero-main-input[type="email" placeholder="test@example.com" required=""]
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 電話番号 
+                      span.required-badge
+                        | 必須
+                    input.form-control.hero-main-input[type="tel" placeholder="050-1234-5678" required=""]
+                  .col-12
+                    button.btn.hero-main-submit.w-100[type="submit"]
+                      | まずは気軽に相談から
+      .hero-main-overlay
+    /section.brand-marquee-section.py-4
+      .brand-marquee
+        .brand-track
+          = image_tag "icon-1.png", alt: "Icon 1"
+          = image_tag "icon-2.png", alt: "Icon 2"
+          = image_tag "icon-3.png", alt: "Icon 3"
+          = image_tag "icon-4.png", alt: "Icon 4"
+          = image_tag "icon-5.png", alt: "Icon 5"
+          = image_tag "icon-6.png", alt: "Icon 6"
+          = image_tag "icon-7.png", alt: "Icon 7"
+          = image_tag "icon-8.png", alt: "Icon 8"
+          = image_tag "icon-9.png", alt: "Icon 9"
+          = image_tag "icon-10.png", alt: "Icon 10"
+          = image_tag "icon-1.png", alt: "Icon 1"
+          = image_tag "icon-2.png", alt: "Icon 2"
+          = image_tag "icon-3.png", alt: "Icon 3"
+          = image_tag "icon-4.png", alt: "Icon 4"
+          = image_tag "icon-5.png", alt: "Icon 5"
+          = image_tag "icon-6.png", alt: "Icon 6"
+          = image_tag "icon-7.png", alt: "Icon 7"
+          = image_tag "icon-8.png", alt: "Icon 8"
+          = image_tag "icon-9.png", alt: "Icon 9"
+          = image_tag "icon-10.png", alt: "Icon 10"
+    section#service.japan-notyo-section
+      .japan-notyo-container
+        .japan-notyo-column.japan-notyo-text-column
+          h2.japan-notyo-heading
+            | 軽貨物配送『OK配送』とは？
+          h2.japan-notyo-heading
+            | 
+          p.japan-notyo-description
+            |  『OK配送』は、軽貨物事業者です。
+            br
+            |  当社では、永住ビザ・配偶者ビザ・定住ビザの方に特化して、外国人でもしっかりと稼げるお仕事を提供しています。
+        .japan-notyo-column.japan-notyo-image-column
+          = image_tag "image.png", class: "japan-notyo-image", alt: "Tool illustration"
+    section.jap-notto-section
+      .jap-notto-container
+        h2.jap-notto-heading
+          | こんなお悩みはありませんか？
+        .jap-notto-semicircle-wrapper
+          .jap-notto-image-container.jap-notto-image-1
+            = image_tag "mainn-1.png", class: "jap-notto-image", alt: "Issue 1"
+          .jap-notto-image-container.jap-notto-image-2
+            = image_tag "mainn-2.png", class: "jap-notto-image", alt: "Issue 2"
+          .jap-notto-image-container.jap-notto-image-3
+            = image_tag "mainn-3.png", class: "jap-notto-image", alt: "Issue 3"
+          .jap-notto-image-container.jap-notto-image-4
+            = image_tag "mainn-4.png", class: "jap-notto-image", alt: "Issue 4"
+          .jap-notto-image-container.jap-notto-image-5
+            = image_tag "mainn-5.png", class: "jap-notto-image", alt: "Issue 5"
+          .jap-notto-center-image
+            = image_tag "mainn-7.png", class: "jap-notto-center-img", alt: "Center Image"
+    section#business.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
+      .container.py-5.text-center
+        .ser-mos-headings.mb-4
+          .ser-mos-kicker
+            | 
+          h2.ser-mos-title
+            | OK配送の事業内容
+        .ser-mos-panel.mx-auto.p-4.rounded-4
+          .row.g-4
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-cargo1.png", class: "ser-mos-card-img", alt: "Service 1"
+                h3.ser-mos-card-title
+                  | 個人配送
+                p.ser-mos-card-desc
+                  |  ヤマト・佐川・Amazon・郵便局等の配送のお仕事です。配送すれば配送するほど収入がたくさん貰えるので、たくさん稼ぎたい人におすすめ！
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-cargo2.png", class: "ser-mos-card-img", alt: "Service 2"
+                h3.ser-mos-card-title
+                  | 法人配送（ルート配送）
+                p.ser-mos-card-desc
+                  |  企業の荷物を配送するお仕事。お給料は高くないですが、毎日同じルートに配送をするため、日本語が少し苦手な方でもできるお仕事です。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+    section.main-moss-section
+      .container.text-center.main-moss-header
+        h2.main-moss-title
+          | 『OK配送』の魅力
+        h3.main-moss-subtitle
+          | 
+      .container-fluid.main-moss-block
+        .row.align-items-center
+          .col-lg-6.text-center
+            = image_tag "main-cargo1.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 永住ビザの方でも働ける・稼げる場所を提供
+            p.main-moss-block-desc
+              |  外国人だから稼げないのは不平等です。外国人の方でも働けて、日本人と同じように稼げるお仕事を提供します。
+      .container-fluid.main-moss-block
+        .row.align-items-center.flex-row-reverse
+          .col-lg-6.text-center
+            = image_tag "main-cargo2.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 平均月収40~最大90万円！
+            p.main-moss-block-desc
+              |  当社では軽貨物ドライバーの中でも特に収入が高い軽貨物ドライバーのお仕事をご紹介しています。頑張りたい方は誰でも40万円以上を目指すことができます。
+      .container-fluid.main-moss-block
+        .row.align-items-center
+          .col-lg-6.text-center
+            = image_tag "main-cargo3.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 全国でお仕事をご用意しています
+            p.main-moss-block-desc
+              | あなたがどこに住んでいてもお仕事を提供することができます。（過疎地域以外）まずは一度ご相談ください！
+
+    section.faq-japan-section.py-5
+      .container.text-center
+        h2.faq-japan-title.mb-5
+          | よくある質問
+        .faq-japan-container
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | どの地域でも稼ぐことはできますか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  どの地域でもお仕事はできますが、田舎は給料も低く稼ぎにくいので、人口の多い地域でお仕事を探します。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | アルバイトはできますか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  関東の一部の地域ではアルバイト募集をしていますが、基本的にはフルタイムのみを応募対象にしています。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 日本語ができません。応募できますか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  日本語が全くできない場合や、日本語が全く読めない場合、お仕事を提供することはできません。
+
+    section#case.cards-moos-section.py-5
+      .container.text-center
+        h2.cards-moos-title.mb-5
+          | 基本案件
+        .row.g-4.cards-moos-row.d-none.d-md-flex
+
+          .col-lg-6.col-md-6
+            .cards-moos-card
+              = image_tag "takuhai1.webp", class: "cards-moos-img", alt: "Case Study 1"
+              h3.cards-moos-heading
+                | 個人宅配送
+              p.cards-moos-desc
+                | お客様の自宅に荷物を運ぶお仕事です。エリアによってヤマト・佐川・Amazon・郵便局の案件があります。
+              p
+                strong Unit Price:
+                |  1430 yen / per package (19,500 yen per day for 150 deliveries)
+              p
+                strong Position:
+                |  Light Cargo Driver
+              p
+                strong Working Hours:
+                |  Start 08:00~: Finish (18:00~21:00)
+              p
+                strong Holidays:
+                |  Shift-based
+              p
+                strong Contract Type:
+                |  Outsourcing contract
+              p
+                strong Location:
+                |  All areas OK
+              p
+                strong Interview:
+                |  In-person (Online available)
+              p
+                strong Payment Terms:
+                |  End of month closing, payment at the end of the following month
+              p
+                strong Available Visas:
+                |  Any visa that allows you to work as a driver. Up to 28 hours per week is also acceptable.
+              p
+                strong Required License:
+                |  Regular driver's license
+              p
+                strong Other:
+                |  Gasoline and vehicle costs will be deducted from your salary
+
+          .col-lg-6.col-md-6
+            .cards-moos-card
+              = image_tag "takuhai2.webp", class: "cards-moos-img", alt: "Case Study 1"
+              h3.cards-moos-heading
+                | Route delivery driver (corporate driver)
+              p.cards-moos-desc
+                | 企業への荷物を配送するお仕事です。毎日おおよそ同じところに配送し、配送個数も少ないので、体力に自信のない方や日本語が苦手な方におすすめです。
+              p
+                strong Payment:
+                |  12,000-15,000 yen (depending on the area)
+              p
+                strong Position:
+                |  Light Cargo Driver
+              p
+                strong Working Hours:
+                |  08:00~around16:00(Depends on the case)
+              p
+                strong Holidays:
+                |  Depends on the case
+              p
+                strong Contract Type:
+                |  Outsourcing contract
+              p
+                strong Location:
+                |  All areas OK
+              p
+                strong Available Visa:
+                |  Permanent residence visa
+              p
+                strong Required License:
+                |  Regular driver's license
+              p
+                strong Other:
+                |  Gasoline and vehicle costs (if you don’t own a car) will be deducted from your salary.
+
+
+    section
+      .container
+        .calculator
+          h2 報酬(ほうしゅう)[Reward] 自動(じどう)[Automatic] 計算(けいさん)[Calculation] ツール[Tool]
+      
+          .form-group
+            label 配送(はいそう)[Delivery] 単価(たんか)[Unit Price]（円[JPY]）
+            small エリアによって変動あり 
+            input#unit_price.form-control type="number" value="130"
+      
+          .form-group
+            label 配送(はいそう)[Delivery] 個数(こすう)[Quantity]
+            small 慣れている人の目安
+            input#quantity.form-control type="number" value="150"
+          .form-group
+            label 日数(にっすう)[Days]
+            input#days.form-control type="number" value="25"
+      
+          h3 経費(けいひ)[Expenses]
+          .form-group
+            label 車レンタル代(しゃレンタルだい)[Car Rental]（円[JPY]）
+            small おおよそ35,000~40,000円でエリアや空き状況による
+            input#rental.form-control type="number" value="35000"
+          .form-group
+            label ガソリン代(ガソリンだい)[Gasoline]（円[JPY]）
+            small 稼働時間や運転の仕方による
+            input#gas.form-control type="number" value="25000"
+          .form-group
+            label 保険代(ほけんだい)[Insurance]（円[JPY]）
+            small 年齢や事故歴による
+            input#insurance.form-control type="number" value="20000"
+      
+          .result-box
+            p
+              strong 報酬[Total Reward]：
+              span#total_reward.highlight 0
+              | 円[JPY]
+            p
+              strong 経費[Total Expense]：
+              span#total_expense.highlight 0
+              | 円[JPY]
+            p
+              strong 収益(しゅうえき)[Profit]：
+              span#net_income.highlight 0
+              | 円[JPY]
+      
+          script
+           |
+            (function(){
+             function mountCalculator(){
+               var unitPriceInput = document.getElementById('unit_price');
+               var quantityInput = document.getElementById('quantity');
+               var daysInput = document.getElementById('days');
+
+               var rentalInput = document.getElementById('rental');
+               var gasInput = document.getElementById('gas');
+               var insuranceInput = document.getElementById('insurance');
+
+               var totalRewardEl = document.getElementById('total_reward');
+               var totalExpenseEl = document.getElementById('total_expense');
+               var netIncomeEl = document.getElementById('net_income');
+
+               if (!unitPriceInput || !quantityInput || !daysInput || !rentalInput || !gasInput || !insuranceInput || !netIncomeEl) {
+                 // 必要な要素が足りない場合は何もしない（デバッグ用に console に出す）
+                 console.warn('calculator: required elements missing');
+                 return;
+               }
+
+               function toNum(v){
+                 var n = parseFloat(String(v).replace(/,/g, ''));
+                 return isNaN(n) ? 0 : n;
+               }
+
+               function format(n){
+                 return n.toLocaleString();
+               }
+
+               function calculate(){
+                 var unitPrice = toNum(unitPriceInput.value);
+                 var quantity = toNum(quantityInput.value);
+                 var days = toNum(daysInput.value);
+
+                 var rental = toNum(rentalInput.value);
+                 var gas = toNum(gasInput.value);
+                 var insurance = toNum(insuranceInput.value);
+
+                 var totalReward = unitPrice * quantity * days;
+                 var totalExpense = rental + gas + insurance;
+                 var netIncome = totalReward - totalExpense;
+
+                 if (totalRewardEl) totalRewardEl.textContent = format(totalReward);
+                 if (totalExpenseEl) totalExpenseEl.textContent = format(totalExpense);
+                 netIncomeEl.textContent = format(netIncome);
+               }
+
+               [unitPriceInput, quantityInput, daysInput, rentalInput, gasInput, insuranceInput].forEach(function(el){
+                 el.addEventListener('input', calculate);
+               });
+
+               // 初期計算（値が HTML の value 属性から取られる）
+               calculate();
+             }
+
+             // Turbo / Turbolinks / plain load 対応
+             document.addEventListener('DOMContentLoaded', mountCalculator);
+             document.addEventListener('turbo:load', mountCalculator);
+             document.addEventListener('turbolinks:load', mountCalculator);
+            })();
+
+
+    script[src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"]
+    script[src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"]
+    script[src="js/script.js"]

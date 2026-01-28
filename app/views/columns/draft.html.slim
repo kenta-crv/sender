@@ -1,0 +1,42 @@
+.section-knowhow
+  .container
+    h1.section-title ドラフト一覧（Gemini生成）
+
+    - if @columns.empty?
+      p まだドラフトはありません
+    - else
+      = form_with(url: bulk_update_drafts_columns_path, method: :post, local: true) do |form|
+        .d-flex.justify-content-start.mb-3 
+         = form.button "選択をChat GPTに依頼", name: "action_type", value: "approve_bulk", class: "btn btn-dark me-2", data: { confirm: "選択されたドラフトを承認して本文生成を開始しますか？" }
+         = form.button "選択を削除", name: "action_type", value: "delete_bulk", class: "btn btn-danger", data: { confirm: "選択されたドラフトを一括削除しますか？" }
+
+        table.table
+          thead
+            tr
+              th.text-center
+                = check_box_tag "select_all", "1", false, class: "form-check-input", onclick: "toggleAll(this)"
+              th タイトル
+              th 説明
+              th ジャンル
+              th 分類
+              th 更新日
+              th 操作
+          tbody
+            - @columns.each do |column|
+              tr
+                td.text-center
+                  = check_box_tag "column_ids[]", column.id, false, class: "form-check-input column-checkbox"
+                td = column.title
+                td = truncate(strip_tags(column.description), length: 80)
+                td = column.genre
+                td = column.article_type
+                td = column.updated_at
+                td 
+                  = button_to "ChatGPT", approve_column_path(column), method: :patch, class: "btn btn-dark btn-sm"
+                  = button_to "Delete", column_path(column), method: :delete, data: {confirm: "削除しますか？"}, class: "btn btn-danger btn-sm"
+
+    javascript:
+      function toggleAll(source) {
+        const checkboxes = document.querySelectorAll('.column-checkbox');
+        checkboxes.forEach(cb => cb.checked = source.checked);
+      }

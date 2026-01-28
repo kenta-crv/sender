@@ -1,0 +1,423 @@
+    - set_meta_tags title: '清掃業・ビルメンテナンスの発注なら『J Work』'
+    - set_meta_tags description: '清掃業・ビルメンテナンスで豊富な人材に依頼するなら『J Work』'
+
+    section.hero-main-section.position-relative(style="background-image: url(#{asset_path('cleaning-image.png')});")
+      .container
+        .row.align-items-center.gy-4
+          .col-lg-6
+            .hero-main-left
+              .hero-main-top
+                button.hero-main-top-btn
+                  | 清掃業社をお探しの企業様へ
+              h1.hero-main-title.mt-4
+                span.noto
+                  | 御社の施設を丁寧に清掃
+              h2.hero-main-subtitle.mt-3
+                span.noto
+                  | 清掃の依頼なら『J Work』
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 丁寧な清掃
+                p.hero-main-badge-text
+                  | お客様の施設の美化します！
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 全国対応
+                p.hero-main-badge-text
+                  | 潤沢な人材で全国どこでも対応OK！
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 24時間365日
+                p.hero-main-badge-text
+                  | 深夜から早朝までご相談ください！
+          .col-lg-6
+            .hero-main-right.p-4.rounded-3
+              h3.hero-main-trial.text-center
+                | ＼まずはご相談ください！／
+              = form_with model: @contract, url: contracts_path, local: true, html: { id: "hero-main-top", class: "hero-main-form mt-3 p-4 rounded-3" } do |f|
+                .row.g-3
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社名 
+                      span.required-badge
+                        | 必須
+                    = f.text_field :company, class: "form-control hero-main-input", placeholder: "株式会社〇〇〇〇", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | ご担当者様名
+                      span.required-badge
+                        | 必須
+                    = f.text_field :name, class: "form-control hero-main-input", placeholder: "山田太郎", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 電話番号 
+                      span.required-badge
+                        | 必須
+                    = f.telephone_field :tel, class: "form-control hero-main-input", placeholder: "050-1234-5678", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 住所
+                      span.required-badge
+                        | 必須
+                    = f.text_field :address, class: "form-control hero-main-input", placeholder: "東京都東京市東京町1-1-1東京ビル111", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | URL
+                      span.required-badge
+                        | 必須
+                    = f.url_field :url, class: "form-control hero-main-input", placeholder: "https://ri-plus.jp/", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | メールアドレス 
+                      span.required-badge
+                        | 必須
+                    = f.email_field :email, class: "form-control hero-main-input", placeholder: "test@example.com", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 備考・要望 
+                      span.required-badge
+                        | 任意
+                    = f.text_area :message, class: "form-control hero-main-input", placeholder:"（例）お問い合わせ内容"
+                  .col-12
+                    = f.submit "まずは無料で見積から", class: "btn hero-main-submit w-100"
+      .hero-main-overlay
+    /section.brand-marquee-section.py-4
+      .brand-marquee
+        .brand-track
+          = image_tag "icon-1.png", alt: "Icon 1"
+          = image_tag "icon-2.png", alt: "Icon 2"
+          = image_tag "icon-3.png", alt: "Icon 3"
+          = image_tag "icon-4.png", alt: "Icon 4"
+          = image_tag "icon-5.png", alt: "Icon 5"
+          = image_tag "icon-6.png", alt: "Icon 6"
+          = image_tag "icon-7.png", alt: "Icon 7"
+          = image_tag "icon-8.png", alt: "Icon 8"
+          = image_tag "icon-9.png", alt: "Icon 9"
+          = image_tag "icon-10.png", alt: "Icon 10"
+          = image_tag "icon-1.png", alt: "Icon 1"
+          = image_tag "icon-2.png", alt: "Icon 2"
+          = image_tag "icon-3.png", alt: "Icon 3"
+          = image_tag "icon-4.png", alt: "Icon 4"
+          = image_tag "icon-5.png", alt: "Icon 5"
+          = image_tag "icon-6.png", alt: "Icon 6"
+          = image_tag "icon-7.png", alt: "Icon 7"
+          = image_tag "icon-8.png", alt: "Icon 8"
+          = image_tag "icon-9.png", alt: "Icon 9"
+          = image_tag "icon-10.png", alt: "Icon 10"
+    section#service.japan-notyo-section
+      .japan-notyo-container
+        .japan-notyo-column.japan-notyo-text-column
+          h2.japan-notyo-heading
+            | 清掃業の『J Work』とは？
+          h2.japan-notyo-heading
+            | 
+          p.japan-notyo-description
+            |  『J Work』は、豊富な人材を活かし、全国の各地に拠点を持ち、日々施設の清掃美化に励んでいる企業となります。
+            br
+            |  人材紹介会社からの事業展開を行なった特性上、清掃業の経験者を多数有し、お客様の期待に答える清掃を行います。
+        .japan-notyo-column.japan-notyo-image-column
+          = image_tag "image.png", class: "japan-notyo-image", alt: "Tool illustration"
+    section.jap-notto-section
+      .jap-notto-container
+        h2.jap-notto-heading
+          | こんなお悩みはありませんか？
+        .jap-notto-semicircle-wrapper
+          .jap-notto-image-container.jap-notto-image-1
+            = image_tag "mainn-1.png", class: "jap-notto-image", alt: "Issue 1"
+          .jap-notto-image-container.jap-notto-image-2
+            = image_tag "mainn-2.png", class: "jap-notto-image", alt: "Issue 2"
+          .jap-notto-image-container.jap-notto-image-3
+            = image_tag "mainn-3.png", class: "jap-notto-image", alt: "Issue 3"
+          .jap-notto-image-container.jap-notto-image-4
+            = image_tag "mainn-4.png", class: "jap-notto-image", alt: "Issue 4"
+          .jap-notto-image-container.jap-notto-image-5
+            = image_tag "mainn-5.png", class: "jap-notto-image", alt: "Issue 5"
+          .jap-notto-center-image
+            = image_tag "mainn-7.png", class: "jap-notto-center-img", alt: "Center Image"
+    section#business.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
+      .container.py-5.text-center
+        .ser-mos-headings.mb-4
+          .ser-mos-kicker
+            | 
+          h2.ser-mos-title
+            | J Workの事業内容
+        .ser-mos-panel.mx-auto.p-4.rounded-4
+          .row.g-4
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-cleaning1.png", class: "ser-mos-card-img", alt: "Service 1"
+                h3.ser-mos-card-title
+                  | 施設清掃
+                p.ser-mos-card-desc
+                  |  規模の大小を問わず、企業様の施設清掃を行なっております。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-cleaning2.png", class: "ser-mos-card-img", alt: "Service 2"
+                h3.ser-mos-card-title
+                  | ビルメンテナンス
+                p.ser-mos-card-desc
+                  |  ビルの清掃美化を常に心がけ、様々なメンテナンスを実施します。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-cleaning3.png", class: "ser-mos-card-img", alt: "Service 3"
+                h3.ser-mos-card-title
+                  | ホテル清掃
+                p.ser-mos-card-desc
+                  | ホテルのチェックアウトからチェックインに関わる清掃業を承ります。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-cleaning4.png", class: "ser-mos-card-img", alt: "Service 4"
+                h3.ser-mos-card-title
+                  | 公共施設の清掃
+                p.ser-mos-card-desc
+                  |  ビル等に限らず屋外の公共施設の清掃業務もお任せください。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+    section.main-moss-section
+      .container.text-center.main-moss-header
+        h2.main-moss-title
+          | 御社の施設美化を支える
+        h3.main-moss-subtitle
+          | 『J Work』の魅力
+      .container-fluid.main-moss-block
+        .row.align-items-center
+          .col-lg-6.text-center
+            = image_tag "main-cargo1.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 清掃基盤を支える圧倒的経験人材で対応
+            p.main-moss-block-desc
+              |  当社では豊富な人材集客を基盤に毎月多くの清掃人材を手配できます。
+              br
+              |  案件内容に応じて最適な人材を手配します。
+      .container-fluid.main-moss-block
+        .row.align-items-center.flex-row-reverse
+          .col-lg-6.text-center
+            = image_tag "main-cargo2.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 24時間365日体制
+            p.main-moss-block-desc
+              |  必要に応じて夜間・早朝も対応可能。スケジュールに合わせた柔軟な清掃が可能です。
+      .container-fluid.main-moss-block
+        .row.align-items-center
+          .col-lg-6.text-center
+            = image_tag "main-cargo3.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 名古屋・大阪・福岡・東京・千葉・埼玉・神奈川
+            p.main-moss-block-desc
+              |  各エリアに拠点を設け、お客様のニーズに合わせた清掃を承ります。
+      .container-fluid.main-moss-block
+        .row.align-items-center.flex-row-reverse
+          .col-lg-6.text-center
+            = image_tag 'main-cleaning4.png', alt: 'Feature Image', class: 'main-moss-img img-fluid'
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title 地方の拠点作りもご相談OK
+            p.main-moss-block-desc
+              | 地方で清掃を依頼できる会社が少ない。。。そんな企業様もご相談ください。長期契約で安定した清掃拠点構築から運営までサポート。
+
+    .section#case.cards-moos-section.py-5
+      .container.text-center
+        h2.cards-moos-title.mb-5
+          | 清掃業記事一覧
+        .row.g-4.cards-moos-row.d-none.d-md-flex
+          - Column.where(genre: "cleaning").order(created_at: :desc).limit(3).each do |column|
+            .col-lg-4.col-md-6
+              = link_to column_path(column) do
+                .cards-moos-card
+                  - if column.file.present?
+                   = image_tag column.file.to_s, width:"100%", class: 'column-thumb', alt: column.title
+                  h3.cards-moos-heading
+                    = column.title
+                  p.cards-moos-desc
+                    = truncate(column.description, length: 200)
+        .mt-4
+          = columns_index_link("cleaning", "清掃業の記事一覧を見る")
+
+    section.faq-japan-section.py-5
+      .container.text-center
+        h2.faq-japan-title.mb-5
+          | よくある質問
+        .faq-japan-container
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | どの地域まで対応可能ですか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  名古屋・大阪・関東・福岡を中心に対応しています。条件によりその他のエリアもご相談いただけます。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | スポット対応は可能ですか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  はい、案件内容に応じて一時的なご依頼にも対応いたします。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 夜間や早朝の清掃にも対応できますか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  はい、事前にご相談いただければ対応可能です。清掃時間や曜日など柔軟に調整いたします。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 定期的な清掃契約は可能ですか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                | 可能です。年単位・月単位など、ご希望のスケジュールに合わせた契約形態で対応いたします。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | どんな清掃業務経験者がいますか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                | 当社ではホテル清掃・公共清掃・屋内施設清掃と幅広い経験スタッフが在籍しております。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 特に人材な豊富なエリアはありますか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                | 愛知県・埼玉県・神奈川県・千葉県・大阪府は特に人材が豊富におります。
+  
+
+    section#case.cards-moos-section.py-5
+      .container.text-center
+        h2.cards-moos-title.mb-5
+          | 導入事例
+        .row.g-4.cards-moos-row.d-none.d-md-flex
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag "image-security2.png", class: "cards-moos-img", alt: "Case Study 1"
+              h3.cards-moos-heading
+                | 施設ビル様
+              p.cards-moos-desc
+                |  ビルのメンテナンス清掃の依頼でしたが、スムーズに作業に当たっていただき助かりました。
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag "image-cleaning2.png", class: "cards-moos-img", alt: "Case Study 2"
+              h3.cards-moos-heading
+                | 商業施設様
+              p.cards-moos-desc
+                |  最初は短期契約からスタートしましたが、皆さん真面目に働いて下さり助かっております。
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag "image-cleaning4.png", class: "cards-moos-img", alt: "Case Study 3"
+              h3.cards-moos-heading
+                | 宿泊業様
+              p.cards-moos-desc
+                |  宿泊施設の清掃経験のある方でお願いしたいことを伝えるとすぐに人材を手配していただき契約することができました。
+
+    section#inquiry
+      .container
+        .col-lg-12
+          .hero-main-right.p-4.rounded-3
+            h3.hero-main-trial2.text-center
+              | ＼まずはご相談ください！／
+            = form_with model: @contract, url: contracts_path, local: true, html: { id: "hero-main-top", class: "hero-main-form mt-3 p-4 rounded-3" } do |f|
+                .row.g-3
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社名 
+                      span.required-badge
+                        | 必須
+                    = f.text_field :company, class: "form-control hero-main-input", placeholder: "株式会社〇〇〇〇", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | ご担当者様名
+                      span.required-badge
+                        | 必須
+                    = f.text_field :name, class: "form-control hero-main-input", placeholder: "山田太郎", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 電話番号 
+                      span.required-badge
+                        | 必須
+                    = f.telephone_field :tel, class: "form-control hero-main-input", placeholder: "050-1234-5678", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 住所
+                      span.required-badge
+                        | 必須
+                    = f.text_field :address, class: "form-control hero-main-input", placeholder: "東京都東京市東京町1-1-1東京ビル111", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | URL
+                      span.required-badge
+                        | 必須
+                    = f.url_field :url, class: "form-control hero-main-input", placeholder: "https://ri-plus.jp/", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | メールアドレス 
+                      span.required-badge
+                        | 必須
+                    = f.email_field :email, class: "form-control hero-main-input", placeholder: "test@example.com", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 備考・要望 
+                      span.required-badge
+                        | 任意
+                    = f.text_area :message, class: "form-control hero-main-input", placeholder:"（例）お問い合わせ内容"
+                  .col-12
+                    = f.submit "まずは無料で見積から", class: "btn hero-main-submit w-100"
+    / company overview block
+    .section-company
+      .company-card
+        h2.section-title 会社概要
+        p.section-lead 業界屈指の人材力で、現場の課題を解決します。
+
+        table.company-table
+          tr
+            th 会社名
+            td 株式会社セールスプロ
+          tr
+            th 設立
+            td 2023年8月18日
+          tr
+            th 代表者
+            td 代表取締役 奥山　健太
+          tr
+            th 資本金
+            td 5,000,000円
+          tr
+            th 所在地
+            td 東京都港区芝5-27-3 MBC・Aー9
+          tr
+            th 事業内容
+            td
+              | テレマーケティング代行
+              br
+              | 有料職業紹介
+              br/
+              | 軽貨物・配送業務請負
+              br/
+              | 清掃業務請負
+
+
+    
+    script[src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"]
+    script[src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"]
+    script[src="js/script.js"]

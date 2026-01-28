@@ -1,0 +1,29 @@
+.table-container
+  table.table-space
+    col[width="30%"]
+    col[width="70%"]
+    tbody
+      tr
+        th.document-color 会社名
+        td= @customer.company
+      tr
+        th.report-color 電話番号
+        td= @customer.tel
+      tr
+        th.report-color 住所
+        td= @customer.address
+      tr
+        th.document-color メールアドレス
+        td= @customer.email
+      tr
+        th.report-color URL
+        td= @customer.url
+      tr
+        th.report-color 業種
+        td= @customer.business
+      tr
+        th.report-color 問い合わせフォーム
+        td= @customer.contact_form
+      tr
+        th フォーム送信NG
+        td= @customer.fobbiden

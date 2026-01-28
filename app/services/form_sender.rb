@@ -1,0 +1,981 @@
+# frozen_string_literal: true
+
+require 'selenium-webdriver'
+
+class FormSender
+  # 送信者情報（固定）
+  SENDER_INFO = {
+    # 名前（フルネーム・分割両対応）
+    name: '山口 俊二',
+    name_sei: '山口',
+    name_mei: '俊二',
+    # フリガナ（カタカナ）
+    name_kana: 'ヤマグチ シュンジ',
+    name_kana_sei: 'ヤマグチ',
+    name_kana_mei: 'シュンジ',
+    # ふりがな（ひらがな）
+    name_hira: 'やまぐち しゅんじ',
+    name_hira_sei: 'やまぐち',
+    name_hira_mei: 'しゅんじ',
+    # 都道府県
+    prefecture: '東京都',
+    # メール
+    email: 'mail1@ebisu-hotel.tokyo',
+    # 電話番号（フル・分割両対応）
+    tel: '050-7119-1716',
+    tel_no_hyphen: '05071191716',
+    tel1: '050',
+    tel2: '7119',
+    tel3: '1716',
+    # 郵便番号（フル・分割両対応）
+    zip: '104-0061',
+    zip1: '104',
+    zip2: '0061',
+    # 住所
+    address: '東京都中央区銀座6-13-16',
+    company: '', # 後で設定
+    message: <<~MESSAGE
+      お忙しい中失礼いたします。
+      山口でございます。
+      本日は、御社に新規商談アポイント開拓のキャンペーンをご提供できればと思い、ご連絡いたしました。
+      弊社ではBtoB企業様向けに新規アポイントの獲得代行サービスを提供しており、ITプログラミング技術を活用したマッチング精度の高いリストをもとに架電を行っております。
+      この業界最高水準のリストを活用し、これまでに累計40,000件以上のアポイントを獲得してまいりました。
+      主なアプローチはテレフォンアポイントとなりますが、企業様のサービス内容に応じて問い合わせフォーム送信や広告出稿など、多彩な手法に対応しております。これにより、質の高いアポイントの最大化を実現いたします。
+      現在、弊社ではスタッフ増員に伴いキャンペーンを実施しております。
+      【キャンペーン内容】
+      ＠導入費用・リスト制作・スクリプト制作【０円】
+      ＠契約期間なしの取り切り型
+      ＠安心の完全成果報酬対応
+      もし少しでもご興味をお持ちいただけましたら、いつでも対応が可能です。
+      【商談希望】の旨をお伝えいただければ幸いです。
+      ご連絡を心よりお待ちしております。
+    MESSAGE
+  }.freeze
+
+  # フィールド検出用キーワード（優先度順）
+  FIELD_PATTERNS = {
+    name: %w[name 名前 お名前 氏名 your-name fullname full_name shimei simei 担当者 ご担当者 担当],
+    name_kana: %w[kana カナ かな フリガナ ふりがな furigana name_kana kna],
+    email: %w[email mail メール e-mail your-email メールアドレス eml],
+    email_confirm: %w[email_confirm mail_confirm 確認用 confirm re-email eml2],
+    tel: %w[tel phone 電話 携帯 telephone your-tel denwa],
+    zip: %w[zip postal 郵便 〒 yubin post-code zipcode],
+    prefecture: %w[prefecture pref 都道府県 todoufuken todofuken ken],
+    company: %w[company 会社 御社 貴社 organization 社名 company_name kaisya comname 御社名 会社名],
+    address: %w[address 住所 所在地 your-address jusho adr add],
+    message: %w[message body 内容 お問い合わせ内容 inquiry comment お問い合わせ 備考 remarks naiyo toi]
+  }.freeze
+
+  # 送信ボタン検出用キーワード
+  SUBMIT_PATTERNS = %w[送信 確認 submit send 入力内容を確認 送信する 確認する 確認画面へ 次へ].freeze
+
+  # 成功判定用キーワード
+  SUCCESS_PATTERNS = %w[ありがとう 完了 受付 送信しました 送信完了 thank success 確認].freeze
+
+  attr_reader :driver, :customer, :result
+
+  def initialize(debug: false, confirm_mode: false, save_to_db: false)
+    @driver = nil
+    @result = { status: nil, message: nil }
+    @debug = debug
+    @confirm_mode = confirm_mode  # trueの場合、送信前に停止して確認を待つ
+    @save_to_db = save_to_db      # trueの場合、送信結果をDBに保存
+  end
+
+  # ブラウザを起動
+  def setup_driver
+    options = Selenium::WebDriver::Chrome::Options.new
+    # options.add_argument('--headless') # 必要に応じてヘッドレスモード
+    options.add_argument('--disable-gpu')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--window-size=1280,800')
+
+    @driver = Selenium::WebDriver.for(:chrome, options: options)
+    @driver.manage.timeouts.implicit_wait = 5
+  end
+
+  # ブラウザを終了
+  def teardown_driver
+    @driver&.quit
+    @driver = nil
+  end
+
+  # 送信実行
+  def send_to_customer(customer)
+    @customer = customer
+    @result = { status: nil, message: nil }
+
+    # contact_urlがない場合
+    if customer.contact_url.blank?
+      @result = { status: 'フォーム未検出', message: 'contact_urlが設定されていません' }
+      return @result
+    end
+
+    begin
+      setup_driver
+
+      # フォームにアクセス
+      log "アクセス中: #{customer.contact_url}"
+      driver.navigate.to(customer.contact_url)
+      sleep 3 # ページ読み込み待機
+
+      # フォームを検出して入力
+      filled = fill_form
+      log "入力完了: #{filled}フィールド"
+
+      if filled >= 2
+        if @confirm_mode
+          # 確認モード：送信せずに停止
+          log "=== 確認モード ==="
+          log "フォーム入力完了。ブラウザで内容を確認してください。"
+          log "送信する場合は手動で送信ボタンをクリックしてください。"
+          log "確認が終わったらEnterキーを押してください..."
+          puts "\n" + "=" * 50
+          puts "【確認モード】フォーム入力完了"
+          puts "=" * 50
+          puts "ブラウザで入力内容を確認してください。"
+          puts ""
+          puts "  → 送信する場合：ブラウザで送信ボタンをクリック"
+          puts "  → 送信しない場合：そのままEnterを押す"
+          puts ""
+          puts "確認が終わったらEnterキーを押してください..."
+          $stdin.gets
+          teardown_driver  # 確認後にブラウザを閉じる
+          @result = { status: '確認完了', message: "#{filled}フィールド入力済み（手動確認モード）" }
+        else
+          # 通常モード：自動送信
+          if click_submit
+            log "送信ボタンクリック成功（1回目）"
+
+            # 確認ダイアログがあれば承認
+            handle_alert
+
+            sleep 2 # 送信後の待機
+
+            # 確認画面の場合、もう一度送信ボタンをクリック
+            if confirmation_page?
+              log "確認画面を検出"
+              if click_submit
+                log "送信ボタンクリック成功（2回目：確認画面）"
+                handle_alert
+                sleep 2
+              end
+            end
+            # 注: OKボタンは確認画面がある場合のみクリック（アラート後の余計なクリックを避ける）
+
+            # 成功判定
+            if check_success?
+              @result = { status: '送信成功', message: '送信が完了しました' }
+            else
+              @result = { status: '送信失敗', message: '送信後の確認ができませんでした' }
+            end
+          else
+            @result = { status: '送信失敗', message: '送信ボタンが見つかりませんでした' }
+          end
+          teardown_driver  # 通常モード完了後にブラウザを閉じる
+        end
+      else
+        @result = { status: 'フォーム未検出', message: "入力フィールドが不足（#{filled}フィールドのみ）" }
+        teardown_driver
+      end
+
+    rescue Selenium::WebDriver::Error::WebDriverError => e
+      @result = { status: 'アクセス失敗', message: e.message }
+      teardown_driver
+    rescue StandardError => e
+      @result = { status: 'エラー', message: e.message }
+      teardown_driver
+    end
+
+    # 送信結果をDBに保存
+    save_result_to_db if @save_to_db
+
+    @result
+  end
+
+  # 送信結果をDBに保存
+  def save_result_to_db
+    # Rails環境でない場合はスキップ
+    return unless defined?(ActiveRecord::Base)
+    return unless @customer.respond_to?(:id) && @customer.id.present?
+
+    begin
+      # Callモデルを文字列から取得（Railsの自動ロードをトリガー）
+      call_class = "Call".constantize
+      call = call_class.new(
+        customer_id: @customer.id,
+        status: @result[:status],
+        comment: "【フォーム送信】#{@result[:message]}"
+      )
+      # バリデーションをスキップして保存（Callモデルは電話用のバリデーションがあるため）
+      call.save!(validate: false)
+      log "送信結果をDBに保存しました (Call ID: #{call.id})"
+    rescue StandardError => e
+      log "DB保存エラー: #{e.message}"
+    end
+  end
+
+  private
+
+  def log(message)
+    puts "[FormSender] #{message}" if @debug
+  end
+
+  # 同意チェックボックス検出用キーワード
+  CONSENT_PATTERNS = %w[同意 agree 規約 プライバシー privacy policy 承諾 確認しました 了承].freeze
+
+  # ラジオボタン選択：優先するキーワード
+  RADIO_PREFER_PATTERNS = %w[その他 他 other お問い合わせ ご相談 相談 サービス 一般 general].freeze
+
+  # ラジオボタン選択：避けるキーワード
+  RADIO_AVOID_PATTERNS = %w[採用 求人 recruit 個人情報 プライバシー privacy 苦情 クレーム complaint 返品 返金].freeze
+
+  # 必須マーク検出パターン
+  REQUIRED_MARKERS = ['*', '※', '必須', 'required', '（必須）', '(必須)'].freeze
+
+  # フォームに入力
+  def fill_form
+    filled_count = 0
+
+    # 同意チェックボックスをチェック
+    check_consent_boxes
+
+    # ラジオボタングループを処理
+    handle_radio_buttons
+
+    # 必須チェックボックスグループを処理
+    handle_required_checkboxes
+
+    # 全ての入力可能な要素を取得
+    inputs = driver.find_elements(:css, 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="radio"]):not([type="checkbox"]), textarea, select')
+    log "入力要素数: #{inputs.size}"
+
+    inputs.each_with_index do |input, idx|
+      next unless input.displayed?
+
+      # 要素の属性を取得
+      tag_name = input.tag_name.downcase
+      input_type = input.attribute('type')&.downcase || 'text'
+      name_attr = input.attribute('name')&.downcase || ''
+      id_attr = input.attribute('id')&.downcase || ''
+      placeholder = input.attribute('placeholder')&.downcase || ''
+
+      # 周辺のラベルテキストを取得
+      label_text = get_label_text(input)
+
+      all_text = "#{name_attr} #{id_attr} #{placeholder} #{label_text}".downcase
+
+      # 必須判定
+      is_required = required_field?(label_text, input)
+      required_mark = is_required ? '【必須】' : ''
+      log "  [#{idx}] tag=#{tag_name}, name=#{name_attr}, label=#{label_text} #{required_mark}"
+
+      # 重要フィールド判定（名前、メール、電話は必須でなくても入力）
+      is_important = important_field?(all_text, name_attr, tag_name)
+
+      # 必須でも重要でもないフィールドはスキップ
+      unless is_required || is_important
+        log "    → スキップ（必須/重要でない）"
+        next
+      end
+
+      # フィールドタイプを判定して入力
+      value = determine_value(all_text, tag_name, name_attr)
+      if value
+        begin
+          if tag_name == 'select'
+            # セレクトボックスの場合
+            select = Selenium::WebDriver::Support::Select.new(input)
+            # 完全一致で選択を試みる
+            begin
+              select.select_by(:text, value)
+              filled_count += 1
+              log "    → 選択成功: #{value}"
+            rescue Selenium::WebDriver::Error::NoSuchElementError
+              # 部分一致で選択を試みる
+              options = select.options
+              matched = options.find { |opt| opt.text.include?(value) || value.include?(opt.text) }
+              if matched
+                select.select_by(:text, matched.text)
+                filled_count += 1
+                log "    → 選択成功（部分一致）: #{matched.text}"
+              else
+                log "    → 選択失敗: #{value}に一致する選択肢なし"
+              end
+            end
+          else
+            # テキスト入力の場合
+            input.clear
+            input.send_keys(value)
+            filled_count += 1
+            log "    → 入力成功: #{value[0..20]}..."
+          end
+        rescue StandardError => e
+          log "    → 入力失敗: #{e.message}"
+        end
+      end
+    end
+
+    filled_count
+  end
+
+  # 重要フィールドかどうか判定（必須マークがなくても入力すべき最低限のフィールド）
+  def important_field?(text, name_attr, tag_name)
+    # メッセージ欄のtextareaのみ重要（住所等のtextareaは除外）
+    if tag_name == 'textarea'
+      return true if FIELD_PATTERNS[:message].any? { |p| text.include?(p) || name_attr.include?(p) }
+      return false  # 住所などのtextareaは必須でなければスキップ
+    end
+
+    # 名前フィールド（部署名は除外）
+    if FIELD_PATTERNS[:name].any? { |p| text.include?(p) || name_attr.include?(p) }
+      return false if text.include?('部署') || name_attr.include?('部署')
+      return true
+    end
+
+    # メールフィールド
+    return true if FIELD_PATTERNS[:email].any? { |p| text.include?(p) || name_attr.include?(p) }
+
+    false
+  end
+
+  # 必須フィールドかどうか判定（厳密版：ラベル直後のマークのみ）
+  def required_field?(label_text, input)
+    # 1. HTML属性で判定
+    return true if input.attribute('required').present?
+    return true if input.attribute('aria-required') == 'true'
+
+    # 2. ラベルテキストに必須マークがあるか（直接含まれている場合のみ）
+    return true if REQUIRED_MARKERS.any? { |marker| label_text.include?(marker) }
+
+    # 3. 直近のラベル要素のみチェック（親要素全体ではなく）
+    input_id = input.attribute('id')
+    if input_id.present?
+      begin
+        label = driver.find_element(:css, "label[for='#{input_id}']")
+        label_full_text = label.text
+        return true if REQUIRED_MARKERS.any? { |marker| label_full_text.include?(marker) }
+      rescue Selenium::WebDriver::Error::NoSuchElementError
+        # 無視
+      end
+    end
+
+    # 4. 直前の兄弟要素がラベルの場合のみチェック
+    begin
+      prev = input.find_element(:xpath, 'preceding-sibling::*[1]')
+      if %w[label span th dt].include?(prev.tag_name.downcase)
+        prev_text = prev.text rescue ''
+        return true if REQUIRED_MARKERS.any? { |marker| prev_text.include?(marker) }
+      end
+    rescue StandardError
+      # 無視
+    end
+
+    # 5. 親がlabel要素の場合
+    begin
+      parent = input.find_element(:xpath, '..')
+      if parent.tag_name.downcase == 'label'
+        parent_text = parent.text rescue ''
+        return true if REQUIRED_MARKERS.any? { |marker| parent_text.include?(marker) }
+      end
+    rescue StandardError
+      # 無視
+    end
+
+    false
+  end
+
+  # ラベルテキストを取得
+  def get_label_text(input)
+    # for属性でラベルを検索
+    input_id = input.attribute('id')
+    if input_id.present?
+      begin
+        label = driver.find_element(:css, "label[for='#{input_id}']")
+        return label.text.downcase if label
+      rescue Selenium::WebDriver::Error::NoSuchElementError
+        # 見つからない場合は続行
+      end
+    end
+
+    # 親要素からラベルを検索
+    begin
+      parent = input.find_element(:xpath, '..')
+      label = parent.find_element(:css, 'label, th, dt, .label')
+      return label.text.downcase if label
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 見つからない場合は続行
+    end
+
+    # 前の兄弟要素を検索
+    begin
+      prev_sibling = input.find_element(:xpath, 'preceding-sibling::*[1]')
+      return prev_sibling.text.downcase if prev_sibling
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 見つからない場合
+    end
+
+    ''
+  end
+
+  # テキストからフィールドタイプを判定して値を返す
+  def determine_value(text, tag_name, name_attr = '')
+    # メールアドレス確認用
+    if FIELD_PATTERNS[:email_confirm].any? { |p| text.include?(p) }
+      return SENDER_INFO[:email]
+    end
+
+    # メッセージ（textareaでも住所欄などは除外）
+    if tag_name == 'textarea'
+      # 住所欄の場合は住所を入力
+      if FIELD_PATTERNS[:address].any? { |p| text.include?(p) || name_attr.include?(p) }
+        return SENDER_INFO[:address]
+      end
+      # それ以外のtextareaはメッセージ
+      return SENDER_INFO[:message]
+    end
+
+    # 部署名はスキップ（または「-」を入力）
+    if text.include?('部署') || name_attr.include?('部署')
+      return nil
+    end
+
+    # === 会社名（必須の場合は「自営業」を入力） ===
+    if FIELD_PATTERNS[:company].any? { |p| name_attr.include?(p) || text.include?(p) }
+      return '自営業'
+    end
+
+    # === 分割フィールドの検出（name属性で判定） ===
+
+    # 電話番号（3分割: tel1, tel2, tel3）
+    if name_attr =~ /tel.*1$|phone.*1$|denwa.*1$/i
+      return SENDER_INFO[:tel1]
+    end
+    if name_attr =~ /tel.*2$|phone.*2$|denwa.*2$/i
+      return SENDER_INFO[:tel2]
+    end
+    if name_attr =~ /tel.*3$|phone.*3$|denwa.*3$/i
+      return SENDER_INFO[:tel3]
+    end
+
+    # 郵便番号（2分割: zip1, zip2）
+    if name_attr =~ /zip.*1$|postal.*1$|yubin.*1$/i
+      return SENDER_INFO[:zip1]
+    end
+    if name_attr =~ /zip.*2$|postal.*2$|yubin.*2$/i
+      return SENDER_INFO[:zip2]
+    end
+
+    # ふりがな/フリガナ（2分割）- デフォルトはひらがな（カタカナ指定の場合のみカタカナ）
+    is_katakana = text.include?('カタカナ') || text.include?('フリガナ')
+    if name_attr =~ /namea.*1$|kana.*1$|kana.*sei|furi.*1|furi.*sei/i
+      return is_katakana ? SENDER_INFO[:name_kana_sei] : SENDER_INFO[:name_hira_sei]
+    end
+    if name_attr =~ /namea.*2$|kana.*2$|kana.*mei|furi.*2|furi.*mei/i
+      return is_katakana ? SENDER_INFO[:name_kana_mei] : SENDER_INFO[:name_hira_mei]
+    end
+
+    # 名前（2分割: name1/name2）
+    # 末尾が数字の場合のみ分割とみなす（meiやseiが含まれるだけでは分割としない）
+    if name_attr =~ /name.*1$/i && name_attr !~ /kana|namea|furi/i
+      return SENDER_INFO[:name_sei]
+    end
+    if name_attr =~ /name.*2$/i && name_attr !~ /kana|namea|furi/i
+      return SENDER_INFO[:name_mei]
+    end
+    # ラベルに「姓」「名」が明示されている場合のみ分割
+    if text.include?('姓') && !text.include?('氏名') && !text.include?('名前')
+      return SENDER_INFO[:name_sei]
+    end
+    if (text.include?('名') && !text.include?('氏名') && !text.include?('名前') &&
+        !text.include?('会社名') && !text.include?('お名前'))
+      return SENDER_INFO[:name_mei]
+    end
+
+    # === 通常フィールド（分割でない場合） ===
+
+    # ふりがな/フリガナ - フルネーム（デフォルトはひらがな）
+    if FIELD_PATTERNS[:name_kana].any? { |p| text.include?(p) }
+      is_katakana = text.include?('カタカナ') || text.include?('フリガナ')
+      return is_katakana ? SENDER_INFO[:name_kana] : SENDER_INFO[:name_hira]
+    end
+
+    # 名前 - フルネーム
+    if FIELD_PATTERNS[:name].any? { |p| text.include?(p) }
+      return SENDER_INFO[:name]
+    end
+
+    # メールアドレス
+    if FIELD_PATTERNS[:email].any? { |p| text.include?(p) }
+      return SENDER_INFO[:email]
+    end
+
+    # 電話番号 - フル（ハイフンなしを優先）
+    if FIELD_PATTERNS[:tel].any? { |p| text.include?(p) }
+      return SENDER_INFO[:tel_no_hyphen]
+    end
+
+    # 郵便番号 - フル
+    if FIELD_PATTERNS[:zip].any? { |p| text.include?(p) }
+      return SENDER_INFO[:zip]
+    end
+
+    # 都道府県（セレクトボックス用）
+    if FIELD_PATTERNS[:prefecture].any? { |p| text.include?(p) || name_attr.include?(p) }
+      return SENDER_INFO[:prefecture]
+    end
+
+    # 住所
+    if FIELD_PATTERNS[:address].any? { |p| text.include?(p) || name_attr == p }
+      return SENDER_INFO[:address]
+    end
+
+    nil
+  end
+
+  # ラジオボタングループを処理
+  def handle_radio_buttons
+    # ラジオボタンをグループ（name属性）ごとに収集
+    radio_buttons = driver.find_elements(:css, 'input[type="radio"]')
+    groups = radio_buttons.group_by { |r| r.attribute('name') }
+
+    groups.each do |name, radios|
+      next if radios.empty?
+      next if radios.any?(&:selected?)  # 既に選択済みならスキップ
+
+      visible_radios = radios.select(&:displayed?)
+      next if visible_radios.empty?
+
+      # このラジオグループが必須かどうか判定
+      group_label = get_radio_group_label(visible_radios.first)
+      is_required = required_field?(group_label, visible_radios.first)
+
+      unless is_required
+        log "  ラジオボタン[#{name}]: 必須でないためスキップ"
+        next
+      end
+
+      # 各選択肢のラベルを取得
+      options = visible_radios.map do |radio|
+        label = get_radio_label(radio)
+        { radio: radio, label: label }
+      end
+
+      # 優先する選択肢を探す
+      selected = nil
+
+      # 1. 「その他」などの優先キーワードを含む選択肢
+      RADIO_PREFER_PATTERNS.each do |pattern|
+        selected ||= options.find { |opt| opt[:label].include?(pattern) }
+      end
+
+      # 2. 避けるべきキーワードを含まない選択肢（優先が見つからない場合）
+      unless selected
+        safe_options = options.reject do |opt|
+          RADIO_AVOID_PATTERNS.any? { |avoid| opt[:label].include?(avoid) }
+        end
+        selected = safe_options.first if safe_options.any?  # 最初の安全な選択肢
+      end
+
+      # 3. それでも見つからなければ最初の選択肢
+      selected ||= options.first
+
+      # 選択実行
+      if selected
+        begin
+          driver.execute_script("arguments[0].click();", selected[:radio])
+          log "  → ラジオボタン選択[#{name}]: #{selected[:label]}"
+        rescue StandardError => e
+          log "  → ラジオボタン選択失敗[#{name}]: #{e.message}"
+        end
+      end
+    end
+  end
+
+  # ラジオボタングループのラベルを取得
+  def get_radio_group_label(radio)
+    # 親要素を遡ってラベルを探す
+    begin
+      # fieldsetのlegendを探す
+      fieldset = radio.find_element(:xpath, 'ancestor::fieldset')
+      legend = fieldset.find_element(:css, 'legend')
+      return legend.text.downcase if legend
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    # テーブルのth/tdを探す
+    begin
+      row = radio.find_element(:xpath, 'ancestor::tr')
+      th = row.find_element(:css, 'th')
+      return th.text.downcase if th
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    # 親のdivなどからラベルを探す
+    begin
+      parent = radio.find_element(:xpath, './ancestor::*[contains(@class, "form-group") or contains(@class, "field")]')
+      label = parent.find_element(:css, 'label, .label, dt')
+      return label.text.downcase if label
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    ''
+  end
+
+  # ラジオボタン個別のラベルを取得
+  def get_radio_label(radio)
+    # for属性でラベルを検索
+    radio_id = radio.attribute('id')
+    if radio_id.present?
+      begin
+        label = driver.find_element(:css, "label[for='#{radio_id}']")
+        return label.text.downcase if label
+      rescue Selenium::WebDriver::Error::NoSuchElementError
+        # 無視
+      end
+    end
+
+    # 次の兄弟テキストまたはlabel
+    begin
+      parent = radio.find_element(:xpath, '..')
+      return parent.text.downcase
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    radio.attribute('value')&.downcase || ''
+  end
+
+  # 必須チェックボックスグループを処理（件名選択など）
+  def handle_required_checkboxes
+    checkboxes = driver.find_elements(:css, 'input[type="checkbox"]')
+    log "チェックボックス総数: #{checkboxes.size}"
+    groups = checkboxes.group_by { |c| c.attribute('name') }
+
+    groups.each do |name, boxes|
+      next if boxes.empty?
+      next if boxes.any?(&:selected?)  # 既に選択済みならスキップ
+
+      visible_boxes = boxes.select(&:displayed?)
+      next if visible_boxes.empty?
+
+      # このチェックボックスグループが必須かどうか判定
+      group_label = get_checkbox_group_label(visible_boxes.first)
+      log "  チェックボックスグループ[#{name}]: ラベル=「#{group_label}」"
+
+      # 必須マークがあるかチェック
+      is_required = REQUIRED_MARKERS.any? { |marker| group_label.include?(marker) }
+
+      # 同意系のチェックボックスは別処理なのでスキップ
+      is_consent = CONSENT_PATTERNS.any? { |p| group_label.include?(p.downcase) }
+
+      next unless is_required && !is_consent
+
+      log "  必須チェックボックスグループ検出: #{group_label}"
+
+      # 各選択肢のラベルを取得
+      options = visible_boxes.map do |checkbox|
+        label = get_checkbox_label(checkbox)
+        { checkbox: checkbox, label: label }
+      end
+
+      # 避けるべきキーワードを含まない最初の選択肢を選ぶ
+      selected = options.find do |opt|
+        !RADIO_AVOID_PATTERNS.any? { |avoid| opt[:label].include?(avoid) }
+      end
+
+      # 見つからなければ最初の選択肢
+      selected ||= options.first
+
+      if selected
+        begin
+          driver.execute_script("arguments[0].click();", selected[:checkbox])
+          log "  → チェックボックス選択: #{selected[:label]}"
+        rescue StandardError => e
+          log "  → チェックボックス選択失敗: #{e.message}"
+        end
+      end
+    end
+  end
+
+  # チェックボックスグループのラベルを取得
+  def get_checkbox_group_label(checkbox)
+    # WPFormsの場合: チェックボックス専用のwpforms-field要素を探す
+    begin
+      # 最も近い wpforms-field-checkbox クラスを持つ要素を探す
+      wpforms_field = checkbox.find_element(:xpath, 'ancestor::*[contains(@class, "wpforms-field-checkbox")]')
+      label = wpforms_field.find_element(:css, '.wpforms-field-label')
+      text = label.text.downcase
+      return text if text.present?
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 見つからない場合は次の方法へ
+    end
+
+    # WPFormsの場合: 一般的なwpforms-field要素を探す（チェックボックス専用が見つからない場合）
+    begin
+      wpforms_field = checkbox.find_element(:xpath, 'ancestor::*[contains(@class, "wpforms-field")][1]')
+      label = wpforms_field.find_element(:css, '.wpforms-field-label')
+      text = label.text.downcase
+      return text if text.present?
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 見つからない場合は次の方法へ
+    end
+
+    # fieldsetのlegendを探す
+    begin
+      fieldset = checkbox.find_element(:xpath, 'ancestor::fieldset')
+      legend = fieldset.find_element(:css, 'legend')
+      text = legend.text.downcase
+      log "  [Debug] Fieldset legend found: #{text}"
+      return text if text.present?
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    # 親要素を遡ってラベルを探す
+    begin
+      parent = checkbox.find_element(:xpath, 'ancestor::*[contains(@class, "form-group") or contains(@class, "field")]')
+      label = parent.find_element(:css, 'label, .label, dt, th')
+      text = label.text.downcase
+      log "  [Debug] Parent label found: #{text}"
+      return text if text.present?
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    # 親の親まで遡る
+    begin
+      grandparent = checkbox.find_element(:xpath, 'ancestor::*[3]')
+      labels = grandparent.find_elements(:css, 'label, p, span')
+      labels.each do |label|
+        text = label.text.downcase
+        if REQUIRED_MARKERS.any? { |marker| text.include?(marker) }
+          log "  [Debug] Grandparent required label found: #{text}"
+          return text
+        end
+      end
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    # 前の要素を探す（より広く）
+    begin
+      prev_elements = driver.find_elements(:xpath, "//input[@name='#{checkbox_name}']/preceding::*[self::label or self::p or self::span][position() <= 3]")
+      prev_elements.each do |prev|
+        text = prev.text.downcase
+        if REQUIRED_MARKERS.any? { |marker| text.include?(marker) }
+          log "  [Debug] Preceding required label found: #{text}"
+          return text
+        end
+      end
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    ''
+  end
+
+  # チェックボックス個別のラベルを取得
+  def get_checkbox_label(checkbox)
+    checkbox_id = checkbox.attribute('id')
+    if checkbox_id.present?
+      begin
+        label = driver.find_element(:css, "label[for='#{checkbox_id}']")
+        return label.text.downcase if label
+      rescue Selenium::WebDriver::Error::NoSuchElementError
+        # 無視
+      end
+    end
+
+    # 親要素のテキスト
+    begin
+      parent = checkbox.find_element(:xpath, '..')
+      return parent.text.downcase
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    checkbox.attribute('value')&.downcase || ''
+  end
+
+  # 同意チェックボックスをチェック
+  def check_consent_boxes
+    checkboxes = driver.find_elements(:css, 'input[type="checkbox"]')
+    checkboxes.each do |checkbox|
+      next unless checkbox.displayed?
+      next if checkbox.selected?  # 既にチェック済みならスキップ
+
+      # チェックボックスの周辺テキストを取得
+      name_attr = checkbox.attribute('name')&.downcase || ''
+      id_attr = checkbox.attribute('id')&.downcase || ''
+      label_text = get_label_text(checkbox)
+
+      # 親要素のテキストも確認
+      parent_text = ''
+      begin
+        parent = checkbox.find_element(:xpath, '..')
+        parent_text = parent.text.downcase
+      rescue StandardError
+        # 無視
+      end
+
+      all_text = "#{name_attr} #{id_attr} #{label_text} #{parent_text}".downcase
+
+      # 同意系のキーワードが含まれていればチェック
+      if CONSENT_PATTERNS.any? { |p| all_text.include?(p.downcase) }
+        begin
+          # スクロールしてから、JavaScriptでクリック（オーバーレイ回避）
+          scroll_to_element(checkbox)
+          sleep 0.3
+          driver.execute_script("arguments[0].click();", checkbox)
+          log "  → 同意チェックボックスをチェック: #{label_text.presence || name_attr}"
+        rescue StandardError => e
+          log "  → 同意チェックボックスのクリック失敗: #{e.message}"
+        end
+      end
+    end
+  end
+
+  # 送信ボタンをクリック
+  def click_submit
+    # type="submit"のボタンを検索
+    begin
+      submit_buttons = driver.find_elements(:css, "input[type='submit'], button[type='submit'], button:not([type])")
+      submit_buttons.each do |btn|
+        if btn.displayed?
+          log "送信ボタン発見: #{btn.text || btn.attribute('value')}"
+          scroll_to_element(btn)
+          sleep 0.5
+          btn.click
+          return true
+        end
+      end
+    rescue StandardError => e
+      log "送信ボタン検索エラー: #{e.message}"
+    end
+
+    # テキストで検索
+    SUBMIT_PATTERNS.each do |pattern|
+      begin
+        buttons = driver.find_elements(:xpath, "//*[contains(text(), '#{pattern}')] | //input[contains(@value, '#{pattern}')]")
+        buttons.each do |btn|
+          if btn.displayed? && %w[button input a].include?(btn.tag_name.downcase)
+            log "送信ボタン発見（テキスト）: #{pattern}"
+            scroll_to_element(btn)
+            sleep 0.5
+            btn.click
+            return true
+          end
+        end
+      rescue StandardError => e
+        log "送信ボタン検索エラー（テキスト）: #{e.message}"
+      end
+    end
+
+    false
+  end
+
+  # OKボタン/完了ボタンをクリック（戻るボタンは除外）
+  def click_ok_button
+    ok_patterns = %w[OK ok Ok 完了 finish done 確認しました 送信完了].freeze
+
+    ok_patterns.each do |pattern|
+      begin
+        buttons = driver.find_elements(:xpath, "//button[contains(text(), '#{pattern}')] | //input[contains(@value, '#{pattern}')] | //a[contains(text(), '#{pattern}')]")
+        buttons.each do |btn|
+          if btn.displayed?
+            log "OKボタン発見: #{pattern}"
+            scroll_to_element(btn)
+            sleep 0.3
+            btn.click
+            return true
+          end
+        end
+      rescue StandardError => e
+        log "OKボタン検索エラー: #{e.message}"
+      end
+    end
+
+    false
+  end
+
+  # 要素までスクロール
+  def scroll_to_element(element)
+    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+  end
+
+  # 確認ダイアログを処理（複数回対応）
+  def handle_alert
+    max_attempts = 3
+    attempts = 0
+
+    while attempts < max_attempts
+      sleep 1
+      begin
+        alert = driver.switch_to.alert
+        log "アラート検出: #{alert.text}"
+        alert.accept
+        log "アラート承認（#{attempts + 1}回目）"
+        attempts += 1
+      rescue Selenium::WebDriver::Error::NoSuchAlertError
+        # アラートがなくなったら終了
+        break
+      end
+    end
+  end
+
+  # 確認画面かどうかを判定
+  def confirmation_page?
+    page_source = driver.page_source
+
+    # 確認画面のキーワード
+    confirmation_keywords = [
+      '確認画面', '入力内容の確認', '内容をご確認', '以下の内容で送信',
+      '送信してよろしいですか', '入力内容確認', '以下の内容で宜しければ',
+      '宜しければ', '以下の内容でよろしければ', 'よろしければ送信',
+      '内容で宜しければ', '内容でよろしければ'
+    ]
+
+    # 確認画面のキーワードが含まれているか
+    has_confirmation_text = confirmation_keywords.any? { |keyword| page_source.include?(keyword) }
+
+    # 送信ボタンがまだあるか
+    has_submit_button = false
+    begin
+      submit_buttons = driver.find_elements(:css, "input[type='submit'], button[type='submit'], button:not([type])")
+      has_submit_button = submit_buttons.any?(&:displayed?)
+    rescue StandardError
+      # 無視
+    end
+
+    result = has_confirmation_text && has_submit_button
+    log "確認画面判定: #{result}（キーワード: #{has_confirmation_text}, 送信ボタン: #{has_submit_button}）"
+    result
+  end
+
+  # 送信成功を判定
+  def check_success?
+    page_source = driver.page_source.downcase
+    current_url = driver.current_url
+
+    # URLが変わった場合（サンクスページへリダイレクト）
+    if current_url != @customer.contact_url
+      log "URL変更検出: #{current_url}"
+      return true
+    end
+
+    # 成功メッセージの検出
+    SUCCESS_PATTERNS.each do |pattern|
+      if page_source.include?(pattern.downcase)
+        log "成功メッセージ検出: #{pattern}"
+        return true
+      end
+    end
+
+    false
+  end
+end

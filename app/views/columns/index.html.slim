@@ -1,0 +1,44 @@
+/- set_meta_tags  title: ''
+/- set_meta_tags  description: ''
+
+- if admin_signed_in?
+ .row.center
+  .col-sm-4
+    = button_to "親記事生成 (最大10件)", generate_pillar_columns_path(batch: 10), method: :post, class: "btn btn-warning"
+  .col-sm-4
+    = button_to "子記事生成 (最大25件)", generate_gemini_columns_path(batch: 20), method: :post, class: "btn btn-primary"
+  .col-sm-4 
+    = link_to "ドラフト一覧を見る", draft_columns_path, class: "btn btn-secondary"
+
+.section-knowhow
+  .container
+    h1.section-title
+      | 新着記事
+
+    .columns-grid
+      - @columns.presence&.each do |column|
+        .column-card
+          .column-image
+           - if column.file.present?
+            = image_tag column.file.to_s, width:"100%", class: 'column-thumb', alt: column.title
+          .column-content
+            h2.column-title
+              = link_to column.title, column_path(column)
+            .column-description
+              - if column.description.present?
+                = truncate(strip_tags(column.description), length: 120)
+                |  （更新日: 
+                = column.updated_at.strftime("%Y/%m/%d %H:%M")
+                | ）
+            - if admin_signed_in?
+              .column-admin-links
+                .div.btn.btn-edit = column.genre
+                .div.btn.btn-edit = column.article_type
+                = link_to '編集', edit_column_path(column), class: 'btn-edit'
+                = link_to '削除', column_path(column), method: :delete, data: { confirm: '本当に削除しますか？' }, class: 'btn-delete'
+                - if column.status == "draft"
+                 = link_to "承認", approve_column_path(column), method: :patch, class: "btn btn-success"
+
+
+    .pagination-wrapper
+      /= paginate @columns if @columns.present?

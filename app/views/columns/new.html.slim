@@ -1,0 +1,33 @@
+.section-knowhow
+  .container
+    h1.section-title
+      | 新規記事作成
+
+    = form_with model: @column, local: true, html: { multipart: true } do |f|
+      .form-group
+        = f.label :title, "タイトル"
+        = f.text_field :title, class: "form-control"
+
+      .form-group
+        = f.label :file, "画像"
+        = f.file_field :file, accept: "image/*", class: "form-control"
+
+      .form-group
+        = f.label :description, "説明（概要）"
+        = f.text_area :description, rows: 4, class: "form-control"
+
+      .form-group
+        = f.label :body, "本文"
+        = f.text_area :body, rows: 12, class: "form-control"
+
+      / index/show には出てこないが params にあるので念のため残す（必要なら）
+      .form-group
+        = f.label :choice, "カテゴリー（任意）"
+        = f.text_field :choice, class: "form-control"
+
+      .form-group
+        = f.label :keyword, "キーワード（任意）"
+        = f.text_field :keyword, class: "form-control"
+
+      .form-actions.mt-4
+        = f.submit "保存する", class: "btn btn-primary"

@@ -1,0 +1,398 @@
+    - set_meta_tags title: '建設業現場仕事の発注なら『OK建設』'
+    - set_meta_tags description: '建設現場仕事で豊富な人材に依頼するなら『OK建設』'
+
+    section.hero-main-section.position-relative(style="background-image: url(#{asset_path('construction-image.png')});")
+      .container
+        .row.align-items-center.gy-4
+          .col-lg-6
+            .hero-main-left
+              .hero-main-top
+                button.hero-main-top-btn
+                  | 建設業者会社をお探しの工務店・ゼネコン様へ
+              h1.hero-main-title.mt-4
+                span.noto
+                  | 建設の業務を責任を持って受託
+              h2.hero-main-subtitle.mt-3
+                span.noto
+                  | 建設業務なら『OK建設』
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 豊富な経験人材
+                p.hero-main-badge-text
+                  | 建設業歴3年以上の人材多数在籍！
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 全国対応
+                p.hero-main-badge-text
+                  | 潤沢な人材で全国どこでも対応OK！
+              .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+                button.hero-main-badge
+                  |  ✓ 24時間365日
+                p.hero-main-badge-text
+                  | 深夜から早朝までご相談ください！
+          .col-lg-6
+            .hero-main-right.p-4.rounded-3
+              h3.hero-main-trial.text-center
+                | ＼まずはご相談ください！／
+              = form_with model: @contract, url: contracts_path, local: true, html: { id: "hero-main-top", class: "hero-main-form mt-3 p-4 rounded-3" } do |f|
+                .row.g-3
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社名 
+                      span.required-badge
+                        | 必須
+                    = f.text_field :company, class: "form-control hero-main-input", placeholder: "株式会社〇〇〇〇", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | ご担当者様名
+                      span.required-badge
+                        | 必須
+                    = f.text_field :name, class: "form-control hero-main-input", placeholder: "山田太郎", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 電話番号 
+                      span.required-badge
+                        | 必須
+                    = f.telephone_field :tel, class: "form-control hero-main-input", placeholder: "050-1234-5678", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 住所
+                      span.required-badge
+                        | 必須
+                    = f.text_field :address, class: "form-control hero-main-input", placeholder: "東京都東京市東京町1-1-1東京ビル111", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | URL
+                      span.required-badge
+                        | 必須
+                    = f.url_field :url, class: "form-control hero-main-input", placeholder: "https://ri-plus.jp/", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | メールアドレス 
+                      span.required-badge
+                        | 必須
+                    = f.email_field :email, class: "form-control hero-main-input", placeholder: "test@example.com", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 備考・要望 
+                      span.required-badge
+                        | 任意
+                    = f.text_area :message, class: "form-control hero-main-input", placeholder:"（例）お問い合わせ内容"
+                  .col-12
+                    = f.submit "まずは無料で見積から", class: "btn hero-main-submit w-100"
+      .hero-main-overlay
+    /section.brand-marquee-section.py-4
+      .brand-marquee
+        .brand-track
+          = image_tag "icon-1.png", alt: "Icon 1"
+          = image_tag "icon-2.png", alt: "Icon 2"
+          = image_tag "icon-3.png", alt: "Icon 3"
+          = image_tag "icon-4.png", alt: "Icon 4"
+          = image_tag "icon-5.png", alt: "Icon 5"
+          = image_tag "icon-6.png", alt: "Icon 6"
+          = image_tag "icon-7.png", alt: "Icon 7"
+          = image_tag "icon-8.png", alt: "Icon 8"
+          = image_tag "icon-9.png", alt: "Icon 9"
+          = image_tag "icon-10.png", alt: "Icon 10"
+          = image_tag "icon-1.png", alt: "Icon 1"
+          = image_tag "icon-2.png", alt: "Icon 2"
+          = image_tag "icon-3.png", alt: "Icon 3"
+          = image_tag "icon-4.png", alt: "Icon 4"
+          = image_tag "icon-5.png", alt: "Icon 5"
+          = image_tag "icon-6.png", alt: "Icon 6"
+          = image_tag "icon-7.png", alt: "Icon 7"
+          = image_tag "icon-8.png", alt: "Icon 8"
+          = image_tag "icon-9.png", alt: "Icon 9"
+          = image_tag "icon-10.png", alt: "Icon 10"
+    section#service.japan-notyo-section
+      .japan-notyo-container
+        .japan-notyo-column.japan-notyo-text-column
+          h2.japan-notyo-heading
+            | 建設業『OK建設』とは？
+          h2.japan-notyo-heading
+            | 
+          p.japan-notyo-description
+            |  『OK建設』は、豊富な人材を活かし、全国複数拠点に軸を置く建設事業者です。
+            br
+            |  人材紹介会社からの事業展開を行なった特性上、人材の圧倒的な集客力を活かし、工務店様やゼネコン様と協業し、建設実務を行います。
+        .japan-notyo-column.japan-notyo-image-column
+          = image_tag "image.png", class: "japan-notyo-image", alt: "Tool illustration"
+    section.jap-notto-section
+      .jap-notto-container
+        h2.jap-notto-heading
+          | こんなお悩みはありませんか？
+        .jap-notto-semicircle-wrapper
+          .jap-notto-image-container.jap-notto-image-1
+            = image_tag "mainn-1.png", class: "jap-notto-image", alt: "Issue 1"
+          .jap-notto-image-container.jap-notto-image-2
+            = image_tag "mainn-2.png", class: "jap-notto-image", alt: "Issue 2"
+          .jap-notto-image-container.jap-notto-image-3
+            = image_tag "mainn-3.png", class: "jap-notto-image", alt: "Issue 3"
+          .jap-notto-image-container.jap-notto-image-4
+            = image_tag "mainn-4.png", class: "jap-notto-image", alt: "Issue 4"
+          .jap-notto-image-container.jap-notto-image-5
+            = image_tag "mainn-5.png", class: "jap-notto-image", alt: "Issue 5"
+          .jap-notto-center-image
+            = image_tag "mainn-7.png", class: "jap-notto-center-img", alt: "Center Image"
+    section#business.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
+      .container.py-5.text-center
+        .ser-mos-headings.mb-4
+          .ser-mos-kicker
+            | 
+          h2.ser-mos-title
+            | OK建設の事業内容
+        .ser-mos-panel.mx-auto.p-4.rounded-4
+          .row.g-4
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-construction1.png", class: "ser-mos-card-img", alt: "Service 1"
+                h3.ser-mos-card-title
+                  | 大工工事業
+                p.ser-mos-card-desc
+                  | 木造建築の骨組みから内装仕上げまで施工します。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-construction2.png", class: "ser-mos-card-img", alt: "Service 2"
+                h3.ser-mos-card-title
+                  | 土工工事業
+                p.ser-mos-card-desc
+                  |  足場組立や鉄骨建方、土工事など現場基盤を担います。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+          .row.g-4
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-construction3.png", class: "ser-mos-card-img", alt: "Service 1"
+                h3.ser-mos-card-title
+                  | 型枠工事業
+                p.ser-mos-card-desc
+                  |  コンクリート構造の型枠組立と解体を専門的に実施。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+            .col-lg-6
+              article.ser-mos-card
+                .ser-mos-card-media
+                  = image_tag "ser-construction4.png", class: "ser-mos-card-img", alt: "Service 2"
+                h3.ser-mos-card-title
+                  | 基礎工事業
+                p.ser-mos-card-desc
+                  |  建物を支える基礎の掘削・配筋・コンクリート施工。
+                /button.ser-mos-card-btn
+                  | 詳しく見る 
+                  = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+
+    section.main-moss-section
+      .container.text-center.main-moss-header
+        h2.main-moss-title
+          | 御社の物流を支える
+        h3.main-moss-subtitle
+          | 『OK建設』の魅力
+      .container-fluid.main-moss-block
+        .row.align-items-center
+          .col-lg-6.text-center
+            = image_tag "main-cargo1.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 物流基盤を支える圧倒的豊富な人材で対応
+            p.main-moss-block-desc
+              |  当社では豊富な人材集客を基盤に毎月多くの建設人材を手配できます。
+              br
+              |  案件内容に応じて最適な人材を手配します。
+      .container-fluid.main-moss-block
+        .row.align-items-center.flex-row-reverse
+          .col-lg-6.text-center
+            = image_tag "main-cargo2.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 豊富な経験者が多数在籍
+            p.main-moss-block-desc
+              |  建設業界３年以上の経験者が多数在籍しているので、即戦力として活躍できます。
+      .container-fluid.main-moss-block
+        .row.align-items-center
+          .col-lg-6.text-center
+            = image_tag "main-cargo3.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title
+              | 名古屋・大阪・福岡・東京・千葉・埼玉・神奈川
+            p.main-moss-block-desc
+              |  各エリアに拠点を設け、お客様のニーズに合わせた建設を承ります。
+      .container-fluid.main-moss-block
+        .row.align-items-center.flex-row-reverse
+          .col-lg-6.text-center
+            = image_tag 'main-construction4.png', alt: 'Feature Image', class: 'main-moss-img img-fluid'
+          .col-lg-6.text-center.main-moss-content
+            h3.main-moss-block-title 地方の拠点作りもご相談OK
+            p.main-moss-block-desc
+              | 地方で建設を依頼できる会社が少ない。。。そんな企業様もご相談ください。長期契約で安定した物流拠点構築から運営までサポート。
+
+    .section#case.cards-moos-section.py-5
+      .container.text-center
+        h2.cards-moos-title.mb-5
+          | 建設業記事一覧
+        .row.g-4.cards-moos-row.d-none.d-md-flex
+          - Column.where(genre: "construction").order(created_at: :desc).limit(3).each do |column|
+            .col-lg-4.col-md-6
+              = link_to column_path(column) do
+                .cards-moos-card
+                  - if column.file.present?
+                   = image_tag column.file.to_s, width:"100%", class: 'column-thumb', alt: column.title
+                  h3.cards-moos-heading
+                    = column.title
+                  p.cards-moos-desc
+                    = truncate(column.description, length: 200)
+        .mt-4
+          = columns_index_link("construction", "建設業の記事一覧を見る")
+
+    section.faq-japan-section.py-5
+      .container.text-center
+        h2.faq-japan-title.mb-5
+          | よくある質問
+        .faq-japan-container
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | どの地域まで対応可能ですか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  名古屋・大阪・関東・福岡を中心に対応しています。条件によりその他のエリアもご相談いただけます。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | スポット対応は可能ですか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  はい、案件内容に応じて一時的なご依頼にも対応いたします。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 図面を読める人材も手配可能ですか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                |  はい、事前にご相談いただければ対応可能です。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 定期的な建設業務の契約は可能ですか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                | もちろん可能です。月単位・年単位など、ご希望のスケジュールに合わせた契約形態で対応いたします。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 未経験も含めて数十名単位の人材を確保できますか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                | はい。当社は人材集客には非常に強いのが特徴となります。ぜひご依頼ください。
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p
+                | 特に人材な豊富なエリアはありますか？
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p
+                | 愛知県・埼玉県・神奈川県・千葉県・大阪府は特に人材が豊富におります。
+  
+
+    section#case.cards-moos-section.py-5
+      .container.text-center
+        h2.cards-moos-title.mb-5
+          | 導入事例
+        .row.g-4.cards-moos-row.d-none.d-md-flex
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag "image_construction1.png", class: "cards-moos-img", alt: "Case Study 1"
+              h3.cards-moos-heading
+                | 工務店A様
+              p.cards-moos-desc
+                |  建設現場で人材を集めるのに苦労している中で、OK建設さんをご紹介頂きました。即日３名をご紹介いただき大変驚くと共に助かりました。
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag "image_construction2.png", class: "cards-moos-img", alt: "Case Study 2"
+              h3.cards-moos-heading
+                | ゼネコン様
+              p.cards-moos-desc
+                |  社内案件の都合もあり、15名ほど人材確保したい事情がありましたが、二週間ほどの期間で確保をしていただくことが出来ました。
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag "image_construction3.png", class: "cards-moos-img", alt: "Case Study 3"
+              h3.cards-moos-heading
+                | 土木企業様
+              p.cards-moos-desc
+                |  急な人材の退職があり、ご相談したところ、すぐに動ける人材を手配いただき大変助かりました。
+          .col-lg-4.col-md-6
+            .cards-moos-card
+              = image_tag "image_construction3.png", class: "cards-moos-img", alt: "Case Study 3"
+              h3.cards-moos-heading
+                | 山口県工務店様
+              p.cards-moos-desc
+                |  建設人材が地方でなかなか集まらず苦労していましたが、二週間ほどで5名人材確保が出来ました。
+
+
+    section#inquiry
+      .container
+        .col-lg-12
+          .hero-main-right.p-4.rounded-3
+            h3.hero-main-trial2.text-center
+              | ＼まずはご相談ください！／
+            = form_with model: @contract, url: contracts_path, local: true, html: { id: "hero-main-top", class: "hero-main-form mt-3 p-4 rounded-3" } do |f|
+                .row.g-3
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社名 
+                      span.required-badge
+                        | 必須
+                    = f.text_field :company, class: "form-control hero-main-input", placeholder: "株式会社〇〇〇〇", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | ご担当者様名
+                      span.required-badge
+                        | 必須
+                    = f.text_field :name, class: "form-control hero-main-input", placeholder: "山田太郎", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 電話番号 
+                      span.required-badge
+                        | 必須
+                    = f.telephone_field :tel, class: "form-control hero-main-input", placeholder: "050-1234-5678", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 住所
+                      span.required-badge
+                        | 必須
+                    = f.text_field :address, class: "form-control hero-main-input", placeholder: "東京都東京市東京町1-1-1東京ビル111", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | URL
+                      span.required-badge
+                        | 必須
+                    = f.url_field :url, class: "form-control hero-main-input", placeholder: "https://ri-plus.jp/", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | メールアドレス 
+                      span.required-badge
+                        | 必須
+                    = f.email_field :email, class: "form-control hero-main-input", placeholder: "test@example.com", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 備考・要望 
+                      span.required-badge
+                        | 任意
+                    = f.text_area :message, class: "form-control hero-main-input", placeholder:"（例）お問い合わせ内容"
+                  .col-12
+                    = f.submit "まずは無料で見積から", class: "btn hero-main-submit w-100"
+    script[src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"]
+    script[src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"]
+    script[src="js/script.js"]

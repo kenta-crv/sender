@@ -1,0 +1,368 @@
+- set_meta_tags title: '短期スタッフ募集・人材手配の請負なら『OKスタッフ』｜大量動員・スポット対応'
+- set_meta_tags description: '短期スタッフの採用・手配を外注するなら『OKスタッフ』。イベント・軽作業・販売など、短期・スポット・大量動員に全国対応。急な欠員や100名規模の確保も即時解決。'
+
+section.hero-main-section.position-relative(style="background-image: url(#{asset_path('event-image.png')});")
+  .container
+    .row.align-items-center.gy-4
+      .col-lg-6
+        .hero-main-left
+          .hero-main-top
+            button.hero-main-top-btn
+              | 短期スタッフ・スポット人材をお探しの企業様へ
+          h1.hero-main-title.mt-4
+            span.noto
+              | 圧倒的な集客力で、必要な時に必要な人数を
+          h2.hero-main-subtitle.mt-3
+            span.noto
+              | 短期・スポットスタッフ請負なら『OKスタッフ』
+          .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+            button.hero-main-badge
+              | ✓ 大量動員対応
+            p.hero-main-badge-text
+              | 100名規模の大型案件や、急な大量募集も即座に対応
+          .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+            button.hero-main-badge
+              | ✓ 全国ネットワーク
+            p.hero-main-badge-text
+              | 47都道府県、主要都市から地方の現場までスタッフ手配
+          .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
+            button.hero-main-badge
+              | ✓ スポット・単日OK
+            p.hero-main-badge-text
+              | 1日のみ、数時間のみの短発案件も柔軟に請け負います
+      .col-lg-6
+        .hero-main-right.p-4.rounded-3
+          h3.hero-main-trial.text-center
+            | ＼まずは無料で見積依頼！／
+          = form_with model: @contract, url: contracts_path, local: true, html: { id: "hero-main-top", class: "hero-main-form mt-3 p-4 rounded-3" } do |f|
+                .row.g-3
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社名 
+                      span.required-badge
+                        | 必須
+                    = f.text_field :company, class: "form-control hero-main-input", placeholder: "株式会社〇〇〇〇", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | ご担当者様名
+                      span.required-badge
+                        | 必須
+                    = f.text_field :name, class: "form-control hero-main-input", placeholder: "山田太郎", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 電話番号 
+                      span.required-badge
+                        | 必須
+                    = f.telephone_field :tel, class: "form-control hero-main-input", placeholder: "050-1234-5678", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 住所
+                      span.required-badge
+                        | 必須
+                    = f.text_field :address, class: "form-control hero-main-input", placeholder: "東京都東京市東京町1-1-1東京ビル111", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | URL
+                      span.required-badge
+                        | 必須
+                    = f.url_field :url, class: "form-control hero-main-input", placeholder: "https://ri-plus.jp/", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | メールアドレス 
+                      span.required-badge
+                        | 必須
+                    = f.email_field :email, class: "form-control hero-main-input", placeholder: "test@example.com", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 備考・要望 
+                      span.required-badge
+                        | 任意
+                    = f.text_area :message, class: "form-control hero-main-input", placeholder:"（例）〇月〇日に50名手配したい、など"
+                  .col-12
+                    = f.submit "最短1分で無料見積もり", class: "btn hero-main-submit w-100"
+  .hero-main-overlay
+
+/ ブランドマークはそのまま
+/ section.brand-marquee-section.py-4
+  .brand-marquee
+    .brand-track
+      = image_tag "icon-1.png", alt: "Icon 1"
+      = image_tag "icon-2.png", alt: "Icon 2"
+      = image_tag "icon-3.png", alt: "Icon 3"
+      = image_tag "icon-4.png", alt: "Icon 4"
+      = image_tag "icon-5.png", alt: "Icon 5"
+      = image_tag "icon-6.png", alt: "Icon 6"
+      = image_tag "icon-7.png", alt: "Icon 7"
+      = image_tag "icon-8.png", alt: "Icon 8"
+      = image_tag "icon-9.png", alt: "Icon 9"
+      = image_tag "icon-10.png", alt: "Icon 10"
+      = image_tag "icon-1.png", alt: "Icon 1"
+      = image_tag "icon-2.png", alt: "Icon 2"
+      = image_tag "icon-3.png", alt: "Icon 3"
+      = image_tag "icon-4.png", alt: "Icon 4"
+      = image_tag "icon-5.png", alt: "Icon 5"
+      = image_tag "icon-6.png", alt: "Icon 6"
+      = image_tag "icon-7.png", alt: "Icon 7"
+      = image_tag "icon-8.png", alt: "Icon 8"
+      = image_tag "icon-9.png", alt: "Icon 9"
+      = image_tag "icon-10.png", alt: "Icon 10"
+
+section#service.japan-notyo-section
+  .japan-notyo-container
+    .japan-notyo-column.japan-notyo-text-column
+      h2.japan-notyo-heading
+        | 短期スタッフ手配のプロ『OKスタッフ』とは？
+      p.japan-notyo-description
+        | 『OKスタッフ』は、急な人員不足や短期プロジェクト、大規模なイベントに特化した「短期人材請負・外注サービス」です。
+        br
+        | 独自の集客ルートにより、一般的な派遣では難しい「大量募集」や「前日・当日のスポット対応」にも強みを持ち、貴社の採用コスト削減と業務効率化を強力にバックアップします。
+    .japan-notyo-column.japan-notyo-image-column
+      = image_tag "image.png", class: "japan-notyo-image", alt: "Short-term staff recruitment"
+
+section.jap-notto-section
+  .jap-notto-container
+    h2.jap-notto-heading
+      | 短期スタッフの募集でこんなお悩みはありませんか？
+    .jap-notto-semicircle-wrapper
+      .jap-notto-image-container.jap-notto-image-1
+        = image_tag "mainn-1.png", class: "jap-notto-image", alt: "募集を出しても人が集まらない"
+      .jap-notto-image-container.jap-notto-image-2
+        = image_tag "mainn-2.png", class: "jap-notto-image", alt: "急な欠員が出て現場が回らない"
+      .jap-notto-image-container.jap-notto-image-3
+        = image_tag "mainn-3.png", class: "jap-notto-image", alt: "100名以上の大量動員が必要"
+      .jap-notto-image-container.jap-notto-image-4
+        = image_tag "mainn-4.png", class: "jap-notto-image", alt: "地方案件でスタッフが見つからない"
+      .jap-notto-image-container.jap-notto-image-5
+        = image_tag "mainn-5.png", class: "jap-notto-image", alt: "教育や管理の手間を減らしたい"
+      .jap-notto-center-image
+        = image_tag "mainn-7.png", class: "jap-notto-center-img", alt: "悩み解決"
+
+section#business.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
+  .container.py-5.text-center
+    h2.ser-mos-title
+      | 短期・スポット人材請負サービス内容
+    .ser-mos-panel.mx-auto.p-4.rounded-4
+      .row.g-4
+        .col-lg-6
+          article.ser-mos-card
+            .ser-mos-card-media
+              = image_tag "ser-event1.png", class: "ser-mos-card-img", alt: "短期アルバイト募集"
+            h3.ser-mos-card-title
+              | 短期アルバイト一括手配
+            p.ser-mos-card-desc
+              | 面接から採用、当日の出欠確認まで一括代行。貴社の採用管理コストをゼロにします。
+        .col-lg-6
+          article.ser-mos-card
+            .ser-mos-card-media
+              = image_tag "ser-event2.png", class: "ser-mos-card-img", alt: "軽作業・物流スタッフ"
+            h3.ser-mos-card-title
+              | 軽作業・物流・倉庫
+            p.ser-mos-card-desc
+              | セール時期の仕分けや検品、引越し作業など、体力のあるスタッフを迅速に動員します。
+        .col-lg-6
+          article.ser-mos-card
+            .ser-mos-card-media
+              = image_tag "ser-event3.png", class: "ser-mos-card-img", alt: "販売・サンプリング"
+            h3.ser-mos-card-title
+              | 販売促進・サンプリング
+            p.ser-mos-card-desc
+              | 街頭配布や店舗内でのデモンストレーション、繁忙期のレジ補助などの接客もお任せください。
+        .col-lg-6
+          article.ser-mos-card
+            .ser-mos-card-media
+              = image_tag "ser-event4.png", class: "ser-mos-card-img", alt: "大量動員・イベント"
+            h3.ser-mos-card-title
+              | 超大量動員・イベント運営
+            p.ser-mos-card-desc
+              | 数百名規模のキャンペーンや展示会など、大規模プロジェクトの人員配置をワンストップで完結。
+
+section.main-moss-section
+  .container.text-center.main-moss-header
+    h2.main-moss-title
+      | 貴社のビジネスを加速させる
+    h3.main-moss-subtitle
+      | 『OKスタッフ』が選ばれる3つの強み
+  .container-fluid.main-moss-block
+    .row.align-items-center
+      .col-lg-6.text-center
+        = image_tag "main-cargo1.png", class: "main-moss-img img-fluid", alt: "Speedy dispatch"
+      .col-lg-6.text-center.main-moss-content
+        h3.main-moss-block-title
+          | 最短当日！圧倒的なスピード対応
+        p.main-moss-block-desc
+          | 独自のスタッフ登録データベースにより、急な「明日10名必要」といったご依頼にも迅速に対応。機会損失を防ぎます。
+  .container-fluid.main-moss-block
+    .row.align-items-center.flex-row-reverse
+      .col-lg-6.text-center
+        = image_tag "main-cargo2.png", class: "main-moss-img img-fluid", alt: "Mass recruitment"
+      .col-lg-6.text-center.main-moss-content
+        h3.main-moss-block-title
+          | 100名超えの「大量動員」の実績
+        p.main-moss-block-desc
+          | 1名からの小規模案件はもちろん、数百名単位の大型案件を数多く手掛けてきたノウハウで、安定した供給が可能です。
+  .container-fluid.main-moss-block
+    .row.align-items-center
+      .col-lg-6.text-center
+        = image_tag "main-cargo3.png", class: "main-moss-img img-fluid", alt: "Low cost"
+      .col-lg-6.text-center.main-moss-content
+        h3.main-moss-block-title
+          | 採用コストを大幅に削減
+        p.main-moss-block-desc
+          | 求人広告費、面接の人件費、事務手続きの手間。これらすべてを弊社に外注することで、実務に集中できる環境を提供します。
+  .container-fluid.main-moss-block
+    .row.align-items-center.flex-row-reverse
+      .col-lg-6.text-center
+        = image_tag 'main-cleaning4.png', alt: 'Support anywhere', class: 'main-moss-img img-fluid'
+      .col-lg-6.text-center.main-moss-content
+        h3.main-moss-block-title
+          | 地方・遠隔地の現場も一括カバー
+        p.main-moss-block-desc
+          | 全国に拠点のネットワークがあるため、都心部だけでなく地方都市での同時多発的な募集も、一括して窓口一つで承ります。
+
+section.faq-japan-section.py-5
+  .container.text-center
+    h2.faq-japan-title.mb-5
+      | よくある質問（FAQ）
+    .faq-japan-container
+      .faq-japan-item
+        .faq-japan-question.d-flex.align-items-center.justify-content-between
+          p
+            | 申し込みから最短でいつから稼働できますか？
+          = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+        .faq-japan-answer
+          p
+            | 案件の規模や場所によりますが、最短で当日〜翌日の手配実績がございます。まずは空き状況をお問い合わせください。
+      .faq-japan-item
+        .faq-japan-question.d-flex.align-items-center.justify-content-between
+          p
+            | スタッフの給与支払いや労務管理はどうなりますか？
+          = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+        .faq-japan-answer
+          p
+            | 業務請負契約となりますので、スタッフへの支払いや雇用管理はすべて弊社が行います。貴社は請求書一本で完結します。
+      .faq-japan-item
+        .faq-japan-question.d-flex.align-items-center.justify-content-between
+          p
+            | 1日だけ、3名といった少人数でも依頼できますか？
+          = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+        .faq-japan-answer
+          p
+            | はい、もちろんです。1名からでも柔軟に対応いたしますので、スポット的な欠員補充としてもご利用ください。
+      .faq-japan-item
+        .faq-japan-question.d-flex.align-items-center.justify-content-between
+          p
+            | スタッフの質はどう担保されていますか？
+          = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+        .faq-japan-answer
+          p
+            | 過去の勤務評価をデータ化しており、実績のあるスタッフを優先的に配置します。また、事前の業務マニュアルの共有も徹底しております。
+
+    .section#case.cards-moos-section.py-5
+      .container.text-center
+        h2.cards-moos-title.mb-5
+          | 短期スタッフ活用ノウハウ記事
+        .row.g-4.cards-moos-row.d-none.d-md-flex
+          - Column.where(genre: "event").order(created_at: :desc).limit(3).each do |column|
+            .col-lg-4.col-md-6
+              = link_to column_path(column) do
+                .cards-moos-card
+                  - if column.file.present?
+                   = image_tag column.file.to_s, width:"100%", class: 'column-thumb', alt: column.title
+                  h3.cards-moos-heading
+                    = column.title
+                  p.cards-moos-desc
+                    = truncate(column.description, length: 200)
+        .mt-4
+          = columns_index_link("event", "短期スタッフ活用の記事一覧を見る")
+
+section#case.cards-moos-section.py-5
+  .container.text-center
+    h2.cards-moos-title.mb-5
+      | 人材手配・導入事例
+    .row.g-4.cards-moos-row.d-none.d-md-flex
+      .col-lg-4.col-md-6
+        .cards-moos-card
+          = image_tag "image-event1.png", class: "cards-moos-img", alt: "物流倉庫での導入事例"
+          h3.cards-moos-heading
+            | 物流・ECセンター運営企業様
+          p.cards-moos-desc
+            | セール期間中の出荷作業に短期スタッフを1日50名、2週間にわたり継続手配。未稼働ゼロで繁忙期を乗り切りました。
+      .col-lg-4.col-md-6
+        .cards-moos-card
+          = image_tag "image-event2.png", class: "cards-moos-img", alt: "サンプリングの導入事例"
+          h3.cards-moos-heading
+            | 飲料メーカー・プロモーション様
+          p.cards-moos-desc
+            | 全国5都市での新商品サンプリングスタッフを計200名一括手配。各エリアのディレクターも派遣し、全国同時実施を成功させました。
+      .col-lg-4.col-md-6
+        .cards-moos-card
+          = image_tag "image-event3.png", class: "cards-moos-img", alt: "展示会運営の導入事例"
+          h3.cards-moos-heading
+            | 展示会・大型カンファレンス様
+          p.cards-moos-desc
+            | 3日間の開催期間中、受付・案内スタッフ100名を動員。丁寧な接客スキルを持つスタッフを揃え、主催者様より高い評価をいただきました。
+      .col-lg-4.col-md-6
+        .cards-moos-card
+          = image_tag "image-event4.png", class: "cards-moos-img", alt: "地方案件の導入事例"
+          h3.cards-moos-heading
+            | 地方自治体・お祭り主催者様
+          p.cards-moos-desc
+            | 採用難の地方エリアでの開催でしたが、周辺エリアからの送迎を含めたスタッフ手配を行い、必要人数を完全に確保しました。
+
+section#inquiry
+  .container
+    .col-lg-12
+      .hero-main-right.p-4.rounded-3
+        h3.hero-main-trial2.text-center
+          | ＼最短即日でお見積もりいたします！／
+        = form_with model: @contract, url: contracts_path, local: true, html: { id: "hero-main-top", class: "hero-main-form mt-3 p-4 rounded-3" } do |f|
+                .row.g-3
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 会社名 
+                      span.required-badge
+                        | 必須
+                    = f.text_field :company, class: "form-control hero-main-input", placeholder: "株式会社〇〇〇〇", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | ご担当者様名
+                      span.required-badge
+                        | 必須
+                    = f.text_field :name, class: "form-control hero-main-input", placeholder: "山田太郎", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 電話番号 
+                      span.required-badge
+                        | 必須
+                    = f.telephone_field :tel, class: "form-control hero-main-input", placeholder: "050-1234-5678", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 住所
+                      span.required-badge
+                        | 必須
+                    = f.text_field :address, class: "form-control hero-main-input", placeholder: "東京都東京市東京町1-1-1東京ビル111", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | URL
+                      span.required-badge
+                        | 必須
+                    = f.url_field :url, class: "form-control hero-main-input", placeholder: "https://ri-plus.jp/", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | メールアドレス 
+                      span.required-badge
+                        | 必須
+                    = f.email_field :email, class: "form-control hero-main-input", placeholder: "test@example.com", required: true
+                  .col-12
+                    label.form-label.hero-main-label
+                      | 備考・要望 
+                      span.required-badge
+                        | 任意
+                    = f.text_area :message, class: "form-control hero-main-input", placeholder:"（例）〇月〇日に必要なスタッフの条件、予定人数など"
+                  .col-12
+                    = f.submit "無料見積もり・空き状況を確認", class: "btn hero-main-submit w-100"
+
+
+script[src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"]
+script[src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"]
+script[src="js/script.js"]

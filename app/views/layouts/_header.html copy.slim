@@ -1,0 +1,49 @@
+    header.custom-navbar.py-2
+      .container-fluid.d-flex.align-items-center.justify-content-between
+        .d-flex.align-items-center.logo-section
+          = image_tag "logo.png", class: "nav-logo me-2", alt: "Logo"
+          span.nav-subtext
+            | 
+        nav.nav-menu.d-none.d-lg-flex
+          ul.d-flex.list-unstyled.mb-0
+            li
+                = link_to "トップページ", "/" , class: "nav-link-custom"   
+            li
+              a.nav-link-custom href="javascript:void(0)" data-target="service" サービス
+            li
+              a.nav-link-custom href="javascript:void(0)" data-target="business" 事業内容
+            li
+              a.nav-link-custom href="javascript:void(0)" data-target="case" 導入事例
+        nav.mobile-nav.d-lg-none
+          #mobile-nav-toggle.mobile-nav-toggle
+            span.hamburger-line
+            span.hamburger-line
+            span.hamburger-line
+          #mobile-nav-menu.mobile-nav-menu
+            .mobile-nav-header
+              #mobile-nav-close.mobile-nav-close
+                span.close-line
+                span.close-line
+            ul.mobile-nav-list
+              li
+                = link_to "トップページ", "/" , class: "nav-link-custom"        
+              li
+                a.nav-link-custom href="javascript:void(0)" data-target="service" サービス
+              li
+                a.nav-link-custom href="javascript:void(0)" data-target="business" 事業内容
+              li
+                a.nav-link-custom href="javascript:void(0)" data-target="case" 導入事例
+            .mobile-nav-actions
+              = image_tag "search.png", class: "search-icon", alt: "Search"
+              button.btn.login-btn
+                | ログイン
+              button.btn.contact-btn.d-flex.align-items-center.gap-2
+                a.nav-link-custom href="javascript:void(0)" data-target="inquiry" お問い合わせ
+                = image_tag "arrow-down.png", class: "arrow-icon", alt: "Arrow"
+        .d-flex.align-items-center.gap-3.d-none.d-lg-flex
+          = image_tag "search.png", class: "search-icon", alt: "Search"
+          button.btn.login-btn
+            | ログイン
+          button.btn.contact-btn.d-flex.align-items-center.gap-2
+            a.nav-link-custom href="javascript:void(0)" data-target="inquiry" お問い合わせ
+            = image_tag "arrow-down.png", class: "arrow-icon", alt: "Arrow"
