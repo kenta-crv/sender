@@ -11,8 +11,9 @@ class CreateCustomers < ActiveRecord::Migration[6.1]
       t.string :url #URL
       t.string :business #
       t.string :genre #
-      t.string :contact_form 
+      t.string :contact_url 
       t.string :fobbiden
+      t.string :status
       t.string :remarks #履歴
       t.timestamps
     end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_01_19_113402) do
+ActiveRecord::Schema.define(version: 2026_01_21_150312) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -78,11 +78,24 @@ ActiveRecord::Schema.define(version: 2026_01_19_113402) do
     t.string "url"
     t.string "business"
     t.string "genre"
-    t.string "contact_form"
+    t.string "contact_url"
     t.string "fobbiden"
+    t.string "status"
     t.string "remarks"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+  end
+
+  create_table "extract_trackings", force: :cascade do |t|
+    t.string "industry", null: false
+    t.integer "total_count", default: 0, null: false
+    t.integer "success_count", default: 0, null: false
+    t.integer "failure_count", default: 0, null: false
+    t.string "status", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["industry", "id"], name: "index_extract_trackings_on_industry_and_id"
+    t.index ["industry"], name: "index_extract_trackings_on_industry"
   end
 
   create_table "friendly_id_slugs", force: :cascade do |t|

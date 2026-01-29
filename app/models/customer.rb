@@ -32,7 +32,7 @@ class Customer < ApplicationRecord
       url          # URL
       business     # 業種詳細
       genre        # 職種
-      contact_form # 問い合わせフォーム
+      contact_url # 問い合わせフォーム
       remarks      # 備考
       fobbiden
       created_at

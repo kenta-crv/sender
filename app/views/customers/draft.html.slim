@@ -1,0 +1,87 @@
+- set_meta_tags noindex: true
+
+.tops-wrapper
+  h2.headline AI抽出
+
+  .extraction-header
+    .remain-box
+      | tel未登録データ総数：#{@extract_target_count}件
+
+  table.extraction-table width="100%" cellpadding="0" cellspacing="0"
+    thead
+      tr
+        th アクション
+    tbody
+      tr
+        td.action-cell
+          / url: extract_company_info_customers_path (または routes で定義したパス)
+          = form_with url: extract_company_info_path, method: :post, local: true, id: "ai-extract-form" do
+            = hidden_field_tag :count, "", id: "extract-count-input"
+            / industry_name パラメータを送信するために追加
+            = hidden_field_tag :industry_name, "全般" 
+            button#start-ai-button.btn.btn-ai type="button" data-max="#{@extract_target_count}"
+              | AI抽出開始
+
+.tops-wrapper
+  h2.headline#draft-list
+    | ドラフトリスト
+
+.scroll
+  table width="100%" cellpadding="0" cellspacing="0"
+    thead
+      tr
+        th 会社名
+        th 電話番号
+        th 住所
+        th 業種
+        th 職種
+        th URL
+        th フォームURL
+        th インポート日
+    tbody
+      - @customers.each do |customer|
+        tr
+          td = link_to customer&.company || "名称未設定", edit_customer_path(customer), class: 'command'
+          td = customer&.tel
+          td = truncate(customer&.address, length: 15)
+          td = customer&.business
+          td = truncate(customer&.genre, length: 15)
+          td = truncate(customer&.url, length: 15)
+          td = truncate(customer&.contact_url, length: 15)
+          td = customer&.created_at&.strftime("%m月%d日%H:%M")
+    tr
+      th colspan="8"
+        = paginate @customers
+
+javascript:
+  (function() {
+    const setupAiButton = function() {
+      const btn = document.getElementById('start-ai-button');
+      if (!btn) return;
+
+      btn.onclick = function(e) {
+        e.preventDefault();
+        const max = parseInt(btn.getAttribute('data-max'), 10) || 0;
+        if (max === 0) {
+          alert("抽出対象が存在しません");
+          return;
+        }
+
+        const input = window.prompt("対象: " + max + " 件\n抽出件数を入力してください", max);
+        if (input === null) return;
+
+        const count = parseInt(input.trim(), 10);
+        if (isNaN(count) || count < 1 || count > max) {
+          alert("1〜" + max + " の範囲で入力してください");
+          return;
+        }
+
+        document.getElementById('extract-count-input').value = count;
+        document.getElementById('ai-extract-form').submit();
+      };
+    };
+
+    document.addEventListener('turbo:load', setupAiButton);
+    document.addEventListener('DOMContentLoaded', setupAiButton);
+    setupAiButton();
+  })();
