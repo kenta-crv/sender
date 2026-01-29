@@ -1,6 +1,20 @@
 # frozen_string_literal: true
 
 require 'selenium-webdriver'
+require 'webdrivers'
+require 'openssl'
+require 'net/http'
+
+# macOSのSSL証明書エラー対策（CRL検証エラー回避）
+module Net
+  class HTTP
+    alias_method :original_use_ssl=, :use_ssl=
+    def use_ssl=(flag)
+      self.original_use_ssl = flag
+      self.verify_mode = OpenSSL::SSL::VERIFY_NONE if flag
+    end
+  end
+end
 
 class FormSender
   # 送信者情報（固定）
@@ -90,6 +104,7 @@ class FormSender
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1280,800')
+    options.add_argument('--ignore-certificate-errors')
 
     @driver = Selenium::WebDriver.for(:chrome, options: options)
     @driver.manage.timeouts.implicit_wait = 5
