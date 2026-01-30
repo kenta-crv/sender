@@ -68,14 +68,14 @@ class FormSender
     prefecture: %w[prefecture pref 都道府県 todoufuken todofuken ken],
     company: %w[company 会社 御社 貴社 organization 社名 company_name kaisya comname 御社名 会社名],
     address: %w[address 住所 所在地 your-address jusho adr add],
-    message: %w[message body 内容 お問い合わせ内容 inquiry comment お問い合わせ 備考 remarks naiyo toi]
+    message: %w[message body 内容 お問い合わせ内容 inquiry comment お問い合わせ 備考 remarks naiyo toi その他]
   }.freeze
 
   # 送信ボタン検出用キーワード
   SUBMIT_PATTERNS = %w[送信 確認 submit send 入力内容を確認 送信する 確認する 確認画面へ 次へ].freeze
 
   # 成功判定用キーワード
-  SUCCESS_PATTERNS = %w[ありがとう 完了 受付 送信しました 送信完了 thank success 確認].freeze
+  SUCCESS_PATTERNS = %w[ありがとう 完了 受付 送信しました 送信完了 thank success].freeze
 
   attr_reader :driver, :customer, :result
 
@@ -343,6 +343,12 @@ class FormSender
     # メールフィールド
     return true if FIELD_PATTERNS[:email].any? { |p| text.include?(p) || name_attr.include?(p) }
 
+    # 電話番号フィールド
+    return true if FIELD_PATTERNS[:tel].any? { |p| text.include?(p) || name_attr.include?(p) }
+
+    # 会社名フィールド
+    return true if FIELD_PATTERNS[:company].any? { |p| text.include?(p) || name_attr.include?(p) }
+
     false
   end
 
@@ -494,8 +500,10 @@ class FormSender
     if text.include?('姓') && !text.include?('氏名') && !text.include?('名前')
       return SENDER_INFO[:name_sei]
     end
-    if (text.include?('名') && !text.include?('氏名') && !text.include?('名前') &&
-        !text.include?('会社名') && !text.include?('お名前'))
+    # 「名」が単独で使われている場合のみ分割（「担当者名」「御社名」等の複合語は除外）
+    if text =~ /(?<!\p{Han})名(?!\p{Han})/ &&
+        !text.include?('氏名') && !text.include?('名前') &&
+        !text.include?('会社名') && !text.include?('お名前')
       return SENDER_INFO[:name_mei]
     end
 
