@@ -5,16 +5,7 @@ require 'webdrivers'
 require 'openssl'
 require 'net/http'
 
-# macOSのSSL証明書エラー対策（CRL検証エラー回避）
-module Net
-  class HTTP
-    alias_method :original_use_ssl=, :use_ssl=
-    def use_ssl=(flag)
-      self.original_use_ssl = flag
-      self.verify_mode = OpenSSL::SSL::VERIFY_NONE if flag
-    end
-  end
-end
+# SSL対策は config/initializers/ssl_fix.rb に移動済み
 
 class FormSender
   # 送信者情報（固定）
