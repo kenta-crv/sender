@@ -64,7 +64,7 @@ class FormSender
     email: %w[email mail メール e-mail your-email メールアドレス eml m_address],
     email_confirm: %w[email_confirm mail_confirm 確認用 confirm re-email eml2],
     tel: %w[tel phone 電話 携帯 telephone your-tel denwa],
-    zip: %w[zip postal 郵便 〒 yubin post-code zipcode],
+    zip: %w[zip postal 郵便 〒 yubin post-code zipcode postcode],
     prefecture: %w[prefecture pref 都道府県 todoufuken todofuken ken],
     company: %w[company 会社 御社 貴社 organization 社名 company_name kaisya comname 御社名 会社名 corpname corp 法人],
     address: %w[address 住所 所在地 your-address jusho adr add],
@@ -76,7 +76,8 @@ class FormSender
 
   # 成功判定用キーワード
   SUCCESS_PATTERNS = %w[ありがとう 完了 受付 送信しました 送信完了 thank success
-                        受け付けました 受付いたしました 送信いたしました お問い合わせいただき].freeze
+                        受け付けました 受付いたしました 送信いたしました お問い合わせいただき
+                        送信されました].freeze
 
   attr_reader :driver, :customer, :result
 
@@ -163,7 +164,7 @@ class FormSender
             # 確認ダイアログがあれば承認
             handle_alert
 
-            sleep 2 # 送信後の待機
+            sleep 3 # 送信後の待機（AJAX応答やページ遷移を待つ）
 
             # 確認画面の場合、もう一度送信ボタンをクリック
             if confirmation_page?
@@ -171,16 +172,22 @@ class FormSender
               if click_submit
                 log "送信ボタンクリック成功（2回目：確認画面）"
                 handle_alert
-                sleep 2
+                sleep 4 # 確認画面後はより長く待機（完了ページ遷移を待つ）
               end
             end
-            # 注: OKボタンは確認画面がある場合のみクリック（アラート後の余計なクリックを避ける）
 
-            # 成功判定
+            # 成功判定（リトライ付き）
             if check_success?
               @result = { status: '送信成功', message: '送信が完了しました' }
             else
-              @result = { status: '送信失敗', message: '送信後の確認ができませんでした' }
+              # 初回判定で失敗: 追加待機して再判定（AJAX応答やページ遷移の遅延対策）
+              log "成功未検出、追加待機後に再判定..."
+              sleep 3
+              if check_success?
+                @result = { status: '送信成功', message: '送信が完了しました' }
+              else
+                @result = { status: '送信失敗', message: '送信後の確認ができませんでした' }
+              end
             end
           else
             @result = { status: '送信失敗', message: '送信ボタンが見つかりませんでした' }
@@ -235,7 +242,7 @@ class FormSender
   end
 
   # 同意チェックボックス検出用キーワード
-  CONSENT_PATTERNS = %w[同意 agree 規約 プライバシー privacy policy 承諾 確認しました 了承].freeze
+  CONSENT_PATTERNS = %w[同意 agree 規約 プライバシー privacy policy 承諾 確認しました 了承 confirm 個人情報].freeze
 
   # ラジオボタン選択：優先するキーワード
   RADIO_PREFER_PATTERNS = %w[その他 他 other お問い合わせ ご相談 相談 サービス 一般 general].freeze
@@ -341,6 +348,29 @@ class FormSender
         rescue StandardError => e
           log "    → 入力失敗: #{e.message}"
         end
+      elsif tag_name == 'select' && is_required
+        # 必須セレクトでパターン不一致: 最初の有効な選択肢を自動選択
+        begin
+          select = Selenium::WebDriver::Support::Select.new(input)
+          options = select.options
+          # 空やプレースホルダ以外の最初の選択肢を選ぶ
+          valid_option = options.find do |opt|
+            text = opt.text.strip
+            text.present? && !text.match?(/\A[-ー―]+\z/) &&
+              !%w[選択してください 選択して下さい --- 未選択].include?(text)
+          end
+          if valid_option && valid_option != options.first
+            select.select_by(:text, valid_option.text)
+            filled_count += 1
+            log "    → 必須セレクト自動選択: #{valid_option.text}"
+          elsif options.size >= 2
+            select.select_by(:index, 1)
+            filled_count += 1
+            log "    → 必須セレクト自動選択（2番目）: #{options[1].text}"
+          end
+        rescue StandardError => e
+          log "    → 必須セレクト選択失敗: #{e.message}"
+        end
       end
     end
 
@@ -369,6 +399,15 @@ class FormSender
 
     # 会社名フィールド
     return true if FIELD_PATTERNS[:company].any? { |p| text.include?(p) || name_attr.include?(p) }
+
+    # フリガナフィールド（日本のフォームでは一般的に必要）
+    return true if FIELD_PATTERNS[:name_kana].any? { |p| text.include?(p) || name_attr.include?(p) }
+
+    # 郵便番号フィールド
+    return true if FIELD_PATTERNS[:zip].any? { |p| text.include?(p) || name_attr.include?(p) }
+
+    # 住所フィールド
+    return true if FIELD_PATTERNS[:address].any? { |p| text.include?(p) || name_attr.include?(p) }
 
     false
   end
@@ -412,6 +451,26 @@ class FormSender
         parent_text = parent.text rescue ''
         return true if REQUIRED_MARKERS.any? { |marker| parent_text.include?(marker) }
       end
+    rescue StandardError
+      # 無視
+    end
+
+    # 6. テーブルレイアウト: 同じ行のth要素をチェック
+    begin
+      row = input.find_element(:xpath, 'ancestor::tr')
+      th = row.find_element(:css, 'th')
+      th_text = th.text rescue ''
+      return true if REQUIRED_MARKERS.any? { |marker| th_text.include?(marker) }
+    rescue StandardError
+      # 無視
+    end
+
+    # 7. dl/dt/ddレイアウト: 前のdt要素をチェック
+    begin
+      dd = input.find_element(:xpath, 'ancestor::dd')
+      dt = dd.find_element(:xpath, 'preceding-sibling::dt[1]')
+      dt_text = dt.text rescue ''
+      return true if REQUIRED_MARKERS.any? { |marker| dt_text.include?(marker) }
     rescue StandardError
       # 無視
     end
@@ -589,9 +648,9 @@ class FormSender
       return SENDER_INFO[:email]
     end
 
-    # 電話番号 - フル（ハイフンなしを優先）
+    # 電話番号 - フル（ハイフン付きに変更 - 多くのフォームがハイフン付きを要求）
     if FIELD_PATTERNS[:tel].any? { |p| text.include?(p) }
-      return SENDER_INFO[:tel_no_hyphen]
+      return SENDER_INFO[:tel]
     end
 
     # 郵便番号 - フル
@@ -893,16 +952,37 @@ class FormSender
       id_attr = checkbox.attribute('id')&.downcase || ''
       label_text = get_label_text(checkbox)
 
-      # 親要素のテキストも確認
+      # 親要素のテキストも確認（2階層上まで探索）
       parent_text = ''
       begin
         parent = checkbox.find_element(:xpath, '..')
         parent_text = parent.text.downcase
+        # 親のテキストで見つからない場合、さらに上の階層も確認
+        if parent_text.blank? || !CONSENT_PATTERNS.any? { |p| parent_text.include?(p.downcase) }
+          grandparent = checkbox.find_element(:xpath, 'ancestor::*[3]')
+          gp_text = grandparent.text.downcase rescue ''
+          parent_text = "#{parent_text} #{gp_text}" if gp_text.present?
+        end
       rescue StandardError
         # 無視
       end
 
-      all_text = "#{name_attr} #{id_attr} #{label_text} #{parent_text}".downcase
+      # value属性もチェック（Salesforce等で同意テキストがvalueに含まれる場合）
+      value_attr = checkbox.attribute('value')&.downcase || ''
+
+      # 前後の兄弟要素のテキストも確認（Salesforce等でラベルが別要素の場合）
+      sibling_text = ''
+      begin
+        siblings = checkbox.find_elements(:xpath, 'following-sibling::*[position() <= 2] | preceding-sibling::*[position() <= 2]')
+        siblings.each do |sib|
+          sib_text = sib.text.downcase rescue ''
+          sibling_text = "#{sibling_text} #{sib_text}" if sib_text.present?
+        end
+      rescue StandardError
+        # 無視
+      end
+
+      all_text = "#{name_attr} #{id_attr} #{label_text} #{parent_text} #{value_attr} #{sibling_text}".downcase
 
       # 同意系のキーワードが含まれていればチェック
       if CONSENT_PATTERNS.any? { |p| all_text.include?(p.downcase) }
@@ -917,21 +997,52 @@ class FormSender
         end
       end
     end
+
+    # フォールバック: ページ内に同意キーワードがあり未チェックが1つだけの場合
+    begin
+      unchecked = checkboxes.select { |cb| cb.displayed? && !cb.selected? }
+      if unchecked.size == 1
+        page_text = driver.find_element(:css, 'body').text.downcase rescue ''
+        if CONSENT_PATTERNS.any? { |p| page_text.include?(p.downcase) }
+          cb = unchecked.first
+          scroll_to_element(cb)
+          sleep 0.3
+          driver.execute_script("arguments[0].click();", cb)
+          log "  → 同意チェックボックスをチェック（ページ内キーワード検出）"
+        end
+      end
+    rescue StandardError => e
+      log "  → 同意チェックボックスフォールバックエラー: #{e.message}"
+    end
   end
 
   # 送信ボタンをクリック
   def click_submit
-    # type="submit"のボタンを検索
+    # type="submit"のボタンを検索（input[type="image"]も含む）
     begin
-      submit_buttons = driver.find_elements(:css, "input[type='submit'], button[type='submit'], button:not([type])")
-      submit_buttons.each do |btn|
-        if btn.displayed?
-          log "送信ボタン発見: #{btn.text || btn.attribute('value')}"
-          scroll_to_element(btn)
-          sleep 0.5
-          btn.click
-          return true
+      submit_buttons = driver.find_elements(:css, "input[type='submit'], input[type='image'], button[type='submit'], button:not([type])")
+      visible_buttons = submit_buttons.select(&:displayed?)
+
+      # 戻るボタンを避けて送信ボタンを優先（確認画面対策）
+      preferred = visible_buttons.sort_by do |btn|
+        btn_text = (btn.text.presence || btn.attribute('value') || '').strip.downcase
+        if btn_text.include?('戻') || btn_text.include?('back') || btn_text.include?('修正')
+          2  # 戻るボタン: 低優先
+        elsif btn_text.include?('送信') || btn_text.include?('submit') || btn_text.include?('send')
+          0  # 送信ボタン: 高優先
+        else
+          1  # その他: 通常優先
         end
+      end
+
+      if preferred.any?
+        btn = preferred.first
+        btn_text = btn.text.presence || btn.attribute('value') || ''
+        log "送信ボタン発見: #{btn_text}"
+        scroll_to_element(btn)
+        sleep 0.5
+        btn.click
+        return true
       end
     rescue StandardError => e
       log "送信ボタン検索エラー: #{e.message}"
@@ -942,7 +1053,7 @@ class FormSender
       begin
         buttons = driver.find_elements(:xpath, "//*[contains(text(), '#{pattern}')] | //input[contains(@value, '#{pattern}')]")
         buttons.each do |btn|
-          if btn.displayed? && %w[button input a].include?(btn.tag_name.downcase)
+          if btn.displayed? && %w[button input a span div].include?(btn.tag_name.downcase)
             log "送信ボタン発見（テキスト）: #{pattern}"
             scroll_to_element(btn)
             sleep 0.5
@@ -953,6 +1064,23 @@ class FormSender
       rescue StandardError => e
         log "送信ボタン検索エラー（テキスト）: #{e.message}"
       end
+    end
+
+    # 最終手段: JavaScriptでフォーム送信を試みる
+    begin
+      forms = driver.find_elements(:css, 'form')
+      forms.each do |form|
+        next unless form.displayed?
+        # フォーム内に入力欄があるか確認（フォームらしいものだけ対象）
+        inputs = form.find_elements(:css, 'input:not([type="hidden"]), textarea')
+        if inputs.size >= 2
+          log "送信ボタン発見（JSフォールバック）: form.submit()"
+          driver.execute_script("arguments[0].submit();", form)
+          return true
+        end
+      end
+    rescue StandardError => e
+      log "JSフォーム送信エラー: #{e.message}"
     end
 
     false
@@ -1019,18 +1147,7 @@ class FormSender
   def confirmation_page?
     page_source = driver.page_source
 
-    # 確認画面のキーワード
-    confirmation_keywords = [
-      '確認画面', '入力内容の確認', '内容をご確認', '以下の内容で送信',
-      '送信してよろしいですか', '入力内容確認', '以下の内容で宜しければ',
-      '宜しければ', '以下の内容でよろしければ', 'よろしければ送信',
-      '内容で宜しければ', '内容でよろしければ'
-    ]
-
-    # 確認画面のキーワードが含まれているか
-    has_confirmation_text = confirmation_keywords.any? { |keyword| page_source.include?(keyword) }
-
-    # 送信ボタンがまだあるか
+    # 送信ボタンの有無チェック
     has_submit_button = false
     begin
       submit_buttons = driver.find_elements(:css, "input[type='submit'], button[type='submit'], button:not([type])")
@@ -1039,9 +1156,64 @@ class FormSender
       # 無視
     end
 
-    result = has_confirmation_text && has_submit_button
-    log "確認画面判定: #{result}（キーワード: #{has_confirmation_text}, 送信ボタン: #{has_submit_button}）"
-    result
+    return false unless has_submit_button
+
+    # 入力欄の状態を一括チェック
+    editable_count = 0
+    visible_count = 0
+    total_count = 0
+    begin
+      inputs = driver.find_elements(:css, 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="radio"]):not([type="checkbox"]), textarea')
+      total_count = inputs.size
+      inputs.each do |input|
+        if input.displayed?
+          visible_count += 1
+          unless input.attribute('readonly').present? || input.attribute('disabled').present?
+            editable_count += 1
+          end
+        end
+      end
+    rescue StandardError
+      # 無視
+    end
+
+    # 確認画面のキーワード
+    confirmation_keywords = [
+      '確認画面', '入力内容の確認', '入力内容のご確認', '内容をご確認',
+      '以下の内容で送信', '送信してよろしいですか', '入力内容確認',
+      '以下の内容で宜しければ', '宜しければ', '以下の内容でよろしければ',
+      'よろしければ送信', '内容で宜しければ', '内容でよろしければ',
+      '確認してください', 'ご確認ください'
+    ]
+    has_confirmation_text = confirmation_keywords.any? { |keyword| page_source.include?(keyword) }
+
+    # パターン1: 確認キーワード + 編集可能な入力欄が少ない
+    if has_confirmation_text && editable_count < 3
+      log "確認画面判定: true（キーワード + 編集可能#{editable_count}個）"
+      return true
+    end
+
+    # 確認キーワードはあるが入力欄がまだ編集可能 = バリデーションエラーの可能性
+    if has_confirmation_text && editable_count >= 3
+      log "確認画面判定: false（キーワードあるが編集可能入力欄#{editable_count}個 = バリデーションエラーの可能性）"
+      return false
+    end
+
+    # パターン2: 入力欄が消失 + 送信ボタンあり（キーワードなくても確認画面の可能性）
+    if visible_count <= 1 && total_count >= 2
+      log "確認画面判定: true（入力欄消失: 表示#{visible_count}/全#{total_count}）"
+      return true
+    end
+
+    # パターン3: 入力欄の大半が非表示化（CF7確認アドオン）
+    if total_count >= 3 && (total_count - visible_count) > visible_count
+      hidden_count = total_count - visible_count
+      log "確認画面判定: true（入力欄非表示化: 表示#{visible_count}/非表示#{hidden_count}）"
+      return true
+    end
+
+    log "確認画面判定: false（キーワード: #{has_confirmation_text}, 編集可能: #{editable_count}, 表示: #{visible_count}）"
+    false
   end
 
   # 送信成功を判定
@@ -1074,8 +1246,21 @@ class FormSender
         remaining_inputs = driver.find_elements(:css, 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), textarea')
         visible_inputs = remaining_inputs.select(&:displayed?)
         if visible_inputs.size <= 2
-          log "URL変更 + フォーム消失（入力欄#{visible_inputs.size}個）: 成功と判定"
-          return true
+          # 送信ボタンがまだある場合は確認画面の可能性
+          submit_still_visible = false
+          begin
+            submit_buttons = driver.find_elements(:css, "input[type='submit'], button[type='submit']")
+            submit_still_visible = submit_buttons.any?(&:displayed?)
+          rescue StandardError
+            # 無視
+          end
+
+          unless submit_still_visible
+            log "URL変更 + フォーム消失（入力欄#{visible_inputs.size}個）: 成功と判定"
+            return true
+          else
+            log "URL変更 + フォーム消失だが送信ボタンあり: 確認画面の可能性"
+          end
         end
       rescue StandardError
         # エラー時はURL変更のみで判定
@@ -1108,8 +1293,21 @@ class FormSender
       remaining_inputs = driver.find_elements(:css, 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), textarea')
       visible_inputs = remaining_inputs.select(&:displayed?)
       if visible_inputs.size <= 1
-        log "フォーム消失検出: 入力欄が#{visible_inputs.size}個に減少"
-        return true
+        # 送信ボタンがまだある場合は確認画面の可能性（成功とみなさない）
+        submit_still_visible = false
+        begin
+          submit_buttons = driver.find_elements(:css, "input[type='submit'], button[type='submit']")
+          submit_still_visible = submit_buttons.any?(&:displayed?)
+        rescue StandardError
+          # 無視
+        end
+
+        if submit_still_visible
+          log "入力欄消失だが送信ボタンあり: 確認画面の可能性（成功とみなさない）"
+        else
+          log "フォーム消失検出: 入力欄が#{visible_inputs.size}個に減少"
+          return true
+        end
       end
     rescue StandardError
       # 無視
