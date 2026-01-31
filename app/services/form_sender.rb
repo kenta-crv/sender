@@ -80,12 +80,16 @@ class FormSender
 
   attr_reader :driver, :customer, :result
 
+  # アラートのエラー検出用キーワード
+  ALERT_ERROR_PATTERNS = %w[未入力 エラー error 入力してください 必須 required チェックを入れて].freeze
+
   def initialize(debug: false, confirm_mode: false, save_to_db: false)
     @driver = nil
     @result = { status: nil, message: nil }
     @debug = debug
     @confirm_mode = confirm_mode  # trueの場合、送信前に停止して確認を待つ
     @save_to_db = save_to_db      # trueの場合、送信結果をDBに保存
+    @alert_had_error = false      # アラートにエラーメッセージがあったか
   end
 
   # ブラウザを起動
@@ -112,6 +116,7 @@ class FormSender
   def send_to_customer(customer)
     @customer = customer
     @result = { status: nil, message: nil }
+    @alert_had_error = false
 
     # contact_urlがない場合
     if customer.contact_url.blank?
@@ -271,10 +276,14 @@ class FormSender
       # 周辺のラベルテキストを取得
       label_text = get_label_text(input)
 
-      all_text = "#{name_attr} #{id_attr} #{placeholder} #{label_text}".downcase
+      # フィールド判定用テキスト（必須マーカーを除去してパターンマッチ精度を上げる）
+      clean_name = name_attr.gsub(/[（(]必須[）)]|※必須|必須/, '').strip
+      all_text = "#{clean_name} #{id_attr} #{placeholder} #{label_text}".downcase
 
-      # 必須判定
-      is_required = required_field?(label_text, input)
+      # 必須判定（name属性内の必須マークも確認）
+      name_raw = input.attribute('name') || ''
+      is_required = required_field?(label_text, input) ||
+                    REQUIRED_MARKERS.any? { |marker| name_raw.include?(marker) }
       required_mark = is_required ? '【必須】' : ''
       log "  [#{idx}] tag=#{tag_name}, name=#{name_attr}, label=#{label_text} #{required_mark}"
 
@@ -434,6 +443,8 @@ class FormSender
 
   # テキストからフィールドタイプを判定して値を返す
   def determine_value(text, tag_name, name_attr = '')
+    # name属性から必須マーカーを除去して判定精度を上げる
+    name_attr = name_attr.gsub(/[（(]必須[）)]|※必須|必須/, '').strip
     # メールアドレス確認用
     if FIELD_PATTERNS[:email_confirm].any? { |p| text.include?(p) }
       return SENDER_INFO[:email]
@@ -933,7 +944,15 @@ class FormSender
       sleep 1
       begin
         alert = driver.switch_to.alert
-        log "アラート検出: #{alert.text}"
+        alert_text = alert.text
+        log "アラート検出: #{alert_text}"
+
+        # エラー系のアラートかどうか判定
+        if ALERT_ERROR_PATTERNS.any? { |p| alert_text.include?(p) }
+          @alert_had_error = true
+          log "  → バリデーションエラーのアラートを検出"
+        end
+
         alert.accept
         log "アラート承認（#{attempts + 1}回目）"
         attempts += 1
@@ -975,6 +994,12 @@ class FormSender
 
   # 送信成功を判定
   def check_success?
+    # アラートでバリデーションエラーが検出されていた場合は失敗
+    if @alert_had_error
+      log "アラートエラー検出済みのため送信失敗と判定"
+      return false
+    end
+
     page_source = driver.page_source.downcase
     current_url = driver.current_url
 
