@@ -298,6 +298,17 @@ class FormSender
 
       # フィールドタイプを判定して入力
       value = determine_value(all_text, tag_name, name_attr)
+
+      # パターン不一致の必須フィールドはラベルから周辺テキストを広く取得して再判定
+      if value.nil? && is_required
+        extended_label = get_extended_label(input)
+        if extended_label.present?
+          extended_text = "#{extended_label} #{all_text}".downcase
+          value = determine_value(extended_text, tag_name, name_attr)
+          log "    → 拡張ラベル判定: #{extended_label}" if value
+        end
+      end
+
       if value
         begin
           if tag_name == 'select'
@@ -437,6 +448,47 @@ class FormSender
     rescue Selenium::WebDriver::Error::NoSuchElementError
       # 見つからない場合
     end
+
+    ''
+  end
+
+  # 拡張ラベル取得（get_label_textで取れなかった場合のフォールバック）
+  def get_extended_label(input)
+    # テーブルレイアウト: 同じ行のth要素を探す
+    begin
+      row = input.find_element(:xpath, 'ancestor::tr')
+      th = row.find_element(:css, 'th')
+      text = th.text.downcase
+      return text if text.present?
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    # dl/dt/ddレイアウト: 前のdt要素を探す
+    begin
+      dd = input.find_element(:xpath, 'ancestor::dd')
+      dt = dd.find_element(:xpath, 'preceding-sibling::dt[1]')
+      text = dt.text.downcase
+      return text if text.present?
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    # 2階層上の親からラベル要素を探す
+    begin
+      grandparent = input.find_element(:xpath, 'ancestor::*[3]')
+      labels = grandparent.find_elements(:css, 'label, th, dt, .label, p')
+      labels.each do |label|
+        text = label.text.downcase
+        return text if text.present? && text.length < 50
+      end
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    # placeholder属性（日本語が含まれている場合のみ）
+    placeholder = input.attribute('placeholder') || ''
+    return placeholder.downcase if placeholder =~ /[\p{Hiragana}\p{Katakana}\p{Han}]/
 
     ''
   end
@@ -1003,18 +1055,52 @@ class FormSender
     page_source = driver.page_source.downcase
     current_url = driver.current_url
 
-    # URLが変わった場合（サンクスページへリダイレクト）
-    if current_url != @customer.contact_url
-      log "URL変更検出: #{current_url}"
-      return true
-    end
-
-    # 成功メッセージの検出
+    # 成功メッセージの検出（最優先）
+    has_success_message = false
     SUCCESS_PATTERNS.each do |pattern|
       if page_source.include?(pattern.downcase)
         log "成功メッセージ検出: #{pattern}"
+        has_success_message = true
+        break
+      end
+    end
+    return true if has_success_message
+
+    # URLが変わった場合（成功メッセージがなくても判定）
+    if current_url != @customer.contact_url
+      log "URL変更検出: #{current_url}"
+      # URL変更 + フォーム入力欄が減っていれば成功とみなす
+      begin
+        remaining_inputs = driver.find_elements(:css, 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), textarea')
+        visible_inputs = remaining_inputs.select(&:displayed?)
+        if visible_inputs.size <= 2
+          log "URL変更 + フォーム消失（入力欄#{visible_inputs.size}個）: 成功と判定"
+          return true
+        end
+      rescue StandardError
+        # エラー時はURL変更のみで判定
         return true
       end
+      # フォームがまだ残っている場合でも、パスやクエリが変わっていれば成功
+      begin
+        orig_uri = URI.parse(@customer.contact_url) rescue nil
+        curr_uri = URI.parse(current_url) rescue nil
+        if orig_uri && curr_uri
+          orig_path = orig_uri.path.chomp('/')
+          curr_path = curr_uri.path.chomp('/')
+          if orig_path != curr_path
+            log "URL パス変更検出（#{orig_path} → #{curr_path}）: 成功と判定"
+            return true
+          end
+          if orig_uri.query != curr_uri.query
+            log "URL クエリ変更検出: 成功と判定"
+            return true
+          end
+        end
+      rescue StandardError
+        # 無視
+      end
+      log "URL変更あり（プロトコル/フラグメントのみ）: 成功とみなさず"
     end
 
     # フォーム入力欄が消えた場合（送信完了でフォームが非表示になるパターン）
