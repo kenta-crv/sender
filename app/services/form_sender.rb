@@ -61,21 +61,22 @@ class FormSender
   FIELD_PATTERNS = {
     name: %w[name 名前 お名前 氏名 your-name fullname full_name shimei simei 担当者 ご担当者 担当],
     name_kana: %w[kana カナ かな フリガナ ふりがな furigana name_kana kna],
-    email: %w[email mail メール e-mail your-email メールアドレス eml],
+    email: %w[email mail メール e-mail your-email メールアドレス eml m_address],
     email_confirm: %w[email_confirm mail_confirm 確認用 confirm re-email eml2],
     tel: %w[tel phone 電話 携帯 telephone your-tel denwa],
     zip: %w[zip postal 郵便 〒 yubin post-code zipcode],
     prefecture: %w[prefecture pref 都道府県 todoufuken todofuken ken],
-    company: %w[company 会社 御社 貴社 organization 社名 company_name kaisya comname 御社名 会社名],
+    company: %w[company 会社 御社 貴社 organization 社名 company_name kaisya comname 御社名 会社名 corpname corp 法人],
     address: %w[address 住所 所在地 your-address jusho adr add],
-    message: %w[message body 内容 お問い合わせ内容 inquiry comment お問い合わせ 備考 remarks naiyo toi その他]
+    message: %w[message body 内容 お問い合わせ内容 inquiry comment お問い合わせ 備考 remarks naiyo toi その他 content contents ques]
   }.freeze
 
   # 送信ボタン検出用キーワード
   SUBMIT_PATTERNS = %w[送信 確認 submit send 入力内容を確認 送信する 確認する 確認画面へ 次へ].freeze
 
   # 成功判定用キーワード
-  SUCCESS_PATTERNS = %w[ありがとう 完了 受付 送信しました 送信完了 thank success].freeze
+  SUCCESS_PATTERNS = %w[ありがとう 完了 受付 送信しました 送信完了 thank success
+                        受け付けました 受付いたしました 送信いたしました お問い合わせいただき].freeze
 
   attr_reader :driver, :customer, :result
 
@@ -460,22 +461,22 @@ class FormSender
 
     # === 分割フィールドの検出（name属性で判定） ===
 
-    # 電話番号（3分割: tel1, tel2, tel3）
-    if name_attr =~ /tel.*1$|phone.*1$|denwa.*1$/i
+    # 電話番号（3分割: tel1/tel2/tel3 or [data][0]/[data][1]/[data][2]）
+    if name_attr =~ /(?:tel|phone|denwa|電話).*(?:1$|\[0\]$)/i
       return SENDER_INFO[:tel1]
     end
-    if name_attr =~ /tel.*2$|phone.*2$|denwa.*2$/i
+    if name_attr =~ /(?:tel|phone|denwa|電話).*(?:2$|\[1\]$)/i
       return SENDER_INFO[:tel2]
     end
-    if name_attr =~ /tel.*3$|phone.*3$|denwa.*3$/i
+    if name_attr =~ /(?:tel|phone|denwa|電話).*(?:3$|\[2\]$)/i
       return SENDER_INFO[:tel3]
     end
 
-    # 郵便番号（2分割: zip1, zip2）
-    if name_attr =~ /zip.*1$|postal.*1$|yubin.*1$/i
+    # 郵便番号（2分割: zip1/zip2 or [data][0]/[data][1]）
+    if name_attr =~ /(?:zip|postal|yubin|郵便).*(?:1$|\[0\]$)/i
       return SENDER_INFO[:zip1]
     end
-    if name_attr =~ /zip.*2$|postal.*2$|yubin.*2$/i
+    if name_attr =~ /(?:zip|postal|yubin|郵便).*(?:2$|\[1\]$)/i
       return SENDER_INFO[:zip2]
     end
 
@@ -778,7 +779,8 @@ class FormSender
 
     # 前の要素を探す（より広く）
     begin
-      prev_elements = driver.find_elements(:xpath, "//input[@name='#{checkbox_name}']/preceding::*[self::label or self::p or self::span][position() <= 3]")
+      cb_name = checkbox.attribute('name') rescue ''
+      prev_elements = driver.find_elements(:xpath, "//input[@name='#{cb_name}']/preceding::*[self::label or self::p or self::span][position() <= 3]")
       prev_elements.each do |prev|
         text = prev.text.downcase
         if REQUIRED_MARKERS.any? { |marker| text.include?(marker) }
@@ -988,6 +990,18 @@ class FormSender
         log "成功メッセージ検出: #{pattern}"
         return true
       end
+    end
+
+    # フォーム入力欄が消えた場合（送信完了でフォームが非表示になるパターン）
+    begin
+      remaining_inputs = driver.find_elements(:css, 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), textarea')
+      visible_inputs = remaining_inputs.select(&:displayed?)
+      if visible_inputs.size <= 1
+        log "フォーム消失検出: 入力欄が#{visible_inputs.size}個に減少"
+        return true
+      end
+    rescue StandardError
+      # 無視
     end
 
     false
