@@ -79,6 +79,14 @@ class FormSender
                         受け付けました 受付いたしました 送信いたしました お問い合わせいただき
                         送信されました].freeze
 
+  # 営業禁止検出用キーワード（これらを含むページは送信をスキップ）
+  NO_SALES_PATTERNS = %w[
+    営業禁止 営業お断り セールスお断り 営業メールお断り
+    営業目的のお問い合わせはお断り 営業のご連絡はお断り
+    営業はご遠慮 営業のメールはご遠慮 営業等のご連絡はお控え
+    営業についてはお断り 売り込みお断り 売込みお断り
+  ].freeze
+
   attr_reader :driver, :customer, :result
 
   # アラートのエラー検出用キーワード
@@ -133,6 +141,13 @@ class FormSender
       driver.navigate.to(customer.contact_url)
       sleep 3 # ページ読み込み待機
 
+      # 営業禁止チェック
+      if page_has_no_sales_warning?
+        @result = { status: '営業禁止', message: 'ページ内に営業禁止ワードが検出されました' }
+        teardown_driver
+        return @result
+      end
+
       # フォームを検出して入力
       filled = fill_form
       log "入力完了: #{filled}フィールド"
@@ -164,7 +179,7 @@ class FormSender
             # 確認ダイアログがあれば承認
             handle_alert
 
-            sleep 3 # 送信後の待機（AJAX応答やページ遷移を待つ）
+            sleep 5 # 送信後の待機（AJAX応答やページ遷移を待つ）
 
             # 確認画面の場合、もう一度送信ボタンをクリック
             if confirmation_page?
@@ -241,6 +256,77 @@ class FormSender
     puts "[FormSender] #{message}" if @debug
   end
 
+  # 電話番号フィールドのハイフン有無を自動判定
+  def detect_tel_format
+    begin
+      tel_inputs = driver.find_elements(:css, 'input')
+      tel_inputs.each do |input|
+        next unless input.displayed?
+
+        name_attr = input.attribute('name')&.downcase || ''
+        id_attr = input.attribute('id')&.downcase || ''
+        placeholder = input.attribute('placeholder') || ''
+        pattern = input.attribute('pattern') || ''
+        input_type = input.attribute('type')&.downcase || ''
+
+        # 電話番号フィールドかどうか判定
+        all_text = "#{name_attr} #{id_attr}"
+        is_tel = FIELD_PATTERNS[:tel].any? { |p| all_text.include?(p) } || input_type == 'tel'
+        next unless is_tel
+
+        # 分割フィールド（tel1, tel2, tel3）はスキップ
+        next if name_attr =~ /(?:tel|phone|denwa|電話).*(?:[123]$|\[\d\]$)/i
+
+        # placeholder にハイフンなしの数字パターンがあればハイフン不要
+        if placeholder =~ /\A[0-9]{10,11}\z/
+          log "電話番号: ハイフン不要（placeholder: #{placeholder}）"
+          return SENDER_INFO[:tel_no_hyphen]
+        end
+
+        # placeholder にハイフン付きパターンがあればハイフン必要
+        if placeholder =~ /[0-9]+-[0-9]+-[0-9]+/
+          log "電話番号: ハイフン必要（placeholder: #{placeholder}）"
+          return SENDER_INFO[:tel]
+        end
+
+        # pattern属性で判定（数字のみを要求する場合）
+        if pattern =~ /\\d\{10|\\d\{11|\[0-9\]\{10|\[0-9\]\{11|^\d+$/
+          log "電話番号: ハイフン不要（pattern: #{pattern}）"
+          return SENDER_INFO[:tel_no_hyphen]
+        end
+
+        # type="tel" でmaxlengthが11以下ならハイフン不要の可能性が高い
+        maxlength = input.attribute('maxlength')&.to_i
+        if maxlength && maxlength <= 11 && maxlength >= 10
+          log "電話番号: ハイフン不要（maxlength: #{maxlength}）"
+          return SENDER_INFO[:tel_no_hyphen]
+        end
+      end
+    rescue StandardError => e
+      log "電話番号フォーマット判定エラー: #{e.message}"
+    end
+
+    # デフォルトはハイフン付き
+    log "電話番号: デフォルト（ハイフン付き）"
+    SENDER_INFO[:tel]
+  end
+
+  # ページ内に営業禁止ワードがあるかチェック
+  def page_has_no_sales_warning?
+    begin
+      page_text = driver.find_element(:css, 'body').text
+      NO_SALES_PATTERNS.each do |pattern|
+        if page_text.include?(pattern)
+          log "営業禁止ワード検出: #{pattern}"
+          return true
+        end
+      end
+    rescue StandardError => e
+      log "営業禁止チェックエラー: #{e.message}"
+    end
+    false
+  end
+
   # 同意チェックボックス検出用キーワード
   CONSENT_PATTERNS = %w[同意 agree 規約 プライバシー privacy policy 承諾 確認しました 了承 confirm 個人情報].freeze
 
@@ -256,6 +342,9 @@ class FormSender
   # フォームに入力
   def fill_form
     filled_count = 0
+
+    # 電話番号のハイフン有無を事前判定
+    @current_tel_value = detect_tel_format
 
     # 同意チェックボックスをチェック
     check_consent_boxes
@@ -648,9 +737,9 @@ class FormSender
       return SENDER_INFO[:email]
     end
 
-    # 電話番号 - フル（ハイフン付きに変更 - 多くのフォームがハイフン付きを要求）
+    # 電話番号 - フル（placeholder/patternからハイフン有無を自動判定）
     if FIELD_PATTERNS[:tel].any? { |p| text.include?(p) }
-      return SENDER_INFO[:tel]
+      return @current_tel_value || SENDER_INFO[:tel]
     end
 
     # 郵便番号 - フル
@@ -1224,6 +1313,9 @@ class FormSender
       return false
     end
 
+    # AJAX送信の成功検出（CF7 / WPForms 等）
+    return true if check_ajax_success?
+
     page_source = driver.page_source.downcase
     current_url = driver.current_url
 
@@ -1311,6 +1403,64 @@ class FormSender
       end
     rescue StandardError
       # 無視
+    end
+
+    false
+  end
+
+  # AJAX送信（CF7 / WPForms 等）の成功をDOM要素で判定
+  def check_ajax_success?
+    # --- Contact Form 7 ---
+    begin
+      # CF7 は送信成功時に .wpcf7 要素へ data-status="sent" を付与する
+      # mail_sent_ng はフォーム送信成功だがメール配信失敗（サーバー側の問題）
+      cf7_sent = driver.find_elements(:css, '.wpcf7[data-status="sent"], .wpcf7[data-status="mail_sent_ng"]')
+      if cf7_sent.any?
+        status = cf7_sent.first.attribute('data-status') rescue 'sent'
+        log "AJAX成功検出: CF7 data-status=#{status}"
+        return true
+      end
+
+      # CF7 は送信成功時に .wpcf7 に .sent クラスを追加する
+      cf7_sent_class = driver.find_elements(:css, '.wpcf7.sent')
+      if cf7_sent_class.any?
+        log "AJAX成功検出: CF7 .wpcf7.sent クラス"
+        return true
+      end
+
+      # 旧バージョンCF7 の成功メッセージ要素
+      cf7_old = driver.find_elements(:css, '.wpcf7-mail-sent-ok')
+      if cf7_old.any?(&:displayed?)
+        log "AJAX成功検出: CF7 .wpcf7-mail-sent-ok（旧バージョン）"
+        return true
+      end
+
+      # CF7 の応答出力欄（エラークラスがなく表示されていれば成功）
+      cf7_response = driver.find_elements(:css, '.wpcf7-response-output')
+      cf7_response.each do |el|
+        next unless el.displayed?
+        classes = el.attribute('class').to_s
+        next if classes.include?('wpcf7-validation-errors') || classes.include?('wpcf7-acceptance-missing') || classes.include?('wpcf7-spam-blocked') || classes.include?('wpcf7-mail-sent-ng')
+        text = el.text.to_s.strip
+        next if text.length == 0
+        # 失敗キーワードを含む場合は除外
+        next if text.match?(/失敗|エラー|error|failed/i)
+        log "AJAX成功検出: CF7 .wpcf7-response-output（テキスト: #{text[0..50]}）"
+        return true
+      end
+    rescue StandardError => e
+      log "CF7判定中にエラー: #{e.message}"
+    end
+
+    # --- WPForms ---
+    begin
+      wpforms_confirm = driver.find_elements(:css, '.wpforms-confirmation-container')
+      if wpforms_confirm.any?(&:displayed?)
+        log "AJAX成功検出: WPForms .wpforms-confirmation-container"
+        return true
+      end
+    rescue StandardError => e
+      log "WPForms判定中にエラー: #{e.message}"
     end
 
     false
