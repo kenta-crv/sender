@@ -25,5 +25,13 @@
         th.report-color 問い合わせフォーム
         td= @customer.contact_form
       tr
+        th.report-color 問い合わせURL
+        td
+          = @customer.contact_url
+          - if @customer.contact_url.present?
+            = form_tag form_submissions_path, method: :post, class: 'd-inline ml-2' do
+              = hidden_field_tag 'customer_ids[]', @customer.id
+              = submit_tag 'フォーム送信', class: 'btn btn-sm btn-outline-primary', data: { confirm: 'この顧客にフォーム送信を実行しますか？' }
+      tr
         th フォーム送信NG
         td= @customer.fobbiden

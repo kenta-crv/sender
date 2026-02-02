@@ -5,6 +5,10 @@ class Call < ApplicationRecord
   validates :recording_url, presence: true, if: :recording_duration?
   validates :recording_duration, numericality: { greater_than: 0 }, if: :recording_duration?
   
+  # call_type スコープ
+  scope :phone_calls, -> { where(call_type: [nil, 'phone']) }
+  scope :form_submissions, -> { where(call_type: 'form') }
+
   # Scope for automated calls
   scope :automated, -> { where.not(vapi_call_id: nil) }
   scope :times_last_call, -> {
