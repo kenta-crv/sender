@@ -35,6 +35,7 @@ class Customer < ApplicationRecord
       contact_form # 問い合わせフォーム
       remarks      # 備考
       fobbiden
+      contact_url  # お問い合わせフォームURL
       created_at
       updated_at
       id

@@ -937,6 +937,7 @@ end
       :business, #
       :genre, #
       :contact_form,
+      :contact_url,
       :fobbiden,
       :remarks, #履歴
       )

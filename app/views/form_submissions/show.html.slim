@@ -1,0 +1,115 @@
+.container.mt-4
+  h2
+    | バッチ詳細 ##{@batch.id}
+
+  / --- 進捗バー ---
+  #batch-progress data-batch-id=@batch.id data-status=@batch.status
+    .card.mb-4
+      .card-body
+        .row
+          .col-md-3
+            strong ステータス:
+            span.ml-2 id="batch-status"
+              - case @batch.status
+              - when 'pending'
+                span.badge.badge-secondary 待機中
+              - when 'processing'
+                span.badge.badge-primary 処理中
+              - when 'completed'
+                span.badge.badge-success 完了
+              - when 'cancelled'
+                span.badge.badge-warning キャンセル
+          .col-md-2
+            strong 合計:
+            span.ml-1 id="batch-total" = @batch.total_count
+          .col-md-2
+            strong 成功:
+            span.ml-1.text-success id="batch-success" = @batch.success_count
+          .col-md-2
+            strong 失敗:
+            span.ml-1.text-danger id="batch-failure" = @batch.failure_count
+          .col-md-3
+            strong 処理済:
+            span.ml-1 id="batch-processed" = @batch.processed_count
+
+        .progress.mt-3 style="height: 25px;"
+          - percent = @batch.total_count.to_i > 0 ? ((@batch.processed_count.to_f / @batch.total_count) * 100).round(1) : 0
+          .progress-bar.progress-bar-striped role="progressbar" style="width: #{percent}%" id="batch-progress-bar"
+            span id="batch-percent" = "#{percent}%"
+
+        .mt-3
+          - if @batch.started_at
+            span.mr-3
+              strong 開始:
+              = @batch.started_at.strftime('%Y/%m/%d %H:%M:%S')
+          - if @batch.completed_at
+            span
+              strong 完了:
+              = @batch.completed_at.strftime('%Y/%m/%d %H:%M:%S')
+
+        - if @batch.status == 'processing'
+          .mt-3
+            = link_to 'キャンセル', cancel_form_submission_path(@batch), method: :patch, class: 'btn btn-danger', data: { confirm: 'バッチ送信をキャンセルしますか？' }
+
+  / --- 送信結果一覧 ---
+  h4.mt-4 送信結果
+  table.table.table-bordered.table-hover.table-sm
+    thead
+      tr
+        th 顧客ID
+        th 会社名
+        th ステータス
+        th コメント
+        th 送信日時
+    tbody
+      - @results.each do |call|
+        tr class=(call.status == '送信成功' ? 'table-success' : 'table-danger')
+          td = call.customer_id
+          td = call.customer&.company
+          td = call.status
+          td = call.comment
+          td = call.created_at.strftime('%Y/%m/%d %H:%M:%S')
+
+  / --- エラーログ ---
+  - errors = @batch.parsed_error_log
+  - if errors.any?
+    h4.mt-4.text-danger エラーログ
+    table.table.table-bordered.table-sm
+      thead
+        tr
+          th 顧客ID
+          th エラー内容
+          th 発生日時
+      tbody
+        - errors.each do |err|
+          tr
+            td = err['customer_id']
+            td = err['message']
+            td = err['at']
+
+  .mt-4
+    = link_to '一覧に戻る', form_submissions_path, class: 'btn btn-secondary'
+
+- if @batch.status == 'processing'
+  javascript:
+    (function() {
+      var batchId = #{@batch.id};
+      var interval = setInterval(function() {
+        fetch('/form_submissions/' + batchId + '/progress')
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            document.getElementById('batch-total').textContent = data.total_count;
+            document.getElementById('batch-success').textContent = data.success_count;
+            document.getElementById('batch-failure').textContent = data.failure_count;
+            document.getElementById('batch-processed').textContent = data.processed_count;
+            document.getElementById('batch-percent').textContent = data.progress_percent + '%';
+            document.getElementById('batch-progress-bar').style.width = data.progress_percent + '%';
+
+            if (data.status === 'completed' || data.status === 'cancelled') {
+              clearInterval(interval);
+              location.reload();
+            }
+          })
+          .catch(function(err) { console.error('Progress fetch error:', err); });
+      }, 3000);
+    })();

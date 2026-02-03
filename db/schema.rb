@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_01_19_113402) do
+ActiveRecord::Schema.define(version: 2026_02_02_000003) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -30,6 +30,7 @@ ActiveRecord::Schema.define(version: 2026_01_19_113402) do
     t.integer "customer_id"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.string "call_type", default: "phone"
     t.index ["customer_id"], name: "index_calls_on_customer_id"
   end
 
@@ -78,9 +79,37 @@ ActiveRecord::Schema.define(version: 2026_01_19_113402) do
     t.string "url"
     t.string "business"
     t.string "genre"
-    t.string "contact_form"
+    t.string "contact_url"
     t.string "fobbiden"
+    t.string "status"
     t.string "remarks"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+  end
+
+  create_table "extract_trackings", force: :cascade do |t|
+    t.string "industry", null: false
+    t.integer "total_count", default: 0, null: false
+    t.integer "success_count", default: 0, null: false
+    t.integer "failure_count", default: 0, null: false
+    t.string "status", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["industry", "id"], name: "index_extract_trackings_on_industry_and_id"
+    t.index ["industry"], name: "index_extract_trackings_on_industry"
+  end
+
+  create_table "form_submission_batches", force: :cascade do |t|
+    t.integer "total_count", default: 0
+    t.integer "processed_count", default: 0
+    t.integer "success_count", default: 0
+    t.integer "failure_count", default: 0
+    t.string "status", default: "pending"
+    t.integer "current_customer_id"
+    t.text "customer_ids"
+    t.text "error_log"
+    t.datetime "started_at"
+    t.datetime "completed_at"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
   end
