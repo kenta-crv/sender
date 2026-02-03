@@ -48,6 +48,13 @@ Rails.application.routes.draw do
     mount Sidekiq::Web, at: "/sidekiq"
   end
 
+  resources :form_submissions, only: [:index, :create, :show] do
+    member do
+      patch :cancel
+      get :progress
+    end
+  end
+
   resources :customers do
     resources :calls
   end

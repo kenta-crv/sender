@@ -17,7 +17,11 @@ BtoB企業のお問い合わせフォームに対し、営業メッセージを�
 |---------|------|
 | `app/services/form_sender.rb` | コア処理（フォーム検出・入力・送信・成功判定） |
 | `app/models/customer.rb` | 送信先企業情報（contact_url等） |
-| `app/models/call.rb` | 送信結果の記録 |
+| `app/models/call.rb` | 送信結果の記録（call_typeでphone/formを区別） |
+| `app/models/form_submission_batch.rb` | バッチ送信の進捗管理 |
+| `app/jobs/form_send_job.rb` | Sidekiqジョブ（自己チェイン方式で1件ずつ処理） |
+| `app/controllers/form_submissions_controller.rb` | バッチ管理画面のコントローラ |
+| `config/initializers/sidekiq.rb` | Redis接続設定 |
 
 ---
 
@@ -207,6 +211,7 @@ BtoB企業のお問い合わせフォームに対し、営業メッセージを�
 | 確認モード (`confirm_mode: true`) | フォーム入力後に停止、手動確認を待つ |
 | デバッグモード (`debug: true`) | 処理ログを標準出力に表示 |
 | DB保存モード (`save_to_db: true`) | 送信結果をCallモデルに保存 |
+| ヘッドレスモード (`headless: true`) | ブラウザ非表示で実行（Sidekiq環境用） |
 
 ---
 
@@ -309,20 +314,111 @@ BtoB企業のお問い合わせフォームに対し、営業メッセージを�
 
 ---
 
-## 14. 残作業
+## 14. バッチ送信機能（フェーズ3〜4）
 
-### 14.1 直近
+### 14.1 アーキテクチャ
+
+```
+管理画面（/form_submissions）
+  ↓ バッチ作成（顧客を選択して送信開始）
+FormSubmissionBatch（DBに進捗を記録）
+  ↓
+FormSendJob（Sidekiqジョブ: form_submissionキュー）
+  ↓ 自己チェイン方式: 1件処理 → 次のジョブを投入
+FormSender（headlessモードで実行）
+  ↓
+Call（結果をcall_type: 'form'で保存）
+```
+
+### 14.2 DBスキーマ追加
+
+| テーブル/カラム | 型 | 説明 |
+|---------------|-----|------|
+| `customers.contact_url` | string | お問い合わせフォームURL |
+| `calls.call_type` | string (default: 'phone') | 'phone' or 'form' |
+| `form_submission_batches` | table | バッチ進捗管理テーブル |
+
+**form_submission_batches カラム:**
+- `total_count`, `processed_count`, `success_count`, `failure_count` - 件数管理
+- `status` - pending / processing / completed / cancelled
+- `current_customer_id` - 現在処理中の顧客
+- `customer_ids` - JSON配列（送信対象の顧客ID）
+- `error_log` - JSON配列（エラー情報）
+- `started_at`, `completed_at` - 実行時刻
+
+### 14.3 管理画面（/form_submissions）
+
+| パス | メソッド | 機能 |
+|------|---------|------|
+| `/form_submissions` | GET | バッチ一覧・新規作成画面 |
+| `/form_submissions` | POST | バッチ作成 & ジョブ開始 |
+| `/form_submissions/:id` | GET | バッチ詳細・結果表示 |
+| `/form_submissions/:id/cancel` | PATCH | バッチキャンセル |
+| `/form_submissions/:id/progress` | GET | JSON API（AJAX進捗ポーリング用） |
+
+### 14.4 FormSendJob 仕様
+- **キュー**: `form_submission`（優先度3）
+- **リトライ**: なし（フォーム送信失敗は再送しても同じ結果になるため）
+- **処理方式**: 自己チェイン（1件処理後に次のジョブを`perform_later`で投入）
+- **キャンセル対応**: 各ジョブ実行時にバッチのstatusを確認、cancelledなら停止
+
+---
+
+## 15. 残作業
+
+### 15.1 直近
 - [ ] 2回目バッチテストの残り（ID:65〜100）を完了
 - [ ] 新規失敗6件（ID:6, 11, 15, 26, 34, 55）のデバッグ確認
 - [ ] リグレッションがあれば修正
-- [ ] コミット & GitHubへプッシュ
-- [ ] 発注者への結果報告
+- [x] コミット & GitHubへプッシュ
+- [x] 発注者への結果報告
 
-### 14.2 今後のフェーズ
-- [ ] Sidekiqジョブの実装（バックグラウンド一括送信）
-- [ ] 送信履歴の記録・表示機能
-- [ ] 送信実行UI
-- [ ] フォームURL未登録企業のフォーム自動検出機能
+### 15.2 フェーズ5（テスト・調整）
 
-### 14.3 案件終了後
+**【発注者に事前確認が必要な事項】**
+- 本番送信の対象件数（全290件 or 一部）
+- 送信タイミング（いつ実行するか）
+- 既に送信済みの企業を除外するか
+- テスト用に数件だけ先に送って確認するかどうか
+
+※ 同じ企業に重複送信しないよう、Call.form_submissionsの履歴で送信済みを除外可能
+
+**【テスト項目】**
+- [ ] 少数テスト（3〜5件の未送信企業で、バッチ機能の動作確認）
+- [ ] 送信成功率の検証（目標60%）
+- [ ] エラーハンドリングの確認
+- [ ] パフォーマンス調整
+- [ ] 管理画面のUI調整（発注者の要望に応じて）
+
+---
+
+## 16. 作業ログ
+
+### 2026/02/03 フェーズ3〜4実装完了・発注者報告
+
+**実施内容:**
+- フェーズ3（Sidekiq連携・バッチ処理）の全機能実装
+- フェーズ4（UI・結果表示）の主要機能実装
+- 全12項目のテスト合格
+- GitHubへプッシュ完了
+
+**発注者への報告:**
+- バッチ送信機能の完成を報告
+- 管理画面（`/form_submissions`）へのアクセス方法を案内
+- 顧客詳細ページの個別送信ボタンについて説明
+- `git pull` + `rails db:migrate` の実行を依頼
+
+**発注者からの質問:**
+- 「Sidekiqに送るページはどこからアクセスすればよいか？」
+- → `/form_submissions` でブラウザからアクセス可能と回答
+
+**次のステップ:**
+- 発注者側での動作確認待ち
+- フェーズ5（テスト・調整）は発注者と相談の上で実施
+  - 本番送信の対象件数・タイミングの確認が必要
+  - 重複送信防止の方針確認
+
+---
+
+### 15.3 案件終了後
 - [ ] Rubyをアンインストールする

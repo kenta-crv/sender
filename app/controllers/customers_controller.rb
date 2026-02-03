@@ -466,98 +466,194 @@ def destroy
     render json: { answer: answer.round(2) }
   end
 
-def draft
+  def draft
     start_time = Time.current
+    # crowdworkタイトルの初期化
+    @crowdworks = Crowdwork.all || []
 
-    # 期間パラメータ
-    @period_start = params[:period_start].presence&.then { |v| Date.parse(v) rescue nil }
-    @period_end   = params[:period_end].presence&.then { |v| Date.parse(v) rescue nil }
-
-    if @period_start && @period_end && @period_end < @period_start
-      @period_start, @period_end = @period_end, @period_start
+    # 期間パラメータの解釈（未指定可）
+    @period_start = nil
+    @period_end   = nil
+    if params[:period_start].present?
+      begin
+        @period_start = Date.parse(params[:period_start])
+      rescue ArgumentError
+        @period_start = nil
+      end
+    end
+    if params[:period_end].present?
+      begin
+        @period_end = Date.parse(params[:period_end])
+      rescue ArgumentError
+        @period_end = nil
+      end
     end
 
+    # 期間の整合性（逆転していたら入れ替え）
+    if @period_start.present? && @period_end.present? && @period_end < @period_start
+      @period_start, @period_end = @period_end, @period_start
+    end
     range_start = @period_start&.beginning_of_day
     range_end   = @period_end&.end_of_day
 
-    # 抽出対象（電話番号が空、かつ status が draft のもの）
-    scope = Customer.where(tel: [nil, '', ' ']).where(status: 'draft')
-
-    if range_start && range_end
-      scope = scope.where(created_at: range_start..range_end)
-    elsif range_start
-      scope = scope.where('created_at >= ?', range_start)
-    elsif range_end
-      scope = scope.where('created_at <= ?', range_end)
+    # Adminを優先した条件分岐
+    @customers = case
+    when admin_signed_in? && params[:tel_filter] == "with_tel"
+      Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
+    when admin_signed_in? && params[:tel_filter] == "without_tel"
+      Customer.where(status: "draft").where(tel: [nil, '', ' '])
+    when worker_signed_in?
+      Customer.where(status: "draft").where(tel: [nil, '', ' '])
+    else
+      Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
     end
 
-    @extract_target_count = scope.count
-    @customers = scope.order(created_at: :desc).page(params[:page]).per(100)
+    # 期間でフィルタ（未指定なら全期間）
+    if range_start && range_end
+      @customers = @customers.where(created_at: range_start..range_end)
+    elsif range_start
+      @customers = @customers.where('created_at >= ?', range_start)
+    elsif range_end
+      @customers = @customers.where('created_at <= ?', range_end)
+    end
+
+    # タイトルごとの件数を計算
+    tel_with_scope = Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
+    tel_without_scope = Customer.where(status: "draft").where(tel: [nil, '', ' '])
+    if range_start && range_end
+      tel_with_scope = tel_with_scope.where(created_at: range_start..range_end)
+      tel_without_scope = tel_without_scope.where(created_at: range_start..range_end)
+    elsif range_start
+      tel_with_scope = tel_with_scope.where('created_at >= ?', range_start)
+      tel_without_scope = tel_without_scope.where('created_at >= ?', range_start)
+    elsif range_end
+      tel_with_scope = tel_with_scope.where('created_at <= ?', range_end)
+      tel_without_scope = tel_without_scope.where('created_at <= ?', range_end)
+    end
+    tel_with_counts = tel_with_scope.group(:industry).count
+    tel_without_counts = tel_without_scope.group(:industry).count
+
+    # ExtractTrackingを一括取得してN+1を回避（SQLite対応）
+    industry_names = @crowdworks.map(&:title)
+    all_trackings = ExtractTracking.where(industry: industry_names).order(id: :desc)
+    # Ruby側で各業種の最新のtrackingを取得
+    latest_trackings = all_trackings.group_by(&:industry).transform_values { |trackings| trackings.first }
+    
+    @industry_counts = @crowdworks.each_with_object({}) do |crowdwork, hash|
+      latest_tracking = latest_trackings[crowdwork.title]
+      success_count = latest_tracking&.success_count.to_i
+      failure_count = latest_tracking&.failure_count.to_i
+      total_count   = latest_tracking&.total_count.to_i
+      total = success_count + failure_count
+      rate = total.positive? ? (success_count.to_f / total) * 100 : 0.0
+      hash[crowdwork.title] = {
+        tel_with: tel_with_counts[crowdwork.title] || 0,
+        tel_without: tel_without_counts[crowdwork.title] || 0,
+        success_count: success_count,
+        failure_count: failure_count,
+        total_count: total_count,
+        rate: rate,
+        status: latest_tracking&.status || "抽出前"
+      }
+    end
+
+    # 業種でフィルタ
+    if params[:industry_name].present?
+      @customers = @customers.where(industry: params[:industry_name])
+    end
+
+    # ページネーション（workerをincludesしてN+1を回避）
+    @customers = @customers.includes(:worker).page(params[:page]).per(100)
+
+    # 残り件数取得
+    today_total = ExtractTracking
+                    .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
+                    .sum(:total_count)
+    daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
+    @remaining_extractable = [daily_limit - today_total, 0].max
 
     elapsed = ((Time.current - start_time) * 1000).round(2)
     Rails.logger.info("draft action: completed in #{elapsed}ms")
   end
 
   def extract_company_info
-    Rails.logger.info("--- AI抽出開始リクエストを受信しました ---")
-    
-    # Workerファイルを強制ロード（開発環境での反映を確実にするため）
-    worker_file = Rails.root.join('app/workers/extract_company_info_worker.rb')
-    if File.exist?(worker_file)
-      load worker_file
-      Rails.logger.info("Workerファイルを強制ロードしました")
-    end
+    start_time = Time.current
+    Rails.logger.info("extract_company_info called (SYNC MODE).")
+    industry_name = params[:industry_name]
+    total_count = params[:count]
 
-    total_count = params[:count].to_i
-    industry_name = params[:industry_name] || "全般"
-
-    if total_count <= 0
-      redirect_to draft_path, alert: "有効な件数を入力してください。"
-      return
-    end
-
-    # 1. Workerに渡すためのトラッキングレコードを新規作成
-    # これにより Worker 内の ExtractTracking.find_by(id: tracking_id) が成功するようになります
     tracking = ExtractTracking.create!(
-      total_count: total_count,
-      industry: industry_name,
-      status: "準備中",
-      success_count: 0,
-      failure_count: 0
+      industry:       industry_name,
+      total_count:    total_count,
+      success_count:  0,
+      failure_count:  0,
+      status:         "抽出中"
     )
 
+    # 同期実行に変更
+    # ExtractCompanyInfoWorker.perform_async(tracking.id)
     begin
-      if defined?(ExtractCompanyInfoWorker)
-        Rails.logger.info("Workerを起動します: TrackingID: #{tracking.id}, 件数: #{total_count}")
-        
-        # 2. 作成した tracking.id を Worker に渡す
-        result = ExtractCompanyInfoWorker.new.perform(tracking.id)
-
-        # 3. 結果の受け取り（ハッシュ形式を想定）
-        if result.is_a?(Hash) && result.key?(:success)
-          flash[:notice] = "抽出完了: #{result[:success]}件成功, #{result[:failure]}件失敗"
-        else
-          flash[:notice] = "抽出処理が終了しました。詳細は進捗を確認してください。"
-        end
+      ExtractCompanyInfoWorker.new.perform(tracking.id)
+      tracking.reload
+      
+      if tracking.status == "抽出完了"
+        flash[:notice] = "抽出処理が正常に完了しました。（#{tracking.success_count}件成功 / #{tracking.failure_count}件失敗）"
       else
-        Rails.logger.error("Error: クラス ExtractCompanyInfoWorker が定義されていません")
-        flash[:alert] = "システムエラー: Workerクラスが見つかりません。"
+        flash[:alert] = "抽出処理が中断または失敗しました。（ステータス: #{tracking.status}）"
       end
     rescue => e
-      Rails.logger.error("致命的エラー: #{e.class} - #{e.message}")
-      Rails.logger.error(e.backtrace.first(10).join("\n"))
-      flash[:alert] = "エラーが発生しました: #{e.message}"
+      Rails.logger.error("Sync execution failed: #{e.message}")
+      flash[:alert] = "システムエラーにより抽出処理が失敗しました。"
     end
 
+    elapsed = ((Time.current - start_time) * 1000).round(2)
+    Rails.logger.info("extract_company_info: completed in #{elapsed}ms (tracking_id: #{tracking.id})")
     redirect_to draft_path
   end
 
+  # 進捗取得API（ポーリング用）
+  # GET /draft/progress.json?industry=業界名
+  # industryパラメータが指定されていない場合、全業種の進捗を返す
   def extract_progress
+    # ポーリング用のため、キャッシュを無効化
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    # 最新のトラッキング情報を取得して返す
-    tracking = ExtractTracking.order(id: :desc).first
-    render json: tracking ? tracking.progress_payload : { message: 'no_tracking' }
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    industry = params[:industry].to_s.presence
+    
+    if industry
+      # 後方互換性のため、industryパラメータが指定されている場合は既存の動作を維持
+      tracking = ExtractTracking.where(industry: industry).order(id: :desc).first
+      if tracking
+        render json: tracking.progress_payload
+      else
+        render json: { message: 'no_tracking' }
+      end
+    else
+      # 全業種の進捗を返す（N+1クエリを回避）
+      crowdworks = Crowdwork.all || []
+      industry_names = crowdworks.map(&:title)
+      
+      # 各業種の最新のtrackingを一括取得
+      all_trackings = ExtractTracking.where(industry: industry_names).order(id: :desc)
+      latest_trackings = all_trackings.group_by(&:industry).transform_values { |trackings| trackings.first }
+      
+      progress_data = {}
+      crowdworks.each do |crowdwork|
+        tracking = latest_trackings[crowdwork.title]
+        if tracking
+          progress_data[crowdwork.title] = tracking.progress_payload
+        else
+          progress_data[crowdwork.title] = { message: 'no_tracking' }
+        end
+      end
+      
+      render json: progress_data
+    end
   end
+
+
   def filter_by_industry
     # crowdworkタイトルの初期化
     @crowdworks = Crowdwork.all || []
@@ -840,9 +936,9 @@ end
       :url, #URL
       :business, #
       :genre, #
+      :contact_form,
       :contact_url,
       :fobbiden,
-      :status,
       :remarks, #履歴
       )
     end

@@ -1,0 +1,93 @@
+.container.mt-4
+  h2 フォーム送信バッチ管理
+
+  / --- 新規バッチ作成フォーム ---
+  .card.mb-4
+    .card-header
+      h5 新規バッチ送信
+    .card-body
+      = form_tag form_submissions_path, method: :post do
+        .form-group.mb-3
+          label 送信対象の顧客を選択（contact_url が設定済みの顧客）
+          .mb-2
+            | 対象顧客数:
+            strong = @customers.count
+            | 件
+        .form-group.mb-3
+          = check_box_tag :select_all, '1', false, id: 'select_all'
+          label for='select_all'
+            |  全件選択
+        .table-responsive style="max-height: 400px; overflow-y: auto;"
+          table.table.table-sm.table-bordered
+            thead
+              tr
+                th 選択
+                th ID
+                th 会社名
+                th 問い合わせURL
+            tbody
+              - @customers.each do |c|
+                tr
+                  td
+                    = check_box_tag 'customer_ids[]', c.id, false, class: 'customer-check'
+                  td = c.id
+                  td = c.company
+                  td
+                    - if c.contact_url.present?
+                      a href=c.contact_url target="_blank" = truncate(c.contact_url, length: 50)
+        .mt-3
+          = submit_tag 'バッチ送信開始', class: 'btn btn-primary', data: { confirm: '選択した顧客にフォーム送信を実行しますか？' }
+
+  / --- バッチ一覧 ---
+  h4.mt-4 バッチ履歴
+  table.table.table-bordered.table-hover
+    thead
+      tr
+        th ID
+        th ステータス
+        th 合計
+        th 成功
+        th 失敗
+        th 進捗
+        th 開始日時
+        th 完了日時
+        th 操作
+    tbody
+      - @batches.each do |batch|
+        tr
+          td = batch.id
+          td
+            - case batch.status
+            - when 'pending'
+              span.badge.badge-secondary 待機中
+            - when 'processing'
+              span.badge.badge-primary 処理中
+            - when 'completed'
+              span.badge.badge-success 完了
+            - when 'cancelled'
+              span.badge.badge-warning キャンセル
+          td = batch.total_count
+          td = batch.success_count
+          td = batch.failure_count
+          td
+            - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round(1) : 0
+            .progress
+              .progress-bar role="progressbar" style="width: #{percent}%"
+                = "#{percent}%"
+          td = batch.started_at&.strftime('%Y/%m/%d %H:%M')
+          td = batch.completed_at&.strftime('%Y/%m/%d %H:%M')
+          td
+            = link_to '詳細', form_submission_path(batch), class: 'btn btn-sm btn-info'
+
+  = paginate @batches
+
+javascript:
+  document.addEventListener('DOMContentLoaded', function() {
+    var selectAll = document.getElementById('select_all');
+    if (selectAll) {
+      selectAll.addEventListener('change', function() {
+        var checkboxes = document.querySelectorAll('.customer-check');
+        checkboxes.forEach(function(cb) { cb.checked = selectAll.checked; });
+      });
+    }
+  });

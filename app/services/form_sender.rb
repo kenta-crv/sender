@@ -92,19 +92,20 @@ class FormSender
   # アラートのエラー検出用キーワード
   ALERT_ERROR_PATTERNS = %w[未入力 エラー error 入力してください 必須 required チェックを入れて].freeze
 
-  def initialize(debug: false, confirm_mode: false, save_to_db: false)
+  def initialize(debug: false, confirm_mode: false, save_to_db: false, headless: false)
     @driver = nil
     @result = { status: nil, message: nil }
     @debug = debug
     @confirm_mode = confirm_mode  # trueの場合、送信前に停止して確認を待つ
     @save_to_db = save_to_db      # trueの場合、送信結果をDBに保存
+    @headless = headless           # trueの場合、ヘッドレスモードで実行
     @alert_had_error = false      # アラートにエラーメッセージがあったか
   end
 
   # ブラウザを起動
   def setup_driver
     options = Selenium::WebDriver::Chrome::Options.new
-    # options.add_argument('--headless') # 必要に応じてヘッドレスモード
+    options.add_argument('--headless') if @headless
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
@@ -240,7 +241,8 @@ class FormSender
       call = call_class.new(
         customer_id: @customer.id,
         status: @result[:status],
-        comment: "【フォーム送信】#{@result[:message]}"
+        comment: "【フォーム送信】#{@result[:message]}",
+        call_type: 'form'
       )
       # バリデーションをスキップして保存（Callモデルは電話用のバリデーションがあるため）
       call.save!(validate: false)
