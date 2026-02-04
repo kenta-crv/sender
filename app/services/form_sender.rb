@@ -140,7 +140,7 @@ class FormSender
       # フォームにアクセス
       log "アクセス中: #{customer.contact_url}"
       driver.navigate.to(customer.contact_url)
-      sleep 3 # ページ読み込み待機
+      sleep 2 # ページ読み込み待機
 
       # 営業禁止チェック
       if page_has_no_sales_warning?
@@ -180,7 +180,7 @@ class FormSender
             # 確認ダイアログがあれば承認
             handle_alert
 
-            sleep 5 # 送信後の待機（AJAX応答やページ遷移を待つ）
+            sleep 3 # 送信後の待機（AJAX応答やページ遷移を待つ）
 
             # 確認画面の場合、もう一度送信ボタンをクリック
             if confirmation_page?
@@ -188,7 +188,7 @@ class FormSender
               if click_submit
                 log "送信ボタンクリック成功（2回目：確認画面）"
                 handle_alert
-                sleep 4 # 確認画面後はより長く待機（完了ページ遷移を待つ）
+                sleep 2 # 確認画面後はより長く待機（完了ページ遷移を待つ）
               end
             end
 
@@ -198,7 +198,7 @@ class FormSender
             else
               # 初回判定で失敗: 追加待機して再判定（AJAX応答やページ遷移の遅延対策）
               log "成功未検出、追加待機後に再判定..."
-              sleep 3
+              sleep 2
               if check_success?
                 @result = { status: '送信成功', message: '送信が完了しました' }
               else
