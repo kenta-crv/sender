@@ -47,7 +47,7 @@
               strong 完了:
               = @batch.completed_at.strftime('%Y/%m/%d %H:%M:%S')
 
-        - if @batch.status == 'processing'
+        - if @batch.status.in?(['pending', 'processing'])
           .mt-3
             = link_to 'キャンセル', cancel_form_submission_path(@batch), method: :patch, class: 'btn btn-danger', data: { confirm: 'バッチ送信をキャンセルしますか？' }
 
@@ -90,26 +90,74 @@
   .mt-4
     = link_to '一覧に戻る', form_submissions_path, class: 'btn btn-secondary'
 
-- if @batch.status == 'processing'
+- if @batch.status.in?(['pending', 'processing'])
   javascript:
     (function() {
       var batchId = #{@batch.id};
-      var interval = setInterval(function() {
-        fetch('/form_submissions/' + batchId + '/progress')
-          .then(function(res) { return res.json(); })
-          .then(function(data) {
-            document.getElementById('batch-total').textContent = data.total_count;
-            document.getElementById('batch-success').textContent = data.success_count;
-            document.getElementById('batch-failure').textContent = data.failure_count;
-            document.getElementById('batch-processed').textContent = data.processed_count;
-            document.getElementById('batch-percent').textContent = data.progress_percent + '%';
-            document.getElementById('batch-progress-bar').style.width = data.progress_percent + '%';
+      var errorCount = 0;
+      var maxErrors = 5;
+      var pollingActive = false;
 
-            if (data.status === 'completed' || data.status === 'cancelled') {
-              clearInterval(interval);
-              location.reload();
-            }
-          })
-          .catch(function(err) { console.error('Progress fetch error:', err); });
-      }, 3000);
+      function startPolling() {
+        if (pollingActive) return;
+        pollingActive = true;
+        errorCount = 0;
+
+        var interval = setInterval(function() {
+          var el = document.getElementById('batch-progress');
+          if (!el) { clearInterval(interval); pollingActive = false; return; }
+
+          fetch('/form_submissions/' + batchId + '/progress')
+            .then(function(res) {
+              if (!res.ok) throw new Error('HTTP ' + res.status);
+              return res.json();
+            })
+            .then(function(data) {
+              errorCount = 0;
+              document.getElementById('batch-total').textContent = data.total_count;
+              document.getElementById('batch-success').textContent = data.success_count;
+              document.getElementById('batch-failure').textContent = data.failure_count;
+              document.getElementById('batch-processed').textContent = data.processed_count;
+              document.getElementById('batch-percent').textContent = data.progress_percent + '%';
+              document.getElementById('batch-progress-bar').style.width = data.progress_percent + '%';
+
+              var statusEl = document.getElementById('batch-status');
+              if (statusEl) {
+                if (data.status === 'processing') {
+                  statusEl.innerHTML = '<span class="badge badge-primary">処理中</span>';
+                } else if (data.status === 'pending') {
+                  statusEl.innerHTML = '<span class="badge badge-secondary">待機中</span>';
+                }
+              }
+
+              if (data.status === 'completed' || data.status === 'cancelled') {
+                clearInterval(interval);
+                pollingActive = false;
+                location.reload();
+              }
+            })
+            .catch(function(err) {
+              console.error('Progress fetch error:', err);
+              errorCount++;
+              if (errorCount >= maxErrors) {
+                clearInterval(interval);
+                pollingActive = false;
+                var statusEl = document.getElementById('batch-status');
+                if (statusEl) {
+                  statusEl.innerHTML = '<span class="badge badge-danger">通信エラー</span> <a href="javascript:location.reload()" class="btn btn-sm btn-outline-primary ml-2">再読み込み</a>';
+                }
+              }
+            });
+        }, 3000);
+      }
+
+      startPolling();
+
+      document.addEventListener('turbolinks:load', function() {
+        pollingActive = false;
+        var el = document.getElementById('batch-progress');
+        if (el && (el.dataset.status === 'pending' || el.dataset.status === 'processing')) {
+          startPolling();
+        }
+      });
     })();

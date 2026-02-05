@@ -49,6 +49,9 @@ Rails.application.routes.draw do
   end
 
   resources :form_submissions, only: [:index, :create, :show] do
+    collection do
+      post :detect_contact_urls
+    end
     member do
       patch :cancel
       get :progress

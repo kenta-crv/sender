@@ -128,10 +128,38 @@ class FormSender
     @result = { status: nil, message: nil }
     @alert_had_error = false
 
-    # contact_urlがない場合
-    if customer.contact_url.blank?
-      @result = { status: 'フォーム未検出', message: 'contact_urlが設定されていません' }
+    # NGブラックリストチェック（contact_url設定済みの場合）
+    if customer.contact_url.present? && blocked_url?(customer.contact_url)
+      @result = { status: 'NG対象', message: "ブラックリスト該当URL: #{customer.contact_url}" }
+      save_result_to_db if @save_to_db
       return @result
+    end
+
+    # contact_urlがない場合 → 自動検出を試みる
+    if customer.contact_url.blank?
+      if customer.url.present?
+        log "contact_url未設定 → HPから自動検出を試みます"
+        detector = ContactUrlDetector.new(debug: @debug, headless: @headless)
+        detection = detector.detect(customer)
+        if detection[:status] == 'detected'
+          # 検出結果のNGブラックリストチェック
+          if blocked_url?(detection[:contact_url])
+            @result = { status: 'NG対象', message: "自動検出URLがブラックリスト該当: #{detection[:contact_url]}" }
+            save_result_to_db if @save_to_db
+            return @result
+          end
+          customer.update_column(:contact_url, detection[:contact_url])
+          log "自動検出成功: #{detection[:contact_url]}"
+        else
+          @result = { status: 'フォーム未検出', message: "自動検出失敗: #{detection[:message]}" }
+          save_result_to_db if @save_to_db
+          return @result
+        end
+      else
+        @result = { status: 'フォーム未検出', message: 'URLが設定されていません。顧客編集画面でURLを設定してください。' }
+        save_result_to_db if @save_to_db
+        return @result
+      end
     end
 
     begin
@@ -227,6 +255,13 @@ class FormSender
     save_result_to_db if @save_to_db
 
     @result
+  end
+
+  # NGブラックリスト判定（URL部分一致）
+  def blocked_url?(url)
+    return false if url.blank?
+    patterns = defined?(BLOCKED_URL_PATTERNS) ? BLOCKED_URL_PATTERNS : []
+    patterns.any? { |pattern| url.downcase.include?(pattern.downcase) }
   end
 
   # 送信結果をDBに保存

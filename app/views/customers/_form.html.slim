@@ -37,11 +37,22 @@ small.red 『J Work』アポ報告＋日程調整URL送信の場合、黄緑＋�
           | 業種
         td
           =text_field :customer, :business
-      tr 
+      tr
         th.report-color
           | 問い合わせフォーム
-        td 
+        td
            =text_field :customer, :contact_form
+      tr
+        th.report-color
+          | お問い合わせフォームURL
+        td
+          = text_field :customer, :contact_url, placeholder: 'https://example.com/contact', style: 'width: 100%;'
+          - if @customer.contact_url.blank? && @customer.url.blank?
+            br
+            small.text-danger URLが未設定です。HPのURLまたはお問い合わせフォームURLを設定してください。
+          - elsif @customer.contact_url.blank? && @customer.url.present?
+            br
+            small.text-info HPから自動検出可能です（フォーム送信時に自動検出されます）
       tr
         th
           | フォーム送信NG
