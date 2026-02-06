@@ -105,12 +105,16 @@ class FormSender
   # ブラウザを起動
   def setup_driver
     options = Selenium::WebDriver::Chrome::Options.new
-    options.add_argument('--headless') if @headless
+    if @headless
+      options.add_argument('--headless=new')  # 新ヘッドレスモード（Chrome 109+、旧--headlessより互換性が高い）
+    end
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1280,800')
     options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--disable-blink-features=AutomationControlled')  # Selenium検知回避
+    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
     @driver = Selenium::WebDriver.for(:chrome, options: options)
     @driver.manage.timeouts.implicit_wait = 5
