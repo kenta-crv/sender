@@ -105,12 +105,16 @@ class FormSender
   # ブラウザを起動
   def setup_driver
     options = Selenium::WebDriver::Chrome::Options.new
-    options.add_argument('--headless') if @headless
+    if @headless
+      options.add_argument('--headless=new')  # 新ヘッドレスモード（Chrome 109+、旧--headlessより互換性が高い）
+    end
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1280,800')
     options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--disable-blink-features=AutomationControlled')  # Selenium検知回避
+    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
     @driver = Selenium::WebDriver.for(:chrome, options: options)
     @driver.manage.timeouts.implicit_wait = 5
@@ -128,10 +132,38 @@ class FormSender
     @result = { status: nil, message: nil }
     @alert_had_error = false
 
-    # contact_urlがない場合
-    if customer.contact_url.blank?
-      @result = { status: 'フォーム未検出', message: 'contact_urlが設定されていません' }
+    # NGブラックリストチェック（contact_url設定済みの場合）
+    if customer.contact_url.present? && blocked_url?(customer.contact_url)
+      @result = { status: 'NG対象', message: "ブラックリスト該当URL: #{customer.contact_url}" }
+      save_result_to_db if @save_to_db
       return @result
+    end
+
+    # contact_urlがない場合 → 自動検出を試みる
+    if customer.contact_url.blank?
+      if customer.url.present?
+        log "contact_url未設定 → HPから自動検出を試みます"
+        detector = ContactUrlDetector.new(debug: @debug, headless: @headless)
+        detection = detector.detect(customer)
+        if detection[:status] == 'detected'
+          # 検出結果のNGブラックリストチェック
+          if blocked_url?(detection[:contact_url])
+            @result = { status: 'NG対象', message: "自動検出URLがブラックリスト該当: #{detection[:contact_url]}" }
+            save_result_to_db if @save_to_db
+            return @result
+          end
+          customer.update_column(:contact_url, detection[:contact_url])
+          log "自動検出成功: #{detection[:contact_url]}"
+        else
+          @result = { status: 'フォーム未検出', message: "自動検出失敗: #{detection[:message]}" }
+          save_result_to_db if @save_to_db
+          return @result
+        end
+      else
+        @result = { status: 'フォーム未検出', message: 'URLが設定されていません。顧客編集画面でURLを設定してください。' }
+        save_result_to_db if @save_to_db
+        return @result
+      end
     end
 
     begin
@@ -140,7 +172,7 @@ class FormSender
       # フォームにアクセス
       log "アクセス中: #{customer.contact_url}"
       driver.navigate.to(customer.contact_url)
-      sleep 3 # ページ読み込み待機
+      sleep 2 # ページ読み込み待機
 
       # 営業禁止チェック
       if page_has_no_sales_warning?
@@ -180,7 +212,7 @@ class FormSender
             # 確認ダイアログがあれば承認
             handle_alert
 
-            sleep 5 # 送信後の待機（AJAX応答やページ遷移を待つ）
+            sleep 3 # 送信後の待機（AJAX応答やページ遷移を待つ）
 
             # 確認画面の場合、もう一度送信ボタンをクリック
             if confirmation_page?
@@ -188,7 +220,7 @@ class FormSender
               if click_submit
                 log "送信ボタンクリック成功（2回目：確認画面）"
                 handle_alert
-                sleep 4 # 確認画面後はより長く待機（完了ページ遷移を待つ）
+                sleep 2 # 確認画面後はより長く待機（完了ページ遷移を待つ）
               end
             end
 
@@ -198,7 +230,7 @@ class FormSender
             else
               # 初回判定で失敗: 追加待機して再判定（AJAX応答やページ遷移の遅延対策）
               log "成功未検出、追加待機後に再判定..."
-              sleep 3
+              sleep 2
               if check_success?
                 @result = { status: '送信成功', message: '送信が完了しました' }
               else
@@ -227,6 +259,13 @@ class FormSender
     save_result_to_db if @save_to_db
 
     @result
+  end
+
+  # NGブラックリスト判定（URL部分一致）
+  def blocked_url?(url)
+    return false if url.blank?
+    patterns = defined?(BLOCKED_URL_PATTERNS) ? BLOCKED_URL_PATTERNS : []
+    patterns.any? { |pattern| url.downcase.include?(pattern.downcase) }
   end
 
   # 送信結果をDBに保存
