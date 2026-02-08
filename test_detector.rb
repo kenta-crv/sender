@@ -4,10 +4,9 @@ $stderr.sync = true
 
 # ContactUrlDetector スタンドアロンテスト
 # 使い方: ruby test_detector.rb
-# Rails不要、selenium-webdriver と webdrivers gem のみ必要
+# Rails不要、selenium-webdriver gem のみ必要（4.11+はドライバ自動管理）
 
 require 'selenium-webdriver'
-require 'webdrivers'
 require 'uri'
 require 'set'
 require 'net/http'
