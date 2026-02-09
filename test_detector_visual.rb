@@ -10,7 +10,6 @@ $stderr.sync = true
 #   ruby test_detector_visual.rb https://example.com  # 指定URLをテスト
 
 require 'selenium-webdriver'
-require 'webdrivers'
 require 'uri'
 require 'set'
 

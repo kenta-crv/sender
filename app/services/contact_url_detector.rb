@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'selenium-webdriver'
-require 'webdrivers'
 require 'uri'
 require 'net/http'
 require 'set'
