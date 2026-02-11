@@ -32,7 +32,7 @@ class FormSendJob < ApplicationJob
       sender = FormSender.new(debug: true, headless: true, save_to_db: true)
       result = sender.send_to_customer(customer)
 
-      success = result[:status] == '送信成功'
+      success = result[:status] == '自動送信成功'
       batch.record_result!(
         customer_id,
         success: success,

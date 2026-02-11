@@ -5,11 +5,12 @@ class FormSubmissionsController < ApplicationController
   def index
     @batches = FormSubmissionBatch.order(created_at: :desc).page(params[:page]).per(20)
     # contact_url設定済みの顧客（送信可能）
-    @customers = Customer.where.not(contact_url: [nil, ''])
+    @customers = Customer.where.not(contact_url: [nil, '']).includes(:last_form_call)
     # url有りだがcontact_url未設定の顧客（自動検出対象）
     @detectable_customers = Customer.where(contact_url: [nil, ''])
                                     .where.not(url: [nil, ''])
                                     .where(fobbiden: [nil, false, 0])
+                                    .includes(:last_form_call)
     # url も contact_url もない顧客（手動設定が必要）
     @no_url_customers_count = Customer.where(contact_url: [nil, ''])
                                       .where(url: [nil, ''])
@@ -23,17 +24,27 @@ class FormSubmissionsController < ApplicationController
       'contact_url IS NOT NULL AND contact_url != ? OR (url IS NOT NULL AND url != ?)', '', ''
     ).where(fobbiden: [nil, false, 0])
 
+    send_count = params[:send_count].to_i if params[:send_count].present?
+
     customer_ids = if params[:customer_ids].present?
                      Array(params[:customer_ids]).map(&:to_i)
                    elsif params[:q].present?
                      q = eligible_scope.ransack(params[:q])
                      q.result.pluck(:id)
+                   elsif send_count && send_count > 0
+                     # 件数指定のみ（チェックなし）→ eligible_scopeから先頭N件
+                     eligible_scope.limit(send_count).pluck(:id)
                    else
                      []
                    end
 
+    # 件数指定がある場合、チェック済みでも件数で切り詰め
+    if send_count && send_count > 0 && customer_ids.size > send_count
+      customer_ids = customer_ids.first(send_count)
+    end
+
     if customer_ids.empty?
-      redirect_to form_submissions_path, alert: '送信対象の顧客が選択されていません。'
+      redirect_to form_submissions_path, alert: '送信対象の顧客が選択されていません。件数を指定するか、顧客を選択してください。'
       return
     end
 

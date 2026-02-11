@@ -208,10 +208,37 @@ class ContactUrlDetector
     links = collect_scored_links(base_url)
     log "  スコア付きリンク: #{links.size}件"
 
-    # 上位5件をチェック（フォーム or お問い合わせページ）
+    # 上位5件をチェック
     links.first(5).each do |link_info|
       log "  チェック中: #{link_info[:url]} (score=#{link_info[:score]}, text=#{link_info[:text]})"
-      result = check_page_for_form_or_contact(link_info[:url])
+
+      # まずフォームがあるかチェック
+      result = check_page_for_form(link_info[:url])
+      if result
+        return result
+      end
+
+      # フォームがないがお問い合わせ関連ページなら深層探索
+      if contact_related_page?
+        log "  → お問い合わせ関連ページ、深層探索開始"
+        deep_result = explore_links_from_page(link_info[:url])
+        return deep_result if deep_result
+      end
+    end
+
+    nil
+  end
+
+  # 任意のページ（contact関連ページ等）からリンクを収集して深層探索
+  def explore_links_from_page(page_url)
+    # 現在のページ（contact関連ページ）に再アクセスしてリンクを収集
+    navigate_safely(page_url)
+    links = collect_scored_links(page_url)
+    log "  深層探索: #{links.size}件のリンク"
+
+    links.first(5).each do |link_info|
+      log "  深層チェック: #{link_info[:url]} (score=#{link_info[:score]})"
+      result = check_page_for_form(link_info[:url])
       return result if result
     end
 
@@ -302,8 +329,19 @@ class ContactUrlDetector
       end
 
       log "  試行: #{url}"
-      result = check_page_for_form_or_contact(url)
-      return result if result
+
+      # まずフォームがあるかチェック
+      result = check_page_for_form(url)
+      if result
+        return result
+      end
+
+      # フォームがないがお問い合わせ関連ページなら深層探索
+      if contact_related_page?
+        log "  → お問い合わせ関連ページ（#{url}）、深層探索開始"
+        deep_result = explore_links_from_page(url)
+        return deep_result if deep_result
+      end
     end
 
     nil
