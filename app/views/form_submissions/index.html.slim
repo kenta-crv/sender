@@ -18,6 +18,14 @@
               strong = @detectable_customers.count
               | 件
         .form-group.mb-3
+          label.font-weight-bold 送信件数指定
+          .input-group style="max-width: 300px;"
+            = number_field_tag :send_count, nil, class: 'form-control', min: 1, placeholder: '件数を入力（空欄＝チェック分のみ）'
+            .input-group-append
+              span.input-group-text 件
+          small.form-text.text-muted
+            | 件数を指定すると、チェックした顧客の先頭N件のみ送信します。チェックなしで件数のみ指定した場合は送信可能な顧客から先頭N件を自動選択します。
+        .form-group.mb-3
           = check_box_tag :select_all, '1', false, id: 'select_all'
           label for='select_all'
             |  全件選択
@@ -30,6 +38,8 @@
                 th 会社名
                 th 問い合わせURL
                 th 状態
+                th 最終送信
+                th 最終ステータス
             tbody
               - @customers.each do |c|
                 tr
@@ -42,6 +52,20 @@
                       a href=c.contact_url target="_blank" = truncate(c.contact_url, length: 50)
                   td
                     span.badge.badge-success 設定済み
+                  td
+                    - if c.last_form_call
+                      small = c.last_form_call.created_at.strftime('%m/%d %H:%M')
+                  td
+                    - if c.last_form_call
+                      - case c.last_form_call.status
+                      - when '自動送信成功', '送信成功'
+                        span.badge.badge-success = c.last_form_call.status
+                      - when 'CAPTCHA NG'
+                        span.badge.badge-warning = c.last_form_call.status
+                      - when '自動送信失敗', '送信失敗'
+                        span.badge.badge-danger = c.last_form_call.status
+                      - else
+                        span.badge.badge-info = c.last_form_call.status
               - @detectable_customers.each do |c|
                 tr.table-warning
                   td
@@ -55,6 +79,20 @@
                         = truncate(c.url, length: 40)
                   td
                     span.badge.badge-warning 自動検出予定
+                  td
+                    - if c.last_form_call
+                      small = c.last_form_call.created_at.strftime('%m/%d %H:%M')
+                  td
+                    - if c.last_form_call
+                      - case c.last_form_call.status
+                      - when '自動送信成功', '送信成功'
+                        span.badge.badge-success = c.last_form_call.status
+                      - when 'CAPTCHA NG'
+                        span.badge.badge-warning = c.last_form_call.status
+                      - when '自動送信失敗', '送信失敗'
+                        span.badge.badge-danger = c.last_form_call.status
+                      - else
+                        span.badge.badge-info = c.last_form_call.status
         .mt-3
           = submit_tag 'バッチ送信開始', class: 'btn btn-primary', data: { confirm: '選択した顧客にフォーム送信を実行しますか？（自動検出対象はHP URLからフォームを自動検出してから送信します）' }
 

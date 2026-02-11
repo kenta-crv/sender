@@ -63,7 +63,8 @@
         th 送信日時
     tbody
       - @results.each do |call|
-        tr class=(call.status == '送信成功' ? 'table-success' : 'table-danger')
+        - row_class = %w[自動送信成功 送信成功].include?(call.status) ? 'table-success' : call.status == 'CAPTCHA NG' ? 'table-warning' : %w[自動送信失敗 送信失敗].include?(call.status) ? 'table-danger' : ''
+        tr class=row_class
           td = call.customer_id
           td = call.customer&.company
           td = call.status

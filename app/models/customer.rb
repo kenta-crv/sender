@@ -1,6 +1,7 @@
 class Customer < ApplicationRecord
   has_many :calls
   has_one :last_call, -> { order(created_at: :desc) }, class_name: 'Call'
+  has_one :last_form_call, -> { where(call_type: 'form').order(created_at: :desc) }, class_name: 'Call'
 
   scope :between_created_at, ->(from, to){
     where(created_at: from..to).where.not(tel: nil)

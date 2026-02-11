@@ -252,19 +252,21 @@ class FormSender
 
             # 成功判定（リトライ付き）
             if check_success?
-              @result = { status: '送信成功', message: '送信が完了しました' }
+              @result = { status: '自動送信成功', message: '送信が完了しました' }
             else
               # 初回判定で失敗: 追加待機して再判定（AJAX応答やページ遷移の遅延対策）
               log "成功未検出、追加待機後に再判定..."
               sleep 3
               if check_success?
-                @result = { status: '送信成功', message: '送信が完了しました' }
+                @result = { status: '自動送信成功', message: '送信が完了しました' }
+              elsif page_has_captcha?
+                @result = { status: 'CAPTCHA NG', message: 'reCAPTCHA/CAPTCHA が検出されました' }
               else
-                @result = { status: '送信失敗', message: '送信後の確認ができませんでした' }
+                @result = { status: '自動送信失敗', message: '送信後の確認ができませんでした' }
               end
             end
           else
-            @result = { status: '送信失敗', message: '送信ボタンが見つかりませんでした' }
+            @result = { status: '自動送信失敗', message: '送信ボタンが見つかりませんでした' }
           end
           teardown_driver  # 通常モード完了後にブラウザを閉じる
         end
@@ -530,6 +532,23 @@ class FormSender
       end
     rescue StandardError => e
       log "営業禁止チェックエラー: #{e.message}"
+    end
+    false
+  end
+
+  # ページ内にreCAPTCHA/CAPTCHAがあるかチェック
+  def page_has_captcha?
+    begin
+      page_source = driver.page_source
+      captcha_patterns = %w[recaptcha g-recaptcha hcaptcha cf-turnstile]
+      captcha_text_patterns = ['私はロボットではありません', 'I\'m not a robot']
+      # HTML属性/クラスで検出
+      return true if captcha_patterns.any? { |p| page_source.downcase.include?(p) }
+      # ページテキストで検出
+      body_text = driver.find_element(:css, 'body').text rescue ''
+      return true if captcha_text_patterns.any? { |p| body_text.include?(p) }
+    rescue StandardError => e
+      log "CAPTCHA検出エラー: #{e.message}"
     end
     false
   end
