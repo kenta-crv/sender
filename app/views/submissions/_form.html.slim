@@ -1,4 +1,4 @@
-= form_for @submission do |f|
+= form_for @site do |f|
 
    table.space[width="90%"]
      col width="20%"
@@ -9,57 +9,57 @@
         th 案件名（案件判別のため任意）
         td
          strong.label 必須
-        td.center = text_field :submission, :headline
+        td.center = text_field :site, :headline
       tr
         th.arrow_box 会社名
         td
          strong.label 必須
-        td.center  = text_field :submission, :company
+        td.center  = text_field :site, :company
       tr
         th.arrow_box 担当者
         td
          strong.label 必須
-        td.center  = text_field :submission, :person
+        td.center  = text_field :site, :person
       tr
         th.arrow_box タントウシャ
         td
          strong.label 必須
-        td.center  =  text_field :submission, :person_kana
+        td.center  =  text_field :site, :person_kana
       tr
         th.arrow_box 電話番号
         td
          strong.label 必須
-        td.center = text_field :submission, :tel
+        td.center = text_field :site, :tel
       tr
         th.arrow_box FAX番号
         td
          strong.label あれば必須
-        td.center = text_field :submission, :fax
+        td.center = text_field :site, :fax
       tr
         th.arrow_box 住所
         td
          strong.label 必須
-        td.center = text_field :submission, :address
+        td.center = text_field :site, :address
       tr
         th.arrow_box メールアドレス
         td
          strong.label 必須
-        td.center = text_field :submission, :email
+        td.center = text_field :site, :email
       tr
         th.arrow_box URL
         td
          strong.label 必須
-        td.center = text_field :submission, :url
+        td.center = text_field :site, :url
       tr
         th.arrow_box 件名
         td
          strong.label 必須
-        td.center = text_field :submission, :title
+        td.center = text_field :site, :title
       tr
         th.arrow_box 本文（800文字以内）
         td
          strong.label 必須
-        td.center[colspan="3"] = text_area :submission, :content
+        td.center[colspan="3"] = text_area :site, :content
 
       tr
         td.center[colspan="4"] = f.submit '投稿する'
