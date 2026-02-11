@@ -42,6 +42,8 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :submissions
+
   # --- Sidekiq Web UI ---
   require 'sidekiq/web'
   authenticate :admin do 

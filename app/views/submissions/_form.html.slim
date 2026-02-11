@@ -1,0 +1,65 @@
+= form_for @submission do |f|
+
+   table.space[width="90%"]
+     col width="20%"
+     col width="10%"
+     col width="70%"
+     tbody
+      tr
+        th 案件名（案件判別のため任意）
+        td
+         strong.label 必須
+        td.center = text_field :submission, :headline
+      tr
+        th.arrow_box 会社名
+        td
+         strong.label 必須
+        td.center  = text_field :submission, :company
+      tr
+        th.arrow_box 担当者
+        td
+         strong.label 必須
+        td.center  = text_field :submission, :person
+      tr
+        th.arrow_box タントウシャ
+        td
+         strong.label 必須
+        td.center  =  text_field :submission, :person_kana
+      tr
+        th.arrow_box 電話番号
+        td
+         strong.label 必須
+        td.center = text_field :submission, :tel
+      tr
+        th.arrow_box FAX番号
+        td
+         strong.label あれば必須
+        td.center = text_field :submission, :fax
+      tr
+        th.arrow_box 住所
+        td
+         strong.label 必須
+        td.center = text_field :submission, :address
+      tr
+        th.arrow_box メールアドレス
+        td
+         strong.label 必須
+        td.center = text_field :submission, :email
+      tr
+        th.arrow_box URL
+        td
+         strong.label 必須
+        td.center = text_field :submission, :url
+      tr
+        th.arrow_box 件名
+        td
+         strong.label 必須
+        td.center = text_field :submission, :title
+      tr
+        th.arrow_box 本文（800文字以内）
+        td
+         strong.label 必須
+        td.center[colspan="3"] = text_area :submission, :content
+
+      tr
+        td.center[colspan="4"] = f.submit '投稿する'

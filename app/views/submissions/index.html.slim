@@ -1,0 +1,14 @@
+table[width="90%"]
+  thead
+    tr
+      th 案件名
+      th タイトル
+      th 削除
+  tbody
+  - @submission.each do |submission|
+    tr
+      td = link_to submission.headline, edit_submission_path(submission)
+      td = submission.title
+      td
+         = link_to '削除',
+         - submission_path(submission),method: :delete,class: 'command',data: { confirm: '本当に削除しますか？'}
