@@ -1,61 +1,44 @@
-table.space[width="90%"]
-     col width="20%"
-     col width="10%"
-     col width="70%"
-     tbody
-      tr
-        th 案件名（案件判別のため任意）
-        td
-         strong.label 必須
-        td.center = @submission.headline
-      tr
-        th.arrow_box 会社名
-        td
-         strong.label 必須
-        td.center  = @submission.company
-      tr
-        th.arrow_box 担当者
-        td
-         strong.label 必須
-        td.center  = @submission.person
-      tr
-        th.arrow_box タントウシャ
-        td
-         strong.label 必須
-        td.center  = @submission.person_kana
-      tr
-        th.arrow_box 電話番号
-        td
-         strong.label 必須
-        td.center = @submission.tel
-      tr
-        th.arrow_box FAX番号
-        td
-         strong.label あれば必須
-        td.center = @submission.fax
-      tr
-        th.arrow_box 住所
-        td
-         strong.label 必須
-        td.center = @submission.address
-      tr
-        th.arrow_box メールアドレス
-        td
-         strong.label 必須
-        td.center = @submission.email
-      tr
-        th.arrow_box URL
-        td
-         strong.label 必須
-        td.center = @submission.url
-      tr
-        th.arrow_box 件名
-        td
-         strong.label 必須
-        td.center = @submission.title
-      tr
-        th.arrow_box 本文（800文字以内）
-        td
-         strong.label 必須
-        td.center = @submission.content
+.container.mt-4
+  h2 送信内容詳細
 
+  .card
+    .card-body
+      table.table.table-bordered
+        tbody
+          tr
+            th style="width: 200px;" 見出し
+            td = @submission.headline
+          tr
+            th 会社名
+            td = @submission.company
+          tr
+            th 担当者名
+            td = @submission.person
+          tr
+            th 担当者名カナ
+            td = @submission.person_kana
+          tr
+            th 電話番号
+            td = @submission.tel
+          tr
+            th FAX
+            td = @submission.fax
+          tr
+            th 住所
+            td = @submission.address
+          tr
+            th メールアドレス
+            td = @submission.email
+          tr
+            th URL
+            td = @submission.url
+          tr
+            th お問い合わせ件名
+            td = @submission.title
+          tr
+            th お問い合わせ内容
+            td style="white-space: pre-wrap;" = @submission.content
+
+  .mt-3
+    = link_to '編集', edit_submission_path(@submission), class: 'btn btn-warning mr-2'
+    = link_to '一覧に戻る', submissions_path, class: 'btn btn-secondary'

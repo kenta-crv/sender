@@ -1,14 +1,29 @@
-table[width="90%"]
-  thead
-    tr
-      th 案件名
-      th タイトル
-      th 削除
-  tbody
-  - @submission.each do |submission|
-    tr
-      td = link_to submission.headline, edit_submission_path(submission)
-      td = submission.title
-      td
-         = link_to '削除',
-         - submission_path(submission),method: :delete,class: 'command',data: { confirm: '本当に削除しますか？'}
+.container.mt-4
+  h2 送信内容管理
+
+  .mb-3
+    = link_to '新規作成', new_submission_path, class: 'btn btn-primary'
+
+  table.table.table-bordered.table-hover
+    thead
+      tr
+        th ID
+        th 見出し
+        th 会社名
+        th 担当者
+        th メール
+        th 電話
+        th 操作
+    tbody
+      - @submissions.each do |sub|
+        tr
+          td = sub.id
+          td = sub.headline
+          td = sub.company
+          td = sub.person
+          td = sub.email
+          td = sub.tel
+          td
+            = link_to '詳細', submission_path(sub), class: 'btn btn-sm btn-info mr-1'
+            = link_to '編集', edit_submission_path(sub), class: 'btn btn-sm btn-warning mr-1'
+            = link_to '削除', submission_path(sub), method: :delete, class: 'btn btn-sm btn-danger', data: { confirm: '削除しますか？' }

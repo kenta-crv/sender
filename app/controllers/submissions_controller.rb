@@ -1,10 +1,11 @@
 class SubmissionsController < ApplicationController
-  def index 
-    @submission = Submission.all
+  before_action :set_submission, only: [:show, :edit, :update, :destroy]
+
+  def index
+    @submissions = Submission.order(created_at: :desc)
   end
 
-  def show 
-    @submission = Submission.find(params[:id])
+  def show
   end
 
   def new
@@ -14,46 +15,38 @@ class SubmissionsController < ApplicationController
   def create
     @submission = Submission.new(submission_params)
     if @submission.save
-       redirect_to submissions_path
+      redirect_to submissions_path, notice: '送信内容を作成しました。'
     else
-      render 'new'
+      render :new
     end
   end
 
   def edit
-    @submission = Submission.find(params[:id])
-  end
-
-  def destroy
-    @submission = Submission.find(params[:id])
-    @submission.destroy
-    redirect_to submissions_path
   end
 
   def update
-    @submission = Submission.find(params[:id])
     if @submission.update(submission_params)
-      redirect_to submissions_path
+      redirect_to submissions_path, notice: '送信内容を更新しました。'
     else
-      render 'edit'
+      render :edit
     end
   end
+
+  def destroy
+    @submission.destroy
+    redirect_to submissions_path, notice: '送信内容を削除しました。'
+  end
+
   private
+
+  def set_submission
+    @submission = Submission.find(params[:id])
+  end
 
   def submission_params
     params.require(:submission).permit(
-      :headline, #案件名
-      :from_company, #会社名
-      :person, #担当者
-      :person_kana, #タントウシャ
-      :from_tel, #電話番号
-      :from_fax, #FAX番号
-      :from_mail, #メールアドレス
-      :url, #HP
-      :address, #住所
-      :title, #件名
-      :content #本文
+      :headline, :company, :person, :person_kana,
+      :tel, :fax, :address, :email, :url, :title, :content
     )
   end
-
 end

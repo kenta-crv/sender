@@ -113,7 +113,7 @@ class FormSender
     'お確かめ下さい', 'お確かめください', '内容をお確かめ',
   ].freeze
 
-  def initialize(debug: false, confirm_mode: false, save_to_db: false, headless: false, confirm_callback: nil)
+  def initialize(debug: false, confirm_mode: false, save_to_db: false, headless: false, confirm_callback: nil, sender_info: nil)
     @driver = nil
     @result = { status: nil, message: nil }
     @debug = debug
@@ -122,6 +122,12 @@ class FormSender
     @headless = headless           # trueの場合、ヘッドレスモードで実行
     @alert_had_error = false      # アラートにエラーメッセージがあったか
     @confirm_callback = confirm_callback  # 確認モード時の待機処理（Proc）
+    @custom_sender_info = sender_info     # カスタム送信者情報（Submissionモデルから）
+  end
+
+  # sender_info アクセサ（カスタム情報がある場合はマージ）
+  def sender_info
+    @custom_sender_info ? SENDER_INFO.merge(@custom_sender_info.compact) : SENDER_INFO
   end
 
   # ブラウザを起動
@@ -139,7 +145,7 @@ class FormSender
     options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
     @driver = Selenium::WebDriver.for(:chrome, options: options)
-    @driver.manage.timeouts.implicit_wait = 5
+    @driver.manage.timeouts.implicit_wait = 3
   end
 
   # ブラウザを終了
@@ -194,7 +200,12 @@ class FormSender
       # フォームにアクセス
       log "アクセス中: #{customer.contact_url}"
       driver.navigate.to(customer.contact_url)
-      sleep 3 # ページ読み込み待機
+      # ページ読み込み待機（body+form存在で早期完了）
+      wait_for(min_seconds: 1, max_seconds: 10) do
+        body = driver.find_element(:css, 'body') rescue nil
+        form = driver.find_element(:css, 'form') rescue nil
+        body && form
+      end
 
       # 営業禁止チェック
       if page_has_no_sales_warning?
@@ -238,7 +249,13 @@ class FormSender
             # 確認ダイアログがあれば承認
             handle_alert
 
-            sleep 5 # 送信後の待機（AJAX応答やページ遷移を待つ）
+            # 送信後の待機（URL変更 or 成功パターン検出で早期完了）
+            original_url = driver.current_url
+            wait_for(min_seconds: 2, max_seconds: 10) do
+              url_changed = (driver.current_url != original_url rescue false)
+              ajax_success = check_ajax_success? rescue false
+              url_changed || ajax_success
+            end
 
             # 確認画面の場合、もう一度送信ボタンをクリック
             if confirmation_page?
@@ -246,7 +263,13 @@ class FormSender
               if click_submit
                 log "送信ボタンクリック成功（2回目：確認画面）"
                 handle_alert
-                sleep 4 # 確認画面後はより長く待機（完了ページ遷移を待つ）
+                # 確認画面後の待機（URL変更 or 成功パターン検出で早期完了）
+                confirm_url = driver.current_url
+                wait_for(min_seconds: 2, max_seconds: 8) do
+                  url_changed = (driver.current_url != confirm_url rescue false)
+                  ajax_success = check_ajax_success? rescue false
+                  url_changed || ajax_success
+                end
               end
             end
 
@@ -256,7 +279,7 @@ class FormSender
             else
               # 初回判定で失敗: 追加待機して再判定（AJAX応答やページ遷移の遅延対策）
               log "成功未検出、追加待機後に再判定..."
-              sleep 3
+              sleep 1.5
               if check_success?
                 @result = { status: '自動送信成功', message: '送信が完了しました' }
               elsif page_has_captcha?
@@ -323,6 +346,23 @@ class FormSender
 
   def log(message)
     puts "[FormSender] #{message}" if @debug
+  end
+
+  # 明示的待機ヘルパー（固定sleepの代替）
+  # min_seconds: 最低待機秒数（ページ安定化用）
+  # max_seconds: 最大待機秒数
+  # poll_interval: ポーリング間隔
+  # ブロック: 完了条件（trueを返せば即座に抜ける）
+  def wait_for(min_seconds: 0, max_seconds: 10, poll_interval: 0.5)
+    sleep min_seconds if min_seconds > 0
+    remaining = max_seconds - min_seconds
+    return true if remaining <= 0
+    wait = Selenium::WebDriver::Wait.new(timeout: remaining, interval: poll_interval)
+    begin
+      wait.until { yield }
+    rescue Selenium::WebDriver::Error::TimeoutError
+      false
+    end
   end
 
   # フリガナ欄がカタカナかひらがなかを自動判定
@@ -429,39 +469,39 @@ class FormSender
         # placeholder にハイフンなしの数字パターンがあればハイフン不要
         if placeholder =~ /\A[0-9]{10,11}\z/
           log "電話番号: ハイフン不要（placeholder: #{placeholder}）"
-          return SENDER_INFO[:tel_no_hyphen]
+          return sender_info[:tel_no_hyphen]
         end
 
         # placeholder にハイフン付きパターンがあればハイフン必要
         if placeholder =~ /[0-9]+-[0-9]+-[0-9]+/
           log "電話番号: ハイフン必要（placeholder: #{placeholder}）"
-          return SENDER_INFO[:tel]
+          return sender_info[:tel]
         end
 
         # pattern属性で判定（数字のみを要求する場合）
         if pattern =~ /\\d\{10|\\d\{11|\[0-9\]\{10|\[0-9\]\{11|^\d+$/
           log "電話番号: ハイフン不要（pattern: #{pattern}）"
-          return SENDER_INFO[:tel_no_hyphen]
+          return sender_info[:tel_no_hyphen]
         end
 
         # pattern属性があり、ハイフンを許可していない場合
         if !pattern.empty? && !pattern.include?('-')
           log "電話番号: ハイフン不要（patternにハイフン未含: #{pattern}）"
-          return SENDER_INFO[:tel_no_hyphen]
+          return sender_info[:tel_no_hyphen]
         end
 
         # type="tel" でmaxlengthが11以下ならハイフン不要の可能性が高い
         maxlength = input.attribute('maxlength')&.to_i
         if maxlength && maxlength <= 11 && maxlength >= 10
           log "電話番号: ハイフン不要（maxlength: #{maxlength}）"
-          return SENDER_INFO[:tel_no_hyphen]
+          return sender_info[:tel_no_hyphen]
         end
 
         # type="tel"/"number" はハイフンを拒否するバリデーションが多いため
         # 明確にハイフン必要と判定されなかった場合はハイフンなしを使用
         if input_type == 'tel' || input_type == 'number'
           log "電話番号: ハイフン不要（type=#{input_type}フィールド）"
-          return SENDER_INFO[:tel_no_hyphen]
+          return sender_info[:tel_no_hyphen]
         end
       end
     rescue StandardError => e
@@ -470,27 +510,27 @@ class FormSender
 
     # デフォルトはハイフン付き
     log "電話番号: デフォルト（ハイフン付き）"
-    SENDER_INFO[:tel]
+    sender_info[:tel]
   end
 
   # 郵便番号のmaxlengthから入力すべき値を判定
   # maxlength=3 → 前半3桁、maxlength=4 → 後半4桁、それ以外 → フル
   def zip_value_by_maxlength
-    return SENDER_INFO[:zip] unless @current_input
+    return sender_info[:zip] unless @current_input
 
     begin
       maxlength = @current_input.attribute('maxlength')&.to_i
       if maxlength && maxlength == 3
         log "    郵便番号: maxlength=3 → 前半3桁"
-        return SENDER_INFO[:zip1]
+        return sender_info[:zip1]
       elsif maxlength && maxlength == 4
         log "    郵便番号: maxlength=4 → 後半4桁"
-        return SENDER_INFO[:zip2]
+        return sender_info[:zip2]
       end
     rescue StandardError
     end
 
-    SENDER_INFO[:zip]
+    sender_info[:zip]
   end
 
   # 名前・カナ・住所の分割フィールド存在を事前判定
@@ -880,17 +920,17 @@ class FormSender
     name_attr = name_attr.gsub(/[（(]必須[）)]|※必須|必須/, '').strip
     # メールアドレス確認用
     if FIELD_PATTERNS[:email_confirm].any? { |p| text.include?(p) }
-      return SENDER_INFO[:email]
+      return sender_info[:email]
     end
 
     # メッセージ（textareaでも住所欄などは除外）
     if tag_name == 'textarea'
       # 住所欄の場合は住所を入力（都道府県フィールドがある場合は番地のみ）
       if FIELD_PATTERNS[:address].any? { |p| text.include?(p) || name_attr.include?(p) }
-        return @has_pref_field ? SENDER_INFO[:address_street] : SENDER_INFO[:address]
+        return @has_pref_field ? sender_info[:address_street] : sender_info[:address]
       end
       # それ以外のtextareaはメッセージ
-      return SENDER_INFO[:message]
+      return sender_info[:message]
     end
 
     # 部署名はスキップ（または「-」を入力）
@@ -898,22 +938,22 @@ class FormSender
       return nil
     end
 
-    # === 会社名（必須の場合は「自営業」を入力） ===
+    # === 会社名（Submissionの会社名があれば使用、なければ「自営業」） ===
     if FIELD_PATTERNS[:company].any? { |p| name_attr.include?(p) || text.include?(p) }
-      return '自営業'
+      return sender_info[:company].present? ? sender_info[:company] : '自営業'
     end
 
     # === 分割フィールドの検出（name属性で判定） ===
 
     # 電話番号（3分割: tel1/tel2/tel3 or [data][0]/[data][1]/[data][2]）
     if name_attr =~ /(?:tel|phone|denwa|電話).*(?:1$|\[0\]$)/i
-      return SENDER_INFO[:tel1]
+      return sender_info[:tel1]
     end
     if name_attr =~ /(?:tel|phone|denwa|電話).*(?:2$|\[1\]$)/i
-      return SENDER_INFO[:tel2]
+      return sender_info[:tel2]
     end
     if name_attr =~ /(?:tel|phone|denwa|電話).*(?:3$|\[2\]$)/i
-      return SENDER_INFO[:tel3]
+      return sender_info[:tel3]
     end
 
     # 郵便番号（2分割: zip1/zip2, zip/zip1, [data][0]/[data][1] 等）
@@ -926,29 +966,29 @@ class FormSender
 
     # ふりがな/フリガナ（2分割）
     if name_attr =~ /namea.*1$|kana.*1$|kana.*sei|furi.*1|furi.*sei/i
-      return detect_kana_type(text, name_attr) ? SENDER_INFO[:name_kana_sei] : SENDER_INFO[:name_hira_sei]
+      return detect_kana_type(text, name_attr) ? sender_info[:name_kana_sei] : sender_info[:name_hira_sei]
     end
     if name_attr =~ /namea.*2$|kana.*2$|kana.*mei|furi.*2|furi.*mei/i
-      return detect_kana_type(text, name_attr) ? SENDER_INFO[:name_kana_mei] : SENDER_INFO[:name_hira_mei]
+      return detect_kana_type(text, name_attr) ? sender_info[:name_kana_mei] : sender_info[:name_hira_mei]
     end
 
     # 名前（2分割: name1/name2）
     # 末尾が数字の場合のみ分割とみなす（meiやseiが含まれるだけでは分割としない）
     if name_attr =~ /name.*1$/i && name_attr !~ /kana|namea|furi/i
-      return SENDER_INFO[:name_sei]
+      return sender_info[:name_sei]
     end
     if name_attr =~ /name.*2$/i && name_attr !~ /kana|namea|furi/i
-      return SENDER_INFO[:name_mei]
+      return sender_info[:name_mei]
     end
     # ラベルに「姓」「名」が明示されている場合のみ分割
     if text.include?('姓') && !text.include?('氏名') && !text.include?('名前')
-      return SENDER_INFO[:name_sei]
+      return sender_info[:name_sei]
     end
     # 「名」が単独で使われている場合のみ分割（「担当者名」「御社名」等の複合語は除外）
     if text =~ /(?<!\p{Han})名(?!\p{Han})/ &&
         !text.include?('氏名') && !text.include?('名前') &&
         !text.include?('会社名') && !text.include?('お名前')
-      return SENDER_INFO[:name_mei]
+      return sender_info[:name_mei]
     end
 
     # === 通常フィールド（分割でない場合） ===
@@ -956,24 +996,24 @@ class FormSender
     # ふりがな/フリガナ - フルネーム（kana2がある場合は姓のみ）
     if FIELD_PATTERNS[:name_kana].any? { |p| text.include?(p) }
       if @has_kana2_field
-        return detect_kana_type(text, name_attr) ? SENDER_INFO[:name_kana_sei] : SENDER_INFO[:name_hira_sei]
+        return detect_kana_type(text, name_attr) ? sender_info[:name_kana_sei] : sender_info[:name_hira_sei]
       end
-      return detect_kana_type(text, name_attr) ? SENDER_INFO[:name_kana] : SENDER_INFO[:name_hira]
+      return detect_kana_type(text, name_attr) ? sender_info[:name_kana] : sender_info[:name_hira]
     end
 
     # 名前 - フルネーム（name2がある場合は姓のみ）
     if FIELD_PATTERNS[:name].any? { |p| text.include?(p) }
-      return @has_name2_field ? SENDER_INFO[:name_sei] : SENDER_INFO[:name]
+      return @has_name2_field ? sender_info[:name_sei] : sender_info[:name]
     end
 
     # メールアドレス
     if FIELD_PATTERNS[:email].any? { |p| text.include?(p) }
-      return SENDER_INFO[:email]
+      return sender_info[:email]
     end
 
     # 電話番号 - フル（placeholder/patternからハイフン有無を自動判定）
     if FIELD_PATTERNS[:tel].any? { |p| text.include?(p) }
-      return @current_tel_value || SENDER_INFO[:tel]
+      return @current_tel_value || sender_info[:tel]
     end
 
     # 郵便番号 - フル（maxlengthで分割フィールドの可能性を判定）
@@ -983,12 +1023,12 @@ class FormSender
 
     # 都道府県（セレクトボックス用）
     if FIELD_PATTERNS[:prefecture].any? { |p| text.include?(p) || name_attr.include?(p) }
-      return SENDER_INFO[:prefecture]
+      return sender_info[:prefecture]
     end
 
     # 住所（都道府県フィールドがある場合は番地のみ）
     if FIELD_PATTERNS[:address].any? { |p| text.include?(p) || name_attr.include?(p) }
-      return @has_pref_field ? SENDER_INFO[:address_street] : SENDER_INFO[:address]
+      return @has_pref_field ? sender_info[:address_street] : sender_info[:address]
     end
 
     nil

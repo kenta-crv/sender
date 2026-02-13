@@ -26,6 +26,14 @@
           small.form-text.text-muted
             | 件数を指定すると、チェックした顧客の先頭N件のみ送信します。チェックなしで件数のみ指定した場合は送信可能な顧客から先頭N件を自動選択します。
         .form-group.mb-3
+          label.font-weight-bold 送信内容（Submission）
+          = select_tag :submission_id, options_from_collection_for_select(@submissions, :id, :headline), include_blank: 'デフォルト（固定テンプレート）', class: 'form-control', style: 'max-width: 400px;'
+          small.form-text.text-muted
+            | Submissionを選択すると、登録済みの送信内容（名前・メール・本文等）でフォーム送信します。未選択の場合はデフォルトのテンプレートを使用します。
+        - if @detectable_customers.count > 0
+          .alert.alert-warning.mt-2
+            | contact_url未設定の顧客が #{@detectable_customers.count}件あります。速度向上のため、送信前に下部の「フォームURL一括検出」の実行を推奨します。
+        .form-group.mb-3
           = check_box_tag :select_all, '1', false, id: 'select_all'
           label for='select_all'
             |  全件選択

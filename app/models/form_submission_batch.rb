@@ -1,4 +1,6 @@
 class FormSubmissionBatch < ApplicationRecord
+  belongs_to :submission, optional: true
+
   # customer_ids と error_log は JSON テキストとして保存
   def parsed_customer_ids
     JSON.parse(customer_ids || '[]')
@@ -8,19 +10,37 @@ class FormSubmissionBatch < ApplicationRecord
     JSON.parse(error_log || '[]')
   end
 
-  # 送信結果を記録（1件分）
+  # 送信結果を記録（1件分）— SQLアトミック更新でスレッドセーフ
   def record_result!(customer_id, success:, message: nil)
-    self.processed_count += 1
+    # Step 1: カウンターをSQLレベルで原子的にインクリメント
     if success
-      self.success_count += 1
+      self.class.where(id: id).update_all(
+        "processed_count = processed_count + 1, success_count = success_count + 1, current_customer_id = #{customer_id.to_i}"
+      )
     else
-      self.failure_count += 1
-      errors_list = parsed_error_log
-      errors_list << { customer_id: customer_id, message: message, at: Time.current.iso8601 }
-      self.error_log = errors_list.to_json
+      self.class.where(id: id).update_all(
+        "processed_count = processed_count + 1, failure_count = failure_count + 1, current_customer_id = #{customer_id.to_i}"
+      )
+      # エラーログ追記（失敗時のみ、SQLite3ロック対策のリトライ付き）
+      3.times do |attempt|
+        begin
+          reload
+          errors_list = parsed_error_log
+          errors_list << { customer_id: customer_id, message: message, at: Time.current.iso8601 }
+          update_column(:error_log, errors_list.to_json)
+          break
+        rescue ActiveRecord::StatementInvalid => e
+          raise unless e.message.include?('database is locked')
+          sleep(rand(0.1..0.5))
+        end
+      end
     end
-    self.current_customer_id = customer_id
-    save!
+
+    # Step 2: 完了判定
+    reload
+    if processed_count >= total_count && status != 'completed'
+      update_columns(status: 'completed', completed_at: Time.current)
+    end
   end
 
   # バッチ完了

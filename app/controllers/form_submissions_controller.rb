@@ -15,6 +15,8 @@ class FormSubmissionsController < ApplicationController
     @no_url_customers_count = Customer.where(contact_url: [nil, ''])
                                       .where(url: [nil, ''])
                                       .count
+    # Submission一覧（送信内容選択用）
+    @submissions = Submission.order(created_at: :desc)
   end
 
   # POST /form_submissions
@@ -51,11 +53,16 @@ class FormSubmissionsController < ApplicationController
     batch = FormSubmissionBatch.create!(
       total_count: customer_ids.size,
       customer_ids: customer_ids.to_json,
-      status: 'pending',
-      error_log: '[]'
+      status: 'processing',
+      started_at: Time.current,
+      error_log: '[]',
+      submission_id: params[:submission_id].presence
     )
 
-    FormSendJob.perform_later(batch.id, 0)
+    # 並列処理: 各顧客を独立したジョブとしてキューに投入
+    customer_ids.each do |cid|
+      FormSendJob.perform_later(batch.id, cid)
+    end
 
     redirect_to form_submission_path(batch), notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
   end

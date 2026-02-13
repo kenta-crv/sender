@@ -51,6 +51,34 @@
           .mt-3
             = link_to 'キャンセル', cancel_form_submission_path(@batch), method: :patch, class: 'btn btn-danger', data: { confirm: 'バッチ送信をキャンセルしますか？' }
 
+  / --- Submission情報 ---
+  - if @batch.submission
+    .card.mb-4
+      .card-header
+        h5
+          | 送信内容:
+          = @batch.submission.headline
+      .card-body
+        .row
+          .col-md-4
+            strong 会社名:
+            span.ml-1 = @batch.submission.company
+          .col-md-4
+            strong 担当者:
+            span.ml-1 = @batch.submission.person
+          .col-md-4
+            strong メール:
+            span.ml-1 = @batch.submission.email
+        .row.mt-2
+          .col-md-4
+            strong 電話:
+            span.ml-1 = @batch.submission.tel
+          .col-md-4
+            strong 住所:
+            span.ml-1 = @batch.submission.address
+          .col-md-4
+            = link_to '送信内容詳細', submission_path(@batch.submission), class: 'btn btn-sm btn-outline-info'
+
   / --- 送信結果一覧 ---
   h4.mt-4 送信結果
   table.table.table-bordered.table-hover.table-sm

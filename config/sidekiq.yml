@@ -1,7 +1,7 @@
-:concurrency: 10
+:concurrency: 5
 :queues:
-  - [article_generation, 5]
-  - [form_submission, 3]
+  - [form_submission, 5]
+  - [article_generation, 3]
   - [default, 1]
 :redis:
   url: redis://:password@hostname:6379/0

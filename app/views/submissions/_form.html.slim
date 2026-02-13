@@ -1,65 +1,54 @@
-= form_for @site do |f|
+= form_for @submission do |f|
+  - if @submission.errors.any?
+    .alert.alert-danger
+      ul.mb-0
+        - @submission.errors.full_messages.each do |msg|
+          li = msg
 
-   table.space[width="90%"]
-     col width="20%"
-     col width="10%"
-     col width="70%"
-     tbody
-      tr
-        th 案件名（案件判別のため任意）
-        td
-         strong.label 必須
-        td.center = text_field :site, :headline
-      tr
-        th.arrow_box 会社名
-        td
-         strong.label 必須
-        td.center  = text_field :site, :company
-      tr
-        th.arrow_box 担当者
-        td
-         strong.label 必須
-        td.center  = text_field :site, :person
-      tr
-        th.arrow_box タントウシャ
-        td
-         strong.label 必須
-        td.center  =  text_field :site, :person_kana
-      tr
-        th.arrow_box 電話番号
-        td
-         strong.label 必須
-        td.center = text_field :site, :tel
-      tr
-        th.arrow_box FAX番号
-        td
-         strong.label あれば必須
-        td.center = text_field :site, :fax
-      tr
-        th.arrow_box 住所
-        td
-         strong.label 必須
-        td.center = text_field :site, :address
-      tr
-        th.arrow_box メールアドレス
-        td
-         strong.label 必須
-        td.center = text_field :site, :email
-      tr
-        th.arrow_box URL
-        td
-         strong.label 必須
-        td.center = text_field :site, :url
-      tr
-        th.arrow_box 件名
-        td
-         strong.label 必須
-        td.center = text_field :site, :title
-      tr
-        th.arrow_box 本文（800文字以内）
-        td
-         strong.label 必須
-        td.center[colspan="3"] = text_area :site, :content
+  .form-group.mb-3
+    = f.label :headline, '見出し'
+    = f.text_field :headline, class: 'form-control'
 
-      tr
-        td.center[colspan="4"] = f.submit '投稿する'
+  .form-group.mb-3
+    = f.label :company, '会社名'
+    = f.text_field :company, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :person, '担当者名'
+    = f.text_field :person, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :person_kana, '担当者名カナ'
+    = f.text_field :person_kana, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :tel, '電話番号'
+    = f.text_field :tel, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :fax, 'FAX'
+    = f.text_field :fax, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :address, '住所'
+    = f.text_field :address, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :email, 'メールアドレス'
+    = f.text_field :email, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :url, 'URL'
+    = f.text_field :url, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :title, 'お問い合わせ件名'
+    = f.text_field :title, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :content, 'お問い合わせ内容'
+    = f.text_area :content, class: 'form-control', rows: 10
+
+  .mt-3
+    = f.submit class: 'btn btn-primary'
+    = link_to 'キャンセル', submissions_path, class: 'btn btn-secondary ml-2'
