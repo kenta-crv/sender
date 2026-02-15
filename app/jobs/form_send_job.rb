@@ -6,6 +6,8 @@ class FormSendJob < ApplicationJob
   # batch_id: FormSubmissionBatch の ID
   # customer_id: 処理対象の Customer ID
   def perform(batch_id, customer_id)
+    Rails.logger.info("[FormSendJob] 開始: batch_id=#{batch_id}, customer_id=#{customer_id}, thread=#{Thread.current.object_id}, time=#{Time.current.strftime('%H:%M:%S')}")
+
     batch = FormSubmissionBatch.find_by(id: batch_id)
     return unless batch
     return if batch.status == 'cancelled'

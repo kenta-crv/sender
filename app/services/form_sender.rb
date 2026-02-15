@@ -146,6 +146,7 @@ class FormSender
 
     @driver = Selenium::WebDriver.for(:chrome, options: options)
     @driver.manage.timeouts.implicit_wait = 3
+    @driver.manage.timeouts.page_load = 30  # ページ読み込みタイムアウト（30秒）遅いサーバーでの長時間ブロック防止
   end
 
   # ブラウザを終了
@@ -250,7 +251,7 @@ class FormSender
             handle_alert
 
             # 送信後の待機（URL変更 or 成功パターン検出で早期完了）
-            original_url = driver.current_url
+            original_url = driver.current_url rescue ''
             wait_for(min_seconds: 2, max_seconds: 10) do
               url_changed = (driver.current_url != original_url rescue false)
               ajax_success = check_ajax_success? rescue false
@@ -264,7 +265,7 @@ class FormSender
                 log "送信ボタンクリック成功（2回目：確認画面）"
                 handle_alert
                 # 確認画面後の待機（URL変更 or 成功パターン検出で早期完了）
-                confirm_url = driver.current_url
+                confirm_url = driver.current_url rescue ''
                 wait_for(min_seconds: 2, max_seconds: 8) do
                   url_changed = (driver.current_url != confirm_url rescue false)
                   ajax_success = check_ajax_success? rescue false
@@ -1460,9 +1461,16 @@ class FormSender
         log "送信ボタン発見: #{btn_text}"
         scroll_to_element(btn)
         sleep 0.5
-        btn.click
+        begin
+          btn.click
+        rescue Selenium::WebDriver::Error::TimeoutError
+          log "送信後のページ読み込みタイムアウト（送信は実行済み）"
+        end
         return true
       end
+    rescue Selenium::WebDriver::Error::TimeoutError
+      # クリック前の要素取得中にタイムアウト → 次の方法へ
+      log "送信ボタン検索中にタイムアウト"
     rescue StandardError => e
       log "送信ボタン検索エラー: #{e.message}"
     end
@@ -1476,7 +1484,11 @@ class FormSender
             log "送信ボタン発見（テキスト）: #{pattern}"
             scroll_to_element(btn)
             sleep 0.5
-            btn.click
+            begin
+              btn.click
+            rescue Selenium::WebDriver::Error::TimeoutError
+              log "送信後のページ読み込みタイムアウト（送信は実行済み）"
+            end
             return true
           end
         end
@@ -1494,7 +1506,11 @@ class FormSender
         inputs = form.find_elements(:css, 'input:not([type="hidden"]), textarea')
         if inputs.size >= 2
           log "送信ボタン発見（JSフォールバック）: form.submit()"
-          driver.execute_script("arguments[0].submit();", form)
+          begin
+            driver.execute_script("arguments[0].submit();", form)
+          rescue Selenium::WebDriver::Error::TimeoutError
+            log "送信後のページ読み込みタイムアウト（送信は実行済み）"
+          end
           return true
         end
       end
@@ -1555,8 +1571,8 @@ class FormSender
         alert.accept
         log "アラート承認（#{attempts + 1}回目）"
         attempts += 1
-      rescue Selenium::WebDriver::Error::NoSuchAlertError
-        # アラートがなくなったら終了
+      rescue Selenium::WebDriver::Error::NoSuchAlertError, Selenium::WebDriver::Error::TimeoutError
+        # アラートがない、またはページ読み込みタイムアウト → 終了
         break
       end
     end
@@ -1646,8 +1662,8 @@ class FormSender
     # AJAX送信の成功検出（CF7 / WPForms 等）
     return true if check_ajax_success?
 
-    page_source = driver.page_source.downcase
-    current_url = driver.current_url
+    page_source = (driver.page_source.downcase rescue '')
+    current_url = (driver.current_url rescue '')
 
     # 成功メッセージの検出（最優先）
     has_success_message = false
