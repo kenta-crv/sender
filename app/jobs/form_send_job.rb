@@ -20,9 +20,10 @@ class FormSendJob < ApplicationJob
     end
 
     # FormSender で送信実行（Sidekiq 環境ではヘッドレスモード）
+    sender = nil
     begin
       sender_info = build_sender_info(batch)
-      sender = FormSender.new(debug: true, headless: true, save_to_db: true, sender_info: sender_info)
+      sender = FormSender.new(debug: true, headless: true, save_to_db: true, sender_info: sender_info, skip_detection: true)
       result = sender.send_to_customer(customer)
 
       success = result[:status] == '自動送信成功'
@@ -34,6 +35,9 @@ class FormSendJob < ApplicationJob
     rescue StandardError => e
       Rails.logger.error("[FormSendJob] customer_id=#{customer_id} エラー: #{e.message}")
       batch.record_result!(customer_id, success: false, message: e.message)
+    ensure
+      # Chromeプロセスの確実な終了（ゾンビプロセス防止 → 速度低下防止）
+      sender&.teardown_driver rescue nil
     end
   end
 

@@ -113,7 +113,7 @@ class FormSender
     'お確かめ下さい', 'お確かめください', '内容をお確かめ',
   ].freeze
 
-  def initialize(debug: false, confirm_mode: false, save_to_db: false, headless: false, confirm_callback: nil, sender_info: nil)
+  def initialize(debug: false, confirm_mode: false, save_to_db: false, headless: false, confirm_callback: nil, sender_info: nil, skip_detection: false)
     @driver = nil
     @result = { status: nil, message: nil }
     @debug = debug
@@ -123,6 +123,7 @@ class FormSender
     @alert_had_error = false      # アラートにエラーメッセージがあったか
     @confirm_callback = confirm_callback  # 確認モード時の待機処理（Proc）
     @custom_sender_info = sender_info     # カスタム送信者情報（Submissionモデルから）
+    @skip_detection = skip_detection      # trueの場合、contact_url自動検出をスキップ（バッチ高速化）
   end
 
   # sender_info アクセサ（カスタム情報がある場合はマージ）
@@ -146,12 +147,12 @@ class FormSender
 
     @driver = Selenium::WebDriver.for(:chrome, options: options)
     @driver.manage.timeouts.implicit_wait = 3
-    @driver.manage.timeouts.page_load = 30  # ページ読み込みタイムアウト（30秒）遅いサーバーでの長時間ブロック防止
+    @driver.manage.timeouts.page_load = 15  # ページ読み込みタイムアウト（15秒）遅いサーバーでの長時間ブロック防止
   end
 
-  # ブラウザを終了
+  # ブラウザを終了（例外が発生しても確実にnilに設定）
   def teardown_driver
-    @driver&.quit
+    @driver&.quit rescue nil
     @driver = nil
   end
 
@@ -170,7 +171,12 @@ class FormSender
 
     # contact_urlがない場合 → 自動検出を試みる
     if customer.contact_url.blank?
-      if customer.url.present?
+      if @skip_detection
+        # バッチモード: 自動検出をスキップして即座に結果を返す（事前に一括検出を実行済み前提）
+        @result = { status: 'フォーム未検出', message: 'contact_url未設定（事前に一括検出を実行してください）' }
+        save_result_to_db if @save_to_db
+        return @result
+      elsif customer.url.present?
         log "contact_url未設定 → HPから自動検出を試みます"
         detector = ContactUrlDetector.new(debug: @debug, headless: @headless)
         detection = detector.detect(customer)
@@ -577,16 +583,43 @@ class FormSender
     false
   end
 
-  # ページ内にreCAPTCHA/CAPTCHAがあるかチェック
+  # ページ内にreCAPTCHA/CAPTCHAがあるかチェック（DOM要素ベースで誤検出防止）
   def page_has_captcha?
     begin
-      page_source = driver.page_source
-      captcha_patterns = %w[recaptcha g-recaptcha hcaptcha cf-turnstile]
-      captcha_text_patterns = ['私はロボットではありません', 'I\'m not a robot']
-      # HTML属性/クラスで検出
-      return true if captcha_patterns.any? { |p| page_source.downcase.include?(p) }
-      # ページテキストで検出
+      # 1. CAPTCHA用のDOM要素を検出（最も確実）
+      captcha_selectors = [
+        '.g-recaptcha',              # reCAPTCHA v2 ウィジェット
+        '[data-sitekey]',            # reCAPTCHA サイトキー属性
+        '.h-captcha',                # hCaptcha ウィジェット
+        '.cf-turnstile',             # Cloudflare Turnstile
+        'iframe[src*="recaptcha"]',  # reCAPTCHA iframe
+        'iframe[src*="hcaptcha"]',   # hCaptcha iframe
+      ]
+      captcha_selectors.each do |selector|
+        elements = driver.find_elements(:css, selector) rescue []
+        if elements.any?
+          log "CAPTCHA要素検出: #{selector}"
+          return true
+        end
+      end
+
+      # 2. reCAPTCHA v3 スクリプト検出（scriptタグのsrc属性で判定）
+      scripts = driver.find_elements(:css, 'script[src*="recaptcha/api"]') rescue []
+      if scripts.any?
+        log "reCAPTCHA v3スクリプト検出"
+        return true
+      end
+
+      # 3. CF7 reCAPTCHA設定の検出（JavaScript変数で判定）
+      page_source = driver.page_source rescue ''
+      if page_source.include?('wpcf7_recaptcha') || page_source.include?('grecaptcha.execute')
+        log "CF7/reCAPTCHA v3 設定検出"
+        return true
+      end
+
+      # 4. テキストパターン（ロボットチェック表示）
       body_text = driver.find_element(:css, 'body').text rescue ''
+      captcha_text_patterns = ['私はロボットではありません', "I'm not a robot"]
       return true if captcha_text_patterns.any? { |p| body_text.include?(p) }
     rescue StandardError => e
       log "CAPTCHA検出エラー: #{e.message}"
