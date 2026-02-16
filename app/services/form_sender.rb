@@ -146,7 +146,7 @@ class FormSender
     options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
     @driver = Selenium::WebDriver.for(:chrome, options: options)
-    @driver.manage.timeouts.implicit_wait = 3
+    @driver.manage.timeouts.implicit_wait = 0  # 暗黙的待機なし（find_element失敗時の3秒ペナルティを排除）
     @driver.manage.timeouts.page_load = 15  # ページ読み込みタイムアウト（15秒）遅いサーバーでの長時間ブロック防止
   end
 
