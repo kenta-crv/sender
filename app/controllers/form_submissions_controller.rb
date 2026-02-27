@@ -76,7 +76,10 @@ class FormSubmissionsController < ApplicationController
       return
     end
 
-    ContactUrlDetectJob.perform_later(customer_ids)
+    # 並列処理: 各顧客を独立したジョブとしてキューに投入
+    customer_ids.each do |cid|
+      ContactUrlDetectJob.perform_later(cid)
+    end
 
     redirect_to form_submissions_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
   end
