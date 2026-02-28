@@ -17,11 +17,13 @@ Rails.application.routes.draw do
   get 'short', to: 'tops#short'
   get 'recruit', to: 'tops#recruit'
   get 'app', to: 'tops#app'
+  get 'vender', to: 'tops#vender'
+  get 'pest', to: 'tops#pest'
   get 'ads', to: 'tops#ads'
 
   # --- SEO用: ジャンル別コラム階層 (/genre/columns/:code) ---
   # constraintsに一致する場合、こちらのルーティングが優先されます
-  scope ':genre', constraints: { genre: /cargo|security|cleaning|app|construction/ } do
+  scope ':genre', constraints: { genre: /cargo|security|cleaning|app|vender|pest|construction/ } do
     resources :columns, only: [:index, :show], as: :nested_columns
   end
 
