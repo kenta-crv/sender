@@ -4,36 +4,84 @@ class FormSubmissionsController < ApplicationController
   # GET /form_submissions
   def index
     @batches = FormSubmissionBatch.order(created_at: :desc).page(params[:page]).per(20)
-    @customers = Customer.where.not(contact_url: [nil, ''])
+    # contact_url設定済みの顧客（送信可能）
+    @customers = Customer.where.not(contact_url: [nil, '']).includes(:last_form_call)
+    # url有りだがcontact_url未設定の顧客（自動検出対象）
+    @detectable_customers = Customer.where(contact_url: [nil, ''])
+                                    .where.not(url: [nil, ''])
+                                    .where(fobbiden: [nil, false, 0])
+                                    .includes(:last_form_call)
+    # url も contact_url もない顧客（手動設定が必要）
+    @no_url_customers_count = Customer.where(contact_url: [nil, ''])
+                                      .where(url: [nil, ''])
+                                      .count
+    # Submission一覧（送信内容選択用）
+    @submissions = Submission.order(created_at: :desc)
   end
 
   # POST /form_submissions
   def create
+    # contact_url有り or url有り（自動検出付き）の顧客を対象に
+    eligible_scope = Customer.where(
+      'contact_url IS NOT NULL AND contact_url != ? OR (url IS NOT NULL AND url != ?)', '', ''
+    ).where(fobbiden: [nil, false, 0])
+
+    send_count = params[:send_count].to_i if params[:send_count].present?
+
     customer_ids = if params[:customer_ids].present?
                      Array(params[:customer_ids]).map(&:to_i)
                    elsif params[:q].present?
-                     # Ransack 検索結果から全件取得
-                     q = Customer.where.not(contact_url: [nil, '']).ransack(params[:q])
+                     q = eligible_scope.ransack(params[:q])
                      q.result.pluck(:id)
+                   elsif send_count && send_count > 0
+                     # 件数指定のみ（チェックなし）→ eligible_scopeから先頭N件
+                     eligible_scope.limit(send_count).pluck(:id)
                    else
                      []
                    end
 
+    # 件数指定がある場合、チェック済みでも件数で切り詰め
+    if send_count && send_count > 0 && customer_ids.size > send_count
+      customer_ids = customer_ids.first(send_count)
+    end
+
     if customer_ids.empty?
-      redirect_to form_submissions_path, alert: '送信対象の顧客が選択されていません。'
+      redirect_to form_submissions_path, alert: '送信対象の顧客が選択されていません。件数を指定するか、顧客を選択してください。'
       return
     end
 
     batch = FormSubmissionBatch.create!(
       total_count: customer_ids.size,
       customer_ids: customer_ids.to_json,
-      status: 'pending',
-      error_log: '[]'
+      status: 'processing',
+      started_at: Time.current,
+      error_log: '[]',
+      submission_id: params[:submission_id].presence
     )
 
-    FormSendJob.perform_later(batch.id, 0)
+    # 並列処理: 各顧客を独立したジョブとしてキューに投入
+    customer_ids.each do |cid|
+      FormSendJob.perform_later(batch.id, cid)
+    end
 
     redirect_to form_submission_path(batch), notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
+  end
+
+  # POST /form_submissions/detect_contact_urls
+  def detect_contact_urls
+    customer_ids = Array(params[:customer_ids]).map(&:to_i)
+
+    if customer_ids.empty?
+      redirect_to form_submissions_path, alert: '検出対象の顧客が選択されていません。'
+      return
+    end
+
+    # 並列処理: 各顧客を独立したジョブとしてキューに投入
+    customer_ids.each do |cid|
+      ContactUrlDetectJob.perform_later(cid)
+    end
+
+    redirect_to form_submissions_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
   end
 
   # GET /form_submissions/:id

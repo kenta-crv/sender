@@ -1,0 +1,54 @@
+= form_for @submission do |f|
+  - if @submission.errors.any?
+    .alert.alert-danger
+      ul.mb-0
+        - @submission.errors.full_messages.each do |msg|
+          li = msg
+
+  .form-group.mb-3
+    = f.label :headline, '見出し'
+    = f.text_field :headline, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :company, '会社名'
+    = f.text_field :company, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :person, '担当者名'
+    = f.text_field :person, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :person_kana, '担当者名カナ'
+    = f.text_field :person_kana, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :tel, '電話番号'
+    = f.text_field :tel, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :fax, 'FAX'
+    = f.text_field :fax, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :address, '住所'
+    = f.text_field :address, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :email, 'メールアドレス'
+    = f.text_field :email, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :url, 'URL'
+    = f.text_field :url, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :title, 'お問い合わせ件名'
+    = f.text_field :title, class: 'form-control'
+
+  .form-group.mb-3
+    = f.label :content, 'お問い合わせ内容'
+    = f.text_area :content, class: 'form-control', rows: 10
+
+  .mt-3
+    = f.submit class: 'btn btn-primary'
+    = link_to 'キャンセル', submissions_path, class: 'btn btn-secondary ml-2'

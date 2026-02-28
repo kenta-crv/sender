@@ -1,0 +1,30 @@
+class ExtractCompanyInfoWorker
+  def perform(customer_id)
+    customer = Customer.find(customer_id)
+
+    query = "#{customer.company} #{customer.address} 会社概要 -求人 -採用"
+
+    serp = BrightData::SerpClient.new(
+      api_key: ENV["BRIGHT_DATA_API_KEY"]
+    ).search(query: query)
+
+    urls = UrlCandidateExtractor.extract(serp)
+    top_page = TopPageSelector.select(urls)
+
+    html = Net::HTTP.get(URI(top_page))
+
+    info = CompanyInfoExtractor.new(
+      html,
+      customer: customer
+    ).extract
+
+    customer.update!(
+      company: info[:company],
+      tel: info[:tel],
+      address: info[:address],
+      url: top_page,
+      contact_url: info[:contact_url],
+      status: "success"
+    )
+  end
+end

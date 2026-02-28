@@ -1,6 +1,7 @@
 class Customer < ApplicationRecord
   has_many :calls
   has_one :last_call, -> { order(created_at: :desc) }, class_name: 'Call'
+  has_one :last_form_call, -> { where(call_type: 'form').order(created_at: :desc) }, class_name: 'Call'
 
   scope :between_created_at, ->(from, to){
     where(created_at: from..to).where.not(tel: nil)
@@ -32,7 +33,7 @@ class Customer < ApplicationRecord
       url          # URL
       business     # 業種詳細
       genre        # 職種
-      contact_form # 問い合わせフォーム
+      contact_url # 問い合わせフォーム
       remarks      # 備考
       fobbiden
       contact_url  # お問い合わせフォームURL

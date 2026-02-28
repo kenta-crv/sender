@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_02_02_000003) do
+ActiveRecord::Schema.define(version: 2026_02_11_073252) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -123,6 +123,22 @@ ActiveRecord::Schema.define(version: 2026_02_02_000003) do
     t.index ["slug", "sluggable_type", "scope"], name: "index_friendly_id_slugs_on_slug_and_sluggable_type_and_scope", unique: true
     t.index ["slug", "sluggable_type"], name: "index_friendly_id_slugs_on_slug_and_sluggable_type"
     t.index ["sluggable_type", "sluggable_id"], name: "index_friendly_id_slugs_on_sluggable_type_and_sluggable_id"
+  end
+
+  create_table "submissions", force: :cascade do |t|
+    t.string "headline"
+    t.string "company"
+    t.string "person"
+    t.string "person_kana"
+    t.string "tel"
+    t.string "fax"
+    t.string "address"
+    t.string "email"
+    t.string "url"
+    t.string "title"
+    t.string "content"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
   end
 
   add_foreign_key "calls", "customers"
