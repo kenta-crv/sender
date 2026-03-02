@@ -45,6 +45,8 @@ class Column < ApplicationRecord
     "cleaning"     => ["cleaning"],
     "security"     => ["security"],
     "app"          => ["app"],
+    "vender"          => ["vender"],
+    "pest"          => ["pest"],
     "ai"           => ["ai"],
     "construction" => ["construction"]
   }.freeze

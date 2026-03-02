@@ -1,0 +1,47 @@
+
+.container.mt-4
+  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
+    | 送信履歴（エラー・未検出）
+  
+  - if alert
+    .alert.alert-warning = alert
+
+  table.table.table-bordered.table-hover.table-sm
+    thead
+      tr
+        th 顧客ID
+        th 会社名
+        th ステータス
+        th コメント
+        th 送信日時
+        th 詳細
+    tbody
+      - @display_rows.each_with_index do |row, index|
+        - customer = row[:customer]
+        - call = row[:latest_call]
+        - error = row[:error_entry]
+        - status_text = row[:status_text] # コントローラーで判定済み
+
+        / 絞り込み済みなので基本は table-danger (赤)
+        tr.table-danger
+          td = customer.id
+          td = customer.company
+          td
+            span.btn.btn-sm.btn-danger
+              = status_text
+          td 
+            - if call.present?
+              = call.comment
+            - elsif error.present?
+              = error["message"]
+          td 
+            - if call.present?
+              = call.created_at.strftime('%Y/%m/%d %H:%M:%S')
+            - else
+              = row[:batch_at].strftime('%Y/%m/%d %H:%M:%S')
+          td
+            = link_to '詳細', customer_path(customer, \
+                all_ids: @all_target_ids.join(','), \
+                submission_id: @submission.id, \
+                current_index: index), \
+                class: 'btn btn-primary btn-sm'

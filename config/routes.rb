@@ -4,7 +4,14 @@ Rails.application.routes.draw do
     sessions: 'admins/sessions',
     registrations: 'admins/registrations'
   }
+  resources :admins, only: [:show]
   
+  devise_for :workers, controllers: {
+    sessions: 'workers/sessions',
+    registrations: 'workers/registrations'
+  }
+  resources :workers, only: [:show]
+
   root to: 'tops#index'
 
   # --- 各ジャンルLPの定義 ---
@@ -17,11 +24,13 @@ Rails.application.routes.draw do
   get 'short', to: 'tops#short'
   get 'recruit', to: 'tops#recruit'
   get 'app', to: 'tops#app'
+  get 'vender', to: 'tops#vender'
+  get 'pest', to: 'tops#pest'
   get 'ads', to: 'tops#ads'
 
   # --- SEO用: ジャンル別コラム階層 (/genre/columns/:code) ---
   # constraintsに一致する場合、こちらのルーティングが優先されます
-  scope ':genre', constraints: { genre: /cargo|security|cleaning|app|construction/ } do
+  scope ':genre', constraints: { genre: /cargo|security|cleaning|app|vender|pest|construction/ } do
     resources :columns, only: [:index, :show], as: :nested_columns
   end
 
@@ -48,7 +57,12 @@ Rails.application.routes.draw do
     mount Sidekiq::Web, at: "/sidekiq"
   end
 
-  resources :submissions
+resources :submissions do
+  member do
+    get :history
+    get :manual
+  end
+end
 
   resources :form_submissions, only: [:index, :create, :show] do
     collection do
@@ -61,6 +75,9 @@ Rails.application.routes.draw do
   end
 
   resources :customers do
+    member do
+      post :manual_call
+    end
     resources :calls
   end
 end

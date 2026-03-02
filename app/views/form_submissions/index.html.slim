@@ -1,5 +1,54 @@
 .container.mt-4
-  h2 フォーム送信バッチ管理
+  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
+    | 検索フォーム
+
+  / --- 検索フォーム ---
+  = search_form_for @q, url: form_submissions_path, method: :get, class: 'mb-4' do |f|
+    .row.mb-2
+      .col-md-3
+        = f.label :company_cont, "会社名"
+        = f.search_field :company_cont, class: "form-control"
+      .col-md-3
+        = f.label :tel_cont, "電話番号"
+        = f.search_field :tel_cont, class: "form-control"
+      .col-md-3
+        = f.label :industry_cont, "業種"
+        = f.search_field :industry_cont, class: "form-control"
+      .col-md-3
+        = f.label :genre_cont, "職種"
+        = f.search_field :genre_cont, class: "form-control"
+    .row.mb-2
+      .col-md-3
+        = f.label :address_cont_any, "住所"
+        = f.collection_select :address_cont_any,
+                              JpPrefecture::Prefecture.all,
+                              :name, :name,
+                              { include_blank: '選択してください' },
+                              { class: 'form-control', multiple: true }
+      .col-md-3
+        = f.label :mobile_cont, "携帯番号"
+        = f.search_field :mobile_cont, class: "form-control"
+      .col-md-3
+        = f.label "未コール"
+        = check_box_tag "last_call[calls_id_null]", "true", params.dig(:last_call, :calls_id_null) == "true", class: "form-check-input"
+      .col-md-3
+        = f.label "最終送信状態"
+        = select_tag "last_call[status][]", options_for_select([""] + Call.StatuItems, params.dig(:last_call, :status)), multiple: true, class: "form-select"
+    .row.mb-2
+      .col-md-3
+        = f.label "最終送信日時（開始）"
+        = date_field_tag "last_call[created_at_from]", params.dig(:last_call, :created_at_from), class: "form-control"
+      .col-md-3
+        = f.label "最終送信日時（終了）"
+        = date_field_tag "last_call[created_at_to]", params.dig(:last_call, :created_at_to), class: "form-control"
+    .row
+      .col-md-12
+        = f.submit "検索", class: "btn btn-primary"
+
+-if admin_signed_in?
+ .container.mt-4
+  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
+    | フォーム送信開始
 
   / --- 新規バッチ作成フォーム ---
   .card.mb-4
@@ -8,7 +57,8 @@
     .card-body
       = form_tag form_submissions_path, method: :post do
         .form-group.mb-3
-          label 送信対象の顧客を選択（contact_url 設定済み、または HP URL から自動検出可能な顧客）
+          label
+            | 送信対象の顧客を選択（contact_url 設定済み、または HP URL から自動検出可能な顧客）
           .mb-2
             | contact_url 設定済み:
             strong = @customers.count
@@ -17,26 +67,43 @@
               | 自動検出対象（HP URL有り）:
               strong = @detectable_customers.count
               | 件
+
         .form-group.mb-3
+          = link_to '新規Submission作成', new_submission_path, class: 'btn btn-success mb-2'
           label.font-weight-bold 送信件数指定
           .input-group style="max-width: 300px;"
-            = number_field_tag :send_count, nil, class: 'form-control', min: 1, placeholder: '件数を入力（空欄＝チェック分のみ）'
+            = number_field_tag :send_count, nil,
+              class: 'form-control',
+              min: 1,
+              placeholder: '件数を入力（空欄＝チェック分のみ）'
             .input-group-append
               span.input-group-text 件
           small.form-text.text-muted
-            | 件数を指定すると、チェックした顧客の先頭N件のみ送信します。チェックなしで件数のみ指定した場合は送信可能な顧客から先頭N件を自動選択します。
+            | 件数を指定すると、チェックした顧客の先頭N件のみ送信します。
+            | チェックなしで件数のみ指定した場合は送信可能な顧客から先頭N件を自動選択します。
+
         .form-group.mb-3
           label.font-weight-bold 送信内容（Submission）
-          = select_tag :submission_id, options_from_collection_for_select(@submissions, :id, :headline), include_blank: 'デフォルト（固定テンプレート）', class: 'form-control', style: 'max-width: 400px;'
+          = select_tag :submission_id,
+            options_from_collection_for_select(@submissions, :id, :title),
+            include_blank: 'デフォルト（固定テンプレート）',
+            class: 'form-control',
+            style: 'max-width: 400px;'
           small.form-text.text-muted
-            | Submissionを選択すると、登録済みの送信内容（名前・メール・本文等）でフォーム送信します。未選択の場合はデフォルトのテンプレートを使用します。
+            | Submissionを選択すると登録済みの送信内容でフォーム送信します。
+            | 未選択の場合はデフォルトテンプレートを使用します。
+
         - if @detectable_customers.count > 0
           .alert.alert-warning.mt-2
-            | contact_url未設定の顧客が #{@detectable_customers.count}件あります。速度向上のため、送信前に下部の「フォームURL一括検出」の実行を推奨します。
+            | contact_url未設定の顧客が
+            = @detectable_customers.count
+            | 件あります。送信前に下部の「フォームURL一括検出」を推奨します。
+
         .form-group.mb-3
           = check_box_tag :select_all, '1', false, id: 'select_all'
-          label for='select_all'
-            |  全件選択
+          label for="select_all"
+            | 全件選択
+
         .table-responsive style="max-height: 400px; overflow-y: auto;"
           table.table.table-sm.table-bordered
             thead
@@ -51,13 +118,12 @@
             tbody
               - @customers.each do |c|
                 tr
-                  td
-                    = check_box_tag 'customer_ids[]', c.id, false, class: 'customer-check'
+                  td = check_box_tag 'customer_ids[]', c.id, false, class: 'customer-check'
                   td = c.id
                   td = c.company
                   td
                     - if c.contact_url.present?
-                      a href=c.contact_url target="_blank" = truncate(c.contact_url, length: 50)
+                      = link_to truncate(c.contact_url, length: 50), c.contact_url, target: '_blank'
                   td
                     span.badge.badge-success 設定済み
                   td
@@ -74,10 +140,10 @@
                         span.badge.badge-danger = c.last_form_call.status
                       - else
                         span.badge.badge-info = c.last_form_call.status
+
               - @detectable_customers.each do |c|
                 tr.table-warning
-                  td
-                    = check_box_tag 'customer_ids[]', c.id, false, class: 'customer-check'
+                  td = check_box_tag 'customer_ids[]', c.id, false, class: 'customer-check'
                   td = c.id
                   td = c.company
                   td
@@ -101,8 +167,11 @@
                         span.badge.badge-danger = c.last_form_call.status
                       - else
                         span.badge.badge-info = c.last_form_call.status
+
         .mt-3
-          = submit_tag 'バッチ送信開始', class: 'btn btn-primary', data: { confirm: '選択した顧客にフォーム送信を実行しますか？（自動検出対象はHP URLからフォームを自動検出してから送信します）' }
+          = submit_tag 'バッチ送信開始',
+            class: 'btn btn-primary',
+            data: { confirm: '選択した顧客にフォーム送信を実行しますか？' }
 
   / --- フォームURL自動検出 ---
   .card.mb-4
@@ -111,16 +180,19 @@
     .card-body
       - if @detectable_customers.any?
         p
-          | HP URL が設定されているが contact_url が未設定の顧客に対して、お問い合わせフォームURLを自動検出します。
+          | HP URL が設定されているが contact_url が未設定の顧客に対して、
+          | お問い合わせフォームURLを自動検出します。
         p
           | 対象顧客数:
           strong = @detectable_customers.count
           | 件
+
         = form_tag detect_contact_urls_form_submissions_path, method: :post do
           .form-group.mb-3
             = check_box_tag :detect_select_all, '1', false, id: 'detect_select_all'
-            label for='detect_select_all'
-              |  全件選択
+            label for="detect_select_all"
+              | 全件選択
+
           .table-responsive style="max-height: 300px; overflow-y: auto;"
             table.table.table-sm.table-bordered
               thead
@@ -132,17 +204,19 @@
               tbody
                 - @detectable_customers.each do |c|
                   tr
-                    td
-                      = check_box_tag 'customer_ids[]', c.id, false, class: 'detect-check'
+                    td = check_box_tag 'customer_ids[]', c.id, false, class: 'detect-check'
                     td = c.id
                     td = c.company
                     td
                       - if c.url.present?
-                        a href=c.url target="_blank" = truncate(c.url, length: 50)
+                        = link_to truncate(c.url, length: 50), c.url, target: '_blank'
+
           .mt-3
-            = submit_tag 'フォームURL一括検出', class: 'btn btn-warning', data: { confirm: '選択した顧客のHPからお問い合わせフォームURLを自動検出しますか？' }
+            = submit_tag 'フォームURL一括検出',
+              class: 'btn btn-warning',
+              data: { confirm: '選択した顧客のHPからフォームURLを自動検出しますか？' }
       - else
-        p.text-muted 自動検出対象の顧客はありません（全顧客の contact_url が設定済みか、HP URL が未設定です）。
+        p.text-muted 自動検出対象の顧客はありません。
 
       - if @not_detected_count > 0
         .alert.alert-secondary.mt-3
@@ -151,20 +225,27 @@
           | 件（再検出するには顧客編集画面でcontact_urlを空にしてください）
       - if @no_url_customers_count > 0
         .alert.alert-info.mt-3
-          | HP URL もお問い合わせフォームURLも未設定の顧客が
-          strong = @no_url_customers_count
-          | 件あります。顧客編集画面でURLを手動設定してください。
-
-  / --- バッチ一覧 ---
-  h4.mt-4 バッチ履歴
+          .d-flex.justify-content-between.align-items-center
+            div
+              i.fas.fa-exclamation-circle.mr-2
+              | HP URL もお問い合わせフォームURLも未設定の顧客が 
+              strong = @no_url_customers_count
+              | 件あります。
+            - if @submissions.first.present?
+             = link_to '手動送信開始', manual_submission_path(@submissions.first), class: 'btn btn-primary btn-sm', target: '_blank', rel: 'noopener noreferrer'
+.container.mt-4
+  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
+    | 送信履歴
   table.table.table-bordered.table-hover
     thead
       tr
         th ID
         th ステータス
+        th 送信元情報
         th 合計
         th 成功
         th 失敗
+        th 送信率
         th 進捗
         th 開始日時
         th 完了日時
@@ -176,27 +257,77 @@
           td
             - case batch.status
             - when 'pending'
-              span.badge.badge-secondary 待機中
+              span.btn.btn-sm.btn-secondary pending
             - when 'processing'
-              span.badge.badge-primary 処理中
+              span.btn.btn-sm.btn-primary processing
             - when 'completed'
-              span.badge.badge-success 完了
+              span.btn.btn-sm.btn-success completed
             - when 'cancelled'
-              span.badge.badge-warning キャンセル
+              span.btn.btn-sm.btn-warning cancelled
+
+          td
+            - if batch.submission.present?
+              = batch.submission.title
+            - else
+              span.text-muted test
+
           td = batch.total_count
           td = batch.success_count
           td = batch.failure_count
+          td 
+             - rate = batch.total_count.to_i > 0 ? ((batch.success_count.to_f / batch.total_count) * 100).round(1) : 0
+             = "#{rate}%"
           td
             - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round(1) : 0
             .progress
               .progress-bar role="progressbar" style="width: #{percent}%"
                 = "#{percent}%"
+
           td = batch.started_at&.strftime('%Y/%m/%d %H:%M')
           td = batch.completed_at&.strftime('%Y/%m/%d %H:%M')
+
           td
-            = link_to '詳細', form_submission_path(batch), class: 'btn btn-sm btn-info'
+            = link_to 'Detail', form_submission_path(batch), class: 'btn btn-sm btn-info mr-1'
+            = link_to 'Delete',
+              form_submission_path(batch),
+              method: :delete,
+              data: { confirm: 'このバッチを削除してもよろしいですか？' },
+              class: 'btn btn-sm btn-danger'
 
   = paginate @batches
+
+.container.mt-4
+  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
+    | Submission別送信件数
+
+  table.table.table-bordered.table-hover
+    thead
+      tr
+        th Submission
+        th 送信件数合計
+        th 成功
+        th 失敗
+        th 成功率
+        th 最終送信日時
+        th 詳細
+    tbody
+      - @submission_stats.each do |stat|
+        - total = stat[:total_sent]
+        - success = stat[:success_count]
+        - failure = stat[:failure_count]
+        - rate = total.positive? ? ((success.to_f / total) * 100).round(1) : 0
+
+        tr
+          td = stat[:submission].title
+          td = total
+          td.text-success = success
+          td.text-danger = failure
+          td = "#{rate}%"
+          td = stat[:last_sent_at]&.strftime('%Y/%m/%d %H:%M') || '-'
+          td
+            = link_to '履歴', history_submission_path(stat[:submission]),
+              class: 'btn btn-sm btn-primary'
+
 
 javascript:
   document.addEventListener('DOMContentLoaded', function() {

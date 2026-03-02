@@ -1,37 +1,91 @@
-.table-container
-  table.table-space
-    col[width="30%"]
-    col[width="70%"]
-    tbody
-      tr
-        th.document-color 会社名
-        td= @customer.company
-      tr
-        th.report-color 電話番号
-        td= @customer.tel
-      tr
-        th.report-color 住所
-        td= @customer.address
-      tr
-        th.document-color メールアドレス
-        td= @customer.email
-      tr
-        th.report-color URL
-        td= @customer.url
-      tr
-        th.report-color 業種
-        td= @customer.business
-      tr
-        th.report-color 問い合わせフォーム
-        td= @customer.contact_url
-      tr
-        th.report-color 問い合わせURL
-        td
-          = @customer.contact_url
-          - if @customer.contact_url.present?
-            = form_tag form_submissions_path, method: :post, class: 'd-inline ml-2' do
-              = hidden_field_tag 'customer_ids[]', @customer.id
-              = submit_tag 'フォーム送信', class: 'btn btn-sm btn-outline-primary', data: { confirm: 'この顧客にフォーム送信を実行しますか？' }
-      tr
-        th フォーム送信NG
-        td= @customer.fobbiden
+.mb-3.d-flex.justify-content-between
+  - if @prev_customer
+    = link_to '前へ', customer_path(@prev_customer, all_ids: @all_ids.join(','), submission_id: @submission_id, current_index: @current_index - 1), class: 'btn btn-secondary'
+  - else
+    div
+
+  .d-flex.gap-2
+    = button_to '手動送信失敗', manual_call_customer_path(@customer), \
+        params: { status: '手動送信失敗', \
+                 all_ids: @all_ids.join(','), \
+                 submission_id: @submission_id, \
+                 current_index: @current_index }, \
+        method: :post, class: 'btn btn-danger'
+
+    = button_to '手動送信成功', manual_call_customer_path(@customer), \
+        params: { status: '手動送信成功', \
+                 all_ids: @all_ids.join(','), \
+                 submission_id: @submission_id, \
+                 current_index: @current_index }, \
+        method: :post, class: 'btn btn-success'
+
+  - if @next_customer
+    = link_to '次へ', customer_path(@next_customer, all_ids: @all_ids.join(','), submission_id: @submission_id, current_index: @current_index + 1), class: 'btn btn-secondary'
+  - else
+    / 次がない場合はボタンを出さない
+    div
+
+/ 以降、会社情報表示やiframe部分は変更なし
+
+.row
+  .col-md-3.center
+      - if @customer.contact_url.present?
+        = link_to '問い合わせフォームを表示する', @customer.contact_url, target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
+      - elsif @customer.url.present?
+        = link_to 'ホームページを表示する', @customer.url, target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
+      - else
+        - search_query = [@customer.company, @customer.tel, @customer.address].compact.join(' ')
+        - if search_query.present?
+          = link_to 'Google検索', "https://www.google.com/search?q=#{CGI.escape(search_query)}", target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
+      .table-container
+        table.table-space
+          col[width="30%"]
+          col[width="70%"]
+          tbody
+            tr
+              th.document-color 会社名
+            tr
+              td= @customer.company
+            tr
+              th.report-color 電話番号
+            tr
+              td= @customer.tel
+            tr
+              th.report-color 住所
+            tr
+              td= @customer.address
+            tr
+              th.document-color メールアドレス
+            tr
+              td= @customer.email
+            tr
+              th.report-color URL
+            tr 
+              td= @customer.url
+            tr
+              th.report-color 業種
+            tr 
+              td= @customer.business
+            tr
+              th.report-color 問い合わせフォーム
+            tr 
+              td= @customer.contact_url
+            tr
+              th.report-color 問い合わせURL
+            tr 
+              td
+                = @customer.contact_url
+                - if @customer.contact_url.present?
+                  = form_tag form_submissions_path, method: :post, class: 'd-inline ml-2' do
+                    = hidden_field_tag 'customer_ids[]', @customer.id
+                    = submit_tag 'フォーム送信', class: 'btn btn-sm btn-outline-primary', data: { confirm: 'この顧客にフォーム送信を実行しますか？' }
+            tr
+              th フォーム送信NG
+              td= @customer.fobbiden
+
+  .col-md-9
+    - iframe_url = @customer.contact_url.presence || @customer.url
+    - if iframe_url.present?
+      iframe src=iframe_url width="100%" height="800" frameborder="0"
+    - else
+      p.text-muted iframeで表示するURLがありません。
