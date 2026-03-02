@@ -26,6 +26,7 @@ CSV.foreach(csv_path, headers: true, encoding: 'UTF-8') do |row|
   tel = row['tel'].to_s.strip
   url = row['url'].to_s.strip
   address = row['address'].to_s.strip
+  email = row['email'].to_s.strip
   contact_url = row['contact_url'].to_s.strip
 
   # 空行スキップ
@@ -49,7 +50,7 @@ CSV.foreach(csv_path, headers: true, encoding: 'UTF-8') do |row|
   end
 
   db.execute(
-    "INSERT INTO customers (company, tel, url, address, contact_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO customers (company, tel, url, address, email, contact_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
     [company, tel, url, address, contact_url, now, now]
   )
 
