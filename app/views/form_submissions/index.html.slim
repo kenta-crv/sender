@@ -226,7 +226,8 @@
               | HP URL もお問い合わせフォームURLも未設定の顧客が 
               strong = @no_url_customers_count
               | 件あります。
-            = link_to '手動送信開始', manual_submission_path(@submissions.first), class: 'btn btn-primary btn-sm', target: '_blank', rel: 'noopener noreferrer'
+            - if @submissions.first.present?
+             = link_to '手動送信開始', manual_submission_path(@submissions.first), class: 'btn btn-primary btn-sm', target: '_blank', rel: 'noopener noreferrer'
 .container.mt-4
   h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
     | 送信履歴
