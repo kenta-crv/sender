@@ -27,6 +27,7 @@ CSV.foreach(csv_path, headers: true, encoding: 'UTF-8') do |row|
   address     = row['address'].to_s.strip
   email       = row['email'].to_s.strip
   contact_url = row['contact_url'].to_s.strip
+  business    = row['business'].to_s.strip  # ← 追加
 
   if company.empty?
     skipped_blank += 1
@@ -45,14 +46,13 @@ CSV.foreach(csv_path, headers: true, encoding: 'UTF-8') do |row|
     next
   end
 
-  # --- 行単位トランザクション + リトライ ---
   attempts = 0
   begin
     db.transaction do
       db.execute(
-        "INSERT INTO customers (company, tel, url, address, email, contact_url, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [company, tel, url, address, email, contact_url, now, now]
+        "INSERT INTO customers (company, tel, url, address, email, contact_url, business, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [company, tel, url, address, email, contact_url, business, now, now]
       )
     end
     imported += 1
@@ -60,7 +60,7 @@ CSV.foreach(csv_path, headers: true, encoding: 'UTF-8') do |row|
   rescue SQLite3::BusyException
     attempts += 1
     if attempts <= 5
-      sleep 0.1  # 100ms 待って再試行
+      sleep 0.1
       retry
     else
       puts "  ロックで挿入失敗: #{company}"
