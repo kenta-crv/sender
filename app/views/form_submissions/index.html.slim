@@ -144,6 +144,11 @@
       - else
         p.text-muted 自動検出対象の顧客はありません（全顧客の contact_url が設定済みか、HP URL が未設定です）。
 
+      - if @not_detected_count > 0
+        .alert.alert-secondary.mt-3
+          | フォーム検出済み（未検出）:
+          strong = @not_detected_count
+          | 件（再検出するには顧客編集画面でcontact_urlを空にしてください）
       - if @no_url_customers_count > 0
         .alert.alert-info.mt-3
           | HP URL もお問い合わせフォームURLも未設定の顧客が

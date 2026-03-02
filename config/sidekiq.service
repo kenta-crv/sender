@@ -1,0 +1,49 @@
+# Sidekiq systemd サービスファイル
+# 設置先: /etc/systemd/system/sidekiq.service
+#
+# 設置手順:
+#   1. このファイルを /etc/systemd/system/sidekiq.service にコピー
+#      sudo cp config/sidekiq.service /etc/systemd/system/sidekiq.service
+#   2. パスとユーザー名を環境に合わせて編集
+#      sudo vi /etc/systemd/system/sidekiq.service
+#   3. systemdに登録して起動
+#      sudo systemctl daemon-reload
+#      sudo systemctl enable sidekiq   （サーバー再起動時に自動起動）
+#      sudo systemctl start sidekiq    （今すぐ起動）
+#
+# 操作コマンド:
+#   sudo systemctl start sidekiq    （起動）
+#   sudo systemctl stop sidekiq     （停止）
+#   sudo systemctl restart sidekiq  （再起動 ※git pull後はこれを実行）
+#   sudo systemctl status sidekiq   （状態確認）
+#   journalctl -u sidekiq -f        （ログ確認）
+
+[Unit]
+Description=sidekiq for sender
+After=syslog.target network.target redis.target
+
+[Service]
+Type=notify
+WatchdogSec=10
+
+# ===== 以下を環境に合わせて変更してください =====
+WorkingDirectory=/var/www/sender
+User=deploy
+Group=deploy
+# =================================================
+
+Environment=RAILS_ENV=production
+Environment=MALLOC_ARENA_MAX=2
+
+ExecStart=/bin/bash -lc 'bundle exec sidekiq -C config/sidekiq.yml'
+ExecReload=/bin/kill -TSTP $MAINPID
+
+RestartSec=1
+Restart=on-failure
+
+SyslogIdentifier=sidekiq
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target

@@ -1,4 +1,4 @@
-:concurrency: 5
+:concurrency: 3
 :queues:
   - [form_submission, 5]
   - [article_generation, 3]

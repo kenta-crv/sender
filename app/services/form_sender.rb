@@ -144,6 +144,9 @@ class FormSender
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--disable-blink-features=AutomationControlled')  # Selenium検知回避
     options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+    options.add_argument('--disable-extensions')           # メモリ節約
+    options.add_argument('--disable-background-networking') # バックグラウンド通信抑制
+    options.add_argument('--js-flags=--max-old-space-size=256')  # JSヒープ上限256MB
 
     @driver = Selenium::WebDriver.for(:chrome, options: options)
     @driver.manage.timeouts.implicit_wait = 0  # 暗黙的待機なし（find_element失敗時の3秒ペナルティを排除）

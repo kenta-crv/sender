@@ -4,13 +4,15 @@ class FormSubmissionsController < ApplicationController
   # GET /form_submissions
   def index
     @batches = FormSubmissionBatch.order(created_at: :desc).page(params[:page]).per(20)
-    # contact_url設定済みの顧客（送信可能）
-    @customers = Customer.where.not(contact_url: [nil, '']).includes(:last_form_call)
+    # contact_url設定済みの顧客（送信可能）※not_detectedを除外
+    @customers = Customer.where.not(contact_url: [nil, '', 'not_detected']).includes(:last_form_call)
     # url有りだがcontact_url未設定の顧客（自動検出対象）
     @detectable_customers = Customer.where(contact_url: [nil, ''])
                                     .where.not(url: [nil, ''])
                                     .where(fobbiden: [nil, false, 0])
                                     .includes(:last_form_call)
+    # 検出失敗済みの顧客数
+    @not_detected_count = Customer.where(contact_url: 'not_detected').count
     # url も contact_url もない顧客（手動設定が必要）
     @no_url_customers_count = Customer.where(contact_url: [nil, ''])
                                       .where(url: [nil, ''])
