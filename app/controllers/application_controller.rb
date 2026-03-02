@@ -13,6 +13,17 @@ class ApplicationController < ActionController::Base
   end
 
   private
+def after_sign_in_path_for(resource)
+  case resource
+  when Admin
+    admin_path(resource)
+  when Worker
+    # ↓ ここは「s」なし！ (resource)を忘れずに
+    worker_path(resource) 
+  else
+    root_path
+  end
+end
 
   def init_breadcrumbs
     @breadcrumbs = []

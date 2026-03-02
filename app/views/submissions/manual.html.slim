@@ -1,0 +1,38 @@
+.container.mt-4
+  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
+    | 手動送信リスト（URL未設定）
+  = link_to '入力内容を表示', submission_path(@submission), target: '_blank', class: 'btn btn-primary'
+  br/
+  br
+  - if alert
+    .alert.alert-warning = alert
+
+  table.table.table-bordered.table-hover.table-sm
+    thead
+      tr
+        th 顧客ID
+        th 会社名
+        th ステータス
+        th 送信日時
+        th 詳細
+    tbody
+      - @display_rows.each_with_index do |row, index|
+        - customer = row[:customer]
+        - call = row[:latest_call]
+        - status_text = row[:status_text]
+
+        tr.table-warning
+          td = customer.id
+          td = customer.company
+          td
+            span.btn.btn-sm.btn-danger
+              = status_text
+          td 
+            - if call.present?
+              = call.created_at.strftime('%Y/%m/%d %H:%M:%S')
+
+          td
+            = link_to '詳細', customer_path(customer, \
+                all_ids: @all_target_ids.join(','), \
+                current_index: index), \
+                class: 'btn btn-primary btn-sm'

@@ -4,7 +4,14 @@ Rails.application.routes.draw do
     sessions: 'admins/sessions',
     registrations: 'admins/registrations'
   }
+  resources :admins, only: [:show]
   
+  devise_for :workers, controllers: {
+    sessions: 'workers/sessions',
+    registrations: 'workers/registrations'
+  }
+  resources :workers, only: [:show]
+
   root to: 'tops#index'
 
   # --- 各ジャンルLPの定義 ---
@@ -50,7 +57,12 @@ Rails.application.routes.draw do
     mount Sidekiq::Web, at: "/sidekiq"
   end
 
-  resources :submissions
+resources :submissions do
+  member do
+    get :history
+    get :manual
+  end
+end
 
   resources :form_submissions, only: [:index, :create, :show] do
     collection do
@@ -63,6 +75,9 @@ Rails.application.routes.draw do
   end
 
   resources :customers do
+    member do
+      post :manual_call
+    end
     resources :calls
   end
 end

@@ -57,31 +57,43 @@ def index
   end
 end
 
+def show
+  @customer = Customer.find(params[:id])
+  @submission_id = params[:submission_id]
+  @all_ids = params[:all_ids].to_s.split(',').map(&:to_i)
+  
+  # URLで指定されたインデックスを優先（見つからない場合のみ検索）
+  @current_index = params[:current_index].present? ? params[:current_index].to_i : (@all_ids.index(@customer.id) || 0)
 
-  def show
-    last_call_customer_ids = nil
-    @last_call_params = {}
-    if params[:last_call] && !params[:last_call].values.all?(&:blank?)
-      @last_call_params = params[:last_call]
-      last_call = Call.joins_last_call.select(:customer_id)
-      last_call = last_call.where(status: @last_call_params[:status]) if !@last_call_params[:status].blank?
-      last_call = last_call.where("calls.time >= ?", @last_call_params[:time_from]) if !@last_call_params[:time_from].blank?
-      last_call = last_call.where("calls.time <= ?", @last_call_params[:time_to]) if !@last_call_params[:time_to].blank?
-      last_call = last_call.where("calls.created_at >= ?", @last_call_params[:created_at_from]) if !@last_call_params[:created_at_from].blank?
-      last_call = last_call.where("calls.created_at <= ?", @last_call_params[:created_at_to]) if !@last_call_params[:created_at_to].blank?
-    end
-    @customer = Customer.find(params[:id])
-    @q = Customer.ransack(params[:q]) || Customer.ransack(params[:last_call])
-    @customers = @q.result.includes(:last_call)
-    @customers = @customers.where( id: last_call )  if last_call
-    @customers = @customers.where.not(tel: [nil, "", " "])
-    #@customers = @customers.where(status: [nil, "", " "])
-    @prev_customer = @customers.where("customers.id < ?", @customer.id).last
-    @next_customer = @customers.where("customers.id > ?", @customer.id).first
-    @call = Call.new
-    @is_auto_call = (params[:is_auto_call] == 'true')
+  # 前後の判定（ループさせない）
+  prev_id = (@current_index > 0) ? @all_ids[@current_index - 1] : nil
+  next_id = (@current_index < @all_ids.length - 1) ? @all_ids[@current_index + 1] : nil
 
+  @prev_customer = Customer.find_by(id: prev_id) if prev_id
+  @next_customer = Customer.find_by(id: next_id) if next_id
+end
+
+def manual_call
+  @customer = Customer.find(params[:id])
+  Call.create!(customer_id: @customer.id, status: params[:status], comment: "手動送信")
+
+  all_ids = params[:all_ids].to_s.split(',').map(&:to_i)
+  current_idx = params[:current_index].to_i
+  submission_id = params[:submission_id]
+
+  # 【重要】現在のインデックスがリストの最後（length - 1）かどうかで判定
+  if current_idx < all_ids.length - 1
+    next_customer_id = all_ids[current_idx + 1]
+    redirect_to customer_path(next_customer_id, 
+                all_ids: params[:all_ids], 
+                submission_id: submission_id,
+                current_index: current_idx + 1)
+  else
+    # 最後のIDだった場合は history へ。メッセージを出す。
+    redirect_to history_submission_path(submission_id), 
+                alert: '手動送信リストがなくなりました。管理者に連絡してください'
   end
+end
 
   def new
     @customer = Customer.new

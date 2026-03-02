@@ -2,8 +2,8 @@ class Call < ApplicationRecord
   belongs_to :customer#, foreign_key: :tel, primary_key: :tel
 
   # Validations for recording fields
-  validates :recording_url, presence: true, if: :recording_duration?
-  validates :recording_duration, numericality: { greater_than: 0 }, if: :recording_duration?
+  #validates :recording_url, presence: true, if: :recording_duration?
+  #validates :recording_duration, numericality: { greater_than: 0 }, if: :recording_duration?
   
   # call_type スコープ
   scope :phone_calls, -> { where(call_type: [nil, 'phone']) }

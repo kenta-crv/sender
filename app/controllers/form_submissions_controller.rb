@@ -2,23 +2,101 @@ class FormSubmissionsController < ApplicationController
   before_action :set_batch, only: [:show, :cancel, :progress]
 
   # GET /form_submissions
-  def index
-    @batches = FormSubmissionBatch.order(created_at: :desc).page(params[:page]).per(20)
-    # contact_url設定済みの顧客（送信可能）
-    @customers = Customer.where.not(contact_url: [nil, '']).includes(:last_form_call)
-    # url有りだがcontact_url未設定の顧客（自動検出対象）
-    @detectable_customers = Customer.where(contact_url: [nil, ''])
-                                    .where.not(url: [nil, ''])
-                                    .where(fobbiden: [nil, false, 0])
-                                    .includes(:last_form_call)
-    # url も contact_url もない顧客（手動設定が必要）
-    @no_url_customers_count = Customer.where(contact_url: [nil, ''])
-                                      .where(url: [nil, ''])
-                                      .count
-    # Submission一覧（送信内容選択用）
-    @submissions = Submission.order(created_at: :desc)
+def index
+  # -------------------------
+  # 検索（Ransack）
+  # -------------------------
+  @q = Customer.ransack(params[:q])
+  base_customers = @q.result
+                     .includes(:last_form_call)
+                     .left_joins(:calls)
+                     .distinct
+
+  # -------------------------
+  # 未コール / 最終送信条件
+  # -------------------------
+  if params[:last_call].present?
+    lc = params[:last_call]
+
+    base_customers = base_customers
+                       .where('calls.call_type IS NULL OR calls.call_type = ?', 'form')
+
+    # 未コール
+    if lc[:calls_id_null] == "true"
+      base_customers = base_customers.where(calls: { id: nil })
+    end
+
+    # 最終送信状態
+    if lc[:status].present?
+      base_customers = base_customers.where(calls: { status: lc[:status] })
+    end
+
+    # 最終送信日時（開始）
+    if lc[:created_at_from].present?
+      base_customers = base_customers.where('calls.created_at >= ?', lc[:created_at_from])
+    end
+
+    # 最終送信日時（終了）
+    if lc[:created_at_to].present?
+      base_customers = base_customers.where('calls.created_at <= ?', lc[:created_at_to])
+    end
   end
 
+  # =====================================================
+  # 顧客カテゴリ（ここで明確に排他）
+  # =====================================================
+
+  # 新規バッチ送信対象（contact_url 設定済み）
+  @customers = base_customers
+                 .where.not(contact_url: [nil, ''])
+
+  # フォームURL自動検出対象（contact_url 未設定 ＆ HP URLあり）
+  @detectable_customers = base_customers
+                            .where(contact_url: [nil, ''])
+                            .where.not(url: [nil, ''])
+                            .where(fobbiden: [nil, false, 0])
+
+  # URL完全未設定（カウントのみ）
+  @no_url_customers = base_customers
+                        .where(contact_url: [nil, ''])
+                        .where(url: [nil, ''])
+  
+  @no_url_customers_count = @no_url_customers.count
+  # -------------------------
+  # Submission
+  # -------------------------
+  @submissions = Submission.order(created_at: :desc)
+
+  # -------------------------
+  # バッチ一覧
+  # -------------------------
+  @batches = FormSubmissionBatch.order(created_at: :desc)
+                                .page(params[:page])
+                                .per(20)
+
+  # -------------------------
+  # Submission別送信件数集計
+  # -------------------------
+  @submission_stats = @submissions.map do |submission|
+    batches = submission.form_submission_batches
+
+    total_sent   = batches.sum(:total_count)
+    success_count = batches.sum(:success_count)
+    failure_count = batches.sum(:failure_count)
+    last_sent_at  = batches.order(started_at: :desc)
+                            .limit(1)
+                            .pluck(:started_at)
+                            .first
+
+    {
+      submission: submission,
+      total_sent: total_sent,
+      success_count: success_count,
+      failure_count: failure_count,
+      last_sent_at: last_sent_at
+    }
+  end
+end
   # POST /form_submissions
   def create
     # contact_url有り or url有り（自動検出付き）の顧客を対象に

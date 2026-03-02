@@ -1,1 +1,54 @@
-= link_to "承認する", approve_column_path(column), method: :patch, class: "btn btn-success"
+/ app/views/admins/show.html.slim
+.container-fluid.mt-4
+  h2.mb-4 管理者ダッシュボード：Worker別実績一覧
+
+  .card.shadow-sm
+    .card-header.bg-dark.text-white
+      span.font-weight-bold 全スタッフの送信状況
+    .card-body.p-0
+      .table-responsive
+        table.table.table-bordered.mb-0
+          thead.bg-light
+            tr
+              th.align-middle style="width: 15%;" 氏名
+              th style="width: 10%;" 期間
+              th.text-success 手動送信成功
+              th.text-danger 手動送信失敗
+              th.text-primary 成功率
+          
+          tbody
+            - @workers.each do |worker|
+              - stats = worker.stats_summary
+              / 本日の行
+              tr
+                td.align-middle.font-weight-bold rowspan="4"
+                  = link_to worker.user_name, worker_path(worker), class: 'text-decoration-none'
+                td 本日
+                td.text-success = "#{stats[:today][:success]} 件"
+                td.text-danger = "#{stats[:today][:failure]} 件"
+                td.table-primary = "#{stats[:today][:rate]} %"
+              
+              / 今週の行
+              tr
+                td 今週
+                td.text-success = "#{stats[:this_week][:success]} 件"
+                td.text-danger = "#{stats[:this_week][:failure]} 件"
+                td.table-primary = "#{stats[:this_week][:rate]} %"
+              
+              / 今月の行
+              tr
+                td 今月
+                td.text-success = "#{stats[:this_month][:success]} 件"
+                td.text-danger = "#{stats[:this_month][:failure]} 件"
+                td.table-primary = "#{stats[:this_month][:rate]} %"
+              
+              / 先月の行
+              tr
+                td 先月
+                td.text-success = "#{stats[:last_month][:success]} 件"
+                td.text-danger = "#{stats[:last_month][:failure]} 件"
+                td.table-primary = "#{stats[:last_month][:rate]} %"
+              
+              / Worker間の仕切り
+              tr style="height: 20px; background-color: #eee;"
+                td colspan="4"

@@ -1,0 +1,20 @@
+h1 = "#{@worker.user_name} さんの送信実績"
+
+.card.mt-4
+  .card-body
+    table.table.table-hover
+      thead.thead-light
+        tr
+          th 期間
+          th.text-success 手動送信成功数
+          th.text-danger 手動送信失敗数
+          th 手動送信成功率
+      tbody
+        - [[:today, "本日"], [:this_week, "今週"], [:this_month, "今月"], [:last_month, "先月"]].each do |key, label|
+          - data = @stats[key] || { success: 0, failure: 0, rate: 0 }
+          tr
+            td = label
+            td.text-success = "#{data[:success]} 件"
+            td.text-danger  = "#{data[:failure]} 件"
+            td
+              strong = "#{data[:rate]} %"
