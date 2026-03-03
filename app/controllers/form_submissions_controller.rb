@@ -46,9 +46,9 @@ def index
   # 顧客カテゴリ（ここで明確に排他）
   # =====================================================
 
-  # 新規バッチ送信対象（contact_url 設定済み）
+  # 新規バッチ送信対象（contact_url 設定済み）※not_detectedを除外
   @customers = base_customers
-                 .where.not(contact_url: [nil, ''])
+                 .where.not(contact_url: [nil, '', 'not_detected'])
 
   # フォームURL自動検出対象（contact_url 未設定 ＆ HP URLあり）
   @detectable_customers = base_customers
@@ -56,11 +56,14 @@ def index
                             .where.not(url: [nil, ''])
                             .where(fobbiden: [nil, false, 0])
 
+  # 検出失敗済みの顧客数
+  @not_detected_count = Customer.where(contact_url: 'not_detected').count
+
   # URL完全未設定（カウントのみ）
   @no_url_customers = base_customers
                         .where(contact_url: [nil, ''])
                         .where(url: [nil, ''])
-  
+
   @no_url_customers_count = @no_url_customers.count
   # -------------------------
   # Submission
