@@ -23,14 +23,11 @@ Description=sidekiq for sender
 After=syslog.target network.target redis.target
 
 [Service]
-Type=notify
-WatchdogSec=10
+Type=simple
 
-# ===== 以下を環境に合わせて変更してください =====
-WorkingDirectory=/var/www/sender
-User=deploy
-Group=deploy
-# =================================================
+WorkingDirectory=/home/smart/okurite
+User=smart
+Group=smart
 
 Environment=RAILS_ENV=production
 Environment=MALLOC_ARENA_MAX=2
