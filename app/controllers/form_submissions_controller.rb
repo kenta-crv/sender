@@ -49,12 +49,14 @@ def index
   # 新規バッチ送信対象（contact_url 設定済み）※not_detectedを除外
   @customers = base_customers
                  .where.not(contact_url: [nil, '', 'not_detected'])
+                 .page(params[:customers_page]).per(50)
 
   # フォームURL自動検出対象（contact_url 未設定 ＆ HP URLあり）
   @detectable_customers = base_customers
                             .where(contact_url: [nil, ''])
                             .where.not(url: [nil, ''])
                             .where(fobbiden: [nil, false, 0])
+                            .page(params[:detectable_page]).per(50)
 
   # 検出失敗済みの顧客数
   @not_detected_count = Customer.where(contact_url: 'not_detected').count
