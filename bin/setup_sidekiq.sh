@@ -38,7 +38,7 @@ echo ""
 # 既存のSidekiqを停止
 echo "[3/6] 既存のSidekiqプロセスを停止..."
 sudo systemctl stop sidekiq 2>/dev/null || true
-pkill -f sidekiq 2>/dev/null || true
+pkill -f 'bundle exec sidekiq' 2>/dev/null || true
 sleep 2
 echo "  完了"
 echo ""
