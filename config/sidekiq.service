@@ -29,7 +29,6 @@ WorkingDirectory=/home/smart/okurite
 User=smart
 Group=smart
 
-Environment=RAILS_ENV=production
 Environment=MALLOC_ARENA_MAX=2
 
 ExecStart=/bin/bash -lc 'bundle exec sidekiq -C config/sidekiq.yml'
