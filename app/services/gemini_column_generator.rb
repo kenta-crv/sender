@@ -5,7 +5,7 @@ class GeminiColumnGenerator
 
   GEMINI_API_KEY = ENV["GEMINI_API_KEY"]
   # 最新の安定版モデルを指定
-  GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+  GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
   MAX_RETRIES = 3
 
   GENRE_CONFIG = {
@@ -80,6 +80,10 @@ class GeminiColumnGenerator
   end
 
   def self.execute_generation(original_genre, target_category)
+    response_text = post_to_gemini(prompt)
+    puts "=== Gemini Response ==="
+    puts response_text.inspect
+    return false if response_text.nil?
     puts "\n--- [#{original_genre}] 生成開始 カテゴリ: #{target_category} ---"
 
     pillar = PillarSelector.select_available_pillar(original_genre)
