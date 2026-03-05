@@ -111,7 +111,10 @@ end
 
     send_count = params[:send_count].to_i if params[:send_count].present?
 
-    customer_ids = if params[:customer_ids].present?
+    customer_ids = if params[:select_all] == '1'
+                     # 全件選択 → ページネーションに関係なく全対象顧客を取得
+                     eligible_scope.pluck(:id)
+                   elsif params[:customer_ids].present?
                      Array(params[:customer_ids]).map(&:to_i)
                    elsif params[:q].present?
                      q = eligible_scope.ransack(params[:q])
