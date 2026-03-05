@@ -155,7 +155,15 @@ end
 
   # POST /form_submissions/detect_contact_urls
   def detect_contact_urls
-    customer_ids = Array(params[:customer_ids]).map(&:to_i)
+    customer_ids = if params[:detect_select_all] == '1'
+                     # 全件選択 → ページネーションに関係なく全対象顧客を取得
+                     Customer.where(contact_url: [nil, ''])
+                             .where.not(url: [nil, ''])
+                             .where(fobbiden: [nil, false, 0])
+                             .pluck(:id)
+                   else
+                     Array(params[:customer_ids]).map(&:to_i)
+                   end
 
     if customer_ids.empty?
       redirect_to form_submissions_path, alert: '検出対象の顧客が選択されていません。'
