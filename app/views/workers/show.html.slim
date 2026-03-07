@@ -1,4 +1,24 @@
-h1 = "#{@worker.user_name} さんの送信実績"
+.container-fluid.mt-4
+  h3.mb-4 作業可能案件一覧
+
+.card.mt-4
+  .card-body
+    table.table.table-hover
+      thead.thead-light
+        tr
+          th 作業タイトル
+          th.text-danger 残り作業件数
+          th 詳細
+      tbody
+        - @submissions.each do |submission|
+          tr
+            td = submission.title
+            td.text-danger = @submission_failures[submission.id] || 0
+            td = link_to '履歴', history_submission_path(submission), class: 'btn btn-sm btn-primary'
+
+.container-fluid.mt-4
+  h3.mb-4 実績一覧
+
 
 .card.mt-4
   .card-body

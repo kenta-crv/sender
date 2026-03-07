@@ -131,7 +131,7 @@ end
   def submission_params
     params.require(:submission).permit(
       :headline, :company, :person, :person_kana,
-      :tel, :fax, :address, :email, :url, :title, :content
+      :tel, :fax, :address, :email, :url, :title, :content, :manual
     )
   end
 end

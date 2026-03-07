@@ -199,6 +199,21 @@ end
     render json: @batch.progress_payload
   end
 
+  def update_manual
+    @submission = Submission.find(params[:id])
+    if @submission.update(manual: params[:manual] == '1')
+      respond_to do |format|
+        format.html { redirect_to form_submissions_path, notice: 'Manualフラグを更新しました。' }
+        format.json { render json: { status: 'ok', manual: @submission.manual } }
+      end
+    else
+      respond_to do |format|
+        format.html { redirect_to form_submissions_path, alert: '更新に失敗しました。' }
+        format.json { render json: { status: 'error' }, status: :unprocessable_entity }
+      end
+    end
+  end
+
   private
 
   def set_batch

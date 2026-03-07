@@ -69,6 +69,7 @@ end
       post :detect_contact_urls
     end
     member do
+      patch :update_manual
       patch :cancel
       get :progress
     end

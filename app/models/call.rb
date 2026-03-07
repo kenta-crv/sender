@@ -1,6 +1,6 @@
 class Call < ApplicationRecord
   belongs_to :customer#, foreign_key: :tel, primary_key: :tel
-
+  belongs_to :worker
   # Validations for recording fields
   #validates :recording_url, presence: true, if: :recording_duration?
   #validates :recording_duration, numericality: { greater_than: 0 }, if: :recording_duration?
