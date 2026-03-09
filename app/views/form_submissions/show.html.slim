@@ -51,6 +51,12 @@
           .mt-3
             = link_to 'キャンセル', cancel_form_submission_path(@batch), method: :patch, class: 'btn btn-danger', data: { confirm: 'バッチ送信をキャンセルしますか？' }
 
+        - unless @batch.status == 'processing'
+          - unprocessed_count = @batch.unprocessed_customer_ids.size
+          - if unprocessed_count > 0
+            .mt-3
+              = link_to "再開（未処理 #{unprocessed_count}件）", resume_form_submission_path(@batch), method: :post, class: 'btn btn-info', data: { confirm: "未処理の#{unprocessed_count}件を再開しますか？" }
+
   / --- Submission情報 ---
   - if @batch.submission
     .card.mb-4

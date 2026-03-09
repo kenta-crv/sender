@@ -70,6 +70,7 @@ end
     end
     member do
       patch :cancel
+      post :resume
       get :progress
     end
   end

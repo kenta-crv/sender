@@ -56,6 +56,17 @@ class FormSubmissionBatch < ApplicationRecord
     update!(status: 'cancelled')
   end
 
+  # 未処理の顧客IDを取得
+  def unprocessed_customer_ids
+    all_ids = parsed_customer_ids
+    processed = Call.where(call_type: 'form')
+                    .where(customer_id: all_ids)
+                    .where('created_at >= ?', created_at)
+                    .pluck(:customer_id)
+                    .uniq
+    all_ids - processed
+  end
+
   # 進捗情報（AJAX ポーリング用）
   def progress_payload
     {
