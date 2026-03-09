@@ -79,6 +79,14 @@ end
     member do
       post :manual_call
     end
+    collection do
+      post :serp_search
+      get  :draft
+      post :extract_company_info
+      get  :extract_progress
+      get  :filter_by_industry
+      post :bulk_action
+    end
     resources :calls
   end
 end

@@ -95,6 +95,16 @@ module BrightData
       uri = URI(ENDPOINT)
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
+      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+      http.ssl_version = :TLSv1_2
+      ssl_context = OpenSSL::SSL::SSLContext.new
+      ssl_context.verify_flags = OpenSSL::SSL::OP_NO_SSLv2 | OpenSSL::SSL::OP_NO_SSLv3
+      # Bright Data APIのCRL検証エラー回避
+      ssl_context.verify_mode = OpenSSL::SSL::VERIFY_PEER
+      ssl_context.cert_store = OpenSSL::X509::Store.new.tap do |store|
+        store.set_default_paths
+        store.flags = OpenSSL::X509::V_FLAG_PARTIAL_CHAIN
+      end
       http.read_timeout = 30
       http.open_timeout = 10
 

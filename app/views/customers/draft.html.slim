@@ -15,12 +15,37 @@
       tr
         td.action-cell
           / url: extract_company_info_customers_path (または routes で定義したパス)
-          = form_with url: extract_company_info_path, method: :post, local: true, id: "ai-extract-form" do
+          = form_with url: extract_company_info_customers_path, method: :post, local: true, id: "ai-extract-form" do
             = hidden_field_tag :count, "", id: "extract-count-input"
             / industry_name パラメータを送信するために追加
             = hidden_field_tag :industry_name, "全般" 
             button#start-ai-button.btn.btn-ai type="button" data-max="#{@extract_target_count}"
               | AI抽出開始
+
+.tops-wrapper
+  h2.headline SERP情報補完
+
+  .extraction-header
+    .remain-box
+      | 補完対象件数（敬称なし・tel/address/url未取得）：#{@serp_target_count}件
+
+  table.extraction-table width="100%" cellpadding="0" cellspacing="0"
+    thead
+      tr
+        th アクション
+        th 業種フィルタ
+        th 件数上限
+    tbody
+      tr
+        td.action-cell
+          = form_with url: serp_search_customers_path, method: :post, local: true, id: "serp-search-form" do
+            = select_tag :industry,
+                options_for_select([["全業種", ""]] + Customer.where.not(industry: [nil, ""]).distinct.pluck(:industry).sort.map { |i| [i, i] }),
+                id: "serp-industry-select",
+                class: "form-control"
+            = number_field_tag :limit, 100, min: 1, max: 500, id: "serp-limit-input", class: "form-control", style: "width:80px; display:inline;"
+            button#start-serp-button.btn.btn-primary type="button" data-max="#{@serp_target_count}"
+              | SERP補完開始
 
 .tops-wrapper
   h2.headline#draft-list
@@ -81,7 +106,27 @@ javascript:
       };
     };
 
-    document.addEventListener('turbo:load', setupAiButton);
-    document.addEventListener('DOMContentLoaded', setupAiButton);
+    const setupSerpButton = function() {
+      const btn = document.getElementById('start-serp-button');
+      if (!btn) return;
+
+      btn.onclick = function(e) {
+        e.preventDefault();
+        const max = parseInt(btn.getAttribute('data-max'), 10) || 0;
+        if (max === 0) {
+          alert("SERP補完対象が存在しません");
+          return;
+        }
+        const industry = document.getElementById('serp-industry-select').value;
+        const limit = document.getElementById('serp-limit-input').value;
+        const label = industry ? industry : "全業種";
+        if (!window.confirm("SERP補完を開始します。\n業種: " + label + "\n件数上限: " + limit + "件\n\nよろしいですか？")) return;
+        document.getElementById('serp-search-form').submit();
+      };
+    };
+
+    document.addEventListener('turbo:load', function() { setupAiButton(); setupSerpButton(); });
+    document.addEventListener('DOMContentLoaded', function() { setupAiButton(); setupSerpButton(); });
     setupAiButton();
+    setupSerpButton();
   })();
