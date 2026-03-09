@@ -7,7 +7,10 @@ def index
 
   # Ransack で検索
   @q = Customer.ransack(params[:q])
-  @customers = @q.result.includes(:last_call)  # last_call を eager load
+  @customers = @q.result.includes(:last_call)
+
+  # fobbiden=true を除外
+  @customers = @customers.where.not(fobbiden: true)
 
   # 電話番号がある顧客に絞る
   @customers = @customers.where.not(tel: [nil, "", " "])
@@ -25,16 +28,26 @@ def index
     end
 
     # time 条件
-    @customers = @customers.joins(:last_call)
-                           .where("calls.time >= ?", @last_call_params[:time_from]) unless @last_call_params[:time_from].blank?
-    @customers = @customers.joins(:last_call)
-                           .where("calls.time <= ?", @last_call_params[:time_to]) unless @last_call_params[:time_to].blank?
+    unless @last_call_params[:time_from].blank?
+      @customers = @customers.joins(:last_call)
+                             .where("calls.time >= ?", @last_call_params[:time_from])
+    end
+
+    unless @last_call_params[:time_to].blank?
+      @customers = @customers.joins(:last_call)
+                             .where("calls.time <= ?", @last_call_params[:time_to])
+    end
 
     # created_at 条件
-    @customers = @customers.joins(:last_call)
-                           .where("calls.created_at >= ?", @last_call_params[:created_at_from]) unless @last_call_params[:created_at_from].blank?
-    @customers = @customers.joins(:last_call)
-                           .where("calls.created_at <= ?", @last_call_params[:created_at_to]) unless @last_call_params[:created_at_to].blank?
+    unless @last_call_params[:created_at_from].blank?
+      @customers = @customers.joins(:last_call)
+                             .where("calls.created_at >= ?", @last_call_params[:created_at_from])
+    end
+
+    unless @last_call_params[:created_at_to].blank?
+      @customers = @customers.joins(:last_call)
+                             .where("calls.created_at <= ?", @last_call_params[:created_at_to])
+    end
   end
 
   # ltec_calls_count フィルタ
