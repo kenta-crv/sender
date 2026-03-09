@@ -155,8 +155,6 @@ def edit
   end
 end
 
-# app/controllers/customers_controller.rb
-
 def update
   @customer = Customer.find(params[:id])
 
@@ -182,7 +180,12 @@ def update
   end
 
   # admin または user がサインインしている場合、バリデーションをスキップ
-  @customer.skip_validation = true if admin_signed_in? || user_signed_in?
+if admin_signed_in? || user_signed_in?
+  @customer.assign_attributes(customer_params)
+  saved = @customer.save(validate: false) # ← ここでバリデーションをスキップ
+else
+  saved = @customer.update(customer_params)
+end
 
   # 次の draft 顧客を取得（フィルタ考慮）
   @q = Customer.where(status: 'draft').where('id > ?', @customer.id)
