@@ -182,7 +182,6 @@ def update
   # admin または user がサインインしている場合、バリデーションをスキップ
 if admin_signed_in? || user_signed_in?
   @customer.assign_attributes(customer_params)
-  saved = @customer.save(validate: false) # ← ここでバリデーションをスキップ
 else
   saved = @customer.update(customer_params)
 end
