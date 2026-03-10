@@ -71,6 +71,7 @@ end
     member do
       patch :update_manual
       patch :cancel
+      post :resume
       get :progress
     end
   end

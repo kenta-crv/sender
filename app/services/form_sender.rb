@@ -932,16 +932,24 @@ class FormSender
       # 無視
     end
 
-    # 2階層上の親からラベル要素を探す
-    begin
-      grandparent = input.find_element(:xpath, 'ancestor::*[3]')
-      labels = grandparent.find_elements(:css, 'label, th, dt, .label, p')
-      labels.each do |label|
-        text = label.text.downcase
-        return text if text.present? && text.length < 50
+    # 2階層上の親からラベル要素を探す（直接の子要素のみ、セクション見出しを拾わない）
+    [2, 3].each do |level|
+      begin
+        ancestor = input.find_element(:xpath, "ancestor::*[#{level}]")
+        # label要素のみ探す（p要素はセクション見出しを拾うリスクが高いため除外）
+        labels = ancestor.find_elements(:css, 'label, th, dt, .label')
+        labels.each do |label|
+          text = label.text.downcase
+          # 短すぎる（空）や長すぎる（説明文）テキストは除外
+          next unless text.present? && text.length > 1 && text.length < 30
+          # 複数のフィールド名を含むテキストは除外（セクション見出しの可能性）
+          field_keywords = %w[名前 メール 電話 住所 会社]
+          matched_keywords = field_keywords.count { |kw| text.include?(kw) }
+          return text if matched_keywords <= 1
+        end
+      rescue Selenium::WebDriver::Error::NoSuchElementError
+        # 無視
       end
-    rescue Selenium::WebDriver::Error::NoSuchElementError
-      # 無視
     end
 
     # placeholder属性（日本語が含まれている場合のみ）

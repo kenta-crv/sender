@@ -27,7 +27,7 @@ module BrightData
           Customer.create!(
             company: data[:company], tel: data[:tel], address: data[:address],
             url: data[:url], contact_url: data[:contact_url],
-            industry: data[:industry], status: "serp_imported"
+            industry: data[:industry], serp_status: "serp_imported"
           )
           existing_companies << data[:company] if data[:company].present?
           existing_urls << data[:url] if data[:url].present?

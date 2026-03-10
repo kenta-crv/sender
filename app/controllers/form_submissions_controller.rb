@@ -1,5 +1,5 @@
 class FormSubmissionsController < ApplicationController
-  before_action :set_batch, only: [:show, :cancel, :progress]
+  before_action :set_batch, only: [:show, :cancel, :resume, :progress]
 
   # GET /form_submissions
 def index
@@ -191,6 +191,30 @@ end
   def cancel
     @batch.cancel!
     redirect_to form_submission_path(@batch), notice: 'バッチ送信をキャンセルしました。'
+  end
+
+  # POST /form_submissions/:id/resume
+  def resume
+    unprocessed = @batch.unprocessed_customer_ids
+
+    if unprocessed.empty?
+      redirect_to form_submission_path(@batch), alert: '未処理の顧客はありません。'
+      return
+    end
+
+    # ステータスを処理中に戻し、合計件数を更新
+    @batch.update!(
+      status: 'processing',
+      total_count: @batch.processed_count + unprocessed.size,
+      completed_at: nil
+    )
+
+    # 未処理分のみ再キュー
+    unprocessed.each do |cid|
+      FormSendJob.perform_later(@batch.id, cid)
+    end
+
+    redirect_to form_submission_path(@batch), notice: "#{unprocessed.size}件の未処理分を再開しました。"
   end
 
   # GET /form_submissions/:id/progress (JSON)
