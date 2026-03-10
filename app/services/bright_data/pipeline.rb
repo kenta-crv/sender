@@ -60,7 +60,7 @@ module BrightData
       puts "=" * 60
 
       # 対象レコード取得（実行済みを除外）
-      scope = Customer.where.not(status: %w[serp_queued serp_done])
+      scope = Customer.where(serp_status: nil).or(Customer.where.not(serp_status: %w[serp_queued serp_done]))
 
       # 業種フィルタ
       scope = scope.where(industry: industry) if industry.present?
@@ -84,7 +84,7 @@ module BrightData
 
       # 対象レコードをserp_queued にマーク（ループ防止）
       unless dry_run
-        Customer.where(id: targets.map(&:id)).update_all(status: "serp_queued")
+        Customer.where(id: targets.map(&:id)).update_all(serp_status: "serp_queued")
       end
 
       # 検索キーワード生成: company + address の組み合わせ
@@ -110,7 +110,7 @@ module BrightData
 
       # 実行済みステータスに更新
       unless dry_run
-        Customer.where(id: targets.map(&:id)).update_all(status: "serp_done")
+        Customer.where(id: targets.map(&:id)).update_all(serp_status: "serp_done")
       end
 
       # 抽出率記録
