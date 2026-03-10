@@ -158,20 +158,19 @@ end
 def update
   @customer = Customer.find(params[:id])
 
-  # 🌟 修正ポイント: worker がログインしている場合、初回更新者をセット
+  # 🌟 worker がログインしている場合、初回更新者をセット
   if worker_signed_in? && current_worker.present?
-    @customer.assign_first_editor(current_worker)
+    @customer.assign_first_editor(current_worker) if @customer.respond_to?(:assign_first_editor)
   end
 
+  # 対象外リスト or 公開
   if params[:commit] == '対象外リストとして登録'
-    @customer.skip_validation = true
+    @customer.skip_validation = true if @customer.respond_to?(:skip_validation=)
     @customer.status = "hidden"
     @customer.save(validate: false)
-
   elsif params[:commit] == '公開して一覧へ'
     @customer.status = nil
     @customer.save(validate: false)
-
     redirect_to customers_path(
       q: params[:q]&.permit!,
       industry_name: params[:industry_name],
@@ -179,12 +178,12 @@ def update
     ) and return
   end
 
-  # admin または user がサインインしている場合、バリデーションをスキップ
-if admin_signed_in? || user_signed_in?
-  @customer.assign_attributes(customer_params)
-else
-  saved = @customer.update(customer_params)
-end
+  # admin または user の場合も普通に update
+  if admin_signed_in? || user_signed_in?
+    saved = @customer.update(customer_params)
+  else
+    saved = @customer.update(customer_params)
+  end
 
   # 次の draft 顧客を取得（フィルタ考慮）
   @q = Customer.where(status: 'draft').where('id > ?', @customer.id)
@@ -199,8 +198,7 @@ end
 
   @next_draft = @q.order(:id).first
 
-  # update 実行
-  if @customer.update(customer_params)
+  if saved
     # メール送信
     if params[:commit] == '登録＋J Workメール送信'
       CustomerMailer.teleapo_send_email(@customer, current_user).deliver_now
@@ -210,7 +208,7 @@ end
       CustomerMailer.document_reply_email(@customer, current_user).deliver_now
     end
 
-    # worker リダイレクト
+    # workerリダイレクト
     if worker_signed_in?
       if @next_draft
         redirect_to edit_customer_path(
