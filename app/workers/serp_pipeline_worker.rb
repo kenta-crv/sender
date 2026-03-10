@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class SerpPipelineWorker
   include Sidekiq::Worker
   sidekiq_options queue: :serp, retry: 1

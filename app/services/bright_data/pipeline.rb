@@ -81,11 +81,6 @@ module BrightData
         return { targets: 0, extracted: 0, registered: { skipped_blank: 0 } }
       end
 
-      # 対象レコードをserp_queued にマーク（ループ防止）
-      unless dry_run
-        Customer.where(id: targets.map(&:id)).update_all(serp_status: "serp_queued")
-      end
-
       # 検索キーワード生成: company + address の組み合わせ
       queries = targets.map do |c|
         keyword = [c.company.to_s.strip, c.address.to_s.strip].reject(&:empty?).join(" ")
@@ -93,36 +88,59 @@ module BrightData
         keyword.presence || c.company.to_s.strip
       end.compact.uniq
 
-      # SERP API 実行
-      client = SerpClient.new
-      batch = client.batch_search(queries, delay_between: 1)
-      ResultStore.save_batch(batch)
-
-      # 抽出
-      companies = CompanyExtractor.extract_batch(batch)
-      companies = ContactUrlEnricher.enrich(companies) if detect_contact
-      normalized = DataNormalizer.normalize_batch(companies)
-      ResultExporter.to_csv(normalized)
-
-      # DB登録
-      reg_stats = dry_run ? { dry_run: true } : CustomerRegistrar.register(normalized)
-
-      # 実行済みステータスに更新
-      unless dry_run
-        Customer.where(id: targets.map(&:id)).update_all(serp_status: "serp_done")
+      if queries.empty?
+        puts "[Pipeline] 有効なクエリが生成できませんでした。処理を中断します。"
+        return { targets: targets.size, queries: 0, extracted: 0, registered: { skipped_blank: 0 } }
       end
 
-      # 抽出率記録
-      label = industry.present? ? "serp_db_#{industry}_#{Time.current.strftime('%Y%m%d')}" : "serp_db_#{Time.current.strftime('%Y%m%d')}"
-      ExtractionStats.record(
-        companies,
-        industry_label: label,
-        total_queries: queries.size,
-        serp_errors: batch.count { |b| b["result"]["error"] }
-      )
+      # 対象レコードをserp_queued にマーク（ループ防止）
+      # ensure で例外時も serp_done にフォールバックするため先にマーク
+      unless dry_run
+        Customer.where(id: targets.map(&:id)).update_all(serp_status: "serp_queued")
+      end
 
-      puts "[Pipeline] 完了: #{targets.size}件対象 / #{companies.size}件抽出"
-      { targets: targets.size, queries: queries.size, extracted: companies.size, registered: reg_stats }
+      companies = []
+      batch = []
+      begin
+        # SERP API 実行
+        client = SerpClient.new
+        batch = client.batch_search(queries, delay_between: 1)
+        ResultStore.save_batch(batch)
+
+        # 抽出
+        companies = CompanyExtractor.extract_batch(batch)
+        companies = ContactUrlEnricher.enrich(companies) if detect_contact
+        normalized = DataNormalizer.normalize_batch(companies)
+        ResultExporter.to_csv(normalized)
+
+        # DB登録
+        reg_stats = dry_run ? { dry_run: true } : CustomerRegistrar.register(normalized)
+
+        # 実行済みステータスに更新
+        unless dry_run
+          Customer.where(id: targets.map(&:id)).update_all(serp_status: "serp_done")
+        end
+
+        # 抽出率記録
+        label = industry.present? ? "serp_db_#{industry}_#{Time.current.strftime('%Y%m%d')}" : "serp_db_#{Time.current.strftime('%Y%m%d')}"
+        ExtractionStats.record(
+          companies,
+          industry_label: label,
+          total_queries: queries.size,
+          serp_errors: batch.count { |b| b["result"]["error"] }
+        )
+
+        puts "[Pipeline] 完了: #{targets.size}件対象 / #{companies.size}件抽出"
+        { targets: targets.size, queries: queries.size, extracted: companies.size, registered: reg_stats }
+      rescue => e
+        # 例外発生時: serp_queued のままにせず serp_error にして再実行可能にする
+        unless dry_run
+          Customer.where(id: targets.map(&:id)).update_all(serp_status: nil)
+        end
+        Rails.logger.error("[Pipeline] execute_from_db 例外: #{e.class} #{e.message}\n#{e.backtrace.first(5).join("\n")}")
+        puts "[Pipeline] ERROR: #{e.message}"
+        raise
+      end
     end
   end
 end

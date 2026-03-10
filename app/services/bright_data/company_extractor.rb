@@ -52,7 +52,7 @@ module BrightData
       end
 
       # 3. knowledge_graph
-      if kg = serp_result["knowledge_graph"]
+      if (kg = serp_result["knowledge_graph"])
         companies << {
           company: kg["title"].to_s.strip,
           tel: kg["phone"].to_s.strip.presence,

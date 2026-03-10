@@ -1,7 +1,11 @@
 class CustomersController < ApplicationController
   before_action :set_customers, only: [:update_all_status]
   protect_from_forgery with: :exception, prepend: true
-  
+
+  # SERP補完対象判定用正規表現（SQLite REGEXP非対応のためRubyで判定）
+  SERP_CORP_PATTERN = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/.freeze
+  SERP_PREF_PATTERN = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/.freeze
+
 def index
   @last_call_params = params[:last_call] || {}
 
@@ -600,11 +604,9 @@ def destroy
     # SERP補完対象件数（SQLite REGEXP非対応のためRubyでフィルタ）
     serp_scope = Customer.where(serp_status: nil).or(Customer.where.not(serp_status: %w[serp_queued serp_done]))
     serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
-    serp_corp_pattern = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/
-    serp_pref_pattern = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/
     @serp_target_count = serp_scope.to_a.count do |c|
-      !c.company.to_s.match?(serp_corp_pattern) || c.tel.blank? ||
-      c.address.blank? || !c.address.to_s.match?(serp_pref_pattern) ||
+      !c.company.to_s.match?(SERP_CORP_PATTERN) || c.tel.blank? ||
+      c.address.blank? || !c.address.to_s.match?(SERP_PREF_PATTERN) ||
       c.url.blank?
     end
 
@@ -655,11 +657,9 @@ def destroy
     # 対象件数を事前確認（SQLite REGEXP非対応のためRubyでフィルタ）
     scope = Customer.where(serp_status: nil).or(Customer.where.not(serp_status: %w[serp_queued serp_done]))
     scope = scope.where(industry: industry) if industry.present?
-    corp_pattern = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/
-    pref_pattern = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/
     target_count = scope.to_a.count do |c|
-      !c.company.to_s.match?(corp_pattern) || c.tel.blank? ||
-      c.address.blank? || !c.address.to_s.match?(pref_pattern) ||
+      !c.company.to_s.match?(SERP_CORP_PATTERN) || c.tel.blank? ||
+      c.address.blank? || !c.address.to_s.match?(SERP_PREF_PATTERN) ||
       c.url.blank?
     end
 
