@@ -52,7 +52,7 @@ module BrightData
       end
 
       # 3. knowledge_graph
-      if kg = serp_result["knowledge_graph"]
+      if (kg = serp_result["knowledge_graph"])
         companies << {
           company: kg["title"].to_s.strip,
           tel: kg["phone"].to_s.strip.presence,
@@ -75,7 +75,7 @@ module BrightData
 
     def self.parse_company_name(title)
       return nil if title.blank?
-      parts = title.split(/\s*[|\-｜—–／/]\s*/)
+      parts = title.split(%r{\s*[|\-｜—–／/]\s*})
       corp = parts.find { |p| p.match?(/株式会社|有限会社|合同会社|一般社団法人/) }
       (corp || parts.first).to_s.strip.presence
     end

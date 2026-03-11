@@ -96,27 +96,24 @@ module BrightData
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
       http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-      http.ssl_version = :TLSv1_2
-      ssl_context = OpenSSL::SSL::SSLContext.new
-      ssl_context.verify_flags = OpenSSL::SSL::OP_NO_SSLv2 | OpenSSL::SSL::OP_NO_SSLv3
-      # Bright Data APIのCRL検証エラー回避
-      ssl_context.verify_mode = OpenSSL::SSL::VERIFY_PEER
-      ssl_context.cert_store = OpenSSL::X509::Store.new.tap do |store|
+      # Bright Data APIのCRL検証エラー回避: PARTIAL_CHAINフラグをhttpに直接設定
+      http.cert_store = OpenSSL::X509::Store.new.tap do |store|
         store.set_default_paths
         store.flags = OpenSSL::X509::V_FLAG_PARTIAL_CHAIN
       end
-      http.read_timeout = 30
-      http.open_timeout = 10
+      http.read_timeout = 60
+      http.open_timeout = 15
 
       request = Net::HTTP::Post.new(uri)
       request["Authorization"] = "Bearer #{@api_key}"
       request["Content-Type"] = "application/json"
       request["Accept"] = "application/json"
 
+      # format: "raw" は brd_json=1 と競合するため省略
+      # Bright Data は brd_json=1 を検知してJSON構造を自動返却する
       request.body = {
         zone: @zone,
-        url: target_url,
-        format: "raw"
+        url: target_url
       }.to_json
 
       response = http.request(request)
@@ -125,7 +122,19 @@ module BrightData
         raise "HTTP #{response.code}: #{response.body&.first(300)}"
       end
 
-      response.body
+      # Net::HTTP は gzip を自動解凍する。念のため手動解凍フォールバックも保持
+      body = response.body.to_s
+
+      if body.empty?
+        # 空ボディのデバッグ情報をログに出力
+        log(:warn, "Empty body received. HTTP #{response.code}, Headers: #{response.to_hash.reject { |k, _| k == 'authorization' }.inspect}")
+        raise "Empty response body (HTTP #{response.code})"
+      end
+
+      # 先頭200バイトをデバッグログ（本番では不要なら削除可）
+      log(:info, "Response preview: #{body.first(200).gsub(/\s+/, ' ')}")
+
+      body
     end
 
     def log(level, message)

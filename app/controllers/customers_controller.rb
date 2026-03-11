@@ -1,13 +1,20 @@
 class CustomersController < ApplicationController
   before_action :set_customers, only: [:update_all_status]
   protect_from_forgery with: :exception, prepend: true
-  
+
+  # SERP補完対象判定用正規表現（SQLite REGEXP非対応のためRubyで判定）
+  SERP_CORP_PATTERN = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/.freeze
+  SERP_PREF_PATTERN = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/.freeze
+
 def index
   @last_call_params = params[:last_call] || {}
 
   # Ransack で検索
   @q = Customer.ransack(params[:q])
-  @customers = @q.result.includes(:last_call)  # last_call を eager load
+  @customers = @q.result.includes(:last_call)
+
+  # fobbiden=true を除外
+  @customers = @customers.where.not(fobbiden: true)
 
   # 電話番号がある顧客に絞る
   @customers = @customers.where.not(tel: [nil, "", " "])
@@ -25,16 +32,26 @@ def index
     end
 
     # time 条件
-    @customers = @customers.joins(:last_call)
-                           .where("calls.time >= ?", @last_call_params[:time_from]) unless @last_call_params[:time_from].blank?
-    @customers = @customers.joins(:last_call)
-                           .where("calls.time <= ?", @last_call_params[:time_to]) unless @last_call_params[:time_to].blank?
+    unless @last_call_params[:time_from].blank?
+      @customers = @customers.joins(:last_call)
+                             .where("calls.time >= ?", @last_call_params[:time_from])
+    end
+
+    unless @last_call_params[:time_to].blank?
+      @customers = @customers.joins(:last_call)
+                             .where("calls.time <= ?", @last_call_params[:time_to])
+    end
 
     # created_at 条件
-    @customers = @customers.joins(:last_call)
-                           .where("calls.created_at >= ?", @last_call_params[:created_at_from]) unless @last_call_params[:created_at_from].blank?
-    @customers = @customers.joins(:last_call)
-                           .where("calls.created_at <= ?", @last_call_params[:created_at_to]) unless @last_call_params[:created_at_to].blank?
+    unless @last_call_params[:created_at_from].blank?
+      @customers = @customers.joins(:last_call)
+                             .where("calls.created_at >= ?", @last_call_params[:created_at_from])
+    end
+
+    unless @last_call_params[:created_at_to].blank?
+      @customers = @customers.joins(:last_call)
+                             .where("calls.created_at <= ?", @last_call_params[:created_at_to])
+    end
   end
 
   # ltec_calls_count フィルタ
@@ -142,25 +159,22 @@ def edit
   end
 end
 
-# app/controllers/customers_controller.rb
-
 def update
   @customer = Customer.find(params[:id])
 
-  # 🌟 修正ポイント: worker がログインしている場合、初回更新者をセット
+  # 🌟 worker がログインしている場合、初回更新者をセット
   if worker_signed_in? && current_worker.present?
-    @customer.assign_first_editor(current_worker)
+    @customer.assign_first_editor(current_worker) if @customer.respond_to?(:assign_first_editor)
   end
 
+  # 対象外リスト or 公開
   if params[:commit] == '対象外リストとして登録'
-    @customer.skip_validation = true
+    @customer.skip_validation = true if @customer.respond_to?(:skip_validation=)
     @customer.status = "hidden"
     @customer.save(validate: false)
-
   elsif params[:commit] == '公開して一覧へ'
     @customer.status = nil
     @customer.save(validate: false)
-
     redirect_to customers_path(
       q: params[:q]&.permit!,
       industry_name: params[:industry_name],
@@ -168,8 +182,12 @@ def update
     ) and return
   end
 
-  # admin または user がサインインしている場合、バリデーションをスキップ
-  @customer.skip_validation = true if admin_signed_in? || user_signed_in?
+  # admin または user の場合も普通に update
+  if admin_signed_in? || user_signed_in?
+    saved = @customer.update(customer_params)
+  else
+    saved = @customer.update(customer_params)
+  end
 
   # 次の draft 顧客を取得（フィルタ考慮）
   @q = Customer.where(status: 'draft').where('id > ?', @customer.id)
@@ -184,8 +202,7 @@ def update
 
   @next_draft = @q.order(:id).first
 
-  # update 実行
-  if @customer.update(customer_params)
+  if saved
     # メール送信
     if params[:commit] == '登録＋J Workメール送信'
       CustomerMailer.teleapo_send_email(@customer, current_user).deliver_now
@@ -195,7 +212,7 @@ def update
       CustomerMailer.document_reply_email(@customer, current_user).deliver_now
     end
 
-    # worker リダイレクト
+    # workerリダイレクト
     if worker_signed_in?
       if @next_draft
         redirect_to edit_customer_path(
@@ -478,127 +495,91 @@ def destroy
     render json: { answer: answer.round(2) }
   end
 
-  def draft
-    start_time = Time.current
-    # crowdworkタイトルの初期化
-    @crowdworks = Crowdwork.all || []
+def draft
+  start_time = Time.current
 
-    # 期間パラメータの解釈（未指定可）
-    @period_start = nil
-    @period_end   = nil
-    if params[:period_start].present?
-      begin
-        @period_start = Date.parse(params[:period_start])
-      rescue ArgumentError
-        @period_start = nil
-      end
+  # 期間パラメータの解釈（未指定可）
+  @period_start = nil
+  @period_end   = nil
+
+  if params[:period_start].present?
+    begin
+      @period_start = Date.parse(params[:period_start])
+    rescue ArgumentError
+      @period_start = nil
     end
-    if params[:period_end].present?
-      begin
-        @period_end = Date.parse(params[:period_end])
-      rescue ArgumentError
-        @period_end = nil
-      end
-    end
-
-    # 期間の整合性（逆転していたら入れ替え）
-    if @period_start.present? && @period_end.present? && @period_end < @period_start
-      @period_start, @period_end = @period_end, @period_start
-    end
-    range_start = @period_start&.beginning_of_day
-    range_end   = @period_end&.end_of_day
-
-    # Adminを優先した条件分岐
-    @customers = case
-    when admin_signed_in? && params[:tel_filter] == "with_tel"
-      Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
-    when admin_signed_in? && params[:tel_filter] == "without_tel"
-      Customer.where(status: "draft").where(tel: [nil, '', ' '])
-    when worker_signed_in?
-      Customer.where(status: "draft").where(tel: [nil, '', ' '])
-    else
-      Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
-    end
-
-    # 期間でフィルタ（未指定なら全期間）
-    if range_start && range_end
-      @customers = @customers.where(created_at: range_start..range_end)
-    elsif range_start
-      @customers = @customers.where('created_at >= ?', range_start)
-    elsif range_end
-      @customers = @customers.where('created_at <= ?', range_end)
-    end
-
-    # タイトルごとの件数を計算
-    tel_with_scope = Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
-    tel_without_scope = Customer.where(status: "draft").where(tel: [nil, '', ' '])
-    if range_start && range_end
-      tel_with_scope = tel_with_scope.where(created_at: range_start..range_end)
-      tel_without_scope = tel_without_scope.where(created_at: range_start..range_end)
-    elsif range_start
-      tel_with_scope = tel_with_scope.where('created_at >= ?', range_start)
-      tel_without_scope = tel_without_scope.where('created_at >= ?', range_start)
-    elsif range_end
-      tel_with_scope = tel_with_scope.where('created_at <= ?', range_end)
-      tel_without_scope = tel_without_scope.where('created_at <= ?', range_end)
-    end
-    tel_with_counts = tel_with_scope.group(:industry).count
-    tel_without_counts = tel_without_scope.group(:industry).count
-
-    # ExtractTrackingを一括取得してN+1を回避（SQLite対応）
-    industry_names = @crowdworks.map(&:title)
-    all_trackings = ExtractTracking.where(industry: industry_names).order(id: :desc)
-    # Ruby側で各業種の最新のtrackingを取得
-    latest_trackings = all_trackings.group_by(&:industry).transform_values { |trackings| trackings.first }
-    
-    @industry_counts = @crowdworks.each_with_object({}) do |crowdwork, hash|
-      latest_tracking = latest_trackings[crowdwork.title]
-      success_count = latest_tracking&.success_count.to_i
-      failure_count = latest_tracking&.failure_count.to_i
-      total_count   = latest_tracking&.total_count.to_i
-      total = success_count + failure_count
-      rate = total.positive? ? (success_count.to_f / total) * 100 : 0.0
-      hash[crowdwork.title] = {
-        tel_with: tel_with_counts[crowdwork.title] || 0,
-        tel_without: tel_without_counts[crowdwork.title] || 0,
-        success_count: success_count,
-        failure_count: failure_count,
-        total_count: total_count,
-        rate: rate,
-        status: latest_tracking&.status || "抽出前"
-      }
-    end
-
-    # 業種でフィルタ
-    if params[:industry_name].present?
-      @customers = @customers.where(industry: params[:industry_name])
-    end
-
-    # ページネーション（workerをincludesしてN+1を回避）
-    @customers = @customers.includes(:worker).page(params[:page]).per(100)
-
-    # 残り件数取得
-    today_total = ExtractTracking
-                    .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
-                    .sum(:total_count)
-    daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
-    @remaining_extractable = [daily_limit - today_total, 0].max
-
-    # SERP補完対象件数
-    serp_scope = Customer.where.not(status: %w[serp_queued serp_done])
-    serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
-    @serp_target_count = serp_scope.where(
-      "company NOT REGEXP ? OR company IS NULL OR company = '' " \
-      "OR tel IS NULL OR tel = '' " \
-      "OR address NOT REGEXP ? OR address IS NULL OR address = '' " \
-      "OR url IS NULL OR url = ''",
-      '株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人',
-      '東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県'
-    ).count
-
-    elapsed = ((Time.current - start_time) * 1000).round(2)
-    Rails.logger.info("draft action: completed in #{elapsed}ms")
   end
+
+  if params[:period_end].present?
+    begin
+      @period_end = Date.parse(params[:period_end])
+    rescue ArgumentError
+      @period_end = nil
+    end
+  end
+
+  # 期間の整合性（逆転していたら入れ替え）
+  if @period_start.present? && @period_end.present? && @period_end < @period_start
+    @period_start, @period_end = @period_end, @period_start
+  end
+
+  range_start = @period_start&.beginning_of_day
+  range_end   = @period_end&.end_of_day
+
+  # Adminを優先した条件分岐
+  @customers = case
+  when admin_signed_in? && params[:tel_filter] == "with_tel"
+    Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
+  when admin_signed_in? && params[:tel_filter] == "without_tel"
+    Customer.where(status: "draft").where(tel: [nil, '', ' '])
+  when worker_signed_in?
+    Customer.where(status: "draft").where(tel: [nil, '', ' '])
+  else
+    Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
+  end
+
+  # 期間でフィルタ（未指定なら全期間）
+  if range_start && range_end
+    @customers = @customers.where(created_at: range_start..range_end)
+  elsif range_start
+    @customers = @customers.where('created_at >= ?', range_start)
+  elsif range_end
+    @customers = @customers.where('created_at <= ?', range_end)
+  end
+
+  # 業種でフィルタ
+  if params[:industry_name].present?
+    @customers = @customers.where(industry: params[:industry_name])
+  end
+
+  # ページネーション（workerをincludesしてN+1を回避）
+  @customers = @customers.includes(:worker).page(params[:page]).per(100)
+
+  # 残り件数取得
+  today_total = ExtractTracking
+                  .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
+                  .sum(:total_count)
+
+  daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
+  @remaining_extractable = [daily_limit - today_total, 0].max
+
+  # SERP補完対象件数（SQLite REGEXP非対応のためRubyでフィルタ）
+  serp_scope = Customer.where(serp_status: nil)
+                       .or(Customer.where.not(serp_status: %w[serp_queued serp_done]))
+
+  serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+
+  @serp_target_count = serp_scope.to_a.count do |c|
+    !c.company.to_s.match?(SERP_CORP_PATTERN) ||
+    c.tel.blank? ||
+    c.address.blank? ||
+    !c.address.to_s.match?(SERP_PREF_PATTERN) ||
+    c.url.blank?
+  end
+
+  elapsed = ((Time.current - start_time) * 1000).round(2)
+  Rails.logger.info("draft action: completed in #{elapsed}ms")
+end
 
   def extract_company_info
     start_time = Time.current
@@ -640,26 +621,36 @@ def destroy
     industry  = params[:industry].presence
     limit     = (params[:limit] || 100).to_i
 
-    # 対象件数を事前確認
-    scope = Customer.where.not(status: %w[serp_queued serp_done])
+    # 対象件数を事前確認（SQLite REGEXP非対応のためRubyでフィルタ）
+    scope = Customer.where(serp_status: nil).or(Customer.where.not(serp_status: %w[serp_queued serp_done]))
     scope = scope.where(industry: industry) if industry.present?
-    target_count = scope.where(
-      "company NOT REGEXP ? OR company IS NULL OR company = '' " \
-      "OR tel IS NULL OR tel = '' " \
-      "OR address NOT REGEXP ? OR address IS NULL OR address = '' " \
-      "OR url IS NULL OR url = ''",
-      '株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人',
-      '東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県'
-    ).count
+    target_count = scope.to_a.count do |c|
+      !c.company.to_s.match?(SERP_CORP_PATTERN) || c.tel.blank? ||
+      c.address.blank? || !c.address.to_s.match?(SERP_PREF_PATTERN) ||
+      c.url.blank?
+    end
 
     if target_count == 0
       redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
     end
 
-    # Sidekiqで非同期実行（ジョブIDをflashで通知）
-    SerpPipelineDbWorker.perform_async(industry, [limit, target_count].min)
-    redirect_to draft_customers_path,
-      notice: "SERP補完を開始しました。対象: #{[limit, target_count].min}件（業種: #{industry || '全業種'}）"
+    # Sidekiq経由で非同期実行。Redisが未起動の場合は同期フォールバック
+    actual_limit = [limit, target_count].min
+    begin
+      SerpPipelineDbWorker.perform_async(industry, actual_limit)
+      redirect_to draft_customers_path,
+        notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
+    rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
+      Rails.logger.warn("[serp_search] Redis未起動のため同期実行にフォールバック: #{e.message}")
+      begin
+        BrightData::Pipeline.execute_from_db(industry: industry.presence, limit: actual_limit, dry_run: false)
+        redirect_to draft_customers_path,
+          notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
+      rescue => pipeline_err
+        Rails.logger.error("[serp_search] Pipeline error: #{pipeline_err.message}")
+        redirect_to draft_customers_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
+      end
+    end
   end
 
   # 進捗取得API（ポーリング用）
