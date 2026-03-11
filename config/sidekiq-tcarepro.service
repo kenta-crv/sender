@@ -1,0 +1,35 @@
+# Sidekiq systemd サービスファイル（tcarepro専用）
+# 設置先: /etc/systemd/system/sidekiq-tcarepro.service
+#
+# 操作コマンド:
+#   sudo systemctl start sidekiq-tcarepro    （起動）
+#   sudo systemctl stop sidekiq-tcarepro     （停止）
+#   sudo systemctl restart sidekiq-tcarepro  （再起動 ※git pull後はこれを実行）
+#   sudo systemctl status sidekiq-tcarepro   （状態確認）
+#   journalctl -u sidekiq-tcarepro -f        （ログ確認）
+
+[Unit]
+Description=sidekiq for tcarepro
+After=syslog.target network.target redis.target
+
+[Service]
+Type=simple
+
+WorkingDirectory=/home/smart/tcarepro
+User=smart
+Group=smart
+
+Environment=MALLOC_ARENA_MAX=2
+
+ExecStart=/bin/bash -lc 'bundle exec sidekiq -C config/sidekiq.yml'
+ExecReload=/bin/kill -TSTP $MAINPID
+
+RestartSec=1
+Restart=on-failure
+
+SyslogIdentifier=sidekiq-tcarepro
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target
