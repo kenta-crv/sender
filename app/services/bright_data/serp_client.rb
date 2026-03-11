@@ -108,8 +108,6 @@ module BrightData
       request["Authorization"] = "Bearer #{@api_key}"
       request["Content-Type"] = "application/json"
       request["Accept"] = "application/json"
-      # gzip圧縮を明示的に無効化（途中切れ防止）
-      request["Accept-Encoding"] = "identity"
 
       request.body = {
         zone: @zone,
@@ -123,21 +121,17 @@ module BrightData
         raise "HTTP #{response.code}: #{response.body&.first(300)}"
       end
 
+      # Net::HTTP は gzip を自動解凍する。念のため手動解凍フォールバックも保持
       body = response.body.to_s
 
-      # gzip圧縮されていた場合は解凍する
-      if response["Content-Encoding"]&.include?("gzip")
-        require "zlib"
-        begin
-          body = Zlib::GzipReader.new(StringIO.new(body)).read
-        rescue Zlib::GzipFile::Error => e
-          log(:warn, "gzip decode failed (#{e.message}), using raw body")
-        end
+      if body.empty?
+        # 空ボディのデバッグ情報をログに出力
+        log(:warn, "Empty body received. HTTP #{response.code}, Headers: #{response.to_hash.reject { |k, _| k == 'authorization' }.inspect}")
+        raise "Empty response body (HTTP #{response.code})"
       end
 
-      if body.empty?
-        raise "Empty response body (HTTP #{response.code}, Content-Type: #{response['Content-Type']})"
-      end
+      # 先頭200バイトをデバッグログ（本番では不要なら削除可）
+      log(:info, "Response preview: #{body.first(200).gsub(/\s+/, ' ')}")
 
       body
     end
