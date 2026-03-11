@@ -101,13 +101,15 @@ module BrightData
         store.set_default_paths
         store.flags = OpenSSL::X509::V_FLAG_PARTIAL_CHAIN
       end
-      http.read_timeout = 30
-      http.open_timeout = 10
+      http.read_timeout = 60
+      http.open_timeout = 15
 
       request = Net::HTTP::Post.new(uri)
       request["Authorization"] = "Bearer #{@api_key}"
       request["Content-Type"] = "application/json"
       request["Accept"] = "application/json"
+      # gzip圧縮を明示的に無効化（途中切れ防止）
+      request["Accept-Encoding"] = "identity"
 
       request.body = {
         zone: @zone,
@@ -121,7 +123,23 @@ module BrightData
         raise "HTTP #{response.code}: #{response.body&.first(300)}"
       end
 
-      response.body
+      body = response.body.to_s
+
+      # gzip圧縮されていた場合は解凍する
+      if response["Content-Encoding"]&.include?("gzip")
+        require "zlib"
+        begin
+          body = Zlib::GzipReader.new(StringIO.new(body)).read
+        rescue Zlib::GzipFile::Error => e
+          log(:warn, "gzip decode failed (#{e.message}), using raw body")
+        end
+      end
+
+      if body.empty?
+        raise "Empty response body (HTTP #{response.code}, Content-Type: #{response['Content-Type']})"
+      end
+
+      body
     end
 
     def log(level, message)
