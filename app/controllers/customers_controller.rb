@@ -634,10 +634,23 @@ end
       redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
     end
 
-    # Sidekiqで非同期実行（ジョブIDをflashで通知）
-    SerpPipelineDbWorker.perform_async(industry, [limit, target_count].min)
-    redirect_to draft_customers_path,
-      notice: "SERP補完を開始しました。対象: #{[limit, target_count].min}件（業種: #{industry || '全業種'}）"
+    # Sidekiq経由で非同期実行。Redisが未起動の場合は同期フォールバック
+    actual_limit = [limit, target_count].min
+    begin
+      SerpPipelineDbWorker.perform_async(industry, actual_limit)
+      redirect_to draft_customers_path,
+        notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
+    rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
+      Rails.logger.warn("[serp_search] Redis未起動のため同期実行にフォールバック: #{e.message}")
+      begin
+        BrightData::Pipeline.execute_from_db(industry: industry.presence, limit: actual_limit, dry_run: false)
+        redirect_to draft_customers_path,
+          notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
+      rescue => pipeline_err
+        Rails.logger.error("[serp_search] Pipeline error: #{pipeline_err.message}")
+        redirect_to draft_customers_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
+      end
+    end
   end
 
   # 進捗取得API（ポーリング用）
