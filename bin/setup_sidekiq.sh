@@ -41,13 +41,14 @@ else
 fi
 echo ""
 
-# 旧サービス（sidekiq.service）を停止・削除
+# 旧サービス（sidekiq.service）を停止・無効化（削除はしない）
 echo "[3/7] 旧サービス（sidekiq.service）を整理..."
 if systemctl list-unit-files | grep -q '^sidekiq.service'; then
   sudo systemctl stop sidekiq 2>/dev/null || true
   sudo systemctl disable sidekiq 2>/dev/null || true
-  sudo rm -f /etc/systemd/system/sidekiq.service
-  echo "  旧sidekiq.serviceを停止・削除しました"
+  echo "  旧sidekiq.serviceを停止・無効化しました"
+  echo "  ※ファイルは残してあります。tcareproで使用する場合は"
+  echo "    WorkingDirectoryをtcareproに書き換えてご利用ください。"
 else
   echo "  旧sidekiq.serviceは存在しません（スキップ）"
 fi
