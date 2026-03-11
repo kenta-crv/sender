@@ -1,3 +1,107 @@
 // Place all the styles related to the customers controller here.
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
+
+/* このファイル内、または style タグ内に記述 */
+.ai-dash-container {
+  padding: 20px;
+  background-color: #f9fbff; /* 画面全体の背景を少し変えて特別感を出す */
+  font-family: sans-serif;
+}
+
+/* カードスタイル */
+.ai-dash-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  margin-bottom: 24px;
+  padding: 20px;
+  border-left: 5px solid #eee;
+}
+
+.ai-dash-card:nth-of-type(1) { border-left-color: #764ba2; } /* AI抽出 */
+.ai-dash-card:nth-of-type(2) { border-left-color: #2193b0; } /* SERP補完 */
+
+.ai-dash-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.ai-icon-purple { color: #764ba2; margin-right: 10px; font-size: 1.2rem; }
+.ai-icon-blue { color: #2193b0; margin-right: 10px; font-size: 1.2rem; }
+
+.ai-dash-headline {
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin: 0;
+  color: #333;
+}
+
+/* スタッツ */
+.ai-dash-stats {
+  margin-bottom: 20px;
+}
+.ai-label { font-size: 0.8rem; color: #777; margin-right: 10px; }
+.ai-count { font-size: 1.4rem; color: #333; }
+.ai-subtext { font-size: 0.75rem; color: #999; margin-left: 8px; }
+
+/* ボタン（専用） */
+.ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 6px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.ai-btn-primary { background: #764ba2; color: white; }
+.ai-btn-secondary { background: #2193b0; color: white; }
+.ai-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* インラインフォーム */
+.ai-dash-form-inline form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: flex-end;
+}
+.ai-field-group { display: flex; flex-direction: column; gap: 4px; }
+.ai-field-group label { font-size: 0.75rem; color: #666; }
+.ai-select, .ai-input-number {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fcfcfc;
+}
+
+/* テーブル（専用） */
+.ai-table-wrapper {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+}
+.ai-custom-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ai-custom-table thead th {
+  background: #f4f7f9;
+  padding: 12px;
+  text-align: left;
+  font-size: 0.85rem;
+  color: #555;
+}
+.ai-custom-table tbody td {
+  padding: 12px;
+  border-top: 1px solid #eee;
+  font-size: 0.9rem;
+}
+.ai-col-company a { font-weight: bold; color: #333; text-decoration: none; }
+.ai-col-company a:hover { color: #764ba2; }
+.ai-col-industry small { display: block; color: #888; }
+.ai-col-links a { margin-right: 8px; color: #666; }

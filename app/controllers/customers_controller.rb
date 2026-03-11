@@ -495,124 +495,91 @@ def destroy
     render json: { answer: answer.round(2) }
   end
 
-  def draft
-    start_time = Time.current
-    # crowdworkタイトルの初期化
-    @crowdworks = Crowdwork.all || []
+def draft
+  start_time = Time.current
 
-    # 期間パラメータの解釈（未指定可）
-    @period_start = nil
-    @period_end   = nil
-    if params[:period_start].present?
-      begin
-        @period_start = Date.parse(params[:period_start])
-      rescue ArgumentError
-        @period_start = nil
-      end
+  # 期間パラメータの解釈（未指定可）
+  @period_start = nil
+  @period_end   = nil
+
+  if params[:period_start].present?
+    begin
+      @period_start = Date.parse(params[:period_start])
+    rescue ArgumentError
+      @period_start = nil
     end
-    if params[:period_end].present?
-      begin
-        @period_end = Date.parse(params[:period_end])
-      rescue ArgumentError
-        @period_end = nil
-      end
-    end
-
-    # 期間の整合性（逆転していたら入れ替え）
-    if @period_start.present? && @period_end.present? && @period_end < @period_start
-      @period_start, @period_end = @period_end, @period_start
-    end
-    range_start = @period_start&.beginning_of_day
-    range_end   = @period_end&.end_of_day
-
-    # Adminを優先した条件分岐
-    @customers = case
-    when admin_signed_in? && params[:tel_filter] == "with_tel"
-      Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
-    when admin_signed_in? && params[:tel_filter] == "without_tel"
-      Customer.where(status: "draft").where(tel: [nil, '', ' '])
-    when worker_signed_in?
-      Customer.where(status: "draft").where(tel: [nil, '', ' '])
-    else
-      Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
-    end
-
-    # 期間でフィルタ（未指定なら全期間）
-    if range_start && range_end
-      @customers = @customers.where(created_at: range_start..range_end)
-    elsif range_start
-      @customers = @customers.where('created_at >= ?', range_start)
-    elsif range_end
-      @customers = @customers.where('created_at <= ?', range_end)
-    end
-
-    # タイトルごとの件数を計算
-    tel_with_scope = Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
-    tel_without_scope = Customer.where(status: "draft").where(tel: [nil, '', ' '])
-    if range_start && range_end
-      tel_with_scope = tel_with_scope.where(created_at: range_start..range_end)
-      tel_without_scope = tel_without_scope.where(created_at: range_start..range_end)
-    elsif range_start
-      tel_with_scope = tel_with_scope.where('created_at >= ?', range_start)
-      tel_without_scope = tel_without_scope.where('created_at >= ?', range_start)
-    elsif range_end
-      tel_with_scope = tel_with_scope.where('created_at <= ?', range_end)
-      tel_without_scope = tel_without_scope.where('created_at <= ?', range_end)
-    end
-    tel_with_counts = tel_with_scope.group(:industry).count
-    tel_without_counts = tel_without_scope.group(:industry).count
-
-    # ExtractTrackingを一括取得してN+1を回避（SQLite対応）
-    industry_names = @crowdworks.map(&:title)
-    all_trackings = ExtractTracking.where(industry: industry_names).order(id: :desc)
-    # Ruby側で各業種の最新のtrackingを取得
-    latest_trackings = all_trackings.group_by(&:industry).transform_values { |trackings| trackings.first }
-    
-    @industry_counts = @crowdworks.each_with_object({}) do |crowdwork, hash|
-      latest_tracking = latest_trackings[crowdwork.title]
-      success_count = latest_tracking&.success_count.to_i
-      failure_count = latest_tracking&.failure_count.to_i
-      total_count   = latest_tracking&.total_count.to_i
-      total = success_count + failure_count
-      rate = total.positive? ? (success_count.to_f / total) * 100 : 0.0
-      hash[crowdwork.title] = {
-        tel_with: tel_with_counts[crowdwork.title] || 0,
-        tel_without: tel_without_counts[crowdwork.title] || 0,
-        success_count: success_count,
-        failure_count: failure_count,
-        total_count: total_count,
-        rate: rate,
-        status: latest_tracking&.status || "抽出前"
-      }
-    end
-
-    # 業種でフィルタ
-    if params[:industry_name].present?
-      @customers = @customers.where(industry: params[:industry_name])
-    end
-
-    # ページネーション（workerをincludesしてN+1を回避）
-    @customers = @customers.includes(:worker).page(params[:page]).per(100)
-
-    # 残り件数取得
-    today_total = ExtractTracking
-                    .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
-                    .sum(:total_count)
-    daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
-    @remaining_extractable = [daily_limit - today_total, 0].max
-
-    # SERP補完対象件数（SQLite REGEXP非対応のためRubyでフィルタ）
-    serp_scope = Customer.where(serp_status: nil).or(Customer.where.not(serp_status: %w[serp_queued serp_done]))
-    serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
-    @serp_target_count = serp_scope.to_a.count do |c|
-      !c.company.to_s.match?(SERP_CORP_PATTERN) || c.tel.blank? ||
-      c.address.blank? || !c.address.to_s.match?(SERP_PREF_PATTERN) ||
-      c.url.blank?
-    end
-
-    elapsed = ((Time.current - start_time) * 1000).round(2)
-    Rails.logger.info("draft action: completed in #{elapsed}ms")
   end
+
+  if params[:period_end].present?
+    begin
+      @period_end = Date.parse(params[:period_end])
+    rescue ArgumentError
+      @period_end = nil
+    end
+  end
+
+  # 期間の整合性（逆転していたら入れ替え）
+  if @period_start.present? && @period_end.present? && @period_end < @period_start
+    @period_start, @period_end = @period_end, @period_start
+  end
+
+  range_start = @period_start&.beginning_of_day
+  range_end   = @period_end&.end_of_day
+
+  # Adminを優先した条件分岐
+  @customers = case
+  when admin_signed_in? && params[:tel_filter] == "with_tel"
+    Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
+  when admin_signed_in? && params[:tel_filter] == "without_tel"
+    Customer.where(status: "draft").where(tel: [nil, '', ' '])
+  when worker_signed_in?
+    Customer.where(status: "draft").where(tel: [nil, '', ' '])
+  else
+    Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
+  end
+
+  # 期間でフィルタ（未指定なら全期間）
+  if range_start && range_end
+    @customers = @customers.where(created_at: range_start..range_end)
+  elsif range_start
+    @customers = @customers.where('created_at >= ?', range_start)
+  elsif range_end
+    @customers = @customers.where('created_at <= ?', range_end)
+  end
+
+  # 業種でフィルタ
+  if params[:industry_name].present?
+    @customers = @customers.where(industry: params[:industry_name])
+  end
+
+  # ページネーション（workerをincludesしてN+1を回避）
+  @customers = @customers.includes(:worker).page(params[:page]).per(100)
+
+  # 残り件数取得
+  today_total = ExtractTracking
+                  .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
+                  .sum(:total_count)
+
+  daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
+  @remaining_extractable = [daily_limit - today_total, 0].max
+
+  # SERP補完対象件数（SQLite REGEXP非対応のためRubyでフィルタ）
+  serp_scope = Customer.where(serp_status: nil)
+                       .or(Customer.where.not(serp_status: %w[serp_queued serp_done]))
+
+  serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+
+  @serp_target_count = serp_scope.to_a.count do |c|
+    !c.company.to_s.match?(SERP_CORP_PATTERN) ||
+    c.tel.blank? ||
+    c.address.blank? ||
+    !c.address.to_s.match?(SERP_PREF_PATTERN) ||
+    c.url.blank?
+  end
+
+  elapsed = ((Time.current - start_time) * 1000).round(2)
+  Rails.logger.info("draft action: completed in #{elapsed}ms")
+end
 
   def extract_company_info
     start_time = Time.current
