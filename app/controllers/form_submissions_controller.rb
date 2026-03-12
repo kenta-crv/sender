@@ -18,27 +18,35 @@ def index
   if params[:last_call].present?
     lc = params[:last_call]
 
-    base_customers = base_customers
-                       .where('calls.call_type IS NULL OR calls.call_type = ?', 'form')
+    # 実際にフィルタ値が指定されている場合のみcall_typeフィルタを適用
+    has_filter = lc[:calls_id_null] == "true" ||
+                 lc[:status].present? ||
+                 lc[:created_at_from].present? ||
+                 lc[:created_at_to].present?
 
-    # 未コール
-    if lc[:calls_id_null] == "true"
-      base_customers = base_customers.where(calls: { id: nil })
-    end
+    if has_filter
+      base_customers = base_customers
+                         .where('calls.call_type IS NULL OR calls.call_type = ?', 'form')
 
-    # 最終送信状態
-    if lc[:status].present?
-      base_customers = base_customers.where(calls: { status: lc[:status] })
-    end
+      # 未コール
+      if lc[:calls_id_null] == "true"
+        base_customers = base_customers.where(calls: { id: nil })
+      end
 
-    # 最終送信日時（開始）
-    if lc[:created_at_from].present?
-      base_customers = base_customers.where('calls.created_at >= ?', lc[:created_at_from])
-    end
+      # 最終送信状態
+      if lc[:status].present?
+        base_customers = base_customers.where(calls: { status: lc[:status] })
+      end
 
-    # 最終送信日時（終了）
-    if lc[:created_at_to].present?
-      base_customers = base_customers.where('calls.created_at <= ?', lc[:created_at_to])
+      # 最終送信日時（開始）
+      if lc[:created_at_from].present?
+        base_customers = base_customers.where('calls.created_at >= ?', lc[:created_at_from])
+      end
+
+      # 最終送信日時（終了）
+      if lc[:created_at_to].present?
+        base_customers = base_customers.where('calls.created_at <= ?', lc[:created_at_to])
+      end
     end
   end
 
