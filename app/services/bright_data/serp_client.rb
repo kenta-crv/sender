@@ -109,11 +109,10 @@ module BrightData
       request["Content-Type"] = "application/json"
       request["Accept"] = "application/json"
 
-      # format: "raw" は brd_json=1 と競合するため省略
-      # Bright Data は brd_json=1 を検知してJSON構造を自動返却する
       request.body = {
         zone: @zone,
-        url: target_url
+        url: target_url,
+        format: "raw"
       }.to_json
 
       response = http.request(request)
