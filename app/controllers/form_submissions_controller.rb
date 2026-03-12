@@ -104,10 +104,10 @@ def index
 end
   # POST /form_submissions
   def create
-    # contact_url有り or url有り（自動検出付き）の顧客を対象に
-    eligible_scope = Customer.where(
-      'contact_url IS NOT NULL AND contact_url != ? OR (url IS NOT NULL AND url != ?)', '', ''
-    ).where(fobbiden: [nil, false, 0])
+    # 送信対象: indexの@customersと同じスコープ（contact_url設定済み）
+    eligible_scope = Customer.where.not(contact_url: [nil, '', 'not_detected'])
+                             .where(fobbiden: [nil, false, 0])
+                             .order(:id)
 
     send_count = params[:send_count].to_i if params[:send_count].present?
 
