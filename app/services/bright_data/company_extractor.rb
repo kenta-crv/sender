@@ -15,6 +15,11 @@ module BrightData
       recruit job career 求人 採用
       prtimes twitter facebook instagram
       google.com/maps wikipedia
+      hellowork.mhlw.go.jp
+      baseconnect.in navitime.co.jp
+      .pdf .xlsx .csv
+      city. pref. go.jp soumu
+      lobbymap seidanren
     ].freeze
 
     # SERP結果1件分から企業情報を抽出
