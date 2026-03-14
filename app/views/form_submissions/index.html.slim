@@ -59,6 +59,20 @@
       h5 新規バッチ送信
     .card-body
       = form_tag form_submissions_path, method: :post do
+        - if params[:q].present?
+          - params[:q].each do |key, value|
+            - if value.is_a?(Array)
+              - value.each do |v|
+                = hidden_field_tag "q[#{key}][]", v
+            - elsif value.present?
+              = hidden_field_tag "q[#{key}]", value
+        - if params[:last_call].present?
+          - params[:last_call].each do |key, value|
+            - if value.is_a?(Array)
+              - value.each do |v|
+                = hidden_field_tag "last_call[#{key}][]", v
+            - elsif value.present?
+              = hidden_field_tag "last_call[#{key}]", value
         .form-group.mb-3
           label
             | 送信対象の顧客を選択（contact_url 設定済み、または HP URL から自動検出可能な顧客）
