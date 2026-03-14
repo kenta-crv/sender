@@ -19,8 +19,9 @@ def index
     lc = params[:last_call]
 
     # 実際にフィルタ値が指定されている場合のみcall_typeフィルタを適用
+    statuses = Array(lc[:status]).reject(&:blank?)
     has_filter = lc[:calls_id_null] == "true" ||
-                 lc[:status].present? ||
+                 statuses.any? ||
                  lc[:created_at_from].present? ||
                  lc[:created_at_to].present?
 
@@ -34,8 +35,8 @@ def index
       end
 
       # 最終送信状態
-      if lc[:status].present?
-        base_customers = base_customers.where(calls: { status: lc[:status] })
+      if statuses.any?
+        base_customers = base_customers.where(calls: { status: statuses })
       end
 
       # 最終送信日時（開始）
