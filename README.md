@@ -61,3 +61,10 @@ ExtractTracking.last(5).each { |t| puts "#{t.industry}: #{t.success_count}/#{t.t
 ### ステータス確認（SERP補完の進捗）
 Customer.group(:status).count
 # serp_queued: 実行中, serp_done: 完了, nil: 未実行
+
+#Sidekiq apply
+git pull
+bash bin/setup_sidekiq.sh
+
+#ログ削除
+bash bin/cleanup_logs.sh
