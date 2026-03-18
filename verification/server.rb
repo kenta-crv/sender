@@ -93,15 +93,15 @@ get "/" do
     <body>
       <h1>Twilio自動発信テスト</h1>
       <div class="info">
-        <p><strong>発信先（相手役）:</strong> 03-6820-4378</p>
-        <p><strong>オペレーター（転送先）:</strong> 080-2045-1020</p>
+        <p><strong>発信先（相手役）:</strong> #{Config::TEST_TO_NUMBER}</p>
+        <p><strong>オペレーター（転送先）:</strong> #{Config::OPERATOR_NUMBER}</p>
       </div>
       <ol class="steps">
-        <li>下のボタンを押すと 03-6820-4378 に電話がかかります</li>
+        <li>下のボタンを押すと #{Config::TEST_TO_NUMBER} に電話がかかります</li>
         <li>電話に出ると、TTS挨拶が流れます</li>
         <li>「少々お待ちください」→ 間を置いて「お電話代わりました」と話してください</li>
-        <li>音声認識で判定後、080-2045-1020 に自動転送されます</li>
-        <li>080-2045-1020 が鳴ったら出てください → 通話接続</li>
+        <li>音声認識で判定後、#{Config::OPERATOR_NUMBER} に自動転送されます</li>
+        <li>#{Config::OPERATOR_NUMBER} が鳴ったら出てください → 通話接続</li>
       </ol>
       <button class="btn" id="callBtn" onclick="makeCall()">テスト発信する</button>
       <div id="result"></div>
@@ -251,9 +251,8 @@ post "/twilio/transfer" do
 
   puts "[TRANSFER] CallSid=#{call_sid} → Conference '#{conference_name}'"
 
-  # REST APIでオペレーターをConferenceに呼び出し（少し遅延を入れて発信）
+  # REST APIでオペレーターをConferenceに呼び出し
   Thread.new do
-    sleep(2)
     begin
       client = Twilio::REST::Client.new(Config::TWILIO_ACCOUNT_SID, Config::TWILIO_AUTH_TOKEN)
       operator_call = client.calls.create(
