@@ -1,5 +1,5 @@
 class FormSubmissionsController < ApplicationController
-  before_action :set_batch, only: [:show, :cancel, :resume, :progress]
+  before_action :set_batch, only: [:show, :cancel, :resume, :progress, :destroy]
 
   # GET /form_submissions
 def index
