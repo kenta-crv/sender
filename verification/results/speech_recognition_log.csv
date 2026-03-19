@@ -1,0 +1,5 @@
+timestamp,call_sid,speech_result,confidence,matched_category
+2026-03-18T13:03:11+09:00,CA53d9e8d512ed23a3abf20cbdc040ae23,ちょっと確認します。,0.9753007,unknown
+2026-03-18T13:03:46+09:00,CA1f49d4df79eca1dbcc02db903a744732,お電話変わりました。,0.8115987,unknown
+2026-03-19T12:53:57+09:00,CAd52ff19dc1ea0fa0bfac32661fc2abbb,はい、私です。,0.9315123,unknown
+2026-03-19T12:54:27+09:00,CA2215ff1a4574a61e19dc4a9f529fcbb4,ご用件は何ですか？,0.8412492,inquiry

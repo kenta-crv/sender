@@ -64,7 +64,7 @@ resources :submissions do
   end
 end
 
-  resources :form_submissions, only: [:index, :create, :show] do
+  resources :form_submissions, only: [:index, :create, :show, :destroy] do
     collection do
       post :detect_contact_urls
     end

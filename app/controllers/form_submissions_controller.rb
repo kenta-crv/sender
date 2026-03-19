@@ -280,6 +280,14 @@ end
     end
   end
 
+  def destroy
+    if @batch.destroy
+      redirect_to form_submissions_path, notice: 'バッチ送信履歴を削除しました。'
+    else
+      redirect_to form_submissions_path, alert: '削除に失敗しました。'
+    end
+  end
+
   private
 
   def set_batch
