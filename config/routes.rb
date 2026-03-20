@@ -1,93 +1,89 @@
 Rails.application.routes.draw do
-  # Deviseの管理者認証
+  # Sidekiqを使わないため、マウント設定は残しても害はありませんが、プロセスは不要になります
+  require 'sidekiq/web'
+  mount Sidekiq::Web => '/sidekiq'
+
+  root to: 'top#index'
+  get "top/recruit" => 'top#recruit'
+  get "top/recruit_jp" => 'top#recruit_jp'
+  get "top/recruit_en" => 'top#recruit_en'
+  get "top/recruit_clean" => 'top#recruit_clean'
+  get "top/calculation" => 'top#calculation'  
+
+  get 'information' => 'top#information'
+
+  get "top/black" => 'top#black'
+  
+  get "top/flow" => 'top#flow'
+  get "top/entry" => 'top#entry'
+  get "top/attention" => 'top#attention'  
+  get "top/apply" => 'top#apply'  
+
+  get "top/policy" => 'top#policy'  
+
+  get "/appointer" => 'top#appointer'
+  get "/database" => 'top#database'
+  get "/zero" => 'top#zero'
+  get "/free" => 'top#free'
+  get "/restaurant" => 'top#restaurant'
+  get '/redirect', to: 'top#redirect'
+  get 'users/thanks', to: 'users#thanks'
+  get 'documents', to: 'top#documents'
+  get 'databases', to: 'top#databases'
+  get 'lp', to: 'top#lp'
+  resources :access_logs, only: [:index]
+   
+  get 'line', to: 'top#line'
+
   devise_for :admins, controllers: {
-    sessions: 'admins/sessions',
-    registrations: 'admins/registrations'
+    registrations: 'admins/registrations',
+    sessions: 'admins/sessions'
   }
   resources :admins, only: [:show]
-  
-  devise_for :workers, controllers: {
-    sessions: 'workers/sessions',
-    registrations: 'workers/registrations'
-  }
-  resources :workers, only: [:show]
 
-  root to: 'tops#index'
-
-  # --- 各ジャンルLPの定義 ---
-  get 'cargo', to: 'tops#cargo'
-  get 'security', to: 'tops#security'
-  get 'construction', to: 'tops#construction'
-  get 'cleaning', to: 'tops#cleaning'
-  get 'event', to: 'tops#event'
-  get 'logistics', to: 'tops#logistics'
-  get 'short', to: 'tops#short'
-  get 'recruit', to: 'tops#recruit'
-  get 'app', to: 'tops#app'
-  get 'vender', to: 'tops#vender'
-  get 'pest', to: 'tops#pest'
-  get 'ads', to: 'tops#ads'
-
-  # --- SEO用: ジャンル別コラム階層 (/genre/columns/:code) ---
-  # constraintsに一致する場合、こちらのルーティングが優先されます
-  scope ':genre', constraints: { genre: /cargo|security|cleaning|app|vender|pest|construction/ } do
-    resources :columns, only: [:index, :show], as: :nested_columns
-  end
-
-  get 'draft/progress', to: 'draft#progress'
-
-  resources :contracts
-  # --- 管理機能・汎用リソースとしてのコラム ---
-  # 基本的なCRUDはこちらを使用
-  resources :columns do
+  resources :clients do
+    resources :situations
+    resources :jobs 
     collection do
-      get :draft            # ドラフト一覧
-      post :generate_gemini # Gemini生成ボタンのPOST
-      post :generate_pillar # 親専用生成ボタン
-      match 'bulk_update_drafts', via: [:post, :patch]
+      post :confirm
+      post :thanks
     end
     member do
-      patch :approve
+      post :send_mail
+      post :send_mail_start
+      get "conclusion"
     end
   end
 
-  # --- Sidekiq Web UI ---
-  require 'sidekiq/web'
-  authenticate :admin do 
-    mount Sidekiq::Web, at: "/sidekiq"
-  end
-
-resources :submissions do
-  member do
-    get :history
-    get :manual
-  end
-end
+  devise_for :users, controllers: {
+    registrations: 'users/registrations',
+    sessions: 'users/sessions'
+  }
 
   resources :form_submissions, only: [:index, :create, :show] do
     collection do
-      post :detect_contact_urls
+      post :bulk_call_ivr
+      get :call
+      post :confirm
+      post :thanks
     end
     member do
-      patch :update_manual
-      patch :cancel
-      post :resume
-      get :progress
-    end
+      post :send_sms
+      post :send_mail
+      post :send_mail_start
+      get "info"
+      get "conclusion"
+      get "payment"
+      get "calendar"
+      get "start"
+      post :call_ivr
+      # ★ 修正：show_ivrへのアクセスを IvrController#show に、handle_choice_ivrを IvrController#handle_choice に繋ぎます
+      match 'show_ivr', to: 'ivr#show', as: :show_ivr, via: [:get, :post]
+      post 'handle_choice_ivr', to: 'ivr#handle_choice', as: :handle_choice_ivr
+   end
   end
 
-  resources :customers do
-    member do
-      post :manual_call
-    end
-    collection do
-      post :serp_search
-      get  :draft
-      post :extract_company_info
-      get  :extract_progress
-      get  :filter_by_industry
-      post :bulk_action
-    end
-    resources :calls
-  end
+  post "/api/v1/users/from_sheet", to: "api/v1/users#sheet_create"
+
+  # 重複していた resources :ivr は削除しました。上記 users の member 内で完結させています。
 end
