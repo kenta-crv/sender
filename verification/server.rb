@@ -167,45 +167,20 @@ post "/twilio/voice" do
       twiml_say(r, "転送テストを開始します。")
       r.redirect("/twilio/transfer?CallSid=#{params['CallSid']}", method: "POST")
     else
-      # 相手の「もしもし」等の発話を待ってから挨拶を開始
+      # TTS挨拶を即再生 → 完了後にGatherで応答を待つ
+      twiml_say(r, "お電話ありがとうございます。株式会社テストでございます。ご担当者様はいらっしゃいますでしょうか。")
       r.gather(
         input: "speech",
         language: "ja-JP",
-        hints: "もしもし,はい,お電話ありがとうございます,はいはい,お世話になっております",
-        action: "/twilio/greeting",
+        hints: "不在にしております,いません,おりません,いないです,留守にしております,出かけております,席を外しております,ご用件は,結構です,必要ありません,間に合っております,いらないです,大丈夫です,お電話代わりました,お電話かわりました,電話代わりました,少々お待ちください,お待ちください,お待たせしました,担当の",
+        action: "/twilio/gather",
         method: "POST",
         timeout: 5,
         speech_timeout: "auto"
       )
-      # タイムアウト時（相手が何も言わない場合）→ そのまま挨拶へ
-      r.redirect("/twilio/greeting", method: "POST")
+      # Gatherタイムアウト時 → オペレーター転送
+      r.redirect("/twilio/transfer?CallSid=#{params['CallSid']}", method: "POST")
     end
-  end
-
-  content_type "text/xml"
-  response.to_s
-end
-
-# 相手の発話を検知後、挨拶TTS → 本番Gather
-post "/twilio/greeting" do
-  puts "[GREETING] 相手発話検知: SpeechResult='#{params['SpeechResult']}'"
-
-  response = Twilio::TwiML::VoiceResponse.new do |r|
-    # 挨拶TTS再生中もバージイン（割り込み）可能
-    r.gather(
-      input: "speech",
-      language: "ja-JP",
-      hints: "不在にしております,いません,おりません,いないです,留守にしております,出かけております,席を外しております,ご用件は,結構です,必要ありません,間に合っております,いらないです,大丈夫です,お電話代わりました,お電話かわりました,電話代わりました,少々お待ちください,お待ちください,お待たせしました,担当の",
-      action: "/twilio/gather",
-      method: "POST",
-      timeout: 5,
-      speech_timeout: "auto"
-    ) do |g|
-      g.say(message: "お電話ありがとうございます。株式会社テストでございます。ご担当者様はいらっしゃいますでしょうか。", language: "ja-JP", voice: "Polly.Mizuki")
-    end
-    # Gatherタイムアウト時
-    twiml_say(r, "お声が聞き取れませんでした。オペレーターにおつなぎいたします。")
-    r.redirect("/twilio/transfer?CallSid=#{params['CallSid']}", method: "POST")
   end
 
   content_type "text/xml"
@@ -251,7 +226,7 @@ post "/twilio/gather" do
         action: "/twilio/gather",
         method: "POST",
         timeout: 15,
-        speech_timeout: "auto"
+        speech_timeout: 3
       )
       # タイムアウト時はオペレーター転送
       r.redirect("/twilio/transfer?CallSid=#{call_sid}", method: "POST")
