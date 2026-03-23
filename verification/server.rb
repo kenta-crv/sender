@@ -176,7 +176,7 @@ post "/twilio/voice" do
         action: "/twilio/gather",
         method: "POST",
         timeout: 5,
-        speech_timeout: "auto"
+        speech_timeout: 3
       )
       # Gatherタイムアウト時 → オペレーター転送
       r.redirect("/twilio/transfer?CallSid=#{params['CallSid']}", method: "POST")
