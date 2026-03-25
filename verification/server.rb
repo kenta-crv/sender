@@ -230,15 +230,15 @@ post "/twilio/gather" do
     case category
     when "absent"
       twiml_say(r, "承知いたしました。不在とのことですね。改めてお電話させていただきます。失礼いたします。")
-      r.pause(length: 1)
+      r.pause(length: 2)
       r.hangup
     when "inquiry"
       twiml_say(r, "ありがとうございます。本日は新しいサービスのご案内でお電話いたしました。")
-      r.pause(length: 1)
+      r.pause(length: 2)
       r.hangup
     when "rejection"
       twiml_say(r, "承知いたしました。お時間いただきありがとうございました。失礼いたします。")
-      r.pause(length: 1)
+      r.pause(length: 2)
       r.hangup
     when "transfer"
       r.redirect("/twilio/transfer?CallSid=#{call_sid}", method: "POST")

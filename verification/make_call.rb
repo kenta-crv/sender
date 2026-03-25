@@ -3,6 +3,7 @@
 # 音声認識テスト用発信スクリプト
 # Usage: ruby make_call.rb [回数]
 
+require "dotenv/load" rescue nil
 require "twilio-ruby"
 require_relative "config"
 
