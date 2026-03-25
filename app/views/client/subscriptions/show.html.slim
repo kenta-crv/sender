@@ -1,0 +1,76 @@
+.container.py-5.min-vh-100
+  .row.justify-content-center
+    .col-lg-9
+      h1.h2.font-weight-bold.text-dark.mb-4 サブスクリプション管理
+
+      / --- 現在のプランセクション ---
+      .card.shadow-sm.border-0.rounded-3.mb-4
+        .card-body.p-4
+          h2.h4.fw-bold.text-gray-800.mb-4 現在のプラン
+          
+          - if @subscription
+            .row.g-4
+              .col-md-6
+                p.small.text-muted.mb-1 プランタイプ
+                p.h5.fw-bold.text-primary = @subscription.plan_type.capitalize
+              
+              .col-md-6
+                p.small.text-muted.mb-1 ステータス
+                span.badge.rounded-pill class=(@subscription.active? ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger')
+                  = @subscription.status.capitalize
+
+              - if @subscription.trial_ends_at
+                .col-12
+                  p.small.text-muted.mb-1 トライアル終了日
+                  p.h5.fw-bold.text-dark = @subscription.trial_ends_at.strftime("%Y年%m月%d日")
+
+            / --- プラン変更ボタン ---
+            .mt-5.pt-4.border-top
+              h3.h6.fw-bold.text-dark.mb-3 プランのアップグレード・変更
+              .d-flex.flex-wrap.gap-2
+                - unless @subscription.plan_type == 'standard'
+                  = link_to "標準プランに変更", checkout_confirmation_path(plan_type: "standard"), 
+                      class: "btn btn-primary px-4"
+                
+                - unless @subscription.plan_type == 'enterprise'
+                  = link_to "エンタープライズプランに変更", checkout_confirmation_path(plan_type: "enterprise"), 
+                      class: "btn btn-primary px-4"
+
+            / --- キャンセルボタン ---
+            - if @subscription.active?
+              .mt-4.pt-4.border-top
+                = form_with url: client_cancel_path, method: :post, 
+                    data: { turbo_confirm: "本当にキャンセルしますか？" } do |f|
+                  = f.submit "サブスクリプションをキャンセル", 
+                      class: "btn btn-outline-danger btn-sm"
+          
+          - else
+            .text-center.py-4
+              p.text-muted アクティブなサブスクリプションがありません。
+              = link_to "プランを選択する", plans_path, class: "btn btn-primary px-5 py-2 mt-2"
+
+      / --- 支払い履歴セクション ---
+      .card.shadow-sm.border-0.rounded-3
+        .card-body.p-4
+          h2.h4.fw-bold.text-gray-800.mb-4 支払い履歴
+          
+          - if @payments.any?
+            .table-responsive
+              table.table.table-hover.align-middle
+                thead.table-light
+                  tr
+                    th.py-3 日付
+                    th.py-3 金額
+                    th.py-3 説明
+                    th.py-3 ステータス
+                tbody
+                  - @payments.each do |payment|
+                    tr
+                      td = payment.created_at.strftime("%Y/%m/%d")
+                      td.fw-bold = payment.formatted_amount
+                      td = payment.description
+                      td
+                        span.badge class=(payment.succeeded? ? 'bg-success' : 'bg-danger')
+                          = payment.status.capitalize
+          - else
+            p.text-muted.mb-0 支払い履歴がありません。

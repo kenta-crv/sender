@@ -12,6 +12,37 @@ Rails.application.routes.draw do
   }
   resources :workers, only: [:show]
 
+  # クライアント認証 (clients)
+  devise_for :clients, controllers: {
+    sessions: "clients/sessions",
+    registrations: "clients/registrations",
+    passwords: "clients/passwords"
+  }
+  namespace :client do
+    get 'dashboard/index'
+    root "dashboard#index"
+    resources :notifications
+    
+    get 'subscription', to: 'subscriptions#show', as: :subscription
+    patch 'subscription', to: 'subscriptions#update'
+    post 'subscription/cancel', to: 'subscriptions#cancel', as: :cancel
+  end
+
+  # クライアントリソース
+  resources :clients do
+    resources :push_subscriptions, only: [:index, :create]
+  end
+
+  # 決済関連 (詳細を1行ずつ維持)
+  get 'checkout/confirmation', to: 'checkout#confirmation', as: :checkout_confirmation
+  post 'checkout/create', to: 'checkout#create', as: :checkout_create
+  get 'checkout/success', to: 'checkout#success', as: :checkout_success
+  get 'checkout/cancel', to: 'checkout#cancel', as: :checkout_cancel
+
+  # プラン選択
+  get 'plans', to: 'plans#index', as: :plans
+  post 'plans/select', to: 'plans#select', as: :select_plan
+
   root to: 'tops#index'
 
   # --- 各ジャンルLPの定義 ---

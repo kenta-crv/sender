@@ -1,0 +1,47 @@
+<%= form_with(model: client, class: "space-y-6") do |f| %>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div>
+      <%= f.label :first_name, class: "block text-sm font-medium text-gray-700" %>
+      <%= f.text_field :first_name, class: "mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= f.label :last_name, class: "block text-sm font-medium text-gray-700" %>
+      <%= f.text_field :last_name, class: "mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= f.label :email, class: "block text-sm font-medium text-gray-700" %>
+      <%= f.email_field :email, class: "mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= f.label :company_name, class: "block text-sm font-medium text-gray-700" %>
+      <%= f.text_field :company_name, class: "mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= f.label :domain, class: "block text-sm font-medium text-gray-700" %>
+      <%= f.text_field :domain, class: "mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= f.label :api_key, class: "block text-sm font-medium text-gray-700" %>
+      <%= f.text_field :api_key, class: "mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= f.label :password, class: "block text-sm font-medium text-gray-700" %>
+      <%= f.password_field :password, class: "mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500", autocomplete: "new-password" %>
+    </div>
+
+    <div>
+      <%= f.label :password_confirmation, class: "block text-sm font-medium text-gray-700" %>
+      <%= f.password_field :password_confirmation, class: "mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+  </div>
+
+  <div class="pt-6">
+    <%= f.submit class: "px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700" %>
+  </div>
+<% end %>

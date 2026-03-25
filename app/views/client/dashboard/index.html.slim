@@ -1,0 +1,99 @@
+.container-fluid.py-5.bg-light.min-vh-100
+  .container
+    h1.h2.font-weight-bold.text-dark.mb-4.text-center Dashboard
+
+    / --- プラン情報カード ---
+    .card.shadow-sm.border-0.rounded-3.mb-5
+      .card-body.p-4
+        .row.align-items-center
+          .col-md-8
+            h2.h5.text-muted.mb-1 現在のプラン
+            .d-flex.align-items-baseline
+              h3.h3.font-weight-bold.text-primary.mb-0
+                - subscription = current_client.current_subscription
+                - if subscription
+                  = subscription.plan_type.capitalize
+                  - if subscription.trial? && subscription.trial_active?
+                    span.small.text-info.ms-2 (トライアル中)
+                - else
+                  | なし
+
+            - if subscription && subscription.trial? && subscription.trial_active?
+              p.small.text-muted.mt-1
+                | トライアル終了日: 
+                = subscription.trial_ends_at.strftime("%Y年%m月%d日")
+
+            - if current_client.on_trial?
+              .mt-3.p-3.bg-light.border.rounded-3
+                p.small.text-dark.mb-0
+                  strong 無料トライアル中
+                  br
+                  | 終了日: #{current_client.trial_ends_at.strftime("%Y年%m月%d日")}
+                  br
+                  | 残り: #{((current_client.trial_ends_at - Time.current) / 1.day).ceil} 日
+
+          .col-md-4.text-md-end.mt-3.mt-md-0
+            .d-grid.gap-2.d-md-flex.justify-content-md-end
+              = link_to "プラン管理", client_subscription_path, class: "btn btn-primary px-4 py-2 fw-bold"
+              = link_to "プラン変更", plans_path, class: "btn btn-outline-secondary px-4 py-2"
+
+    / --- メトリクスカード (Push / Campaigns) ---
+    .row.g-4.mb-5.justify-content-center
+      .col-md-6.col-lg-4
+        .card.shadow-sm.border-0.rounded-4.h-100.p-4
+          .card-body.d-flex.flex-column.justify-content-between
+            h2.h4.fw-bold.text-dark Push Subscriptions
+            .mt-4.d-flex.gap-2
+              = link_to "View", "#", class: "btn btn-primary flex-grow-1"
+              = link_to "Manage", "#", class: "btn btn-light border flex-grow-1"
+      
+      .col-md-6.col-lg-4
+        .card.shadow-sm.border-0.rounded-4.h-100.p-4
+          .card-body.d-flex.flex-column.justify-content-between
+            h2.h4.fw-bold.text-dark Campaigns
+            .mt-4.d-flex.gap-2
+              = link_to "View", "#", class: "btn btn-primary flex-grow-1"
+              = link_to "Manage", "#", class: "btn btn-light border flex-grow-1"
+
+    / --- データテーブル ---
+    .row.gy-5
+      / Push Subscriptions Table
+      .col-12
+        h2.h4.fw-bold.mb-3 Push Subscriptions
+        .card.shadow-sm.border-0
+          .table-responsive
+            table.table.table-hover.mb-0
+              thead.table-light
+                tr
+                  th ID
+                  th Client ID
+                  th Endpoint
+                  th Browser
+                  th Status
+                  th Created At
+                  th.text-end Actions
+              tbody
+                / @push_subscriptions.each 等でループを回す想定
+                tr
+                  td.text-muted colspan="7" 登録データがありません
+
+      / Campaigns Table
+      .col-12
+        h2.h4.fw-bold.mb-3 Campaigns
+        .card.shadow-sm.border-0
+          .table-responsive
+            table.table.table-hover.mb-0
+              thead.table-light
+                tr
+                  th ID
+                  th Title
+                  th Body
+                  th Target URL
+                  th Status
+                  th Scheduled At
+                  th Created At
+                  th.text-end Actions
+              tbody
+                / @campaigns.each 等でループを回す想定
+                tr
+                  td.text-muted colspan="8" 送信履歴がありません

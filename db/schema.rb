@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_03_10_023007) do
+ActiveRecord::Schema.define(version: 2026_03_24_152117) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -33,6 +33,31 @@ ActiveRecord::Schema.define(version: 2026_03_10_023007) do
     t.string "call_type", default: "phone"
     t.integer "worker_id"
     t.index ["customer_id"], name: "index_calls_on_customer_id"
+  end
+
+  create_table "clients", force: :cascade do |t|
+    t.string "email", default: "", null: false
+    t.string "encrypted_password", default: "", null: false
+    t.string "company"
+    t.string "name"
+    t.string "tel"
+    t.string "address"
+    t.string "url"
+    t.string "domain", default: "", null: false
+    t.string "api_key", default: "", null: false
+    t.string "reset_password_token"
+    t.datetime "reset_password_sent_at"
+    t.datetime "remember_created_at"
+    t.string "subscription_plan", default: "trial"
+    t.string "subscription_status", default: "active"
+    t.datetime "trial_ends_at"
+    t.string "payjp_customer_id"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["email"], name: "index_clients_on_email", unique: true
+    t.index ["reset_password_token"], name: "index_clients_on_reset_password_token", unique: true
+    t.index ["subscription_plan"], name: "index_clients_on_subscription_plan"
+    t.index ["subscription_status"], name: "index_clients_on_subscription_status"
   end
 
   create_table "columns", force: :cascade do |t|
@@ -87,6 +112,7 @@ ActiveRecord::Schema.define(version: 2026_03_10_023007) do
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.string "serp_status"
+    t.string "fax"
   end
 
   create_table "extract_trackings", force: :cascade do |t|
@@ -99,6 +125,28 @@ ActiveRecord::Schema.define(version: 2026_03_10_023007) do
     t.datetime "updated_at", precision: 6, null: false
     t.index ["industry", "id"], name: "index_extract_trackings_on_industry_and_id"
     t.index ["industry"], name: "index_extract_trackings_on_industry"
+  end
+
+  create_table "fax_deliveries", force: :cascade do |t|
+    t.integer "customer_id", null: false
+    t.string "media_url"
+    t.string "status"
+    t.string "twilio_sid"
+    t.integer "retry_count", default: 0
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["customer_id"], name: "index_fax_deliveries_on_customer_id"
+    t.index ["status"], name: "index_fax_deliveries_on_status"
+    t.index ["twilio_sid"], name: "index_fax_deliveries_on_twilio_sid"
+  end
+
+  create_table "fax_logs", force: :cascade do |t|
+    t.string "fax_sid"
+    t.string "to_number"
+    t.string "media_url"
+    t.string "status"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
   end
 
   create_table "form_submission_batches", force: :cascade do |t|
@@ -128,6 +176,21 @@ ActiveRecord::Schema.define(version: 2026_03_10_023007) do
     t.index ["sluggable_type", "sluggable_id"], name: "index_friendly_id_slugs_on_sluggable_type_and_sluggable_id"
   end
 
+  create_table "payments", force: :cascade do |t|
+    t.integer "client_id", null: false
+    t.integer "campaign_id", null: false
+    t.integer "amount", null: false
+    t.string "payjp_charge_id", null: false
+    t.string "status", default: "pending", null: false
+    t.text "description"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["campaign_id"], name: "index_payments_on_campaign_id"
+    t.index ["client_id"], name: "index_payments_on_client_id"
+    t.index ["payjp_charge_id"], name: "index_payments_on_payjp_charge_id"
+    t.index ["status"], name: "index_payments_on_status"
+  end
+
   create_table "submissions", force: :cascade do |t|
     t.string "headline"
     t.string "company"
@@ -145,6 +208,20 @@ ActiveRecord::Schema.define(version: 2026_03_10_023007) do
     t.boolean "manual"
   end
 
+  create_table "subscriptions", force: :cascade do |t|
+    t.integer "client_id", null: false
+    t.string "plan_type", null: false
+    t.string "status", default: "active", null: false
+    t.datetime "trial_ends_at"
+    t.string "payjp_subscription_id"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["client_id"], name: "index_subscriptions_on_client_id"
+    t.index ["payjp_subscription_id"], name: "index_subscriptions_on_payjp_subscription_id"
+    t.index ["plan_type"], name: "index_subscriptions_on_plan_type"
+    t.index ["status"], name: "index_subscriptions_on_status"
+  end
+
   create_table "workers", force: :cascade do |t|
     t.string "user_name", default: "", null: false
     t.string "email", default: "", null: false
@@ -159,4 +236,8 @@ ActiveRecord::Schema.define(version: 2026_03_10_023007) do
   end
 
   add_foreign_key "calls", "customers"
+  add_foreign_key "fax_deliveries", "customers"
+  add_foreign_key "payments", "campaigns"
+  add_foreign_key "payments", "clients"
+  add_foreign_key "subscriptions", "clients"
 end

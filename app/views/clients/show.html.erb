@@ -1,0 +1,15 @@
+<div class="px-8 py-10 bg-gray-50 min-h-screen">
+  <div class="bg-white rounded-xl shadow p-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-4"><%= @client.name %></h1>
+    <p class="text-gray-700"><strong>Email:</strong> <%= @client.email %></p>
+    <p class="text-gray-700"><strong>Company:</strong> <%= @client.company %></p>
+    <p class="text-gray-700"><strong>Domain:</strong> <%= @client.domain %></p>
+    <p class="text-gray-700"><strong>API Key:</strong> <%= @client.api_key %></p>
+    <p class="text-gray-700 mt-4"><strong>Created At:</strong> <%= @client.created_at.strftime("%Y-%m-%d") %></p>
+
+    <div class="mt-8 flex space-x-4">
+      <%= link_to "✏️ Edit", edit_client_path(@client), class: "px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700" %>
+      <%= link_to "⬅️ Back", clients_path, class: "px-5 py-2 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300" %>
+    </div>
+  </div>
+</div>

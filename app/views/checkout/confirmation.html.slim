@@ -1,0 +1,94 @@
+/ data-turbo="false" で遷移時の不具合を物理的に遮断
+.container.py-5 data-turbo="false"
+  .row.justify-content-center
+    .col-md-6
+      .card.shadow-sm.border-0.rounded-4
+        .card-body.p-4
+          h2.h4.fw-bold.mb-4 お支払い内容の確認
+
+          / --- 金額表示エリア (青色に変更) ---
+          .bg-light.rounded-3.p-3.mb-4
+            .d-flex.justify-content-between.mb-2
+              span.text-muted 選択プラン
+              span.fw-bold = @plan_type.to_s.upcase
+            .d-flex.justify-content-between.align-items-center
+              span.text-muted お支払い金額
+              / モデル定数に連動して表示
+              - amount = case @plan_type.to_s.downcase
+              - when 'trial'
+                - Subscription::PLAN_PRICES[:trial]
+              - when 'standard'
+                - Subscription::PLAN_PRICES[:standard]
+              - when 'enterprise'
+                - Subscription::PLAN_PRICES[:enterprise]
+              - else
+                - 0
+              span.h3.fw-bold.text-primary.mb-0= "¥#{amount.to_s(:delimited)}"
+              span.small.ms-1.text-muted.fw-normal (税込)
+
+          hr.my-4
+
+          / --- 決済フォーム ---
+          = form_with url: checkout_create_path, method: :post, id: "payment-form", local: true do |f|
+            = hidden_field_tag :plan_type, @plan_type
+            
+            .mb-4
+              label.form-label.fw-semibold カード情報
+              / 枠線をBootstrap標準の form-control に合わせる
+              #card-element data-pk="#{ENV['PAYJP_PUBLIC_KEY']}" class="form-control" style="min-height: 50px; padding: 12px; background: #fff;"
+                span.text-muted.small 読み込み中...
+              #card-errors.text-danger.small.mt-2
+
+            = f.submit "決済を確定する", class: "btn btn-primary w-100 py-3 fw-bold", id: "submit-button", disabled: true
+
+/ SDKの読み込み
+script src="https://js.pay.jp/v2/pay.js" onload="initPayjp()"
+
+javascript:
+  function initPayjp() {
+    var el = document.getElementById('card-element');
+    if (!el || el.firstChild.nodeName === 'IFRAME') return;
+
+    var pk = el.getAttribute('data-pk');
+    if (!pk || typeof Payjp === 'undefined') {
+      setTimeout(initPayjp, 200);
+      return;
+    }
+
+    var payjp = Payjp(pk);
+    var elements = payjp.elements();
+    var card = elements.create('card', {
+      style: { base: { fontSize: '16px', color: '#495057' } }
+    });
+
+    el.innerHTML = '';
+    card.mount('#card-element');
+
+    card.on('ready', function() {
+      document.getElementById('submit-button').disabled = false;
+    });
+
+    var form = document.getElementById('payment-form');
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var btn = document.getElementById('submit-button');
+      btn.disabled = true;
+
+      payjp.createToken(card).then(function(r) {
+        if (r.error) {
+          document.getElementById('card-errors').innerText = r.error.message;
+          btn.disabled = false;
+        } else {
+          var tokenInput = document.createElement('input');
+          tokenInput.type = 'hidden';
+          tokenInput.name = 'payjp_token';
+          tokenInput.value = r.id;
+          form.appendChild(tokenInput);
+          form.submit();
+        }
+      });
+    });
+  }
+
+  // 保険の実行
+  if (window.Payjp) initPayjp();

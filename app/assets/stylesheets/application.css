@@ -2628,3 +2628,169 @@ small {
 
 
 
+
+.auth-card-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 2rem 1rem;
+}
+
+.auth-inner {
+  width: 100%;
+  max-width: 480px;
+  background: #ffffff;
+  padding: 3rem 2.5rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.auth-title {
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: #1a202c;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.75rem;
+}
+
+.auth-subtitle {
+  color: #718096;
+  font-size: 0.95rem;
+}
+
+.auth-link {
+  color: #4f46e5;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.auth-link:hover {
+  color: #4338ca;
+  text-decoration: underline;
+}
+
+.auth-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.auth-action {
+  margin-top: 2rem;
+}
+
+.auth-btn-submit {
+  width: 100%;
+  background-color: #4f46e5;
+  color: white;
+  padding: 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.auth-btn-submit:hover {
+  background-color: #4338ca;
+}
+
+.auth-btn-submit:active {
+  transform: scale(0.98);
+}
+
+.auth-footer-links {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #a0aec0;
+}
+
+/* 追加分のみ記載（基本はサインアップ画面のCSSと共通） */
+
+.auth-options {
+  margin-top: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.auth-helper-link {
+  font-size: 0.8rem;
+  color: #718096;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.auth-helper-link:hover {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+/* チェックボックスのカスタムスタイル */
+.auth-checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.auth-checkbox {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-right: 0.5rem;
+  cursor: pointer;
+  accent-color: #4f46e5; /* モダンブラウザでの色指定 */
+}
+
+.auth-checkbox-label {
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+/* 共通パーツの再掲（必要に応じて） */
+.field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+}
+
+/* Railsのヘルパーが出力する .flex 等と競合しないよう !important や固有クラスを活用 */
+.flex { display: flex; }
+.justify-between { justify-content: space-between; }
+.items-center { align-items: center; }
