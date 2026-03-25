@@ -230,12 +230,15 @@ post "/twilio/gather" do
     case category
     when "absent"
       twiml_say(r, "承知いたしました。不在とのことですね。改めてお電話させていただきます。失礼いたします。")
+      r.pause(length: 1)
       r.hangup
     when "inquiry"
       twiml_say(r, "ありがとうございます。本日は新しいサービスのご案内でお電話いたしました。")
+      r.pause(length: 1)
       r.hangup
     when "rejection"
       twiml_say(r, "承知いたしました。お時間いただきありがとうございました。失礼いたします。")
+      r.pause(length: 1)
       r.hangup
     when "transfer"
       r.redirect("/twilio/transfer?CallSid=#{call_sid}", method: "POST")
@@ -313,7 +316,6 @@ post "/twilio/operator_join" do
   puts "[OPERATOR_JOIN] Conference='#{conference_name}'"
 
   response = Twilio::TwiML::VoiceResponse.new do |r|
-    twiml_say(r, "お客様との通話に接続します。")
     r.dial do |d|
       d.conference(
         conference_name,
