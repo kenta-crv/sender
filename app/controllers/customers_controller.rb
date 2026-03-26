@@ -898,6 +898,41 @@ end
     flash[:notice] = "#{customers_to_destroy.size}件の顧客（同社名を含む）を削除しました。"
     redirect_to customers_path
   end
+
+  def cleanup_duplicates
+  attribute = params[:attribute]
+  valid_attributes = %w[company tel url contact_url]
+  
+  if valid_attributes.include?(attribute)
+    # 重複している値（nil/空文字以外）のリストを取得
+    duplicate_values = Customer.where.not(attribute => [nil, ""])
+                               .group(attribute)
+                               .having("count(id) > 1")
+                               .pluck(attribute)
+
+    total_deleted = 0
+    
+    # トランザクションを張ることで、途中でエラーが起きても中途半端に消えないようにします
+    Customer.transaction do
+      duplicate_values.each do |value|
+        # 1. 重複している全IDを古い順（ID昇順）で取得
+        ids = Customer.where(attribute => value).order(id: :asc).pluck(:id)
+        
+        # 2. 一番古い1件（keep_id）を除外
+        ids.shift 
+        
+        # 3. 残りのIDに該当する顧客を「関連データを含めて」削除
+        # destroy_all を使うことで、ステップ1で設定した dependent: :destroy が機能します
+        deleted_records = Customer.where(id: ids).destroy_all
+        total_deleted += deleted_records.size
+      end
+    end
+
+    redirect_to request.referer || form_submissions_path, notice: "#{attribute}の重複分 #{total_deleted} 件を、関連する履歴とともに削除しました。"
+  else
+    redirect_to request.referer || form_submissions_path, alert: "不正な属性指定です。"
+  end
+end
       
   private
 

@@ -112,6 +112,7 @@ end
       post :manual_call
     end
     collection do
+      post :cleanup_duplicates
       post :serp_search
       get  :draft
       post :extract_company_info
