@@ -167,17 +167,17 @@ post "/twilio/voice" do
       twiml_say(r, "転送テストを開始します。")
       r.redirect("/twilio/transfer?CallSid=#{params['CallSid']}", method: "POST")
     else
-      # 相手の「もしもし」等の発話を待ってから挨拶を開始
+      # 相手の挨拶（「お世話になっております。株式会社○○の○○です」等）を待つ
       r.gather(
         input: "speech",
         language: "ja-JP",
-        hints: "もしもし,はい,お電話ありがとうございます,はいはい,お世話になっております",
+        hints: "もしもし,はい,お世話になっております,お電話ありがとうございます",
         action: "/twilio/greeting",
         method: "POST",
         timeout: 5,
-        speech_timeout: "auto"
+        speech_timeout: 1
       )
-      # タイムアウト時（相手が何も言わない場合）→ そのまま挨拶へ
+      # タイムアウト時（無言で出た場合）→ そのまま挨拶へ
       r.redirect("/twilio/greeting", method: "POST")
     end
   end
@@ -186,12 +186,12 @@ post "/twilio/voice" do
   response.to_s
 end
 
-# 相手の発話を検知後、挨拶TTS → 本番Gather
+# 相手の挨拶検知後 → TTS挨拶再生 → 応答待ちGather（バージインなし）
 post "/twilio/greeting" do
-  puts "[GREETING] 相手発話検知: SpeechResult='#{params['SpeechResult']}'"
+  puts "[GREETING] 相手挨拶検知: SpeechResult='#{params['SpeechResult']}'"
 
   response = Twilio::TwiML::VoiceResponse.new do |r|
-    # 挨拶TTS再生中もバージイン（割り込み）可能
+    twiml_say(r, "お電話ありがとうございます。株式会社テストでございます。ご担当者様はいらっしゃいますでしょうか。")
     r.gather(
       input: "speech",
       language: "ja-JP",
@@ -199,12 +199,9 @@ post "/twilio/greeting" do
       action: "/twilio/gather",
       method: "POST",
       timeout: 5,
-      speech_timeout: "auto"
-    ) do |g|
-      g.say(message: "お電話ありがとうございます。株式会社テストでございます。ご担当者様はいらっしゃいますでしょうか。", language: "ja-JP", voice: "Polly.Mizuki")
-    end
-    # Gatherタイムアウト時
-    twiml_say(r, "お声が聞き取れませんでした。オペレーターにおつなぎいたします。")
+      speech_timeout: 3
+    )
+    # Gatherタイムアウト時 → オペレーター転送
     r.redirect("/twilio/transfer?CallSid=#{params['CallSid']}", method: "POST")
   end
 
@@ -233,12 +230,15 @@ post "/twilio/gather" do
     case category
     when "absent"
       twiml_say(r, "承知いたしました。不在とのことですね。改めてお電話させていただきます。失礼いたします。")
+      r.pause(length: 2)
       r.hangup
     when "inquiry"
       twiml_say(r, "ありがとうございます。本日は新しいサービスのご案内でお電話いたしました。")
+      r.pause(length: 2)
       r.hangup
     when "rejection"
       twiml_say(r, "承知いたしました。お時間いただきありがとうございました。失礼いたします。")
+      r.pause(length: 2)
       r.hangup
     when "transfer"
       r.redirect("/twilio/transfer?CallSid=#{call_sid}", method: "POST")
@@ -251,7 +251,7 @@ post "/twilio/gather" do
         action: "/twilio/gather",
         method: "POST",
         timeout: 15,
-        speech_timeout: "auto"
+        speech_timeout: 3
       )
       # タイムアウト時はオペレーター転送
       r.redirect("/twilio/transfer?CallSid=#{call_sid}", method: "POST")
@@ -316,7 +316,6 @@ post "/twilio/operator_join" do
   puts "[OPERATOR_JOIN] Conference='#{conference_name}'"
 
   response = Twilio::TwiML::VoiceResponse.new do |r|
-    twiml_say(r, "お客様との通話に接続します。")
     r.dial do |d|
       d.conference(
         conference_name,
