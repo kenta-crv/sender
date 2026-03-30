@@ -43,21 +43,21 @@ Rails.application.routes.draw do
   get 'plans', to: 'plans#index', as: :plans
   post 'plans/select', to: 'plans#select', as: :select_plan
 
-  root to: 'tops#index'
+  #root to: 'tops#index'
 
   # --- 各ジャンルLPの定義 ---
-  get 'cargo', to: 'tops#cargo'
-  get 'security', to: 'tops#security'
-  get 'construction', to: 'tops#construction'
-  get 'cleaning', to: 'tops#cleaning'
-  get 'event', to: 'tops#event'
-  get 'logistics', to: 'tops#logistics'
-  get 'short', to: 'tops#short'
-  get 'recruit', to: 'tops#recruit'
-  get 'app', to: 'tops#app'
-  get 'vender', to: 'tops#vender'
-  get 'pest', to: 'tops#pest'
-  get 'ads', to: 'tops#ads'
+  #get 'cargo', to: 'tops#cargo'
+  #get 'security', to: 'tops#security'
+  #get 'construction', to: 'tops#construction'
+  #get 'cleaning', to: 'tops#cleaning'
+  #get 'event', to: 'tops#event'
+  #get 'logistics', to: 'tops#logistics'
+  #get 'short', to: 'tops#short'
+  #get 'recruit', to: 'tops#recruit'
+  #get 'app', to: 'tops#app'
+  #get 'vender', to: 'tops#vender'
+  #get 'pest', to: 'tops#pest'
+  #get 'ads', to: 'tops#ads'
 
   # --- SEO用: ジャンル別コラム階層 (/genre/columns/:code) ---
   # constraintsに一致する場合、こちらのルーティングが優先されます
@@ -67,20 +67,20 @@ Rails.application.routes.draw do
 
   get 'draft/progress', to: 'draft#progress'
 
-  resources :contracts
+  #resources :contracts
   # --- 管理機能・汎用リソースとしてのコラム ---
   # 基本的なCRUDはこちらを使用
-  resources :columns do
-    collection do
-      get :draft            # ドラフト一覧
-      post :generate_gemini # Gemini生成ボタンのPOST
-      post :generate_pillar # 親専用生成ボタン
-      match 'bulk_update_drafts', via: [:post, :patch]
-    end
-    member do
-      patch :approve
-    end
-  end
+  #resources :columns do
+  #  collection do
+  #    get :draft            # ドラフト一覧
+  #    post :generate_gemini # Gemini生成ボタンのPOST
+  #    post :generate_pillar # 親専用生成ボタン
+  #    match 'bulk_update_drafts', via: [:post, :patch]
+  #  end
+  #  member do
+  #    patch :approve
+  #  end
+  #end
 
   # --- Sidekiq Web UI ---
   require 'sidekiq/web'
