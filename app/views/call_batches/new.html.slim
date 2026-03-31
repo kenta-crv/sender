@@ -1,0 +1,90 @@
+.container.mt-4
+  h2 新規自動発信
+
+  = form_tag call_batches_path, method: :post do
+    .card.mb-4
+      .card-header 発信設定
+      .card-body
+        .row
+          .col-md-4
+            .form-group
+              label バッチ名
+              = text_field_tag :name, nil, class: 'form-control', placeholder: '例: 3月営業リスト'
+          .col-md-3
+            .form-group
+              label 同時回線数
+              = select_tag :concurrent_lines, options_for_select([['3回線', 3], ['4回線', 4], ['5回線', 5]], 3), class: 'form-control'
+          .col-md-3
+            .form-group
+              label 発信件数（空欄で全件）
+              = number_field_tag :send_count, nil, class: 'form-control', min: 1, placeholder: '件数指定'
+          .col-md-2
+            .form-group
+              label &nbsp;
+              .d-block
+                = check_box_tag :select_all, '1', false, id: 'select_all'
+                label for='select_all'  全件選択
+
+    / --- 顧客検索 ---
+    .card.mb-4
+      .card-header 顧客検索・フィルタ
+      .card-body
+        = search_form_for @q, url: new_call_batch_path, method: :get do |f|
+          .row
+            .col-md-3
+              .form-group
+                label 会社名
+                = f.search_field :company_cont, class: 'form-control', placeholder: '会社名'
+            .col-md-3
+              .form-group
+                label 業種
+                = f.search_field :industry_cont, class: 'form-control', placeholder: '業種'
+            .col-md-3
+              .form-group
+                label 電話番号
+                = f.search_field :tel_cont, class: 'form-control', placeholder: '電話番号'
+            .col-md-3
+              .form-group
+                label &nbsp;
+                .d-block
+                  = f.submit '検索', class: 'btn btn-outline-primary'
+
+    / --- 顧客一覧 ---
+    .card.mb-4
+      .card-header
+        | 発信対象顧客
+        span.badge.badge-primary.ml-2 = @customers.total_count
+      .card-body
+        table.table.table-bordered.table-hover.table-sm
+          thead
+            tr
+              th style='width:40px'
+                = check_box_tag :check_all, nil, false, id: 'check_all_customers'
+              th 会社名
+              th 電話番号
+              th 担当者
+              th 業種
+              th ステータス
+          tbody
+            - @customers.each do |customer|
+              tr
+                td
+                  = check_box_tag 'customer_ids[]', customer.id, false, class: 'customer-check'
+                td = customer.company
+                td = customer.tel
+                td = customer.name
+                td = customer.industry
+                td = customer.status
+
+        = paginate @customers
+
+    = submit_tag '発信開始', class: 'btn btn-primary btn-lg', data: { confirm: '自動発信を開始しますか？' }
+    = link_to 'キャンセル', call_batches_path, class: 'btn btn-outline-secondary btn-lg ml-2'
+
+  javascript:
+    document.getElementById('check_all_customers').addEventListener('change', function() {
+      var checks = document.querySelectorAll('.customer-check');
+      for (var i = 0; i < checks.length; i++) {
+        checks[i].checked = this.checked;
+      }
+    });

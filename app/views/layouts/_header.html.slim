@@ -14,6 +14,8 @@
               a.nav-link-custom href="javascript:void(0)" data-target="business" 事業内容
             li
               a.nav-link-custom href="javascript:void(0)" data-target="case" 導入事例
+            li
+              = link_to "自動発信", dashboard_call_batches_path, class: "nav-link-custom"
         nav.mobile-nav.d-lg-none
           #mobile-nav-toggle.mobile-nav-toggle
             span.hamburger-line
@@ -33,6 +35,8 @@
                 a.nav-link-custom href="javascript:void(0)" data-target="business" 事業内容
               li
                 a.nav-link-custom href="javascript:void(0)" data-target="case" 導入事例
+              li
+                = link_to "自動発信", dashboard_call_batches_path, class: "nav-link-custom"
             .mobile-nav-actions
               = image_tag "search.png", class: "search-icon", alt: "Search"
               button.btn.login-btn

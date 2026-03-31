@@ -1,5 +1,6 @@
-:concurrency: 3
+:concurrency: 5
 :queues:
   - [form_submission, 5]
+  - [auto_dial, 4]
   - [article_generation, 3]
   - [default, 1]

@@ -1,0 +1,46 @@
+.container.mt-4
+  h2 自動発信バッチ一覧
+
+  .mb-3
+    = link_to '新規発信', new_call_batch_path, class: 'btn btn-primary mr-2'
+    = link_to 'ダッシュボード', dashboard_call_batches_path, class: 'btn btn-outline-info'
+
+  table.table.table-bordered.table-hover
+    thead
+      tr
+        th #
+        th バッチ名
+        th ステータス
+        th 合計
+        th 成功
+        th 失敗
+        th 転送
+        th 回線数
+        th 開始
+        th 完了
+    tbody
+      - @batches.each do |batch|
+        tr
+          td = batch.id
+          td = link_to batch.name, call_batch_path(batch)
+          td
+            - case batch.status
+            - when 'pending'
+              span.badge.badge-secondary 待機中
+            - when 'processing'
+              span.badge.badge-primary 処理中
+            - when 'completed'
+              span.badge.badge-success 完了
+            - when 'paused'
+              span.badge.badge-warning 一時停止
+            - when 'cancelled'
+              span.badge.badge-danger キャンセル
+          td = batch.total_count
+          td.text-success = batch.success_count
+          td.text-danger = batch.failure_count
+          td.text-info = batch.transferred_count
+          td = batch.concurrent_lines
+          td = batch.started_at&.strftime('%m/%d %H:%M')
+          td = batch.completed_at&.strftime('%m/%d %H:%M')
+
+  = paginate @batches

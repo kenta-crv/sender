@@ -1,6 +1,7 @@
 class Call < ApplicationRecord
   belongs_to :customer#, foreign_key: :tel, primary_key: :tel
-  belongs_to :worker
+  belongs_to :worker, optional: true
+  belongs_to :call_batch, optional: true
   # Validations for recording fields
   #validates :recording_url, presence: true, if: :recording_duration?
   #validates :recording_duration, numericality: { greater_than: 0 }, if: :recording_duration?
@@ -8,6 +9,11 @@ class Call < ApplicationRecord
   # call_type スコープ
   scope :phone_calls, -> { where(call_type: [nil, 'phone']) }
   scope :form_submissions, -> { where(call_type: 'form') }
+  scope :auto_calls, -> { where(call_type: 'auto_phone') }
+
+  # Twilio通話ステータス
+  scope :active_twilio, -> { where(twilio_status: ['initiated', 'ringing', 'in-progress']) }
+  scope :with_recording, -> { where.not(recording_url: nil) }
 
   # Scope for automated calls
   scope :automated, -> { where.not(vapi_call_id: nil) }
