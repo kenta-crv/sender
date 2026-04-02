@@ -107,6 +107,31 @@ end
     end
   end
 
+  # --- Twilio Webhooks ---
+  namespace :twilio do
+    post 'voice', to: 'voice#voice'
+    post 'greeting', to: 'voice#greeting'
+    post 'gather', to: 'voice#gather'
+    post 'transfer', to: 'voice#transfer'
+    post 'operator_join', to: 'voice#operator_join'
+    post 'status', to: 'status#update'
+    post 'recording_status', to: 'status#recording'
+    post 'conference/status', to: 'conference#status'
+  end
+
+  # --- 自動発信バッチ管理 ---
+  resources :call_batches do
+    member do
+      patch :pause
+      patch :resume
+      patch :cancel
+      get :progress
+    end
+    collection do
+      get :dashboard
+    end
+  end
+
   resources :customers do
     member do
       post :manual_call

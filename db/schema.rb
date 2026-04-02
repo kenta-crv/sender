@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_03_29_032505) do
+ActiveRecord::Schema.define(version: 2026_03_30_000003) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -24,6 +24,26 @@ ActiveRecord::Schema.define(version: 2026_03_29_032505) do
     t.index ["reset_password_token"], name: "index_admins_on_reset_password_token", unique: true
   end
 
+  create_table "call_batches", force: :cascade do |t|
+    t.string "name"
+    t.integer "total_count", default: 0
+    t.integer "processed_count", default: 0
+    t.integer "success_count", default: 0
+    t.integer "failure_count", default: 0
+    t.integer "transferred_count", default: 0
+    t.string "status", default: "pending"
+    t.text "customer_ids"
+    t.text "error_log", default: "[]"
+    t.integer "concurrent_lines", default: 3
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.integer "worker_id"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["status"], name: "index_call_batches_on_status"
+    t.index ["worker_id"], name: "index_call_batches_on_worker_id"
+  end
+
   create_table "calls", force: :cascade do |t|
     t.string "status"
     t.string "comment"
@@ -32,7 +52,24 @@ ActiveRecord::Schema.define(version: 2026_03_29_032505) do
     t.datetime "updated_at", precision: 6, null: false
     t.string "call_type", default: "phone"
     t.integer "worker_id"
+    t.string "twilio_call_sid"
+    t.string "flow_phase"
+    t.text "speech_result"
+    t.string "speech_category"
+    t.float "speech_confidence"
+    t.datetime "started_at"
+    t.datetime "answered_at"
+    t.datetime "ended_at"
+    t.integer "duration"
+    t.string "recording_url"
+    t.string "recording_sid"
+    t.string "transferred_to"
+    t.string "conference_sid"
+    t.string "twilio_status"
+    t.integer "call_batch_id"
+    t.index ["call_batch_id"], name: "index_calls_on_call_batch_id"
     t.index ["customer_id"], name: "index_calls_on_customer_id"
+    t.index ["twilio_call_sid"], name: "index_calls_on_twilio_call_sid"
   end
 
   create_table "clients", force: :cascade do |t|
@@ -229,6 +266,28 @@ ActiveRecord::Schema.define(version: 2026_03_29_032505) do
     t.index ["payjp_subscription_id"], name: "index_subscriptions_on_payjp_subscription_id"
     t.index ["plan_type"], name: "index_subscriptions_on_plan_type"
     t.index ["status"], name: "index_subscriptions_on_status"
+  end
+
+  create_table "twilio_configs", force: :cascade do |t|
+    t.text "greeting_text", default: "お電話ありがとうございます。株式会社テストでございます。ご担当者様はいらっしゃいますでしょうか。"
+    t.text "absent_text", default: "承知いたしました。不在とのことですね。改めてお電話させていただきます。失礼いたします。"
+    t.text "inquiry_text", default: "ありがとうございます。本日は新しいサービスのご案内でお電話いたしました。"
+    t.text "rejection_text", default: "承知いたしました。お時間いただきありがとうございました。失礼いたします。"
+    t.text "transfer_text", default: "オペレーターにおつなぎいたします。"
+    t.text "wait_text"
+    t.string "operator_number"
+    t.string "from_number"
+    t.integer "no_answer_timeout", default: 7
+    t.integer "speech_timeout", default: 3
+    t.integer "gather_timeout", default: 5
+    t.string "voice_language", default: "ja-JP"
+    t.string "voice_name", default: "Polly.Mizuki"
+    t.text "speech_hints", default: "不在にしております,いません,おりません,いないです,留守にしております,出かけております,席を外しております,ご用件は,結構です,必要ありません,間に合っております,いらないです,大丈夫です,お電話代わりました,お電話かわりました,電話代わりました,少々お待ちください,お待ちください,お待たせしました,担当の"
+    t.boolean "recording_enabled", default: true
+    t.integer "recording_min_duration", default: 60
+    t.boolean "active", default: true
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
   end
 
   create_table "workers", force: :cascade do |t|

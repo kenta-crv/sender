@@ -1,0 +1,121 @@
+.container.mt-4
+  h2 自動発信ダッシュボード
+
+  / --- 本日の統計 ---
+  .row.mb-4
+    .col-md-3
+      .card
+        .card-body.text-center
+          h5.card-title 本日の発信数
+          h2.text-primary = @stats[:today_total]
+    .col-md-3
+      .card
+        .card-body.text-center
+          h5.card-title 応答数
+          h2.text-success = @stats[:today_answered]
+    .col-md-3
+      .card
+        .card-body.text-center
+          h5.card-title 転送数
+          h2.text-info = @stats[:today_transferred]
+    .col-md-3
+      .card
+        .card-body.text-center
+          h5.card-title 応答率
+          - rate = @stats[:today_total] > 0 ? ((@stats[:today_answered].to_f / @stats[:today_total]) * 100).round(1) : 0
+          h2 = "#{rate}%"
+
+  / --- 現在のバッチ ---
+  - if @current_batch
+    .card.mb-4
+      .card-header
+        h5
+          | 実行中バッチ: #{@current_batch.name}
+          span.badge.badge-primary.ml-2 処理中
+      .card-body
+        .row
+          .col-md-3
+            strong 合計:
+            span.ml-1 = @current_batch.total_count
+          .col-md-2
+            strong 処理済:
+            span.ml-1 = @current_batch.processed_count
+          .col-md-2
+            strong.text-success 成功:
+            span.ml-1 = @current_batch.success_count
+          .col-md-2
+            strong.text-danger 失敗:
+            span.ml-1 = @current_batch.failure_count
+          .col-md-3
+            strong.text-info 転送:
+            span.ml-1 = @current_batch.transferred_count
+        .progress.mt-3 style="height: 20px;"
+          - percent = @current_batch.total_count.to_i > 0 ? ((@current_batch.processed_count.to_f / @current_batch.total_count) * 100).round(1) : 0
+          .progress-bar.progress-bar-striped.progress-bar-animated role="progressbar" style="width: #{percent}%"
+            = "#{percent}%"
+        .mt-3
+          = link_to '詳細', call_batch_path(@current_batch), class: 'btn btn-sm btn-outline-primary mr-2'
+          = link_to '一時停止', pause_call_batch_path(@current_batch), method: :patch, class: 'btn btn-sm btn-warning mr-2', data: { confirm: '発信を一時停止しますか？' }
+          = link_to 'キャンセル', cancel_call_batch_path(@current_batch), method: :patch, class: 'btn btn-sm btn-danger', data: { confirm: '発信をキャンセルしますか？' }
+
+  / --- アクティブ通話 ---
+  .card.mb-4
+    .card-header
+      h5
+        | アクティブ通話
+        span.badge.badge-primary.ml-2 = @active_calls.size
+    .card-body
+      - if @active_calls.any?
+        .row
+          - @active_calls.each do |call|
+            .col-md-4.mb-3
+              .card.border-primary
+                .card-body
+                  h6 = call.customer&.company || '不明'
+                  p.mb-1
+                    small.text-muted = call.customer&.tel
+                  .d-flex.justify-content-between
+                    span.badge.badge-info = call.twilio_status
+                    span.badge.badge-secondary = call.flow_phase
+      - else
+        p.text-muted 現在アクティブな通話はありません。
+
+  / --- 最近の通話 ---
+  .card
+    .card-header
+      h5 最近の通話
+    .card-body
+      table.table.table-bordered.table-hover.table-sm
+        thead
+          tr
+            th 会社名
+            th 電話番号
+            th ステータス
+            th 認識結果
+            th 分類
+            th 時間
+            th 終了
+        tbody
+          - @recent_calls.each do |call|
+            - row_class = case call.flow_phase
+            - when 'transfer'
+              - 'table-info'
+            - when 'absent', 'rejection'
+              - 'table-secondary'
+            - when 'inquiry'
+              - 'table-success'
+            - else
+              - ''
+            tr class=row_class
+              td = call.customer&.company
+              td = call.customer&.tel
+              td = call.twilio_status
+              td
+                small = truncate(call.speech_result.to_s, length: 30)
+              td = call.speech_category
+              td = call.duration ? "#{call.duration}秒" : '-'
+              td = call.ended_at&.strftime('%H:%M:%S')
+
+  .mt-4
+    = link_to '新規発信', new_call_batch_path, class: 'btn btn-primary me-3'
+    = link_to 'バッチ一覧', call_batches_path, class: 'btn btn-outline-secondary'
