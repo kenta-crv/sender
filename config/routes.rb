@@ -144,6 +144,7 @@ end
       get  :extract_progress
       get  :filter_by_industry
       post :bulk_action
+      post :import, to: 'customers#all_import'
     end
     resources :calls
   end
