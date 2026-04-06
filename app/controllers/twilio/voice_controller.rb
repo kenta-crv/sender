@@ -7,9 +7,13 @@ module Twilio
       return head(:not_found) unless @call
 
       @call.update(flow_phase: 'greeting', twilio_call_sid: params['CallSid']) if @call.twilio_call_sid.blank?
-      Rails.logger.info("[TWILIO:VOICE] CallSid=#{params['CallSid']} call_id=#{@call.id}")
+      Rails.logger.info("[TWILIO:VOICE] CallSid=#{params['CallSid']} call_id=#{@call.id} stream_mode=#{stream_mode?}")
 
-      render_twiml builder.voice_response(@call)
+      if stream_mode?
+        render_twiml builder.stream_voice_response(@call, wss_url)
+      else
+        render_twiml builder.voice_response(@call)
+      end
     end
 
     # POST /twilio/greeting — 相手の挨拶検知後、TTS挨拶 → 応答待ち
@@ -19,10 +23,14 @@ module Twilio
       Rails.logger.info("[TWILIO:GREETING] call_id=#{@call.id} SpeechResult='#{params['SpeechResult']}'")
       @call.update(flow_phase: 'gather')
 
-      render_twiml builder.greeting_response(@call)
+      if stream_mode?
+        render_twiml builder.stream_greeting_response(@call, wss_url)
+      else
+        render_twiml builder.greeting_response(@call)
+      end
     end
 
-    # POST /twilio/gather — 音声認識結果を受信・分類
+    # POST /twilio/gather — 音声認識結果を受信・分類（Gatherモード用）
     def gather
       return head(:not_found) unless @call
 
@@ -38,6 +46,16 @@ module Twilio
         speech_confidence: confidence.to_f,
         flow_phase: category
       )
+
+      render_twiml builder.gather_response(@call, category)
+    end
+
+    # POST /twilio/stream_result — ストリームモード: 分類結果に基づくTwiML応答
+    def stream_result
+      return head(:not_found) unless @call
+
+      category = params['category']
+      Rails.logger.info("[TWILIO:STREAM_RESULT] call_id=#{@call.id} category=#{category}")
 
       render_twiml builder.gather_response(@call, category)
     end
@@ -72,6 +90,18 @@ module Twilio
       Rails.logger.info("[TWILIO:OPERATOR_JOIN] Conference='#{conference_name}'")
 
       render_twiml builder.operator_join_response(conference_name, base_url)
+    end
+
+    private
+
+    def stream_mode?
+      TwilioConfig.current.stream_mode_enabled?
+    end
+
+    def wss_url
+      # ngrokのhttps → wss に変換
+      base = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
+      base.sub(/\Ahttps?/, 'wss') + '/media-stream'
     end
   end
 end
