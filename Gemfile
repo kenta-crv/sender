@@ -64,6 +64,7 @@ gem 'openai'
 gem 'open_uri_redirections'
 gem 'twilio-ruby'
 gem 'google-cloud-speech'
+gem 'faye-websocket'
 gem 'net-imap', '~> 0.3.9'
 gem 'mail', '~> 2.8'
 

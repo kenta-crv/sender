@@ -105,6 +105,40 @@ class TwimlBuilder
     end
   end
 
+  # --- Stream Mode ---
+
+  # ストリームモード: 初期応答（相手の挨拶検知）
+  def stream_voice_response(call, wss_url)
+    Twilio::TwiML::VoiceResponse.new do |r|
+      r.start do |s|
+        s.stream(url: wss_url) do |st|
+          st.parameter(name: 'call_id', value: call.id.to_s)
+          st.parameter(name: 'phase', value: 'initial')
+        end
+      end
+      r.pause(length: 5)
+      # タイムアウト時 → そのまま挨拶へ
+      r.redirect("/twilio/greeting?call_id=#{call.id}", method: "POST")
+    end
+  end
+
+  # ストリームモード: TTS挨拶 → リアルタイム音声認識
+  def stream_greeting_response(call, wss_url)
+    Twilio::TwiML::VoiceResponse.new do |r|
+      r.start do |s|
+        s.stream(url: wss_url) do |st|
+          st.parameter(name: 'call_id', value: call.id.to_s)
+          st.parameter(name: 'phase', value: 'greeting')
+        end
+      end
+      twiml_say(r, @config.greeting_text)
+      # ストリームがリアルタイムで認識→CallRedirectorでリダイレクトされるまで待機
+      r.pause(length: 30)
+      # フォールバック: 30秒以内に認識されなければオペレーター転送
+      r.redirect("/twilio/transfer?call_id=#{call.id}", method: "POST")
+    end
+  end
+
   private
 
   def twiml_say(response, text)

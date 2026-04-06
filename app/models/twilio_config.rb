@@ -16,4 +16,8 @@ class TwilioConfig < ApplicationRecord
     val = super
     val.present? ? val : ENV['OPERATOR_NUMBER']
   end
+
+  def stream_mode_enabled?
+    stream_mode_enabled == true
+  end
 end

@@ -114,6 +114,7 @@ end
     post 'gather', to: 'voice#gather'
     post 'transfer', to: 'voice#transfer'
     post 'operator_join', to: 'voice#operator_join'
+    post 'stream_result', to: 'voice#stream_result'
     post 'status', to: 'status#update'
     post 'recording_status', to: 'status#recording'
     post 'conference/status', to: 'conference#status'
