@@ -1,9 +1,10 @@
 require 'google/cloud/speech/v1'
 
 class GoogleSpeechStream
-  def initialize(call_id:, hints: [], on_result:, on_error: nil)
+  def initialize(call_id:, hints: [], single_utterance: false, on_result:, on_error: nil)
     @call_id = call_id
     @hints = hints
+    @single_utterance = single_utterance
     @on_result = on_result
     @on_error = on_error || ->(e) { Rails.logger.error("[GoogleSpeech] call_id=#{call_id} error: #{e.message}") }
     @audio_queue = Queue.new
@@ -48,8 +49,8 @@ class GoogleSpeechStream
 
     streaming_config = Google::Cloud::Speech::V1::StreamingRecognitionConfig.new(
       config: config,
-      interim_results: false,
-      single_utterance: false
+      interim_results: true,
+      single_utterance: @single_utterance
     )
 
     # 音声チャンクを生成するEnumerator
@@ -91,14 +92,22 @@ class GoogleSpeechStream
       next unless response.results&.any?
 
       response.results.each do |result|
-        next unless result.is_final
-
         transcript = result.alternatives.first&.transcript
-        confidence = result.alternatives.first&.confidence
+        confidence = result.alternatives.first&.confidence || 0.0
         next if transcript.nil? || transcript.empty?
 
-        Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} FINAL: '#{transcript}' (#{confidence})")
-        @on_result.call(transcript, confidence)
+        if result.is_final
+          Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} FINAL: '#{transcript}' (#{confidence})")
+          @on_result.call(transcript, confidence)
+        else
+          # 中間結果でもキーワードマッチしたら即通知
+          transcript_utf8 = transcript.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') rescue transcript
+          category, _ = TwilioService.classify_speech(transcript_utf8)
+          if category != 'unknown'
+            Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} INTERIM MATCH: '#{transcript}' → #{category}")
+            @on_result.call(transcript, confidence)
+          end
+        end
       end
     end
 

@@ -20,8 +20,9 @@ module Twilio
     def greeting
       return head(:not_found) unless @call
 
-      Rails.logger.info("[TWILIO:GREETING] call_id=#{@call.id} SpeechResult='#{params['SpeechResult']}'")
-      @call.update(flow_phase: 'gather')
+      Rails.logger.info("[TWILIO:GREETING] call_id=#{@call.id} SpeechResult='#{params['SpeechResult']}' flow_phase=#{@call.flow_phase}")
+
+      @call.update(flow_phase: 'gather') unless @call.flow_phase.in?(%w[gather absent inquiry rejection transfer wait unknown])
 
       if stream_mode?
         render_twiml builder.stream_greeting_response(@call, wss_url)
@@ -58,6 +59,21 @@ module Twilio
       Rails.logger.info("[TWILIO:STREAM_RESULT] call_id=#{@call.id} category=#{category}")
 
       render_twiml builder.gather_response(@call, category)
+    end
+
+    # POST /twilio/stream_fallback — ストリームモードのフォールバック
+    def stream_fallback
+      return head(:not_found) unless @call
+
+      Rails.logger.info("[TWILIO:STREAM_FALLBACK] call_id=#{@call.id} flow_phase=#{@call.flow_phase}")
+
+      # 既にリダイレクト済み（absent等で処理済み）ならそのまま終了
+      if @call.flow_phase.in?(%w[absent inquiry rejection])
+        render_twiml Twilio::TwiML::VoiceResponse.new { |r| r.hangup }
+      else
+        # 本当にタイムアウトした場合のみ転送
+        render_twiml builder.gather_response(@call, 'unknown')
+      end
     end
 
     # POST /twilio/transfer — Conference転送
