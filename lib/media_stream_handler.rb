@@ -11,6 +11,8 @@ class MediaStreamHandler
     @stream_sid = nil
     @speech_stream = nil
     @phase = nil
+    @redirected = false  # リダイレクト済みフラグ（1回だけリダイレクト）
+    @mutex = Mutex.new
   end
 
   def on_message(event)
@@ -38,11 +40,15 @@ class MediaStreamHandler
   private
 
   def handle_start(data)
+    # 既にストリームが動いていたら停止
+    @speech_stream&.stop
+
     @call_sid = data.dig('start', 'callSid')
     @stream_sid = data.dig('start', 'streamSid')
     custom_params = data.dig('start', 'customParameters') || {}
     @call_id = custom_params['call_id']
     @phase = custom_params['phase'] || 'greeting'
+    @redirected = false  # 新しいストリーム開始時にリセット
 
     Rails.logger.info("[MediaStreamHandler] Start: call_id=#{@call_id} call_sid=#{@call_sid} phase=#{@phase}")
 
@@ -59,6 +65,7 @@ class MediaStreamHandler
     @speech_stream = GoogleSpeechStream.new(
       call_id: @call_id,
       hints: hints,
+      single_utterance: false,
       on_result: method(:on_speech_result),
       on_error: method(:on_speech_error)
     )
@@ -78,10 +85,16 @@ class MediaStreamHandler
   def handle_stop(data)
     Rails.logger.info("[MediaStreamHandler] Stop: call_id=#{@call_id}")
     @speech_stream&.stop
+    @speech_stream = nil
   end
 
   def on_speech_result(transcript, confidence)
     return unless @call_id && @call_sid
+
+    # スレッドセーフにリダイレクト済みチェック
+    @mutex.synchronize do
+      return if @redirected
+    end
 
     # UTF-8に変換
     transcript = transcript.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') unless transcript.encoding == Encoding::UTF_8
@@ -104,10 +117,9 @@ class MediaStreamHandler
     end
 
     # 初期フェーズ（もしもし検知）の場合はgreetingにリダイレクト
-    if @phase == 'initial' && category != 'wait'
-      redirector = CallRedirector.new
-      base_url = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
-      begin
+    if @phase == 'initial'
+      do_redirect do
+        base_url = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
         Twilio::REST::Client.new(
           ENV.fetch('TWILIO_ACCOUNT_SID'),
           ENV.fetch('TWILIO_AUTH_TOKEN')
@@ -115,16 +127,16 @@ class MediaStreamHandler
           url: "#{base_url}/twilio/greeting?call_id=#{@call_id}",
           method: 'POST'
         )
-      rescue => e
-        Rails.logger.error("[MediaStreamHandler] greeting redirect error: #{e.message}")
       end
       return
     end
 
-    # 通常フェーズ: 分類結果に基づきリダイレクト
+    # 通常フェーズ: 分類結果に基づきリダイレクト（waitは除く）
     unless category == 'wait'
-      redirector = CallRedirector.new
-      redirector.redirect_call(@call_sid, @call_id, category)
+      do_redirect do
+        redirector = CallRedirector.new
+        redirector.redirect_call(@call_sid, @call_id, category)
+      end
     end
   end
 
@@ -132,9 +144,9 @@ class MediaStreamHandler
     Rails.logger.error("[MediaStreamHandler] Google Speech error: #{error.message}")
 
     # エラー時はGatherモードにフォールバック
-    if @call_sid && @call_id
-      base_url = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
-      begin
+    do_redirect do
+      if @call_sid && @call_id
+        base_url = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
         Twilio::REST::Client.new(
           ENV.fetch('TWILIO_ACCOUNT_SID'),
           ENV.fetch('TWILIO_AUTH_TOKEN')
@@ -142,9 +154,22 @@ class MediaStreamHandler
           url: "#{base_url}/twilio/greeting?call_id=#{@call_id}",
           method: 'POST'
         )
-      rescue => e
-        Rails.logger.error("[MediaStreamHandler] fallback redirect error: #{e.message}")
       end
+    end
+  end
+
+  # リダイレクトを1回だけ実行する
+  def do_redirect
+    @mutex.synchronize do
+      return if @redirected
+      @redirected = true
+    end
+
+    begin
+      yield
+    rescue => e
+      Rails.logger.error("[MediaStreamHandler] redirect error: #{e.message}")
+      @mutex.synchronize { @redirected = false }  # 失敗時はリセット
     end
   end
 end
