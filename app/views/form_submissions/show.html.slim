@@ -100,7 +100,7 @@
         - row_class = %w[自動送信成功 送信成功].include?(call.status) ? 'table-success' : call.status == 'CAPTCHA NG' ? 'table-warning' : %w[自動送信失敗 送信失敗].include?(call.status) ? 'table-danger' : ''
         tr class=row_class
           td = call.customer_id
-          td = call.customer&.company
+          td = @customers_by_id[call.customer_id]&.company
           td = call.status
           td = call.comment
           td = call.created_at.strftime('%Y/%m/%d %H:%M:%S')

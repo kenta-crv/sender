@@ -225,8 +225,8 @@ end
     @results = Call.form_submissions
                    .where(customer_id: @batch.parsed_customer_ids)
                    .where('calls.created_at >= ?', @batch.created_at)
-                   .includes(:customer)
                    .order(created_at: :desc)
+    @customers_by_id = Customer.where(id: @batch.parsed_customer_ids).index_by(&:id)
   end
 
   # PATCH /form_submissions/:id/cancel
