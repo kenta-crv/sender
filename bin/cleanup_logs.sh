@@ -35,9 +35,9 @@ if [ -d "tmp" ]; then
 fi
 
 # Chromeの一時ファイルをクリーンアップ
-find /tmp -maxdepth 1 -name '.com.google.Chrome*' -mtime +1 -exec rm -rf {} \; 2>/dev/null
-find /tmp -maxdepth 1 -name 'chrome_crashpad*' -mtime +1 -exec rm -rf {} \; 2>/dev/null
-find /tmp -maxdepth 1 -name 'scoped_dir*' -mtime +1 -exec rm -rf {} \; 2>/dev/null
+find /tmp -maxdepth 1 -name '.com.google.Chrome*' -mmin +60 -exec rm -rf {} \; 2>/dev/null
+find /tmp -maxdepth 1 -name 'chrome_crashpad*' -mmin +60 -exec rm -rf {} \; 2>/dev/null
+find /tmp -maxdepth 1 -name 'scoped_dir*' -mmin +60 -exec rm -rf {} \; 2>/dev/null
 echo "  /tmp: Chrome一時ファイルを削除"
 
 # ディスク使用率チェック
