@@ -83,6 +83,7 @@ class TwimlBuilder
           conference_name,
           start_conference_on_enter: true,
           end_conference_on_exit: true,
+          wait_url: '',
           status_callback: "#{base_url}/twilio/conference/status",
           status_callback_event: "join leave"
         )
