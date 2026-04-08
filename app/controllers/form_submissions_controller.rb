@@ -7,96 +7,107 @@ def index
   # 検索（Ransack）
   # -------------------------
   @q = Customer.ransack(params[:q])
-  
-  # 1. 検索条件に合致するベースのクエリ（この時点ではまだSQLは発行されない）
-  base_customers_query = @q.result
-                           .left_joins(:calls)
+  base_customers = @q.result
+                     .includes(:last_form_call)
+                     .left_joins(:calls)
+                     .distinct
 
   # -------------------------
-  # 未コール / 最終送信条件のフィルタリング
+  # 未コール / 最終送信条件
   # -------------------------
   if params[:last_call].present?
     lc = params[:last_call]
+
+    # 実際にフィルタ値が指定されている場合のみcall_typeフィルタを適用
     statuses = Array(lc[:status]).reject(&:blank?)
-    
     has_filter = lc[:calls_id_null] == "true" ||
                  statuses.any? ||
                  lc[:created_at_from].present? ||
                  lc[:created_at_to].present?
 
     if has_filter
-      base_customers_query = base_customers_query.where('calls.call_type IS NULL OR calls.call_type = ?', 'form')
+      base_customers = base_customers
+                         .where('calls.call_type IS NULL OR calls.call_type = ?', 'form')
 
-      base_customers_query = base_customers_query.where(calls: { id: nil }) if lc[:calls_id_null] == "true"
-      base_customers_query = base_customers_query.where(calls: { status: statuses }) if statuses.any?
-      base_customers_query = base_customers_query.where('calls.created_at >= ?', lc[:created_at_from]) if lc[:created_at_from].present?
-      base_customers_query = base_customers_query.where('calls.created_at <= ?', lc[:created_at_to]) if lc[:created_at_to].present?
+      # 未コール
+      if lc[:calls_id_null] == "true"
+        base_customers = base_customers.where(calls: { id: nil })
+      end
+
+      # 最終送信状態
+      if statuses.any?
+        base_customers = base_customers.where(calls: { status: statuses })
+      end
+
+      # 最終送信日時（開始）
+      if lc[:created_at_from].present?
+        base_customers = base_customers.where('calls.created_at >= ?', lc[:created_at_from])
+      end
+
+      # 最終送信日時（終了）
+      if lc[:created_at_to].present?
+        base_customers = base_customers.where('calls.created_at <= ?', lc[:created_at_to])
+      end
     end
   end
 
   # =====================================================
-  # 顧客カテゴリ（ID抽出による高速化と重複削除）
+  # 顧客カテゴリ（ここで明確に排他）
   # =====================================================
 
-  # A. 新規バッチ送信対象（contact_url 重複排除）
-  # pluckでIDの配列だけをメモリに載せる（Customerオブジェクトを生成しないので軽い）
-  target_ids = base_customers_query
+  # 新規バッチ送信対象（contact_url 設定済み）※not_detectedを除外
+  @customers = base_customers
                  .where.not(contact_url: [nil, '', 'not_detected'])
-                 .group(:contact_url)
-                 .pluck('MIN(customers.id)')
+                 .page(params[:customers_page]).per(50)
 
-  @customers = Customer.where(id: target_ids)
-                       .includes(:last_form_call)
-                       .page(params[:customers_page])
-                       .per(50)
+  # フォームURL自動検出対象（contact_url 未設定 ＆ HP URLあり）
+  @detectable_customers = base_customers
+                            .where(contact_url: [nil, ''])
+                            .where.not(url: [nil, ''])
+                            .where(fobbiden: [nil, false, 0])
+                            .page(params[:detectable_page]).per(50)
 
-  # B. フォームURL自動検出対象
-  detectable_ids = base_customers_query
-                     .where(contact_url: [nil, ''])
-                     .where.not(url: [nil, ''])
-                     .where(fobbiden: [nil, false, 0])
-                     .group(:url) # URLが同じなら1件に絞る
-                     .pluck('MIN(customers.id)')
-
-  @detectable_customers = Customer.where(id: detectable_ids)
-                                  .page(params[:detectable_page])
-                                  .per(50)
-
-  # C. 検出失敗済みの顧客数（カウントのみなのでシンプルに）
+  # 検出失敗済みの顧客数
   @not_detected_count = Customer.where(contact_url: 'not_detected').count
 
-  # D. URL完全未設定（カウントのみ）
-  @no_url_customers_count = base_customers_query
-                              .unscope(:left_joins) # カウントにJOINは不要
-                              .where(contact_url: [nil, ''])
-                              .where(url: [nil, ''])
-                              .distinct
-                              .count
+  # URL完全未設定（カウントのみ）
+  @no_url_customers = base_customers
+                        .where(contact_url: [nil, ''])
+                        .where(url: [nil, ''])
 
+  @no_url_customers_count = @no_url_customers.count
   # -------------------------
-  # Submission & バッチ集計（N+1回避）
+  # Submission
   # -------------------------
   @submissions = Submission.order(created_at: :desc)
-  @batches = FormSubmissionBatch.order(created_at: :desc).page(params[:page]).per(20)
 
-  # バッチの統計情報を一括で取得
-  batch_stats = FormSubmissionBatch.group(:submission_id)
-                                   .select(
-                                     :submission_id,
-                                     'SUM(total_count) AS total_sent',
-                                     'SUM(success_count) AS success_count',
-                                     'SUM(failure_count) AS failure_count',
-                                     'MAX(started_at) AS last_sent_at'
-                                   ).index_by(&:submission_id)
+  # -------------------------
+  # バッチ一覧
+  # -------------------------
+  @batches = FormSubmissionBatch.order(created_at: :desc)
+                                .page(params[:page])
+                                .per(20)
 
+  # -------------------------
+  # Submission別送信件数集計
+  # -------------------------
   @submission_stats = @submissions.map do |submission|
-    stat = batch_stats[submission.id]
+    batches = submission.form_submission_batches
+
+    total_sent   = batches.sum(:total_count)
+    success_count = batches.sum(:success_count)
+    failure_count = batches.sum(:failure_count)
+    last_sent_at  = batches.order(started_at: :desc)
+                            .limit(1)
+                            .pluck(:started_at)
+                            .first
+
     {
       submission: submission,
-      total_sent:    stat&.total_sent || 0,
-      success_count: stat&.success_count || 0,
-      failure_count: stat&.failure_count || 0,
-      last_sent_at:  stat&.last_sent_at
+      total_sent: total_sent,
+      success_count: success_count,
+      failure_count: failure_count,
+      last_sent_at: last_sent_at
     }
   end
 end
