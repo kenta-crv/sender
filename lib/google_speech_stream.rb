@@ -100,11 +100,11 @@ class GoogleSpeechStream
           Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} FINAL: '#{transcript}' (#{confidence})")
           @on_result.call(transcript, confidence)
         else
-          # 中間結果でもキーワードマッチしたら即通知
+          # 中間結果では厳密なキーワードのみマッチ（誤判定防止）
           transcript_utf8 = transcript.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') rescue transcript
-          category, _ = TwilioService.classify_speech(transcript_utf8)
+          category, _ = TwilioService.classify_speech_strict(transcript_utf8)
           if category != 'unknown'
-            Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} INTERIM MATCH: '#{transcript}' → #{category}")
+            Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} INTERIM STRICT MATCH: '#{transcript}' → #{category}")
             @on_result.call(transcript, confidence)
           end
         end
