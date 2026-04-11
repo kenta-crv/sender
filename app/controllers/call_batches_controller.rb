@@ -34,14 +34,14 @@ class CallBatchesController < ApplicationController
     @q = Customer.ransack(params[:q])
     @customers = @q.result
                    .where.not(tel: [nil, ''])
-                   .where.not(fobbiden: 'true')
+                   .where("fobbiden IS NULL OR fobbiden != 'true'")
                    .page(params[:page]).per(100)
   end
 
   # POST /call_batches
   def create
     eligible_scope = Customer.where.not(tel: [nil, ''])
-                             .where.not(fobbiden: 'true')
+                             .where("fobbiden IS NULL OR fobbiden != 'true'")
 
     send_count = params[:send_count].to_i if params[:send_count].present?
 
