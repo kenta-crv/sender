@@ -51,9 +51,37 @@ bundle exec rails runner "BrightData::Pipeline.execute_from_db(industry: '軽貨
 # （業種フィルタ・件数上限をフォームで指定可能）
 
 ### Sidekiq（大量データ時）
-bundle exec sidekiq -q serp
-SerpPipelineWorker.perform_async('path/to/list.csv')
-SerpPipelineDbWorker.perform_async('軽貨物', 200)  # DB modeの非同期実行
+
+#### メインプロセス（全キュー）
+```
+bundle exec sidekiq -C config/sidekiq.yml
+```
+
+#### SERP補完専用プロセス（並列数3に制限・フォーム送信と競合しない）
+```
+bundle exec sidekiq -C config/sidekiq_enrichment.yml
+# または個別指定:
+bundle exec sidekiq -q serp_enrichment -c 3
+```
+
+キュー構成:
+- `form_submission` (priority 5) … フォーム送信ワーカー（既存）
+- `auto_dial` (priority 4) … 自動架電ワーカー（既存）
+- `article_generation` (priority 3) … 記事生成ワーカー（既存）
+- `serp_enrichment` (priority 1) … SERP補完専用（SerpPipelineDbWorker）
+
+非同期実行:
+```ruby
+SerpPipelineDbWorker.perform_async('軽貨物', 200)  # DB mode 非同期実行
+```
+
+SerpPipelineWorker.perform_async('path/to/list.csv')  # CSV mode（旧）
+
+### 企業ディレクトリサイトのブラックリスト管理
+SERPで取得したURLが企業ディレクトリサイトの場合、`url` フィールドへの保存を自動的にスキップします。
+ブラックリストへのドメイン追加方法・現在の登録済みドメイン一覧は以下を参照してください:
+
+→ [docs/blacklist.md](docs/blacklist.md)
 
 ### 抽出率確認
 ExtractTracking.last(5).each { |t| puts "#{t.industry}: #{t.success_count}/#{t.total_count}" }
