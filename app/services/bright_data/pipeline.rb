@@ -82,10 +82,14 @@ module BrightData
       end
 
       # 検索キーワード生成: company + address の組み合わせ
+      # query → customer の逆引きマップも同時に構築
+      query_customer_map = {}
       queries = targets.map do |c|
         keyword = [c.company.to_s.strip, c.address.to_s.strip].reject(&:empty?).join(" ")
         keyword += " 会社概要" if keyword.present?
-        keyword.presence || c.company.to_s.strip
+        q = keyword.presence || c.company.to_s.strip
+        query_customer_map[q] = c if q.present?
+        q
       end.compact.uniq
 
       if queries.empty?
@@ -109,6 +113,52 @@ module BrightData
 
         # 抽出
         companies = CompanyExtractor.extract_batch(batch)
+
+        # Web補完: SERP で取得した URL から tel/address/contact_url を抽出して既存レコードを更新
+        unless dry_run
+          web_enrich_count = 0
+          companies.each_with_index do |company, idx|
+            next if company[:url].blank?
+            customer = query_customer_map[company[:query]]
+            next if customer.nil?
+
+            puts "[WebEnricher] #{idx + 1}/#{companies.size}: #{company[:company]} (#{company[:url]})"
+            begin
+              web_data = WebEnricher.enrich_from_url(company[:url], customer)
+
+              updates = {}
+              # URL: 会社名マッチが確認できた場合のみ SERP URL を採用
+              # matched=true(確認済み) or matched=nil かつ有益なデータが得られた場合
+              # ディレクトリサイトは url として保存しない
+              url_reliable = web_data[:matched] == true ||
+                             (web_data[:matched].nil? && (web_data[:tel].present? || web_data[:contact_url].present? || web_data[:address].present?))
+              url_is_directory = WebEnricher.directory_url?(company[:url])
+              updates[:url]         = company[:url]           if customer.url.blank?         && company[:url].present? && url_reliable && !url_is_directory
+              updates[:tel]         = web_data[:tel]           if customer.tel.blank?         && web_data[:tel].present?
+              # address: 都道府県始まりの正規化住所が取得できた場合は既存値を上書き（部分住所を完全住所に補完）
+              #          都道府県始まりでない場合は誤データ防止のため既存値を維持
+              if web_data[:address].present? && web_data[:address].match?(CompanyInfoExtractor::PREF_PATTERN)
+                updates[:address] = web_data[:address]
+              end
+              updates[:contact_url] = web_data[:contact_url]   if customer.contact_url.blank? && web_data[:contact_url].present?
+
+              if updates.any?
+                customer.update!(updates)
+                web_enrich_count += 1
+                puts "  -> 更新: #{updates.keys.join(', ')}"
+              else
+                puts "  -> 更新なし（既存データあり or 取得不可）"
+              end
+            rescue => e
+              Rails.logger.warn("[Pipeline] WebEnricher error for #{company[:url]}: #{e.message}")
+              puts "  -> ERROR (skipping): #{e.message}"
+            end
+
+            sleep(0.5)
+          end
+          puts "[Pipeline] Web補完 完了: #{web_enrich_count}件更新"
+        end
+
         companies = ContactUrlEnricher.enrich(companies) if detect_contact
         normalized = DataNormalizer.normalize_batch(companies)
         ResultExporter.to_csv(normalized)
