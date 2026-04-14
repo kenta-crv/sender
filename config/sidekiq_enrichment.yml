@@ -1,0 +1,6 @@
+# SERP補完専用 Sidekiq 設定
+# フォーム送信ワーカーと競合しないよう concurrency を 3 に制限
+# 起動: bundle exec sidekiq -C config/sidekiq_enrichment.yml
+:concurrency: 3
+:queues:
+  - serp_enrichment

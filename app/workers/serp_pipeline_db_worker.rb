@@ -2,7 +2,7 @@
 
 class SerpPipelineDbWorker
   include Sidekiq::Worker
-  sidekiq_options queue: :serp, retry: 1
+  sidekiq_options queue: :serp_enrichment, retry: 1
 
   # UI経由で非同期実行するワーカー
   # @param industry [String|nil] 業種フィルタ
