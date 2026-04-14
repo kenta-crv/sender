@@ -139,6 +139,9 @@ module BrightData
               #          都道府県始まりでない場合は誤データ防止のため既存値を維持
               if web_data[:address].present? && web_data[:address].match?(CompanyInfoExtractor::PREF_PATTERN)
                 updates[:address] = web_data[:address]
+                if customer.address.present? && customer.address != web_data[:address]
+                  puts "  [WebEnricher] address上書き: '#{customer.address}' → '#{web_data[:address]}'"
+                end
               end
               updates[:contact_url] = web_data[:contact_url]   if customer.contact_url.blank? && web_data[:contact_url].present?
 
