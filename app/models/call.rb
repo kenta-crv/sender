@@ -1,5 +1,5 @@
 class Call < ApplicationRecord
-  belongs_to :customer#, foreign_key: :tel, primary_key: :tel
+  belongs_to :customer
   belongs_to :worker, optional: true
   belongs_to :call_batch, optional: true
   # Validations for recording fields
