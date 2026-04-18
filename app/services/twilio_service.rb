@@ -6,10 +6,23 @@ class TwilioService
     )
   end
 
+  # 日本の電話番号をE.164形式に変換（例: "03-6820-3278" → "+81368203278"）
+  def self.to_e164(tel)
+    return tel if tel.nil? || tel.empty?
+    return tel if tel.start_with?('+')
+
+    digits = tel.gsub(/[^\d]/, '')
+    if digits.start_with?('0')
+      "+81#{digits[1..]}"
+    else
+      "+81#{digits}"
+    end
+  end
+
   # 顧客に発信
   def initiate_call(customer, call, base_url)
     twilio_call = @client.calls.create(
-      to: customer.tel,
+      to: self.class.to_e164(customer.tel),
       from: config.from_number,
       url: "#{base_url}/twilio/voice?call_id=#{call.id}",
       status_callback: "#{base_url}/twilio/status",
