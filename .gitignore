@@ -29,7 +29,11 @@
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
+
+# Environment variables (API keys, secrets)
 .env
-.env
-.env
-.env
+.env.local
+.env.*.local
+
+# Call/verification logs (may contain sensitive call data)
+/verification/results/
