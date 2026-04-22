@@ -1,99 +1,128 @@
-.container-fluid.py-5.bg-light.min-vh-100
-  .container
-    h1.h2.font-weight-bold.text-dark.mb-4.text-center Dashboard
+#okurite-client-portal
+  .wrapper
+    = render 'sidebar'
 
-    / --- プラン情報カード ---
-    .card.shadow-sm.border-0.rounded-3.mb-5
-      .card-body.p-4
-        .row.align-items-center
-          .col-md-8
-            h2.h5.text-muted.mb-1 現在のプラン
-            .d-flex.align-items-baseline
-              h3.h3.font-weight-bold.text-primary.mb-0
-                - subscription = current_client.current_subscription
-                - if subscription
-                  = subscription.plan_type.capitalize
-                  - if subscription.trial? && subscription.trial_active?
-                    span.small.text-info.ms-2 (トライアル中)
-                - else
-                  | なし
+    #content
+      header.top-header
+        h2 Dashboard
+        .user-meta
+          span.badge-electric = current_client.subscription_plan.presence
 
-            - if subscription && subscription.trial? && subscription.trial_active?
-              p.small.text-muted.mt-1
-                | トライアル終了日: 
-                = subscription.trial_ends_at.strftime("%Y年%m月%d日")
 
-            - if current_client.on_trial?
-              .mt-3.p-3.bg-light.border.rounded-3
-                p.small.text-dark.mb-0
-                  strong 無料トライアル中
-                  br
-                  | 終了日: #{current_client.trial_ends_at.strftime("%Y年%m月%d日")}
-                  br
-                  | 残り: #{((current_client.trial_ends_at - Time.current) / 1.day).ceil} 日
+      / ===== KPI =====
+      .stats-grid
+        .glass-card
+          .card-inner
+            .card-info
+              .card-label Total Sends
+              .card-value
+                = number_with_delimiter(@total_sent)
+                span.unit 件
+              p.resets-in 全期間の送信件数
+            - percent = @total_sent > 0 ? ((@total_success.to_f / @total_sent) * 100).round : 0
+            .progress-circle style="--value: #{percent};"
+              .progress-value = "#{percent}%"
 
-          .col-md-4.text-md-end.mt-3.mt-md-0
-            .d-grid.gap-2.d-md-flex.justify-content-md-end
-              = link_to "プラン管理", client_subscription_path, class: "btn btn-primary px-4 py-2 fw-bold"
-              = link_to "プラン変更", plans_path, class: "btn btn-outline-secondary px-4 py-2"
+        .glass-card
+          .card-label Avg. Success Rate
+          .card-value = "#{@success_rate}%"
+          p.trend.up
+            i.fas.fa-arrow-up
+            |  成功率
 
-    / --- メトリクスカード (Push / Campaigns) ---
-    .row.g-4.mb-5.justify-content-center
-      .col-md-6.col-lg-4
-        .card.shadow-sm.border-0.rounded-4.h-100.p-4
-          .card-body.d-flex.flex-column.justify-content-between
-            h2.h4.fw-bold.text-dark Push Subscriptions
-            .mt-4.d-flex.gap-2
-              = link_to "View", "#", class: "btn btn-primary flex-grow-1"
-              = link_to "Manage", "#", class: "btn btn-light border flex-grow-1"
-      
-      .col-md-6.col-lg-4
-        .card.shadow-sm.border-0.rounded-4.h-100.p-4
-          .card-body.d-flex.flex-column.justify-content-between
-            h2.h4.fw-bold.text-dark Campaigns
-            .mt-4.d-flex.gap-2
-              = link_to "View", "#", class: "btn btn-primary flex-grow-1"
-              = link_to "Manage", "#", class: "btn btn-light border flex-grow-1"
+        .glass-card
+          .card-label Active Jobs
+          .card-value
+            = @active_jobs
+            span.unit Jobs
+          p.status-text
+            i.fas.fa-circle.pulse
+            |  Processing...
 
-    / --- データテーブル ---
-    .row.gy-5
-      / Push Subscriptions Table
-      .col-12
-        h2.h4.fw-bold.mb-3 Push Subscriptions
-        .card.shadow-sm.border-0
-          .table-responsive
-            table.table.table-hover.mb-0
-              thead.table-light
+      / ===== Recent Batches =====
+      .history-section.mt-5
+        .glass-card
+          .card-header-flex
+            h5 Recent Send Forms
+            = link_to 'View All', client_dashboard_history_path, class: 'btn-electric-outline'
+
+          table.okurite-table
+            thead
+              tr
+                th Date
+                th Title
+                th Target
+                th Progress
+                th Status
+            tbody
+              - @batches.limit(5).each do |batch|
                 tr
-                  th ID
-                  th Client ID
-                  th Endpoint
-                  th Browser
-                  th Status
-                  th Created At
-                  th.text-end Actions
-              tbody
-                / @push_subscriptions.each 等でループを回す想定
-                tr
-                  td.text-muted colspan="7" 登録データがありません
+                  td = batch.created_at.strftime('%Y/%m/%d')
+                  td = batch.submission&.title || 'Default'
+                  td = number_with_delimiter(batch.total_count)
+                  td
+                    - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round : 0
+                    .custom-progress-bg
+                      .bar-electric style="width: #{percent}%;"
+                  td
+                    - case batch.status
+                    - when 'processing'
+                      span.text-blue Processing
+                    - when 'completed'
+                      span.text-green Completed
+                    - when 'pending'
+                      span.text-muted Pending
+                    - when 'cancelled'
+                      span.text-warning Cancelled
+                    - else
+                      span.text-muted = batch.status
 
-      / Campaigns Table
-      .col-12
-        h2.h4.fw-bold.mb-3 Campaigns
-        .card.shadow-sm.border-0
-          .table-responsive
-            table.table.table-hover.mb-0
-              thead.table-light
+      / ===== Customer Stats =====
+      .history-section.mt-5
+        .glass-card
+          .card-header-flex
+            h5 Customer Insights
+
+          table.okurite-table
+            thead
+              tr
+                th 指標
+                th 数値
+            tbody
+              tr
+                td 送信可能顧客（contact_url有）
+                td = number_with_delimiter(@customers.total_count)
+              tr
+                td フォーム未検出
+                td = number_with_delimiter(@not_detected_count)
+              tr
+                td URL未設定
+                td = number_with_delimiter(@no_url_customers_count)
+
+      / ===== Submission Stats =====
+      .history-section.mt-5
+        .glass-card
+          .card-header-flex
+            h5 Submission Performance
+
+          table.okurite-table
+            thead
+              tr
+                th Submission
+                th Total
+                th Success
+                th Failure
+                th Rate
+            tbody
+              - @submissions.each do |submission|
+                - batches = submission.form_submission_batches.where(client_id: current_client.id)
+                - total = batches.sum(:total_count)
+                - success = batches.sum(:success_count)
+                - failure = batches.sum(:failure_count)
+                - rate = total > 0 ? ((success.to_f / total) * 100).round(1) : 0
                 tr
-                  th ID
-                  th Title
-                  th Body
-                  th Target URL
-                  th Status
-                  th Scheduled At
-                  th Created At
-                  th.text-end Actions
-              tbody
-                / @campaigns.each 等でループを回す想定
-                tr
-                  td.text-muted colspan="8" 送信履歴がありません
+                  td = submission.title
+                  td = total
+                  td = success
+                  td = failure
+                  td = "#{rate}%"

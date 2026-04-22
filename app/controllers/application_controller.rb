@@ -19,15 +19,13 @@ def after_sign_in_path_for(resource)
   case resource
   when Admin
     admin_path(resource)
+  when Client
+    client_dashboard_index_path(resource)
   when Worker
     # ↓ ここは「s」なし！ (resource)を忘れずに
     worker_path(resource) 
   else
     root_path
-  end
-    if resource.is_a?(Client)
-    # routesにある「clients GET /clients(.:format)」を参照
-    return clients_path
   end
 end
 

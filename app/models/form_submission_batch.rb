@@ -1,5 +1,6 @@
 class FormSubmissionBatch < ApplicationRecord
   belongs_to :submission, optional: true
+  belongs_to :client
 
   # customer_ids と error_log は JSON テキストとして保存
   def parsed_customer_ids

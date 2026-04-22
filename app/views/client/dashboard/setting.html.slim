@@ -1,0 +1,55 @@
+#okurite-client-portal
+  .wrapper
+    = render 'sidebar'
+
+    #content
+      header.top-header
+        h2 Settings
+
+      .settings-section.mt-4
+        .glass-card
+          .card-header-flex
+            h5 Account Settings
+
+          .card-body
+            / ===== メール変更 =====
+            h6.mt-3 Email Address
+            = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
+              .form-group
+                = f.email_field :email, class: 'form-control', value: current_client.email
+              .mt-2
+                = f.submit 'Update Email', class: 'btn-electric-outline'
+
+            hr
+
+            / ===== プラン変更 =====
+            h6.mt-4 Subscription
+            p 現在のプランを変更・管理できます
+            = link_to 'Manage Plan', client_subscription_path, class: 'btn-electric-outline'
+            
+            hr
+
+            / ===== パスワード変更 =====
+            h6.mt-4 Change Password
+            = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
+              .form-group
+                = f.password_field :current_password, placeholder: 'Current Password', class: 'form-control'
+              .form-group.mt-2
+                = f.password_field :password, placeholder: 'New Password', class: 'form-control'
+              .form-group.mt-2
+                = f.password_field :password_confirmation, placeholder: 'Confirm Password', class: 'form-control'
+              .mt-2
+                = f.submit 'Change Password', class: 'btn-electric-outline'
+
+            hr
+
+            / ===== パスワード再発行 =====
+            h6.mt-4 Reset Password
+            p パスワードを忘れた場合はこちらから再発行できます
+            = link_to 'Send Reset Instructions', new_client_password_path, class: 'btn-electric-outline'
+
+            hr
+
+            / ===== ログアウト =====
+            h6.mt-4 Logout
+            = link_to 'Logout', destroy_client_session_path, method: :delete, class: 'btn-electric-outline'

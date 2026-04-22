@@ -4,6 +4,7 @@ class Client < ApplicationRecord
          :recoverable, :rememberable, :validatable
 
   # Associations
+  has_one :plan
   has_many :push_subscriptions, dependent: :destroy
   has_many :campaigns, dependent: :destroy
   has_many :campaign_results, through: :campaigns
@@ -12,6 +13,9 @@ class Client < ApplicationRecord
   has_one :active_subscription, -> { where(status: :active) }, class_name: "Subscription"
   has_many :payments, dependent: :destroy
 
+  has_many :customers
+  has_many :form_submission_batches
+  has_many :submissions
   # validates :api_key, uniqueness: true
 
   # Methods
