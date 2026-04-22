@@ -43,12 +43,10 @@ module BrightData
     end
 
     # UI経由でDB上の不完全顧客データを対象にSERP検索を実行する
-    # 対象条件（KEN指定）:
-    #   - company に敬称（株式会社等）を含まない
-    #   - tel が空
-    #   - address に都道府県が含まれない
-    #   - url が空
-    # いずれかに該当し、かつ serp_queued / serp_done でないレコードを対象とする
+    # 対象条件（取引先運用で status カラムは別用途のため serp_status ベースで判定）:
+    #   - serp_status が NULL（未実行）
+    #   - かつ tel / url / contact_url のいずれかが空
+    # status カラムの値は問わない。
     #
     # @param industry [String] 業種でフィルタ（nil の場合は全件）
     # @param limit [Integer] 処理件数上限
@@ -59,23 +57,22 @@ module BrightData
       puts "SERP Pipeline (DB mode) 開始: #{Time.current}"
       puts "=" * 60
 
-      # 対象レコード取得（実行済みを除外）
-      scope = Customer.where(serp_status: nil).or(Customer.where.not(serp_status: %w[serp_queued serp_done]))
+      # 対象レコード取得
+      #   - serp_status IS NULL / '' （未実行）
+      #   - かつ tel / url / contact_url のいずれかが空
+      # status カラムは取引先環境で別用途に使われているため参照しない。
+      scope = Customer.where(serp_status: [nil, ''])
+                      .where(
+                        "(tel IS NULL OR TRIM(tel) = '') OR " \
+                        "(url IS NULL OR TRIM(url) = '') OR " \
+                        "(contact_url IS NULL OR TRIM(contact_url) = '')"
+                      )
 
       # 業種フィルタ
       scope = scope.where(industry: industry) if industry.present?
 
       targets = scope.limit(limit).to_a
-
-      # 不完全データ条件（SQLite REGEXP非対応のためRubyで判定）
-      corp_pattern = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/
-      pref_pattern = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/
-      targets = targets.select do |c|
-        !c.company.to_s.match?(corp_pattern) || c.tel.blank? ||
-        c.address.blank? || !c.address.to_s.match?(pref_pattern) ||
-        c.url.blank?
-      end
-      puts "[Pipeline] 対象レコード: #{targets.size}件"
+      puts "[Pipeline] 対象レコード: #{targets.size}件 (serp_status=NULL かつ tel/url/contact_url いずれか空)"
 
       if targets.empty?
         return { targets: 0, extracted: 0, registered: { skipped_blank: 0 } }
@@ -117,10 +114,21 @@ module BrightData
         # Web補完: SERP で取得した URL から tel/address/contact_url を抽出して既存レコードを更新
         unless dry_run
           web_enrich_count = 0
+          skipped_no_url = 0
+          skipped_no_customer = 0
+          with_url = companies.count { |c| c[:url].present? }
+          puts "[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件"
           companies.each_with_index do |company, idx|
-            next if company[:url].blank?
+            if company[:url].blank?
+              skipped_no_url += 1
+              next
+            end
             customer = query_customer_map[company[:query]]
-            next if customer.nil?
+            if customer.nil?
+              skipped_no_customer += 1
+              puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer未マッチ query='#{company[:query]}' url=#{company[:url]} → SKIP"
+              next
+            end
 
             puts "[WebEnricher] #{idx + 1}/#{companies.size}: #{company[:company]} (#{company[:url]})"
             begin
@@ -159,7 +167,7 @@ module BrightData
 
             sleep(0.5)
           end
-          puts "[Pipeline] Web補完 完了: #{web_enrich_count}件更新"
+          puts "[Pipeline] Web補完 完了: #{web_enrich_count}件更新 / スキップ(URL無) #{skipped_no_url}件 / スキップ(顧客未マッチ) #{skipped_no_customer}件"
         end
 
         companies = ContactUrlEnricher.enrich(companies) if detect_contact

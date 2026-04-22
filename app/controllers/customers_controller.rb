@@ -526,16 +526,23 @@ def draft
   range_start = @period_start&.beginning_of_day
   range_end   = @period_end&.end_of_day
 
-  # Adminを優先した条件分岐
+  # SERP補完対象候補を表示する一覧。
+  # 取引先環境で status カラムは別用途に使われているため、
+  # 必須条件は serp_status（NULL/serp_queued/serp_done）に変更。
+  # status="draft" は任意フィルタとしてのみ適用可能。
+  draft_base = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done'])
+  draft_base = draft_base.where(status: params[:status_filter]) if params[:status_filter].present?
+
+  # Adminを優先した条件分岐（tel_filter は従来通り）
   @customers = case
   when admin_signed_in? && params[:tel_filter] == "with_tel"
-    Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
+    draft_base.where.not(tel: [nil, '', ' '])
   when admin_signed_in? && params[:tel_filter] == "without_tel"
-    Customer.where(status: "draft").where(tel: [nil, '', ' '])
+    draft_base.where(tel: [nil, '', ' '])
   when worker_signed_in?
-    Customer.where(status: "draft").where(tel: [nil, '', ' '])
+    draft_base.where(tel: [nil, '', ' '])
   else
-    Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
+    draft_base.where.not(tel: [nil, '', ' '])
   end
 
   # 期間でフィルタ（未指定なら全期間）
@@ -563,19 +570,15 @@ def draft
   daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
   @remaining_extractable = [daily_limit - today_total, 0].max
 
-  # SERP補完対象件数（SQLite REGEXP非対応のためRubyでフィルタ）
-  serp_scope = Customer.where(serp_status: nil)
-                       .or(Customer.where.not(serp_status: %w[serp_queued serp_done]))
-
+  # SERP補完対象件数（serp_status ベース: NULL かつ tel/url/contact_url いずれか空）
+  serp_scope = Customer.where(serp_status: [nil, ''])
+                       .where(
+                         "(tel IS NULL OR TRIM(tel) = '') OR " \
+                         "(url IS NULL OR TRIM(url) = '') OR " \
+                         "(contact_url IS NULL OR TRIM(contact_url) = '')"
+                       )
   serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
-
-  @serp_target_count = serp_scope.to_a.count do |c|
-    !c.company.to_s.match?(SERP_CORP_PATTERN) ||
-    c.tel.blank? ||
-    c.address.blank? ||
-    !c.address.to_s.match?(SERP_PREF_PATTERN) ||
-    c.url.blank?
-  end
+  @serp_target_count = serp_scope.count
 
   elapsed = ((Time.current - start_time) * 1000).round(2)
   Rails.logger.info("draft action: completed in #{elapsed}ms")
@@ -621,14 +624,15 @@ end
     industry  = params[:industry].presence
     limit     = (params[:limit] || 100).to_i
 
-    # 対象件数を事前確認（SQLite REGEXP非対応のためRubyでフィルタ）
-    scope = Customer.where(serp_status: nil).or(Customer.where.not(serp_status: %w[serp_queued serp_done]))
+    # 対象件数を事前確認（serp_status NULL かつ tel/url/contact_url いずれか空）
+    scope = Customer.where(serp_status: [nil, ''])
+                    .where(
+                      "(tel IS NULL OR TRIM(tel) = '') OR " \
+                      "(url IS NULL OR TRIM(url) = '') OR " \
+                      "(contact_url IS NULL OR TRIM(contact_url) = '')"
+                    )
     scope = scope.where(industry: industry) if industry.present?
-    target_count = scope.to_a.count do |c|
-      !c.company.to_s.match?(SERP_CORP_PATTERN) || c.tel.blank? ||
-      c.address.blank? || !c.address.to_s.match?(SERP_PREF_PATTERN) ||
-      c.url.blank?
-    end
+    target_count = scope.count
 
     if target_count == 0
       redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
