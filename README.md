@@ -36,7 +36,27 @@
    > TwilioConfig.current.update(stream_mode_enabled: true)
    ```
 
-### 起動（ターミナル4つ）
+### 起動
+
+#### 推奨：一括起動スクリプト
+
+senderディレクトリで、お使いのOSに合わせて以下を実行してください。
+4つのサービスが自動的に別ウィンドウで起動します。
+
+**macOS:**
+```
+chmod +x start_dev.sh   # 初回のみ
+./start_dev.sh
+```
+
+**Windows:**
+```
+start_dev.bat をダブルクリック
+```
+
+#### 手動起動（スクリプトが動かない場合）
+
+ターミナルを4つ開き、それぞれで以下を実行：
 
 ```
 # ターミナル1: Redis
