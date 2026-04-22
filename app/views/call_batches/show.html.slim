@@ -1,13 +1,13 @@
 .container.mt-4
   h2
-    | バッチ詳細 ##{@batch.id}
+    | バッチ詳細: #{@batch.name}
 
   / --- 進捗バー ---
   #batch-progress data-batch-id=@batch.id data-status=@batch.status
     .card.mb-4
       .card-body
         .row
-          .col-md-3
+          .col-md-2
             strong ステータス:
             span.ml-2 id="batch-status"
               - case @batch.status
@@ -17,18 +17,23 @@
                 span.badge.badge-primary 処理中
               - when 'completed'
                 span.badge.badge-success 完了
+              - when 'paused'
+                span.badge.badge-warning 一時停止
               - when 'cancelled'
-                span.badge.badge-warning キャンセル
+                span.badge.badge-danger キャンセル
           .col-md-2
             strong 合計:
             span.ml-1 id="batch-total" = @batch.total_count
           .col-md-2
-            strong 成功:
-            span.ml-1.text-success id="batch-success" = @batch.success_count
+            strong.text-success 成功:
+            span.ml-1 id="batch-success" = @batch.success_count
           .col-md-2
-            strong 失敗:
-            span.ml-1.text-danger id="batch-failure" = @batch.failure_count
-          .col-md-3
+            strong.text-danger 失敗:
+            span.ml-1 id="batch-failure" = @batch.failure_count
+          .col-md-2
+            strong.text-info 転送:
+            span.ml-1 id="batch-transferred" = @batch.transferred_count
+          .col-md-2
             strong 処理済:
             span.ml-1 id="batch-processed" = @batch.processed_count
 
@@ -43,67 +48,63 @@
               strong 開始:
               = @batch.started_at.strftime('%Y/%m/%d %H:%M:%S')
           - if @batch.completed_at
-            span
+            span.mr-3
               strong 完了:
               = @batch.completed_at.strftime('%Y/%m/%d %H:%M:%S')
+          span
+            strong 回線数:
+            = @batch.concurrent_lines
 
-        - if @batch.status.in?(['pending', 'processing'])
+        - if @batch.status == 'processing'
           .mt-3
-            = link_to 'キャンセル', cancel_form_submission_path(@batch), method: :patch, class: 'btn btn-danger', data: { confirm: 'バッチ送信をキャンセルしますか？' }
+            = link_to '一時停止', pause_call_batch_path(@batch), method: :patch, class: 'btn btn-warning mr-2', data: { confirm: '発信を一時停止しますか？' }
+            = link_to 'キャンセル', cancel_call_batch_path(@batch), method: :patch, class: 'btn btn-danger', data: { confirm: '発信をキャンセルしますか？' }
 
-        - unless @batch.status == 'processing'
-          - unprocessed_count = @batch.unprocessed_customer_ids.size
-          - if unprocessed_count > 0
-            .mt-3
-              = link_to "再開（未処理 #{unprocessed_count}件）", resume_form_submission_path(@batch), method: :post, class: 'btn btn-info', data: { confirm: "未処理の#{unprocessed_count}件を再開しますか？" }
+        - if @batch.status == 'paused'
+          .mt-3
+            = link_to '再開', resume_call_batch_path(@batch), method: :patch, class: 'btn btn-info', data: { confirm: '発信を再開しますか？' }
+            = link_to 'キャンセル', cancel_call_batch_path(@batch), method: :patch, class: 'btn btn-danger ml-2', data: { confirm: '発信をキャンセルしますか？' }
 
-  / --- Submission情報 ---
-  - if @batch.submission
-    .card.mb-4
-      .card-header
-        h5
-          | 送信内容:
-          = @batch.submission.headline
-      .card-body
-        .row
-          .col-md-4
-            strong 会社名:
-            span.ml-1 = @batch.submission.company
-          .col-md-4
-            strong 担当者:
-            span.ml-1 = @batch.submission.person
-          .col-md-4
-            strong メール:
-            span.ml-1 = @batch.submission.email
-        .row.mt-2
-          .col-md-4
-            strong 電話:
-            span.ml-1 = @batch.submission.tel
-          .col-md-4
-            strong 住所:
-            span.ml-1 = @batch.submission.address
-          .col-md-4
-            = link_to '送信内容詳細', submission_path(@batch.submission), class: 'btn btn-sm btn-outline-info'
-
-  / --- 送信結果一覧 ---
-  h4.mt-4 送信結果
+  / --- 通話結果一覧 ---
+  h4.mt-4 通話結果
   table.table.table-bordered.table-hover.table-sm
     thead
       tr
-        th 顧客ID
         th 会社名
-        th ステータス
-        th コメント
-        th 送信日時
+        th 電話番号
+        th Twilioステータス
+        th フロー
+        th 認識結果
+        th 分類
+        th 信頼度
+        th 通話時間
+        th 転送先
+        th 発信時刻
     tbody
-      - @results.each do |call|
-        - row_class = %w[自動送信成功 送信成功].include?(call.status) ? 'table-success' : call.status == 'CAPTCHA NG' ? 'table-warning' : %w[自動送信失敗 送信失敗].include?(call.status) ? 'table-danger' : ''
+      - @calls.each do |call|
+        - row_class = case call.speech_category
+        - when 'transfer'
+          - 'table-info'
+        - when 'absent'
+          - 'table-secondary'
+        - when 'inquiry'
+          - 'table-success'
+        - when 'rejection'
+          - 'table-warning'
+        - else
+          - ''
         tr class=row_class
-          td = call.customer_id
-          td = @customers_by_id[call.customer_id]&.company
-          td = call.status
-          td = call.comment
-          td = call.created_at.strftime('%Y/%m/%d %H:%M:%S')
+          td = call.customer&.company
+          td = call.customer&.tel
+          td = call.twilio_status
+          td = call.flow_phase
+          td
+            small = truncate(call.speech_result.to_s, length: 40)
+          td = call.speech_category
+          td = call.speech_confidence ? "#{(call.speech_confidence * 100).round}%" : '-'
+          td = call.duration ? "#{call.duration}秒" : '-'
+          td = call.transferred_to
+          td = call.started_at&.strftime('%H:%M:%S')
 
   / --- エラーログ ---
   - errors = @batch.parsed_error_log
@@ -123,7 +124,8 @@
             td = err['at']
 
   .mt-4
-    = link_to '一覧に戻る', form_submissions_path, class: 'btn btn-secondary'
+    = link_to 'ダッシュボード', dashboard_call_batches_path, class: 'btn btn-outline-info mr-2'
+    = link_to 'バッチ一覧', call_batches_path, class: 'btn btn-outline-secondary'
 
 - if @batch.status.in?(['pending', 'processing'])
   javascript:
@@ -142,7 +144,7 @@
           var el = document.getElementById('batch-progress');
           if (!el) { clearInterval(interval); pollingActive = false; return; }
 
-          fetch('/form_submissions/' + batchId + '/progress')
+          fetch('/call_batches/' + batchId + '/progress')
             .then(function(res) {
               if (!res.ok) throw new Error('HTTP ' + res.status);
               return res.json();
@@ -152,18 +154,10 @@
               document.getElementById('batch-total').textContent = data.total_count;
               document.getElementById('batch-success').textContent = data.success_count;
               document.getElementById('batch-failure').textContent = data.failure_count;
+              document.getElementById('batch-transferred').textContent = data.transferred_count;
               document.getElementById('batch-processed').textContent = data.processed_count;
               document.getElementById('batch-percent').textContent = data.progress_percent + '%';
               document.getElementById('batch-progress-bar').style.width = data.progress_percent + '%';
-
-              var statusEl = document.getElementById('batch-status');
-              if (statusEl) {
-                if (data.status === 'processing') {
-                  statusEl.innerHTML = '<span class="badge badge-primary">処理中</span>';
-                } else if (data.status === 'pending') {
-                  statusEl.innerHTML = '<span class="badge badge-secondary">待機中</span>';
-                }
-              }
 
               if (data.status === 'completed' || data.status === 'cancelled') {
                 clearInterval(interval);
@@ -177,10 +171,6 @@
               if (errorCount >= maxErrors) {
                 clearInterval(interval);
                 pollingActive = false;
-                var statusEl = document.getElementById('batch-status');
-                if (statusEl) {
-                  statusEl.innerHTML = '<span class="badge badge-danger">通信エラー</span> <a href="javascript:location.reload()" class="btn btn-sm btn-outline-primary ml-2">再読み込み</a>';
-                }
               }
             });
         }, 3000);

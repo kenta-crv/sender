@@ -10,7 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
+<<<<<<< HEAD
 ActiveRecord::Schema.define(version: 2026_04_21_092357) do
+=======
+ActiveRecord::Schema.define(version: 2026_03_30_000003) do
+>>>>>>> 75cca145e43b39b9f9de619e0fe1a4f19227d028
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -67,8 +71,11 @@ ActiveRecord::Schema.define(version: 2026_04_21_092357) do
     t.string "conference_sid"
     t.string "twilio_status"
     t.integer "call_batch_id"
+<<<<<<< HEAD
     t.string "stream_sid"
     t.datetime "speech_detected_at"
+=======
+>>>>>>> 75cca145e43b39b9f9de619e0fe1a4f19227d028
     t.index ["call_batch_id"], name: "index_calls_on_call_batch_id"
     t.index ["customer_id"], name: "index_calls_on_customer_id"
     t.index ["twilio_call_sid"], name: "index_calls_on_twilio_call_sid"
@@ -296,7 +303,10 @@ ActiveRecord::Schema.define(version: 2026_04_21_092357) do
     t.boolean "active", default: true
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+<<<<<<< HEAD
     t.boolean "stream_mode_enabled", default: false
+=======
+>>>>>>> 75cca145e43b39b9f9de619e0fe1a4f19227d028
   end
 
   create_table "workers", force: :cascade do |t|
