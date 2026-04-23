@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "set"
+
 module BrightData
   class Pipeline
     def self.execute(csv_path:, keyword_column: "company", delay_between: 1,
@@ -116,6 +118,11 @@ module BrightData
           web_enrich_count = 0
           skipped_no_url = 0
           skipped_no_customer = 0
+          skipped_already_updated = 0
+          # 同一 customer に対しては「最初にマッチした公式サイト」1社のみで更新する。
+          # 短い社名（例: 「東和」）が複数の別会社にマッチし、住所等が
+          # 繰り返し上書きされるのを防ぐための安全策。
+          updated_customer_ids = Set.new
           with_url = companies.count { |c| c[:url].present? }
           puts "[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件"
           companies.each_with_index do |company, idx|
@@ -127,6 +134,11 @@ module BrightData
             if customer.nil?
               skipped_no_customer += 1
               puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer未マッチ query='#{company[:query]}' url=#{company[:url]} → SKIP"
+              next
+            end
+            if updated_customer_ids.include?(customer.id)
+              skipped_already_updated += 1
+              puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer ID=#{customer.id} は既に更新済み → SKIP"
               next
             end
 
@@ -154,7 +166,12 @@ module BrightData
               updates[:contact_url] = web_data[:contact_url]   if customer.contact_url.blank? && web_data[:contact_url].present?
 
               if updates.any?
-                customer.update!(updates)
+                # update_columns でバリデーション・コールバックをスキップ。
+                # 取引先環境で Customer に belongs_to :client 等が追加されている場合でも
+                # "Client must exist" などで失敗しないようにする。
+                # updated_at は手動で付与（update_columns は自動更新しないため）。
+                customer.update_columns(updates.merge(updated_at: Time.current))
+                updated_customer_ids << customer.id
                 web_enrich_count += 1
                 puts "  -> 更新: #{updates.keys.join(', ')}"
               else
@@ -167,7 +184,7 @@ module BrightData
 
             sleep(0.5)
           end
-          puts "[Pipeline] Web補完 完了: #{web_enrich_count}件更新 / スキップ(URL無) #{skipped_no_url}件 / スキップ(顧客未マッチ) #{skipped_no_customer}件"
+          puts "[Pipeline] Web補完 完了: #{web_enrich_count}件更新 / スキップ(URL無) #{skipped_no_url}件 / スキップ(顧客未マッチ) #{skipped_no_customer}件 / スキップ(更新済) #{skipped_already_updated}件"
         end
 
         companies = ContactUrlEnricher.enrich(companies) if detect_contact
