@@ -6,7 +6,7 @@ Rails.application.configure do
   # since you don't have to restart the web server when you make code changes.
   config.cache_classes = false
   config.hosts << "ebisu-hotel.tokyo"
-  config.hosts << /.*\.ngrok-free\.dev/
+  config.hosts << "nondisastrous-sheri-arabinosic.ngrok-free.dev"
   # Do not eager load code on boot.
   config.eager_load = false
   config.action_mailer.default_url_options = { host: 'localhost:3000' }
