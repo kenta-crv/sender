@@ -14,24 +14,17 @@
           .card-body
             / ===== メール変更 =====
             h6.mt-3 Email Address
-            = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
+            = form_for(current_admin, url: registration_path(:admin), html: { method: :put }) do |f|
               .form-group
-                = f.email_field :email, class: 'form-control', value: current_client.email
+                = f.email_field :email, class: 'form-control'
               .mt-2
                 = f.submit 'Update Email', class: 'btn-electric-outline'
 
             hr
 
-            / ===== プラン変更 =====
-            h6.mt-4 Subscription
-            p 現在のプランを変更・管理できます
-            = link_to 'Manage Plan', client_subscription_path, class: 'btn-electric-outline'
-            
-            hr
-
             / ===== パスワード変更 =====
             h6.mt-4 Change Password
-            = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
+            = form_for(current_admin, url: registration_path(:admin), html: { method: :put }) do |f|
               .form-group
                 = f.password_field :current_password, placeholder: 'Current Password', class: 'form-control'
               .form-group.mt-2
@@ -43,7 +36,6 @@
 
             hr
 
-
             / ===== ログアウト =====
             h6.mt-4 Logout
-            = link_to 'Logout', destroy_client_session_path, method: :delete, class: 'btn-electric-outline'
+            = link_to 'Logout', destroy_admin_session_path, method: :delete, class: 'btn-electric-outline'

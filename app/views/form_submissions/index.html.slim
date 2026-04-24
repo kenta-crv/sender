@@ -368,6 +368,22 @@
               class: 'btn btn-sm btn-primary'
 
 
+/ --- 顧客インポートカード ---
+.container.mt-4
+  .card.border-primary.mb-4
+    .card-header.bg-primary.text-white
+      h5.mb-0 顧客リスト一括インポート
+    .card-body
+      = form_tag import_customers_form_submissions_path, multipart: true do
+        .row.align-items-end
+          .col-md-6
+            label.form-label CSVファイルを選択 (ヘッダー: 会社名, 電話番号, HP URL, 問い合わせURL, メールアドレス, 住所, 業種, 職種, 携帯番号)
+            = file_field_tag :file, class: 'form-control', accept: '.csv'
+          .col-md-3
+            = submit_tag 'インポート実行', class: 'btn btn-primary w-100'
+      .mt-2.small.text-muted
+        | ※ 同名の会社が存在する場合は情報を上書き（更新）します。
+
 javascript:
   document.addEventListener('DOMContentLoaded', function() {
     var selectAll = document.getElementById('select_all');

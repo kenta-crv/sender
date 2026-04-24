@@ -1,17 +1,18 @@
 Rails.application.routes.draw do
-  # Deviseの管理者認証
+  # admin認証 (admins)
   devise_for :admins, controllers: {
-    sessions: 'admins/sessions',
-    registrations: 'admins/registrations'
+    sessions: "admins/sessions",
+    registrations: "admins/registrations",
+    passwords: "admins/passwords"
   }
-  resources :admins, only: [:show]
+  namespace :admin do
+    get 'dashboard/index'
+    get 'dashboard/setting'
+    get 'dashboard/history'
+    root "dashboard#index"
+    resources :notifications
+  end
   
-  devise_for :workers, controllers: {
-    sessions: 'workers/sessions',
-    registrations: 'workers/registrations'
-  }
-  resources :workers, only: [:show]
-
   # クライアント認証 (clients)
   devise_for :clients, controllers: {
     sessions: "clients/sessions",
@@ -44,6 +45,13 @@ Rails.application.routes.draw do
   # プラン選択
   get 'plans', to: 'plans#index', as: :plans
   post 'plans/select', to: 'plans#select', as: :select_plan
+
+  devise_for :workers, controllers: {
+    sessions: 'workers/sessions',
+    registrations: 'workers/registrations'
+  }
+  resources :workers, only: [:show]
+
 
   root to: 'tops#index'
 
@@ -85,6 +93,7 @@ end
 
   resources :form_submissions, only: [:index, :create, :show, :destroy] do
     collection do
+      post :import_customers 
       post :detect_contact_urls
     end
     member do
@@ -102,6 +111,8 @@ end
     post 'gather', to: 'voice#gather'
     post 'transfer', to: 'voice#transfer'
     post 'operator_join', to: 'voice#operator_join'
+    post 'stream_result', to: 'voice#stream_result'
+    post 'stream_fallback', to: 'voice#stream_fallback'
     post 'status', to: 'status#update'
     post 'recording_status', to: 'status#recording'
     post 'conference/status', to: 'conference#status'
@@ -132,6 +143,7 @@ end
       get  :extract_progress
       get  :filter_by_industry
       post :bulk_action
+      post :import, to: 'customers#all_import'
     end
     resources :calls
   end

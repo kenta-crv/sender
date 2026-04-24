@@ -1,6 +1,31 @@
 .container.mt-4
   h2 新規自動発信
 
+  / --- 顧客検索（独立フォーム） ---
+  .card.mb-4
+    .card-header 顧客検索・フィルタ
+    .card-body
+      = search_form_for @q, url: new_call_batch_path, method: :get do |f|
+        .row
+          .col-md-3
+            .form-group
+              label 会社名
+              = f.search_field :company_cont, class: 'form-control', placeholder: '会社名'
+          .col-md-3
+            .form-group
+              label 業種
+              = f.search_field :industry_cont, class: 'form-control', placeholder: '業種'
+          .col-md-3
+            .form-group
+              label 電話番号
+              = f.search_field :tel_cont, class: 'form-control', placeholder: '電話番号'
+          .col-md-3
+            .form-group
+              label &nbsp;
+              .d-block
+                = f.submit '検索', class: 'btn btn-outline-primary'
+
+  / --- 発信フォーム ---
   = form_tag call_batches_path, method: :post do
     .card.mb-4
       .card-header 発信設定
@@ -24,30 +49,6 @@
               .d-block
                 = check_box_tag :select_all, '1', false, id: 'select_all'
                 label for='select_all'  全件選択
-
-    / --- 顧客検索 ---
-    .card.mb-4
-      .card-header 顧客検索・フィルタ
-      .card-body
-        = search_form_for @q, url: new_call_batch_path, method: :get do |f|
-          .row
-            .col-md-3
-              .form-group
-                label 会社名
-                = f.search_field :company_cont, class: 'form-control', placeholder: '会社名'
-            .col-md-3
-              .form-group
-                label 業種
-                = f.search_field :industry_cont, class: 'form-control', placeholder: '業種'
-            .col-md-3
-              .form-group
-                label 電話番号
-                = f.search_field :tel_cont, class: 'form-control', placeholder: '電話番号'
-            .col-md-3
-              .form-group
-                label &nbsp;
-                .d-block
-                  = f.submit '検索', class: 'btn btn-outline-primary'
 
     / --- 顧客一覧 ---
     .card.mb-4
@@ -79,7 +80,7 @@
         = paginate @customers
 
     = submit_tag '発信開始', class: 'btn btn-primary btn-lg', data: { confirm: '自動発信を開始しますか？' }
-    = link_to 'キャンセル', call_batches_path, class: 'btn btn-outline-secondary btn-lg ml-2'
+    = link_to 'キャンセル', call_batches_path, class: 'btn btn-outline-secondary btn-lg ms-2'
 
   javascript:
     document.getElementById('check_all_customers').addEventListener('change', function() {

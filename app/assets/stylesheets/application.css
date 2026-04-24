@@ -2794,3 +2794,27 @@ small {
 .flex { display: flex; }
 .justify-between { justify-content: space-between; }
 .items-center { align-items: center; }
+
+
+.container{
+  h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+  padding-bottom: 15px;
+  margin-bottom: 25px;
+  border-bottom: 2px solid #f0f0f0;
+  position: relative;
+  letter-spacing: 0.05em;
+}
+
+h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 60px;
+  height: 2px;
+  background: #007bff; /* ボタンの色と合わせると統一感UP */
+}
+}

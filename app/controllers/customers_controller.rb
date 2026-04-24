@@ -13,8 +13,8 @@ def index
   @q = Customer.ransack(params[:q])
   @customers = @q.result.includes(:last_call)
 
-  # fobbiden=true を除外
-  @customers = @customers.where.not(fobbiden: true)
+  # fobbiden=true を除外（fobbiden is STRING型、NULLの場合も表示する）
+  @customers = @customers.where("fobbiden IS NULL OR fobbiden != 'true'")
 
   # 電話番号がある顧客に絞る
   @customers = @customers.where.not(tel: [nil, "", " "])

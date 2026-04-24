@@ -22,13 +22,6 @@
 
             hr
 
-            / ===== プラン変更 =====
-            h6.mt-4 Subscription
-            p 現在のプランを変更・管理できます
-            = link_to 'Manage Plan', client_subscription_path, class: 'btn-electric-outline'
-            
-            hr
-
             / ===== パスワード変更 =====
             h6.mt-4 Change Password
             = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
@@ -43,6 +36,12 @@
 
             hr
 
+            / ===== パスワード再発行 =====
+            h6.mt-4 Reset Password
+            p パスワードを忘れた場合はこちらから再発行できます
+            = link_to 'Send Reset Instructions', new_client_password_path, class: 'btn-electric-outline'
+
+            hr
 
             / ===== ログアウト =====
             h6.mt-4 Logout

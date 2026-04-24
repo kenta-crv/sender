@@ -288,6 +288,45 @@ end
     end
   end
 
+  def import_customers
+    file = params[:file]
+    if file.blank?
+      redirect_to form_submissions_path, alert: 'CSVファイルを選択してください。'
+      return
+    end
+    import_count = 0
+    error_count = 0
+
+    begin
+      # CSVの文字コードは適宜調整（Shift_JISの場合は encoding: 'SJIS:UTF-8'）
+      CSV.foreach(file.path, headers: true) do |row|
+        # 会社名や電話番号をキーにして重複を回避しつつ作成
+        customer = Customer.find_or_initialize_by(company: row['会社名'])
+        
+        customer.attributes = {
+          company:         row['会社名'],
+          tel:         row['電話番号'],
+          address:     row['住所'],
+          url:         row['HP URL'],
+          email:       row['メールアドレス'],
+          business:    row['業種'],
+          genre:       row['職種'],
+          contact_url: row['問い合わせURL'],
+        }
+
+        if customer.save
+          import_count += 1
+        else
+          error_count += 1
+        end
+      end
+
+      redirect_to form_submissions_path, notice: "#{import_count}件の顧客をインポートしました。(失敗: #{error_count}件)"
+    rescue => e
+      redirect_to form_submissions_path, alert: "エラーが発生しました: #{e.message}"
+    end
+  end
+
   private
 
   def set_batch

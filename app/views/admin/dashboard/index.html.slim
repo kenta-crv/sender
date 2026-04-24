@@ -6,7 +6,8 @@
       header.top-header
         h2 Dashboard
         .user-meta
-          span.badge-electric = current_client.subscription_plan.presence
+          span.badge-electric Administrator
+
 
       / ===== KPI =====
       .stats-grid
@@ -44,7 +45,6 @@
           .card-header-flex
             h5 Recent Send Forms
             = link_to 'View All', form_submissions_path, class: 'btn-electric-outline'
-            /submissions history
 
           table.okurite-table
             thead
@@ -126,41 +126,3 @@
                   td = success
                   td = failure
                   td = "#{rate}%"
-
-/ --- Trial Modal ---
-- if current_client.subscription_plan == 'trial'
-  .ok-trial-overlay#trialOverlay
-    .ok-trial-card
-      .ok-icon
-        i.fas.fa-bolt
-      h3 Trial Active
-      p 
-        | 現在トライアルプランをご利用中です。
-        br
-        | プロプランへアップグレードして、
-        br
-        | 送信制限なしの体験を始めましょう。
-      
-      / アップグレードリンク（パスは適宜調整してください）
-      = link_to 'プランをアップグレードする', client_subscription_path, class: 'ok-btn-primary'
-      
-      button.ok-btn-close#closeTrialModal 閉じる
-
-  javascript:
-    (function() {
-      const toggleModal = () => {
-        const overlay = document.getElementById('trialOverlay');
-        const closeBtn = document.getElementById('closeTrialModal');
-        if (overlay && closeBtn) {
-          overlay.classList.add('is-visible');
-          closeBtn.onclick = () => overlay.classList.remove('is-visible');
-          overlay.onclick = (e) => {
-            if (e.target === overlay) overlay.classList.remove('is-visible');
-          };
-        }
-      };
-
-      if (document.readyState !== 'loading') toggleModal();
-      else document.addEventListener('DOMContentLoaded', toggleModal);
-      document.addEventListener('turbo:load', toggleModal);
-    })();

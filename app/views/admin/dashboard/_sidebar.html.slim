@@ -1,0 +1,34 @@
+nav#sidebar
+  .sidebar-header
+    = image_tag 'okurite-logo.png', class: 'logo-glow'
+
+  ul.list-unstyled.components
+    li class=(current_page?(client_dashboard_index_path) ? 'active' : '')
+      = link_to client_dashboard_index_path do
+        i.fas.fa-chart-line
+        span Dashboard
+
+    li class=(current_page?(clients_path) ? 'active' : '')
+      = link_to clients_path do
+        i.fas.fa-users
+        span Customer List
+
+    li class=(current_page?(submissions_path) ? 'active' : '')
+      = link_to submissions_path do
+        i.fas.fa-file-alt
+        span Submissions
+
+    li class=(current_page?(new_submission_path) ? 'active' : '')
+      = link_to new_submission_path do
+        i.fas.fa-paper-plane
+        span Send Forms
+
+    li class =(current_page?(client_dashboard_history_path) ? 'active' : '')
+      = link_to client_dashboard_history_path do
+        i.fas.fa-history
+        span History
+
+    li class=(current_page?(client_dashboard_setting_path) ? 'active' : '')
+      = link_to client_dashboard_setting_path do
+        i.fas.fa-cog
+        span Settings

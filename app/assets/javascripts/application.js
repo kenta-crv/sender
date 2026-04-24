@@ -357,3 +357,30 @@ const mountDataTargetNav = () => {
 
 if (window.Turbo) document.addEventListener('turbo:load', mountDataTargetNav);
 else document.addEventListener('DOMContentLoaded', mountDataTargetNav);
+
+
+
+
+
+
+
+
+
+// Client Trial Modal
+
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('trial-upgrade-modal');
+  const closeBtn = document.getElementById('close-modal');
+
+  if (modal && closeBtn) {
+    // 閉じるボタンの動作
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    // 背景クリックでも閉じる場合
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.style.display = 'none';
+    });
+  }
+});

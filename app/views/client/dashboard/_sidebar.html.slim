@@ -8,25 +8,35 @@ nav#sidebar
         i.fas.fa-chart-line
         span Dashboard
 
-    li class=(current_page?(clients_path) ? 'active' : '')
-      = link_to clients_path do
+    li class=(current_page?(form_submissions_path) ? 'active' : '')
+      = link_to form_submissions_path do
+        i.fas.fa-users
+        span Import List
+
+    li class=(current_page?(form_submissions_path) ? 'active' : '')
+      = link_to form_submissions_path do
+        i.fas.fa-users
+        span AI SERP List
+
+    li class=(current_page?(form_submissions_path) ? 'active' : '')
+      = link_to form_submissions_path do
+        i.fas.fa-users
+        span Auto Form Search
+
+    li class=(current_page?(form_submissions_path) ? 'active' : '')
+      = link_to form_submissions_path do
         i.fas.fa-users
         span Customer List
 
     li class=(current_page?(submissions_path) ? 'active' : '')
       = link_to submissions_path do
         i.fas.fa-file-alt
-        span Submissions
+        span Create Contents
 
-    li class=(current_page?(new_submission_path) ? 'active' : '')
-      = link_to new_submission_path do
+    li class=(current_page?(form_submissions_path) ? 'active' : '')
+      = link_to form_submissions_path do
         i.fas.fa-paper-plane
         span Send Forms
-
-    li class =(current_page?(client_dashboard_history_path) ? 'active' : '')
-      = link_to client_dashboard_history_path do
-        i.fas.fa-history
-        span History
 
     li class=(current_page?(client_dashboard_setting_path) ? 'active' : '')
       = link_to client_dashboard_setting_path do

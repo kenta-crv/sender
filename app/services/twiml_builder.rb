@@ -83,6 +83,7 @@ class TwimlBuilder
           conference_name,
           start_conference_on_enter: true,
           end_conference_on_exit: true,
+          wait_url: '',
           status_callback: "#{base_url}/twilio/conference/status",
           status_callback_event: "join leave"
         )
@@ -102,6 +103,31 @@ class TwimlBuilder
           status_callback_event: "join leave"
         )
       end
+    end
+  end
+
+  # --- Stream Mode ---
+
+  # ストリームモード: 初期応答（相手の挨拶検知）
+  # initialフェーズはGatherで十分（ストリーム不要）
+  def stream_voice_response(call, wss_url)
+    voice_response(call)
+  end
+
+  # ストリームモード: TTS挨拶 → リアルタイム音声認識
+  def stream_greeting_response(call, wss_url)
+    Twilio::TwiML::VoiceResponse.new do |r|
+      r.start do |s|
+        s.stream(url: wss_url) do |st|
+          st.parameter(name: 'call_id', value: call.id.to_s)
+          st.parameter(name: 'phase', value: 'greeting')
+        end
+      end
+      twiml_say(r, @config.greeting_text)
+      # ストリームがリアルタイムで認識→CallRedirectorのcalls.update()でリダイレクトされるまで待機
+      r.pause(length: 120)
+      # フォールバック: 認識されなかった場合のみここに到達
+      r.redirect("/twilio/stream_fallback?call_id=#{call.id}", method: "POST")
     end
   end
 
