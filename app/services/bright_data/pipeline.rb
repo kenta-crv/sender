@@ -199,7 +199,7 @@ module BrightData
           Customer.where(id: targets.map(&:id)).update_all(serp_status: "serp_done")
         end
 
-        # 抽出率記録
+        # 抽出率記録（SERP 生データの抽出率）
         label = industry.present? ? "serp_db_#{industry}_#{Time.current.strftime('%Y%m%d')}" : "serp_db_#{Time.current.strftime('%Y%m%d')}"
         ExtractionStats.record(
           companies,
@@ -207,6 +207,31 @@ module BrightData
           total_queries: queries.size,
           serp_errors: batch.count { |b| b["result"]["error"] }
         )
+
+        # WebEnricher 補完後の最終取得率（DB 実データの充足状況）
+        # ExtractionStats は SERP 生配列の集計なので WebEnricher 更新分が反映されない。
+        # 取引先向けに「実際に DB に入った最終状態」を別セクションで表示する。
+        unless dry_run
+          final = Customer.where(id: targets.map(&:id))
+          n = final.count
+          tel_c     = final.where.not(tel: [nil, '']).count
+          addr_c    = final.where.not(address: [nil, '']).count
+          url_c     = final.where.not(url: [nil, '']).count
+          contact_c = final.where.not(contact_url: [nil, '']).count
+          full_c    = final.where.not(tel: [nil, ''])
+                           .where.not(address: [nil, ''])
+                           .where.not(url: [nil, ''])
+                           .where.not(contact_url: [nil, ''])
+                           .count
+          pct = ->(v) { n.zero? ? 0.0 : (v.to_f / n * 100).round(1) }
+          puts "\n=== 最終取得率（WebEnricher補完後）==="
+          puts "対象: #{n}件（今回SERPで検索した企業数）"
+          puts "  tel取得:         #{tel_c}/#{n} (#{pct.call(tel_c)}%)"
+          puts "  address取得:     #{addr_c}/#{n} (#{pct.call(addr_c)}%)"
+          puts "  url取得:         #{url_c}/#{n} (#{pct.call(url_c)}%)"
+          puts "  contact_url取得: #{contact_c}/#{n} (#{pct.call(contact_c)}%)"
+          puts "  fully_enriched:  #{full_c}/#{n} (#{pct.call(full_c)}%)"
+        end
 
         puts "[Pipeline] 完了: #{targets.size}件対象 / #{companies.size}件抽出"
         { targets: targets.size, queries: queries.size, extracted: companies.size, registered: reg_stats }
