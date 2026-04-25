@@ -2,6 +2,9 @@
 
 module BrightData
   class CompanyExtractor
+    # organic_results から採用する上位件数（BrightData コスト削減と精度向上のため）
+    MAX_ORGANIC_RESULTS = 5
+
     # ★ クライアント提供の業種リストに差し替えること
     TARGET_INDUSTRIES = %w[
       IT Web システム ソフトウェア 情報
@@ -29,7 +32,7 @@ module BrightData
 
       # 1. organic_results（メインのGoogle検索結果）
       organics = serp_result["organic_results"] || serp_result["organic"] || []
-      organics.first(10).each do |item|
+      organics.first(MAX_ORGANIC_RESULTS).each do |item|
         url = item["link"].to_s
         next if url.blank?
         next if excluded_url?(url)

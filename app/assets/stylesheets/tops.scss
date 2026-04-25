@@ -1,3 +1,912 @@
-// Place all the styles related to the tops controller here.
+// Place all the styles related to the situations controller here.
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
+
+
+.sp-corp-wrapper {
+  --brand-blue: #0055ff;
+  --bg-light: #f8f9fa;
+  --text-main: #1a1a1a;
+  --radius-news: 4px;   /* Update用のシャープな角丸 */
+  --radius-card: 24px;  /* Solutions以降の洗練された角丸 */
+  --shadow-soft: 0 20px 40px rgba(0, 0, 0, 0.06);
+  
+  font-family: "Inter", "Hiragino Sans", sans-serif;
+  color: var(--text-main);
+}
+
+/* --- 1. Hero (100% Full Width) --- */
+.sp-hero-fullwide {
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  
+  /* --- 画像配置の設定 --- */
+  background-image: asset-url('index-base.webp');
+  background-size: cover;      /* 隙間なく敷き詰める */
+  background-position: center; /* 中央合わせ */
+  background-repeat: no-repeat;
+  
+  /* 文字を読みやすくするためのオーバーレイ（暗幕） */
+  background-color: rgba(0, 0, 0, 0.4); 
+  background-blend-mode: overlay;
+
+  padding: 180px 0; /* 画像を見せるために上下余白を少し広げると綺麗です */
+  margin-bottom: 80px;
+  color: #ffffff; /* 背景が画像なので文字は白に */
+}
+
+.sp-badge {
+  display: inline-block;
+  margin-bottom: 40px;
+  padding: 12px 32px;
+  
+  /* --- 圧倒的なインパクトのための設定 --- */
+  font-size: 24px;              /* 圧倒的なサイズアップ */
+  font-weight: 900;             /* 極太フォント */
+  letter-spacing: 0.5em;        /* 広い文字間隔で高級感を演出 */
+  text-transform: uppercase;
+  
+  /* 配色：漆黒に鮮烈な青のアクセント */
+  color: #fff;
+  background: #000;             /* 背景の画像に負けない黒 */
+  border-left: 12px solid var(--brand-blue); /* 左側に太いアクセントライン */
+  
+
+  /* インパクトを強めるためのアニメーション */
+  animation: slideIn 0.8s cubic-bezier(0.2, 1, 0.3, 1) forwards;
+}
+
+/* バッジが左からスッと出てくる動き */
+@keyframes slideIn {
+  0% { transform: translateX(-50px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* モバイル対応：画面幅に合わせてサイズを調整 */
+@media (max-width: 768px) {
+  .sp-badge {
+    font-size: 16px;
+    letter-spacing: 0.3em;
+    padding: 10px 20px;
+    border-left-width: 8px;
+    box-shadow: 10px 10px 0px rgba(0, 85, 255, 0.3);
+  }
+}
+
+.sp-lead {
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 30px; 
+  text-shadow: 0 2px 10px rgba(0,0,0,0.3); /* 文字の視認性アップ */
+}
+.sp-hero-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 5%;
+  text-align: center;
+}
+
+.sp-copy {
+  font-size: clamp(1.5rem, 3.5vw, 4.5rem);
+  font-weight: 400;
+  line-height: 1.3;
+  margin-bottom: 30px;
+}
+
+.sp-cta-wrap {
+  /* --- ロゴの輝きに特化したカラーパレット --- */
+  --log-white-glow: #e0faff;   /* ほぼ白に近い発光色 */
+  --log-blue-light: #5de6ff;   /* 鮮やかなスカイブルー */
+  --logo-blue-main: #0088ff;    /* 芯のある青 */
+  --logo-blue-deep: #0055ff;    /* 締めの濃い青 */
+}
+
+.sp-btn-primary {
+  display: inline-block;
+  padding: 20px 50px;
+  
+  /* --- 3色のグラデーションで「白→水色→青」の輝きを表現 --- */
+  background: linear-gradient(135deg, 
+    var(--log-white-glow) 0%, 
+    var(--log-blue-light) 30%, 
+    var(--logo-blue-main) 100%
+  );
+  
+  /* 文字を読みやすくしつつ、ロゴのデジタル感を出す */
+  color: black; /* 背景が明るいので、文字はロゴの濃い青にして視認性を確保 */
+  text-decoration: none;
+  border-radius: 100px;
+  font-weight: 800;
+  
+  /* --- 外側の発光（グロー）を強化 --- */
+  box-shadow: 
+    0 0 20px rgba(93, 230, 255, 0.5), /* 柔らかい青の光 */
+    inset 0 -2px 5px rgba(0, 0, 0, 0.1); /* 下側に少し重みをつけて立体的に */
+    
+  border: 1px solid #fff; /* 白い縁取りでクリスタル感を強調 */
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ホバー時はさらに白く発光させる */
+.sp-btn-primary:hover {
+  background: linear-gradient(135deg, 
+    #ffffff 0%, 
+    var(--log-white-glow) 20%, 
+    var(--log-blue-light) 100%
+  );
+  box-shadow: 0 0 30px rgba(93, 230, 255, 0.8);
+  transform: translateY(-3px) scale(1.02);
+  color: #0055ff;
+}
+
+
+
+
+/* --- 指定範囲のみのスタイル適用 --- */
+.sp-content-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 5%;
+  background-color: #050505; /* ロゴに合わせた黒 */
+  color: #ffffff;
+}
+
+.sp-content-container .sp-news-row {
+  display: flex;
+  background: #000000;
+  border: 1px solid #222222;
+  border-radius: 4px; /* 丸み抑制 */
+  padding: 25px 30px;
+  margin-bottom: 80px;
+  align-items: center;
+  gap: 25px;
+  position: relative;
+  box-shadow: 0 0 15px rgba(0, 170, 255, 0.1);
+}
+
+/* 左端のアクセントライン（ロゴの発光をイメージ） */
+.sp-content-container .sp-news-row::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: #00aaff;
+  box-shadow: 0 0 10px #00aaff;
+}
+
+.sp-content-container .sp-news-label {
+  font-weight: 800;
+  color: #ffffff;
+  font-size: 2.2rem;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 8px rgba(0, 170, 255, 0.8);
+}
+
+.sp-content-container .sp-news-content {
+  flex: 1;
+}
+
+.sp-content-container .sp-news-item {
+  display: flex;
+  text-decoration: none;
+  color: #b0b0b0;
+  font-size: 1.0rem;
+  gap: 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid #1a1a1a;
+  transition: all 0.3s ease;
+  align-items: center;
+}
+
+.sp-content-container .sp-news-item:last-child {
+  border-bottom: none;
+}
+
+.sp-content-container .sp-news-item:hover {
+  color: #00aaff;
+  transform: translateX(5px);
+}
+
+.sp-content-container .sp-news-item time {
+  color: #666666;
+}
+
+.sp-content-container .sp-news-item .category {
+  color: #00aaff;
+  border: 1px solid #00aaff;
+  padding: 1px 6px;
+  font-size: 0.75rem;
+  border-radius: 2px;
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .sp-content-container .sp-news-row {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+  }
+}
+
+
+
+
+
+:root {
+  --primary-blue: #0066ff;
+  --primary-hover: #0052cc;
+  --bg-slate: #f8fafc;
+  --border-color: #e2e8f0;
+  --text-dark: #1e293b;
+  --text-muted: #64748b;
+  --radius-lg: 1.5rem;
+  --shadow-main: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.contract-wrapper {
+  max-width: 860px;
+  margin: 3rem auto;
+  padding: 3.5rem;
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-main);
+  font-family: "Inter", "Hiragino Sans", "Meiryo", sans-serif;
+  color: var(--text-dark);
+}
+
+/* ヘッダーデザイン */
+.contract-header {
+  text-align: center;
+  margin-bottom: 3rem;
+
+  .contract-subtitle {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--primary-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  .contract-title {
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* 契約書本文ボックス */
+.contract-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.5rem;
+  margin-bottom: 3.5rem;
+
+  .contract-inner {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 3rem;
+    font-size: 1.1rem;
+    line-height: 2;
+    color: #334155;
+
+    h4 {
+      font-size: 1.3rem;
+      color: #1e293b;
+      margin: 2.5rem 0 1rem;
+      font-weight: 800;
+      border-left: 6px solid #0055ff;
+      padding-left: 1rem;
+    }
+
+    /* スクロールバー */
+    &::-webkit-scrollbar { width: 8px; }
+    &::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  }
+}
+
+/* 単価・条件のグリッド */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.info-card {
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 1.25rem;
+  transition: transform 0.2s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary-blue);
+  }
+
+  .info-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    text-align:center;
+  }
+}
+
+.price-list {
+  list-style: none;
+  padding: 0;
+  li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--bg-slate);
+    
+    .vehicle { color: var(--text-muted); font-size: 0.9rem; }
+    .amount { 
+      font-weight: 800; 
+      color: var(--text-dark);
+      span { font-size: 0.7rem; margin-left: 2px; }
+    }
+  }
+}
+
+.schedule-item {
+  margin-bottom: 1rem;
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    background: var(--primary-blue);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    &.outline {
+      background: transparent;
+      border: 1px solid var(--primary-blue);
+      color: var(--primary-blue);
+    }
+  }
+  p { font-size: 0.85rem; font-weight: 600; margin: 0; }
+}
+
+/* 同意エリア & ボタン */
+.action-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.custom-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  padding: 1rem 2rem;
+  background: var(--bg-slate);
+  border-radius: 100px;
+  transition: all 0.2s ease;
+
+  &:hover { background: #eff6ff; }
+
+  input { display: none; }
+
+  .checkmark {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--primary-blue);
+    border-radius: 50%;
+    position: relative;
+    background: white;
+    transition: all 0.2s;
+  }
+
+  input:checked + .checkmark {
+    background: var(--primary-blue);
+    &::after {
+      content: '✓';
+      color: white;
+      position: absolute;
+      left: 5px;
+      top: 0;
+      font-size: 14px;
+      font-weight: 900;
+    }
+  }
+
+  .label-text { font-weight: 700; font-size: 1rem; }
+}
+
+.button-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 400px;
+  gap: 1rem;
+}
+
+#submitBtn {
+  width: 100%;
+  padding: 1.25rem;
+  border-radius: 100px;
+  border: none;
+  background: linear-gradient(135deg, var(--primary-blue) 0%, #0044cc 100%);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 10px 15px -3px rgba(0, 102, 255, 0.3);
+
+  &:disabled {
+    background: #cbd5e1;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(0, 102, 255, 0.4);
+  }
+}
+
+#translate {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.75rem;
+  border-radius: 100px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  
+  &:hover {
+    background: var(--bg-slate);
+    color: var(--text-dark);
+  }
+}
+
+/* レスポンシブ */
+@media (max-width: 640px) {
+  .contract-wrapper { padding: 2rem 1.5rem; }
+  .info-grid { grid-template-columns: 1fr; }
+  .contract-title { font-size: 1.5rem; }
+}
+
+
+/* 日付フィールド全体のコンテナ */
+.date-field {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.75rem 1.5rem;
+  background: #ffffff;
+  border: 2px solid var(--border-color);
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: fit-content;
+  min-width: 300px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  &:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  /* 入力中・クリック時の青い強調 */
+  &:focus-within {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.1);
+    
+    /* フォーカス時にアイコンも少し強調 */
+    .icon-calendar-blue {
+      transform: scale(1.05);
+    }
+  }
+
+  /* --- CSS描画のモダンなカレンダーアイコン --- */
+  .icon-calendar-blue {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--primary-blue);
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+
+    /* カレンダー上部の突起 */
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      top: -5px;
+      width: 2px;
+      height: 5px;
+      background: var(--primary-blue);
+      border-radius: 1px;
+    }
+    &::before { left: 4px; }
+    &::after { right: 4px; }
+
+    /* カレンダー内部の横線（デザインアクセント） */
+    span {
+      position: absolute;
+      top: 6px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--primary-blue);
+      opacity: 0.3;
+    }
+  }
+
+  /* --- テキスト入力エリア --- */
+  .date-input-group {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+
+    label {
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0;
+    }
+
+    .styled-date-input {
+      border: none;
+      outline: none !important;
+      background: transparent;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      font-family: inherit;
+      cursor: pointer;
+      width: 100%;
+      padding: 0;
+
+      /* 標準のピッカーアイコンも青色へ(Chrome用) */
+      &::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        filter: invert(21%) sepia(100%) saturate(2514%) hue-rotate(212deg) brightness(97%) contrast(101%);
+        opacity: 0.6;
+        &:hover { opacity: 1; }
+      }
+    }
+  }
+}
+
+/* 調整：action-area内での中央揃え */
+.action-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+
+
+
+
+
+
+
+
+/* --- おしゃれなモダンボタン --- */
+.sp-card-body .sp-btn-modern.btn-primary {
+  // 1. カラーと基本設定
+  background-color: #0066ff; /* テーマカラー */
+  border: none;
+  color: #ffffff;
+  
+  // 2. フォルム (丸みを抑えてシャープに)
+  border-radius: 4px; /* ここがポイント */
+  padding: 12px 20px;
+  width: 100%;
+  
+  // 3. テキスト (ミニマル・都会的)
+  font-weight: 700;
+  text-transform: uppercase; /* すべて大文字に */
+  letter-spacing: 0.12em; /* 文字間を少し広げる */
+  font-size: 0.85rem;
+  
+  // 4. トランジション (なめらかに)
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* 軽い影 */
+}
+
+/* ホバー時の洗練されたアニメーション */
+.sp-card-body .sp-btn-modern.btn-primary:hover,
+.sp-card-body .sp-btn-modern.btn-primary:focus {
+  background-color: #0044cc; /* 少し暗く */
+  transform: translateY(-3px); /* 少し上に持ち上げる */
+  box-shadow: 0 10px 20px rgba(0, 102, 255, 0.3); /* 青白い光のような影を強く */
+  text-decoration: none; /* 下線を消す */
+  color: #ffffff;
+}
+
+
+
+.sp-corp-wrapper {
+  --log-blue: #0088ff;    /* ロゴのメイン青 */
+  --log-glow: #5de6ff;    /* ロゴの発光色 */
+  --text-main: #1a1a1a;
+  --border-light: #eeeeee;
+  
+  background-color: #000; /* 白背景 */
+  color: var(--text-main);
+  font-family: "Inter", "Hiragino Sans", sans-serif;
+}
+
+
+
+
+
+/* --- 3. Solutions (修正・復元版) --- */
+/* --- 3. Solutions (ダーク・ネオン・非干渉版) --- */
+.sp-solutions {
+  padding: 100px 0;
+  background-color: #050505; /* 背景を黒に */
+  color: #ffffff;
+}
+
+.sp-solutions .sp-section-header {
+  text-align: center;
+  margin-bottom: 80px;
+}
+
+.sp-solutions .sp-section-header .en-sub {
+  color: #00aaff; /* ロゴのブルー */
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.sp-solutions .sp-section-header h2 {
+  font-size: 3.5rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+  /* 視認性改善：白からブルーへの鮮明なグラデーション */
+  background: linear-gradient(to right, #ffffff 40%, #00aaff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(0, 170, 255, 0.4));
+}
+
+.sp-solutions .sp-section-header p.desc {
+  font-size: 1.1rem;
+  color: #b0b0b0;
+}
+
+.sp-solutions .sp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30px;
+}
+
+.sp-solutions .sp-card {
+  background: #111111; /* 白浮きを解消する漆黒カード */
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #2a2a2a;
+  transition: all 0.3s ease;
+}
+
+.sp-solutions .sp-card:hover {
+  transform: translateY(-5px);
+  border-color: #00aaff;
+  box-shadow: 0 10px 30px rgba(0, 170, 255, 0.2);
+}
+
+.sp-solutions .sp-card-image {
+  height: 240px;
+  overflow: hidden;
+}
+
+.sp-solutions .sp-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.8); /* 背景と馴染ませる */
+}
+
+.sp-solutions .sp-card:hover img {
+  filter: brightness(1);
+}
+
+.sp-solutions .sp-card-body {
+  padding: 40px;
+  position: relative;
+  background: linear-gradient(180deg, #111111 0%, #000000 100%);
+}
+
+.sp-solutions .sp-card-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  background: #00aaff; /* ロゴカラー */
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  font-weight: 900;
+  margin-bottom: 25px;
+  box-shadow: 0 0 15px rgba(0, 170, 255, 0.5);
+}
+
+.sp-solutions .en-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #ffffff;
+}
+
+.sp-solutions .jp-title {
+  font-size: 1.2rem;
+  color: #00aaff;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.sp-solutions .text-detail {
+  font-size: 0.95rem;
+  color: #cccccc; /* 視認性を保ちつつ落ち着いた色に */
+  line-height: 1.8;
+  margin-bottom: 30px;
+}
+
+.sp-btn-modern {
+  display: inline-block;
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid #00aaff;
+  border-radius: 4px !important;
+  font-weight: 700;
+  padding: 15px 25px !important;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.sp-btn-modern:hover {
+  background: #00aaff;
+  color: #000000 !important;
+  box-shadow: 0 0 15px #00aaff;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* --- 4. Company (Solutions 踏襲・非干渉版) --- */
+.sp-company {
+  padding: 120px 0;
+  background-color: #050505; /* Solutionsと統一 */
+  color: #ffffff;
+}
+
+.sp-company .sp-company-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* タイトルデザインの完全転用 */
+.sp-company .sp-section-header {
+  text-align: center;
+  margin-bottom: 70px;
+}
+
+.sp-company .sp-section-header .en-sub {
+  color: #00aaff;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  font-size: 0.9rem;
+}
+
+.sp-company .sp-section-header h2 {
+  font-size: 3.5rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin: 15px 0;
+  background: linear-gradient(to right, #ffffff 40%, #00aaff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(0, 170, 255, 0.4));
+}
+
+.sp-company .sp-section-header .desc {
+  font-size: 1.1rem;
+  color: #b0b0b0;
+}
+
+/* テーブルを廃止した新しいグリッドレイアウト */
+.sp-company .sp-company-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 25px;
+  margin-top: 50px;
+}
+
+.sp-company .sp-info-card {
+  background: linear-gradient(180deg, #111111 0%, #000000 100%);
+  border: 1px solid #2a2a2a;
+  border-radius: 12px; /* Solutionsのカードと統一 */
+  padding: 35px 45px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 左側にアクセントの発光ラインを配置 */
+.sp-company .sp-info-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: #00aaff;
+  box-shadow: 0 0 10px #00aaff;
+  opacity: 0.5;
+  transition: 0.3s;
+}
+
+.sp-company .sp-info-card:hover {
+  transform: translateY(-5px);
+  border-color: #00aaff;
+  box-shadow: 0 10px 30px rgba(0, 170, 255, 0.1);
+}
+
+.sp-company .sp-info-card:hover::before {
+  opacity: 1;
+}
+
+.sp-company .sp-info-label {
+  color: #00aaff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+}
+
+.sp-company .sp-info-value {
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .sp-company { padding: 80px 5%; }
+  .sp-company .sp-company-grid { grid-template-columns: 1fr; }
+  .sp-company .sp-section-header h2 { font-size: 2.8rem; }
+  .sp-company .sp-info-card { padding: 30px; }
+}

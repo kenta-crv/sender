@@ -1,0 +1,99 @@
+.container.mt-4
+  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
+    | 送信履歴
+  table.table.table-bordered.table-hover
+    thead
+      tr
+        th ID
+        th ステータス
+        th 送信元情報
+        th 合計
+        th 成功
+        th 失敗
+        th 送信率
+        th 進捗
+        th 開始日時
+        th 完了日時
+        th 操作
+    tbody
+      - @batches.each do |batch|
+        tr
+          td = batch.id
+          td
+            - case batch.status
+            - when 'pending'
+              span.btn.btn-sm.btn-secondary pending
+            - when 'processing'
+              span.btn.btn-sm.btn-primary processing
+            - when 'completed'
+              span.btn.btn-sm.btn-success completed
+            - when 'cancelled'
+              span.btn.btn-sm.btn-warning cancelled
+
+          td
+            - if batch.submission.present?
+              = batch.submission.title
+            - else
+              span.text-muted test
+
+          td = batch.total_count
+          td = batch.success_count
+          td = batch.failure_count
+          td 
+             - rate = batch.total_count.to_i > 0 ? ((batch.success_count.to_f / batch.total_count) * 100).round(1) : 0
+             = "#{rate}%"
+          td
+            - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round(1) : 0
+            .progress
+              .progress-bar role="progressbar" style="width: #{percent}%"
+                = "#{percent}%"
+
+          td = batch.started_at&.strftime('%Y/%m/%d %H:%M')
+          td = batch.completed_at&.strftime('%Y/%m/%d %H:%M')
+
+          td
+            = link_to 'Detail', form_submission_path(batch), class: 'btn btn-sm btn-info mr-1'
+            = link_to 'Delete',
+              form_submission_path(batch),
+              method: :delete,
+              data: { confirm: 'このバッチを削除してもよろしいですか？' },
+              class: 'btn btn-sm btn-danger'
+
+  = paginate @batches
+
+.container.mt-4
+  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
+    | Submission別送信件数
+
+  table.table.table-bordered.table-hover
+    thead
+      tr
+        th Submission
+        th 送信件数合計
+        th 成功
+        th 失敗
+        th 成功率
+        th 最終送信日時
+        th ✔︎
+        th 詳細
+    tbody
+      - @submission_stats.each do |stat|
+        - total = stat[:total_sent]
+        - success = stat[:success_count]
+        - failure = stat[:failure_count]
+        - rate = total.positive? ? ((success.to_f / total) * 100).round(1) : 0
+        - submission = stat[:submission]
+
+        tr
+          td = stat[:submission].title
+          td = total
+          td.text-success = success
+          td.text-danger = failure
+          td = "#{rate}%"
+          td = stat[:last_sent_at]&.strftime('%Y/%m/%d %H:%M') || '-'
+          td
+            = form_with url: update_manual_form_submission_path(submission), method: :patch, local: true do |f|
+              = f.check_box :manual, { checked: submission.manual, onchange: 'this.form.submit()' }
+          td 
+            = link_to '履歴', history_submission_path(stat[:submission]),
+              class: 'btn btn-sm btn-primary'

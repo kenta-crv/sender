@@ -209,7 +209,7 @@ class CompanyInfoExtractor
     # 優先1: <address> タグ
     if (addr_tag = @doc.at("address"))
       m = addr_tag.text.match(ADDRESS_REGEX)
-      return m[0].strip if m
+      return clean_address(m[0]) if m
     end
 
     # 優先2: 会社概要テーブル / DL 内の住所ラベル
@@ -219,11 +219,12 @@ class CompanyInfoExtractor
     # 優先3: footer のテキスト
     if (footer = @doc.at("footer"))
       m = footer.text.match(ADDRESS_REGEX)
-      return m[0].strip if m
+      return clean_address(m[0]) if m
     end
 
     # フォールバック: 全文検索
-    @doc.text.match(ADDRESS_REGEX)&.first&.strip
+    m = @doc.text.match(ADDRESS_REGEX)
+    m ? clean_address(m[0]) : nil
   end
 
   # テーブル・DL 内でラベル横のセルから住所を探す
@@ -235,10 +236,34 @@ class CompanyInfoExtractor
         next_cell = cells[i + 1]
         next unless next_cell
         m = next_cell.text.match(ADDRESS_REGEX)
-        return m[0].strip if m
+        return clean_address(m[0]) if m
       end
     end
     nil
+  end
+
+  # 住所文字列から TEL/FAX/営業時間 等の後続テキストを除去する
+  # 例: "埼玉県 幸手市 千塚398-5 TEL：0480-43-8771..." → "埼玉県 幸手市 千塚398-5"
+  def clean_address(text)
+    return nil if text.blank?
+    s = text.dup
+
+    # 以下のキーワードより後ろは切り捨てる（先頭側が住所本体）
+    stop_pattern = /
+      (?:TEL|Tel|tel|ＴＥＬ|℡|電話|FAX|Fax|fax|ＦＡＸ|
+         営業時間|営業日|定休日?|受付時間|受付|
+         E[-\s]?mail|Email|e-?mail|メール(?:アドレス)?|Mail|
+         URL|ＵＲＬ|ホームページ|HP|
+         アクセス|最寄り?駅|地図|
+         代表者|設立|資本金|従業員|業務内容)
+    /x
+    s = s.split(stop_pattern, 2).first.to_s
+
+    # 連続する空白・全角空白・特殊記号を1つに圧縮
+    s = s.gsub(/[\t\r\n]+/, " ").gsub(/[ 　]{2,}/, " ")
+    # 末尾の区切り記号・空白を除去
+    s = s.sub(/[\s　、。,.:：;；\-－ー｜|／\/]+\z/, "")
+    s.strip.presence
   end
 
   def extract_contact_url

@@ -560,7 +560,7 @@ def draft
   end
 
   # ページネーション（workerをincludesしてN+1を回避）
-  @customers = @customers.includes(:worker).page(params[:page]).per(100)
+  @customers = @customers.page(params[:page]).per(100)
 
   # 残り件数取得
   today_total = ExtractTracking

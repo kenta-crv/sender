@@ -23,6 +23,10 @@ Rails.application.routes.draw do
     get 'dashboard/index'
     get 'dashboard/setting'
     get 'dashboard/history'
+    get 'dashboard/duplication'
+    get 'dashboard/import'
+    get 'dashboard/searching_form'
+    get 'dashboard/sending'
     root "dashboard#index"
     resources :notifications
     
@@ -54,29 +58,17 @@ Rails.application.routes.draw do
 
 
   root to: 'tops#index'
+  get 'okurite', to: 'tops#okurite'
+  get 'sales', to: 'tops#sales'
 
   # --- SEO用: ジャンル別コラム階層 (/genre/columns/:code) ---
   # constraintsに一致する場合、こちらのルーティングが優先されます
-  scope ':genre', constraints: { genre: /cargo|security|cleaning|app|vender|pest|construction/ } do
+  scope ':genre', constraints: { genre: /app/ } do
     resources :columns, only: [:index, :show], as: :nested_columns
   end
+  resources :contracts
 
   get 'draft/progress', to: 'draft#progress'
-
-  #resources :contracts
-  # --- 管理機能・汎用リソースとしてのコラム ---
-  # 基本的なCRUDはこちらを使用
-  #resources :columns do
-  #  collection do
-  #    get :draft            # ドラフト一覧
-  #    post :generate_gemini # Gemini生成ボタンのPOST
-  #    post :generate_pillar # 親専用生成ボタン
-  #    match 'bulk_update_drafts', via: [:post, :patch]
-  #  end
-  #  member do
-  #    patch :approve
-  #  end
-  #end
 
   # --- Sidekiq Web UI ---
   require 'sidekiq/web'

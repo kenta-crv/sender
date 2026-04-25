@@ -8,33 +8,33 @@ nav#sidebar
         i.fas.fa-chart-line
         span Dashboard
 
-    li class=(current_page?(form_submissions_path) ? 'active' : '')
-      = link_to form_submissions_path do
+    li class=(current_page?(client_dashboard_import_path) ? 'active' : '')
+      = link_to client_dashboard_import_path do
         i.fas.fa-users
         span Import List
 
-    li class=(current_page?(form_submissions_path) ? 'active' : '')
-      = link_to form_submissions_path do
+    li class=(current_page?(draft_customers_path) ? 'active' : '')
+      = link_to draft_customers_path do
         i.fas.fa-users
         span AI SERP List
 
-    li class=(current_page?(form_submissions_path) ? 'active' : '')
-      = link_to form_submissions_path do
+    li class=(current_page?(client_dashboard_searching_form_path) ? 'active' : '')
+      = link_to client_dashboard_searching_form_path do
         i.fas.fa-users
         span Auto Form Search
 
-    li class=(current_page?(form_submissions_path) ? 'active' : '')
-      = link_to form_submissions_path do
+    li class=(current_page?(client_dashboard_duplication_path) ? 'active' : '')
+      = link_to client_dashboard_duplication_path do
         i.fas.fa-users
-        span Customer List
+        span Duplication
 
-    li class=(current_page?(submissions_path) ? 'active' : '')
-      = link_to submissions_path do
+    li class=(current_page?(new_submission_path) ? 'active' : '')
+      = link_to new_submission_path do
         i.fas.fa-file-alt
         span Create Contents
 
-    li class=(current_page?(form_submissions_path) ? 'active' : '')
-      = link_to form_submissions_path do
+    li class=(current_page?(client_dashboard_sending_path) ? 'active' : '')
+      = link_to client_dashboard_sending_path do
         i.fas.fa-paper-plane
         span Send Forms
 
