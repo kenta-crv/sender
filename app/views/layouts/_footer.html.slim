@@ -1,0 +1,18 @@
+footer.custom-footer.bg-dark.text-white.py-4.mt-5
+  .container-fluid
+    .row.align-items-center.justify-content-center.gy-3
+
+      / メニューセクション
+      .col-12.col-lg-auto
+        nav.footer-nav
+          ul.d-flex.flex-wrap.justify-content-center.list-unstyled.mb-0.gap-4
+            li = link_to "トップ", "/" , class: "footer-link"
+            li = link_to "ブログ", "https://j-work.jp/columns", data: { target: "service" }, class: "footer-link"
+            li 
+             - if client_signed_in?
+              = link_to "ログアウト", destroy_client_session_path, method: :delete, class: "footer-link" 
+             - else
+              = link_to "ログイン", new_client_session_path, class: "footer-link"
+
+  .footer-bottom.text-center.mt-3.pt-2.border-top.border-secondary
+    p.mb-0.small &copy; 2026 J Work.co.ltd . All Rights Reserved.

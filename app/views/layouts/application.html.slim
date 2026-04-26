@@ -4,8 +4,22 @@ html lang="ja"
     = render "layouts/head"
 
   body
-    = render "layouts/header"
     .hero 
      = render "shared/breadcrumbs" if breadcrumbs.any?
     = yield
+    = render "layouts/footer"
     = javascript_include_tag "application", "data-turbolinks-track": "reload"
+   
+    .floating-btn-wrap.left-side
+      .floating-logo
+        = link_to "/", class: "logo-box" do
+          .logo-container
+            = image_tag "logo2.png", class: "main-logo", alt: "Home"
+
+    .floating-contact
+      a.contact-box href="javascript:void(0)" data-target="inquiry"
+        .icon-container
+          = image_tag "arrow-down.png", class: "main-icon", alt: "Inquiry"
+        .text-container
+          span CONTACT
+          small お問い合わせ
