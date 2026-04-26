@@ -1,37 +1,64 @@
-/ 既存のクラスは維持しつつ、専用のコンテナ 'ai-dash-container' で囲う
+/ /customers/draft - SERP補完ダッシュボード
 .ai-dash-container
   - set_meta_tags noindex: true
 
-  / AI抽出セクション
+  / ── ダッシュボードサマリー ──
+  - stats = @dashboard_stats
+  - total = stats[:total]
   section.ai-dash-card
     .ai-dash-header
-      i.fas.fa-robot.ai-icon-purple
-      h2.ai-dash-headline AI抽出
-    
+      i.fas.fa-chart-bar.ai-icon-blue
+      h2.ai-dash-headline 進捗ダッシュボード
     .ai-dash-body
-      .ai-dash-stats
-        span.ai-label tel未登録データ総数
-        strong.ai-count = "#{@extract_target_count}件"
+      .ai-dash-summary-grid
+        .ai-summary-block
+          h3.ai-summary-title SERPステータス別件数
+          ul.ai-summary-list
+            li
+              span.ai-label SERP未処理
+              strong.ai-count = "#{stats[:status][:null]}件"
+            li
+              span.ai-label SERP処理中
+              strong.ai-count = "#{stats[:status][:queued]}件"
+            li
+              span.ai-label SERP完了
+              strong.ai-count = "#{stats[:status][:done]}件"
+            li
+              span.ai-label 登録済み
+              strong.ai-count = "#{stats[:status][:imported]}件"
+            li.ai-summary-total
+              span.ai-label 全件数
+              strong.ai-count = "#{total}件"
 
-      .ai-dash-action
-        = form_with url: extract_company_info_customers_path, method: :post, local: true, id: "ai-extract-form" do
-          = hidden_field_tag :count, "", id: "extract-count-input"
-          = hidden_field_tag :industry_name, "全般" 
-          button#start-ai-button.ai-btn.ai-btn-primary type="button" data-max="#{@extract_target_count}"
-            i.fas.fa-bolt
-            span AI抽出開始
+        .ai-summary-block
+          h3.ai-summary-title 取得状況サマリー
+          ul.ai-summary-list
+            li
+              span.ai-label tel取得済み
+              strong.ai-count = "#{stats[:fill][:tel]} / #{total} (#{percentage_of(stats[:fill][:tel], total)}%)"
+            li
+              span.ai-label address取得済み
+              strong.ai-count = "#{stats[:fill][:address]} / #{total} (#{percentage_of(stats[:fill][:address], total)}%)"
+            li
+              span.ai-label url取得済み
+              strong.ai-count = "#{stats[:fill][:url]} / #{total} (#{percentage_of(stats[:fill][:url], total)}%)"
+            li
+              span.ai-label contact_url取得済み
+              strong.ai-count = "#{stats[:fill][:contact_url]} / #{total} (#{percentage_of(stats[:fill][:contact_url], total)}%)"
+            li.ai-summary-total
+              span.ai-label 全項目充足
+              strong.ai-count = "#{stats[:fill][:full]} / #{total} (#{percentage_of(stats[:fill][:full], total)}%)"
 
-  / SERP情報補完セクション
+  / ── SERP情報補完（実行ボタン）──
   section.ai-dash-card
     .ai-dash-header
       i.fas.fa-search-plus.ai-icon-blue
       h2.ai-dash-headline SERP情報補完
-    
     .ai-dash-body
       .ai-dash-stats
         span.ai-label 補完対象件数
         strong.ai-count = "#{@serp_target_count}件"
-        small.ai-subtext （敬称なし・tel/address/url未取得）
+        small.ai-subtext （serp_status未設定 かつ tel/url/contact_url いずれか空）
 
       .ai-dash-form-inline
         = form_with url: serp_search_customers_path, method: :post, local: true, id: "serp-search-form" do
@@ -41,16 +68,61 @@
                 options_for_select([["全業種", ""]] + Customer.where.not(industry: [nil, ""]).distinct.pluck(:industry).sort.map { |i| [i, i] }),
                 id: "serp-industry-select",
                 class: "ai-select"
-          
           .ai-field-group
             label 上限
             = number_field_tag :limit, 100, min: 1, max: 500, id: "serp-limit-input", class: "ai-input-number"
-          
           button#start-serp-button.ai-btn.ai-btn-secondary type="button" data-max="#{@serp_target_count}"
             i.fas.fa-search
             | SERP補完開始
 
-  / ドラフトリスト
+  / ── 絞り込みフィルタ ──
+  section.ai-dash-card
+    .ai-dash-header
+      i.fas.fa-filter.ai-icon-blue
+      h2.ai-dash-headline 絞り込み
+    .ai-dash-body
+      = form_with url: draft_customers_path, method: :get, local: true, class: "ai-dash-filter-form" do
+        .ai-field-group
+          label SERPステータス
+          = select_tag :serp_status_filter,
+              options_for_select([
+                ["全て", ""],
+                ["未処理", "null"],
+                ["処理中", "serp_queued"],
+                ["完了", "serp_done"],
+                ["登録済み", "serp_imported"]
+              ], params[:serp_status_filter]),
+              class: "ai-select"
+        .ai-field-group
+          label 充足条件
+          = select_tag :fill_filter,
+              options_for_select([
+                ["全て", ""],
+                ["tel未取得", "missing_tel"],
+                ["address未取得", "missing_address"],
+                ["url未取得", "missing_url"],
+                ["contact_url未取得", "missing_contact_url"],
+                ["全項目充足", "fully_enriched"],
+                ["SERP完了かつtel未取得", "done_missing_tel"],
+                ["SERP完了かつaddress未取得", "done_missing_address"]
+              ], params[:fill_filter]),
+              class: "ai-select"
+        .ai-field-group
+          label.ai-checkbox-label
+            = check_box_tag :updated_today, "1", params[:updated_today] == "1"
+            | 最終更新が今日のみ
+        .ai-field-group
+          label 業種
+          = text_field_tag :industry_name, params[:industry_name], class: "ai-input-text", placeholder: "業種名"
+        .ai-field-group
+          button.ai-btn.ai-btn-secondary type="submit"
+            i.fas.fa-filter
+            | 絞り込む
+          = link_to draft_customers_path, class: "ai-btn ai-btn-tertiary" do
+            i.fas.fa-undo
+            | クリア
+
+  / ── ドラフトリスト ──
   section.ai-dash-list-section
     h2.ai-dash-headline#draft-list ドラフトリスト
     .ai-table-wrapper
@@ -58,58 +130,44 @@
         thead
           tr
             th 会社名
+            th SERP状況
             th 電話番号
-            th 業種/職種
             th 住所
+            th tel
+            th url
+            th contact
+            th 業種/職種
             th リンク
+            th 最終更新
             th インポート日
         tbody
           - @customers.each do |customer|
             tr
               td.ai-col-company = link_to customer&.company || "名称未設定", edit_customer_path(customer)
+              td.ai-col-serp-status
+                span class="ai-badge #{serp_status_badge_class(customer&.serp_status)}"
+                  = serp_status_label(customer&.serp_status)
               td.ai-col-tel = customer&.tel
+              td.ai-col-address = truncate(customer&.address, length: 15)
+              td.ai-col-fill = fill_icon(customer&.tel)
+              td.ai-col-fill = fill_icon(customer&.url)
+              td.ai-col-fill = fill_icon(customer&.contact_url)
               td.ai-col-industry
                 div = customer&.business
                 small = customer&.genre
-              td.ai-col-address = truncate(customer&.address, length: 15)
               td.ai-col-links
                 - if customer&.url.present?
                   a href="#{customer.url}" target="_blank" title="HP": i.fas.fa-link
                 - if customer&.contact_url.present?
                   a href="#{customer.contact_url}" target="_blank" title="Contact": i.fas.fa-paper-plane
+              td.ai-col-date = customer&.updated_at&.strftime("%m/%d %H:%M")
               td.ai-col-date = customer&.created_at&.strftime("%m/%d %H:%M")
-      
+
       .ai-pagination-wrapper
         = paginate @customers
-        
+
 javascript:
   (function() {
-    const setupAiButton = function() {
-      const btn = document.getElementById('start-ai-button');
-      if (!btn) return;
-
-      btn.onclick = function(e) {
-        e.preventDefault();
-        const max = parseInt(btn.getAttribute('data-max'), 10) || 0;
-        if (max === 0) {
-          alert("抽出対象が存在しません");
-          return;
-        }
-
-        const input = window.prompt("対象: " + max + " 件\n抽出件数を入力してください", max);
-        if (input === null) return;
-
-        const count = parseInt(input.trim(), 10);
-        if (isNaN(count) || count < 1 || count > max) {
-          alert("1〜" + max + " の範囲で入力してください");
-          return;
-        }
-
-        document.getElementById('extract-count-input').value = count;
-        document.getElementById('ai-extract-form').submit();
-      };
-    };
-
     const setupSerpButton = function() {
       const btn = document.getElementById('start-serp-button');
       if (!btn) return;
@@ -129,8 +187,7 @@ javascript:
       };
     };
 
-    document.addEventListener('turbo:load', function() { setupAiButton(); setupSerpButton(); });
-    document.addEventListener('DOMContentLoaded', function() { setupAiButton(); setupSerpButton(); });
-    setupAiButton();
+    document.addEventListener('turbo:load', setupSerpButton);
+    document.addEventListener('DOMContentLoaded', setupSerpButton);
     setupSerpButton();
   })();

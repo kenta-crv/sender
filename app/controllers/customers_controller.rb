@@ -528,10 +528,18 @@ def draft
 
   # SERP補完対象候補を表示する一覧。
   # 取引先環境で status カラムは別用途に使われているため、
-  # 必須条件は serp_status（NULL/serp_queued/serp_done）に変更。
+  # 必須条件は serp_status（NULL/serp_queued/serp_done/serp_imported）に変更。
   # status="draft" は任意フィルタとしてのみ適用可能。
-  draft_base = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done'])
+  draft_base = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported'])
   draft_base = draft_base.where(status: params[:status_filter]) if params[:status_filter].present?
+
+  # serp_status での絞り込み（"null" は NULL/'' を表す）
+  case params[:serp_status_filter]
+  when "null"
+    draft_base = draft_base.where(serp_status: [nil, ''])
+  when "serp_queued", "serp_done", "serp_imported"
+    draft_base = draft_base.where(serp_status: params[:serp_status_filter])
+  end
 
   # Adminを優先した条件分岐（tel_filter は従来通り）
   @customers = case
@@ -542,7 +550,33 @@ def draft
   when worker_signed_in?
     draft_base.where(tel: [nil, '', ' '])
   else
-    draft_base.where.not(tel: [nil, '', ' '])
+    draft_base
+  end
+
+  # 充足条件フィルタ: 例 "missing_tel" → tel 未取得のみ
+  case params[:fill_filter]
+  when "missing_tel"
+    @customers = @customers.where("tel IS NULL OR TRIM(tel) = ''")
+  when "missing_address"
+    @customers = @customers.where("address IS NULL OR TRIM(address) = ''")
+  when "missing_url"
+    @customers = @customers.where("url IS NULL OR TRIM(url) = ''")
+  when "missing_contact_url"
+    @customers = @customers.where("contact_url IS NULL OR TRIM(contact_url) = ''")
+  when "fully_enriched"
+    @customers = @customers.where.not(tel: [nil, '', ' '])
+                           .where.not(address: [nil, '', ' '])
+                           .where.not(url: [nil, '', ' '])
+                           .where.not(contact_url: [nil, '', ' '])
+  when "done_missing_tel"
+    @customers = @customers.where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = ''")
+  when "done_missing_address"
+    @customers = @customers.where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = ''")
+  end
+
+  # 「最終更新が今日」フィルタ
+  if params[:updated_today] == "1"
+    @customers = @customers.where(updated_at: Time.current.beginning_of_day..Time.current.end_of_day)
   end
 
   # 期間でフィルタ（未指定なら全期間）
@@ -560,7 +594,7 @@ def draft
   end
 
   # ページネーション（workerをincludesしてN+1を回避）
-  @customers = @customers.includes(:worker).page(params[:page]).per(100)
+  @customers = @customers.order(updated_at: :desc).includes(:worker).page(params[:page]).per(100)
 
   # 残り件数取得
   today_total = ExtractTracking
@@ -579,6 +613,38 @@ def draft
                        )
   serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
   @serp_target_count = serp_scope.count
+
+  # ── ダッシュボードサマリー ──
+  # SERP補完対象になり得る範囲（status カラムを参照しない）を母集団にする。
+  dash_scope = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported'])
+  dash_scope = dash_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+
+  total = dash_scope.count
+  status_counts = dash_scope.group(:serp_status).count
+  null_c     = (status_counts[nil].to_i + status_counts[""].to_i)
+  queued_c   = status_counts["serp_queued"].to_i
+  done_c     = status_counts["serp_done"].to_i
+  imported_c = status_counts["serp_imported"].to_i
+
+  tel_c     = dash_scope.where.not(tel: [nil, '', ' ']).count
+  addr_c    = dash_scope.where.not(address: [nil, '', ' ']).count
+  url_c     = dash_scope.where.not(url: [nil, '', ' ']).count
+  contact_c = dash_scope.where.not(contact_url: [nil, '', ' ']).count
+  full_c    = dash_scope.where.not(tel: [nil, '', ' '])
+                        .where.not(address: [nil, '', ' '])
+                        .where.not(url: [nil, '', ' '])
+                        .where.not(contact_url: [nil, '', ' '])
+                        .count
+
+  @dashboard_stats = {
+    total: total,
+    status: {
+      null: null_c, queued: queued_c, done: done_c, imported: imported_c
+    },
+    fill: {
+      tel: tel_c, address: addr_c, url: url_c, contact_url: contact_c, full: full_c
+    }
+  }
 
   elapsed = ((Time.current - start_time) * 1000).round(2)
   Rails.logger.info("draft action: completed in #{elapsed}ms")
