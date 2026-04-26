@@ -236,6 +236,187 @@ body {
   height: 12px;
 }
 
+
+
+
+
+
+
+
+/* -----------------------------------------------------------
+   Hero Section Top Page Style (Okurite Concept)
+   Based on Image concept
+   ----------------------------------------------------------- */
+
+/* -----------------------------------------------------------
+   Hero Section Top Page Style (Okurite Concept)
+   ----------------------------------------------------------- */
+
+.hero-main {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 800px;
+  /* 用意した画像を背景として鮮明に表示 */
+  background-image: url('generated.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #ffffff;
+  overflow: hidden;
+  font-family: var(--inter), sans-serif;
+  z-index: 0;
+}
+
+/* ぼかしや透過を一切やめ、画像をそのまま見せる */
+.hero-background-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  z-index: 1;
+}
+
+.hero-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 60px 80px;
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+}
+
+/* 1. ヘッダーロゴエリア */
+.hero-header {
+  margin-bottom: 40px;
+
+  .logo-link {
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .logo-text {
+    font-size: 32px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(0, 163, 255, 0.8);
+  }
+
+  .logo-subtext {
+    font-size: 12px;
+    font-weight: 400;
+    color: #ffffff;
+    margin-top: 4px;
+    text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* 2. テキストエリア */
+.hero-main-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  padding-top: 40px;
+}
+
+.hero-catch {
+  font-size: 56px;
+  font-weight: 900;
+  color: #ffffff;
+  margin-bottom: 24px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 4px 15px rgba(0, 0, 0, 0.9);
+}
+
+.hero-sub-copy {
+  font-size: 20px;
+  font-weight: 500;
+  color: #ffffff;
+  line-height: 1.6;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+}
+
+/* 4. コンバージョンエリア（右側に配置） */
+.hero-action-area {
+  display: flex;
+  justify-content: flex-end; /* 右寄せ */
+  align-items: center;
+  margin-top: auto;
+  margin-bottom: 100px;
+  padding-right: 5%;
+}
+
+.btn-glow-blue {
+  background: linear-gradient(135deg, #0056b3 0%, #00a3ff 100%);
+  color: #ffffff;
+  border-radius: 40px;
+  padding: 22px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: none;
+  box-shadow: 0 0 30px rgba(0, 163, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  .btn-text {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .btn-subtext {
+    font-size: 14px;
+    font-weight: 400;
+    margin-top: 4px;
+  }
+}
+
+.btn-glow-blue:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 40px rgba(0, 163, 255, 0.8);
+  filter: brightness(1.1);
+}
+
+/* 右下のキラキラアイコン */
+.hero-bottom-sparkle {
+  position: absolute;
+  bottom: 40px;
+  right: 40px;
+  width: 24px;
+  height: 24px;
+  background-image: url('sparkle.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 .hero-main-section {
   position: relative;
   background-size: cover;
@@ -329,102 +510,131 @@ body {
   animation: fadeUp .6s cubic-bezier(.2,.9,.3,1) .55s both;
 }
 
-.hero-main-right{
-  border-radius:12px;
-  box-shadow: 0 10px 30px rgba(2,6,23,0.06);
-  animation: slideIn .6s cubic-bezier(.2,.9,.3,1) .2s both;
-}
-
-.hero-main-trial{
+.hero-main-trial {
   font-family: var(--inter);
-  font-size:20px;
-  color:white!important;
-  font-weight:bold!important;
-  margin:0;
-  text-shadow: 0 0 8px rgba(0,0,0,0.8); /* ← 黒シェード追加 */
+  font-size: 20px;
+  color: #ffffff !important;
+  font-weight: bold !important;
+  margin: 0;
+  letter-spacing: 1px;
+  text-shadow: 0 0 15px rgba(0, 163, 255, 0.6);
 }
 
-.hero-main-trial2{
+.hero-main-trial2 {
   font-family: var(--inter);
-  font-size:20px;
-  color:black!important;
-  font-weight:bold!important;
-  margin:0;
+  font-size: 20px;
+  color: #ffffff !important;
+  font-weight: bold !important;
+  margin: 0;
 }
 
-.hero-main-form{
-  background:#E9EDF3;
-  border-radius:8px;
+/* 背景：前後の黒と差別化しつつ、高級感を出すダークグラファイト */
+.hero-main-right {
+  background: linear-gradient(145deg, #1a1c20, #0a0b0d) !important;
+  border-radius: 16px !important;
+  padding: 2rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-.hero-main-label{
-  font-family:var(--inter);
-  font-size:14px;
-  font-weight:700;
-  color:#1A202C;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin-bottom:6px;
+/* フォーム：透明感のある漆黒 */
+.hero-main-form {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
 }
 
-.required-badge{
-  display:inline-block;
-  padding:2px 6px;
-  color:#e02424;
-  font-family:var(--inter);
-  font-size:14px;
-  font-weight:700;
-  border:1px solid #e02424;
-  border-radius:1px;
-  line-height:1;
+.hero-main-label {
+  font-family: var(--inter);
+  font-size: 14px;
+  font-weight: 700;
+  color: #cbd5e0; /* 視認性を上げたシルバーグレー */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
-.hero-main-input{
-  background:#fff;
-  border-radius:5px;
-  padding:10px 12px;
-  font-family:var(--inter);
-  font-size:14px;
-  font-weight:400;
-  color:#1A202C;
-  border:1px solid rgba(26,32,44,0.06);
-}
-.hero-main-input::placeholder{
-  color:#718096;
-  font-family:var(--inter);
-  font-size:14px;
-  font-weight:400;
+/* 必須バッジ：ダサさを排除し、ラインとネオン感でシャープに */
+.required-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  color: #00a3ff;
+  font-family: var(--inter);
+  font-size: 10px;
+  font-weight: 800;
+  border: 1px solid #00a3ff;
+  border-radius: 2px;
+  line-height: 1.4;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 8px rgba(0, 163, 255, 0.3);
 }
 
-.hero-main-submit{
-  background:#175ACF;
-  color:#fff;
-  font-family:var(--inter);
-  font-size:18px;
-  font-weight:700;
-  padding:12px 18px;
-  border-radius:8px;
-  border:none;
-  box-shadow: 0 8px 20px rgba(23,90,207,0.18);
-  transition: transform .18s ease, box-shadow .18s ease;
+/* 入力項目：ダークインセット */
+.hero-main-input {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-family: var(--inter);
+  font-size: 14px;
+  font-weight: 400;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.2s ease;
 }
-.hero-main-submit:hover{
-  transform: translateY(-3px);
-  box-shadow: 0 14px 30px rgba(23,90,207,0.22);
+
+.hero-main-input:focus {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: #00a3ff !important;
+  box-shadow: 0 0 0 3px rgba(0, 163, 255, 0.2) !important;
+  outline: none;
+}
+
+/* サンプルの文字：視認性を向上 */
+.hero-main-input::placeholder {
+  color: #8892b0 !important; /* 暗すぎず、入力文字と区別できる明るさへ調整 */
+  font-family: var(--inter);
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 1;
+}
+
+/* ボタン：ロゴの輝きを再現したメタリックグラデーション */
+.hero-main-submit {
+  background: linear-gradient(135deg, #0056b3 0%, #00a3ff 100%);
+  color: #fff;
+  font-family: var(--inter);
+  font-size: 18px;
+  font-weight: 700;
+  padding: 14px 20px;
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0, 163, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-main-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 163, 255, 0.5);
+  filter: brightness(1.1);
 }
 
 .hero-main-title span.noto,
 .hero-main-subtitle span.noto,
-.hero-main-badge-text
- {
-  color: #fff; /* 白文字 */
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); /* ← 影で文字を浮かせる */
+.hero-main-badge-text {
+  color: #fff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
 }
+
 /* スマホ・タブレット向けレスポンシブ調整 */
 @media (max-width: 768px) {
   .hero-main-left {
-    text-align: left; /* 左寄せ */
+    text-align: left;
   }
 
   .hero-main-title {
@@ -438,10 +648,10 @@ body {
   }
 
   .hero-main-badges {
-    flex-direction: row; /* 横並び */
-    flex-wrap: wrap; /* 横幅が狭い場合は折り返す */
-    justify-content: flex-start; /* 左寄せ */
-    gap: 10px; /* バッジ間の間隔 */
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
   }
 
   .hero-main-badge {
@@ -451,27 +661,27 @@ body {
 
   .hero-main-badge-text {
     font-size: 12px;
-    margin-left: 5px; /* バッジ横のテキストとの隙間 */
+    margin-left: 5px;
   }
 
   .hero-main-section {
-    padding: 40px 20px; /* 横の余白を追加 */
+    padding: 40px 20px;
   }
 }
 
 @media (max-width: 576px) {
   .hero-main-title {
-    font-size: 2rem!important;
-    padding-left:10px;
+    font-size: 2rem !important;
+    padding-left: 10px;
     line-height: 1.4;
-    text-align:left;
+    text-align: left;
   }
 
   .hero-main-subtitle {
-    font-size: 1.2rem!important;
-    padding-left:10px;
+    font-size: 1.2rem !important;
+    padding-left: 10px;
     line-height: 1.5;
-    text-align:left;
+    text-align: left;
   }
 
   .hero-main-badge {
@@ -484,7 +694,7 @@ body {
   }
 
   .hero-main-badges {
-    gap: 8px; /* スマホでは少し詰める */
+    gap: 8px;
   }
 }
 
@@ -497,72 +707,71 @@ body {
   .custom-navbar {
     padding: 10px 20px;
   }
-  
+
   .nav-subtext {
     font-size: 12px;
   }
-  
+
   .logo-section .nav-logo {
     height: 35px;
   }
-  
+
   .hero-main-section {
     padding: 60px 0;
   }
-  
+
   .hero-main-title {
     font-size: 32px;
     line-height: 1.2;
   }
-  
+
   .hero-main-subtitle {
     font-size: 24px;
     line-height: 1.3;
   }
-  
+
   .hero-main-left {
     text-align: center;
     margin-bottom: 30px;
   }
-  
+
   .hero-main-badges {
-    flex-direction: row !important; /* 横並び */
-    justify-content: flex-start;    /* 左寄せ */
-    align-items: center;            /* バッジとテキストを中央揃え */
-    gap: 10px;                      /* バッジ間のスペース */
-    padding-left:10px;
+    flex-direction: row !important;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px;
+    padding-left: 10px;
   }
 
   .hero-main-badge {
-    font-size:1rem!important;
+    font-size: 1rem !important;
     padding: 6px 12px;
   }
 
   .hero-main-badge-text {
-    font-size:0.7rem!important;
-    margin-left: 5px; /* バッジとの間隔 */
-    margin-top: 0;    /* 縦の余白リセット */
+    font-size: 0.7rem !important;
+    margin-left: 5px;
+    margin-top: 0;
   }
-  
+
   .hero-main-trial {
     font-size: 16px;
   }
-  
+
   .hero-main-label {
     font-size: 12px;
   }
-  
+
   .hero-main-input {
     font-size: 12px;
     padding: 8px 10px;
   }
-  
+
   .hero-main-submit {
     font-size: 14px;
     padding: 10px 16px;
   }
 }
-
 @media (max-width: 768px) {
   .hero-main-title {
     font-size: 28px;
