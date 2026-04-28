@@ -354,7 +354,7 @@ body {
   justify-content: flex-end; /* 右寄せ */
   align-items: center;
   margin-top: auto;
-  margin-bottom: 100px;
+  margin-bottom: 65px;
   padding-right: 5%;
 }
 
@@ -830,7 +830,7 @@ button:focus, input:focus, .btn:focus { outline: 3px solid rgba(25,140,222,0.12)
 
 
 .brand-marquee-section {
-  background-color: #ffffff;
+  background-color: #000;
   overflow: hidden;
   position: relative;
 }
@@ -869,338 +869,163 @@ button:focus, input:focus, .btn:focus { outline: 3px solid rgba(25,140,222,0.12)
   }
 }
 
-.ser-mos-section{
-  background-size: cover;
-  background-position: center;
-  padding: 80px 0;
+
+
+
+
+
+
+/* -----------------------------------------------------------
+   Common
+----------------------------------------------------------- */
+.ser-mos-section {
   position: relative;
-  color: #fff;
-}
-
-.ser-mos-kicker{
-  font-family: "Noto Sans JP", sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 8px;
-  opacity: 0;
-  transform: translateY(8px);
-  animation: ser-mos-fade 0.6s ease .05s forwards;
-}
-
-.ser-mos-title{
-  font-family: "Noto Sans JP", sans-serif;
-  font-size: 32px;
-  font-weight: 700;
-  color: #fff;
-  margin: 0 0 28px 0;
-  opacity: 0;
-  transform: translateY(8px);
-  animation: ser-mos-fade 0.6s ease .12s forwards;
-}
-
-.ser-mos-panel{
-  background: #FFFFFF59;
-  max-width: 1100px;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(2,6,23,0.08);
+  padding: 110px 0;
   overflow: hidden;
-  padding: 28px;
-  opacity: 0;
-  transform: translateY(12px);
-  animation: ser-mos-fade 0.6s ease .2s forwards;
+  font-family: "Noto Sans JP", "Inter", sans-serif;
+  color: #eaf6ff;
 }
 
-.ser-mos-card{
-  background: #fff;
-  border-radius: 10px;
-  padding: 20px;
-  text-align: center;
-  min-height: 360px;
+/* -----------------------------------------------------------
+   背景を強制的に黒にする（最重要）
+----------------------------------------------------------- */
+.ser-mos-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #020611; /* 完全黒 */
+  z-index: 0;
+}
+
+/* SERVICE 背景文字 */
+.ser-mos-section::after {
+  content: "SERVICE";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  font-size: 220px;
+  font-weight: 900;
+  letter-spacing: 10px;
+
+  color: rgba(255,255,255,0.05);
+
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ser-mos-section .container {
+  position: relative;
+  z-index: 1;
+}
+
+/* -----------------------------------------------------------
+   Heading
+----------------------------------------------------------- */
+.ser-mos-kicker {
+  font-size: 14px;
+  color: #00d4ff;
+}
+
+.ser-mos-title {
+  font-size: 34px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 36px;
+}
+
+/* -----------------------------------------------------------
+   Panel
+----------------------------------------------------------- */
+.ser-mos-panel {
+  background: transparent;
+}
+
+/* -----------------------------------------------------------
+   Card（紺＋ネオン）
+----------------------------------------------------------- */
+.ser-mos-card {
+  position: relative;
+
+  background: linear-gradient(145deg, #071a33, #020c1f);
+  border-radius: 14px;
+  padding: 24px;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  transition: transform .35s cubic-bezier(.2,.9,.3,1), box-shadow .35s;
-  transform-origin: center;
+
+  border: 1px solid rgba(0,212,255,0.3);
+
+  transition: 0.3s;
+}
+
+.ser-mos-card:hover {
+  transform: translateY(-8px);
+
+  border-color: rgba(0,212,255,0.8);
+
+  box-shadow:
+    0 0 20px rgba(0,212,255,0.4),
+    0 0 50px rgba(0,212,255,0.2);
+}
+
+/* ネオン縁 */
+.ser-mos-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(0,212,255,0.25),
+    transparent
+  );
+
   opacity: 0;
+  transition: 0.3s;
 }
 
-.ser-mos-card.inview{
-  animation: ser-mos-pop .6s cubic-bezier(.2,.9,.3,1) forwards;
+.ser-mos-card:hover::before {
+  opacity: 1;
 }
 
-.ser-mos-card-media{
+/* -----------------------------------------------------------
+   Image
+----------------------------------------------------------- */
+.ser-mos-card-img {
+  max-width: 200px;
   width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.ser-mos-card-img{
-  max-width: 220px;
-  width: 100%;
-  height: auto;
-  border-radius: 8px;
-  transform: translateY(6px);
-  transition: transform .45s cubic-bezier(.2,.9,.3,1);
+  border-radius: 12px; 
 }
 
-.ser-mos-card-title{
-  font-family: "Noto Sans JP", sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  color: #222222;
-  margin: 0;
-  text-align: center;
-}
-
-.ser-mos-card-desc{
-  font-family: "Noto Sans JP", sans-serif;
-  font-size: 16px;
-  font-weight: 350;
-  color: #222222;
-  text-align: center;
-  line-height: 1.7;
-  margin: 0;
-  padding: 0 6px;
-  flex: 1;
-}
-
-.ser-mos-card-btn{
-  background: #222222;
+/* -----------------------------------------------------------
+   Text
+----------------------------------------------------------- */
+.ser-mos-card-title {
   color: #fff;
-  border: none;
-  padding: 12px 20px;
-  font-family: "Noto Sans JP", sans-serif;
-  font-size: 18px;
   font-weight: 700;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: transform .18s ease, box-shadow .18s ease;
-}
-.ser-mos-card-btn:hover{
-  transform: translateY(-4px);
-  box-shadow: 0 14px 30px rgba(34,34,34,0.14);
-}
-.ser-mos-btn-ic{ width:18px; height:18px; display:inline-block; }
-
-.ser-mos-card:hover{
-  transform: translateY(-10px) scale(1.01);
-  box-shadow: 0 20px 40px rgba(2,6,23,0.12);
-}
-.ser-mos-card:hover .ser-mos-card-img{ transform: translateY(-6px) scale(1.03); }
-
-@media (max-width: 991px) {
-  .ser-mos-section {
-    padding: 60px 0;
-  }
-  
-  .ser-mos-title {
-    font-size: 24px;
-    line-height: 1.3;
-  }
-  
-  .ser-mos-kicker {
-    font-size: 14px;
-  }
-  
-  .ser-mos-panel {
-    padding: 18px;
-  }
-  
-  .ser-mos-card {
-    min-height: auto;
-    padding: 16px;
-    margin-bottom: 20px;
-  }
-  
-  .ser-mos-card-img {
-    max-width: 180px;
-  }
-  
-  .ser-mos-card-title {
-    font-size: 16px;
-    line-height: 1.4;
-  }
-  
-  .ser-mos-card-desc {
-    font-size: 14px;
-    line-height: 1.6;
-  }
-  
-  .ser-mos-card-btn {
-    font-size: 14px;
-    padding: 10px 16px;
-  }
 }
 
-@media (max-width: 768px) {
-  .ser-mos-title {
-    font-size: 20px;
-    line-height: 1.4;
-  }
-  
-  .ser-mos-card-title {
-    font-size: 14px;
-    line-height: 1.5;
-  }
-  
-  .ser-mos-card-desc {
-    font-size: 13px;
-    line-height: 1.7;
-  }
-}
-
-@keyframes ser-mos-fade {
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes ser-mos-pop {
-  0% { opacity: 0; transform: translateY(12px) scale(.995); }
-  60% { opacity: 1; transform: translateY(-6px) scale(1.01); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.main-moss-section {
-  background: #fff;
-  padding: 100px 0;
-  position: relative;
-  overflow: hidden;
-}
-
-.main-moss-title {
-  font-family: "Noto Sans JP", sans-serif;
-  font-size: 50px;
-  font-weight: 900;
-  color: #222222;
-  margin-bottom: 12px;
+.ser-mos-card-desc {
+  color: #cfefff;
   text-align: center;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: main-moss-fade-up 0.6s ease forwards;
-}
-
-.main-moss-subtitle {
-  font-family: "Noto Sans JP", sans-serif;
-  font-size: 32px;
-  font-weight: 900;
-  color: #222222;
-  margin-bottom: 70px;
-  text-align: center;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: main-moss-fade-up 0.6s ease 0.2s forwards;
-}
-
-.main-moss-block {
-  padding: 60px 0;
-  opacity: 0;
-  transform: translateY(50px);
-  transition: all 0.8s cubic-bezier(0.25, 0.9, 0.35, 1);
-}
-
-.main-moss-block.inview {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.main-moss-block-title {
-  font-family: "Noto Sans JP", sans-serif;
-  font-size: 50px;
-  font-weight: 900;
-  color: #222222;
-  margin-bottom: 20px;
-}
-
-.main-moss-block-desc {
-  font-family: "Inter", sans-serif;
-  font-size: 22px;
-  font-weight: 350;
-  color: #222222;
   line-height: 1.7;
-  max-width: 640px;
-  margin: 0 auto;
 }
 
-.main-moss-img {
-  width: 80%;
-  max-width: 520px;
-  transform: scale(0.95);
-  transition: transform 0.8s ease, opacity 0.8s ease;
-  opacity: 0;
-}
-
-.main-moss-block.inview .main-moss-img {
-  transform: scale(1);
-  opacity: 1;
-}
-
-@media (max-width: 991px) {
-  .main-moss-section {
-    padding: 60px 0;
-  }
-  
-  .main-moss-title {
-    font-size: 32px;
-    line-height: 1.3;
-  }
-  
-  .main-moss-subtitle {
-    font-size: 24px;
-    line-height: 1.4;
-  }
-  
-  .main-moss-block {
-    padding: 40px 0;
-  }
-  
-  .main-moss-block-title {
-    font-size: 28px;
-    line-height: 1.4;
-  }
-  
-  .main-moss-block-desc {
-    font-size: 16px;
-    line-height: 1.6;
-    padding: 0 10px;
-  }
-  
-  .main-moss-img {
-    width: 100%;
-    max-width: 400px;
-  }
-}
-
+/* -----------------------------------------------------------
+   Responsive
+----------------------------------------------------------- */
 @media (max-width: 768px) {
-  .main-moss-title {
-    font-size: 24px;
-    line-height: 1.4;
-  }
-  
-  .main-moss-subtitle {
-    font-size: 18px;
-    line-height: 1.5;
-  }
-  
-  .main-moss-block-title {
-    font-size: 20px;
-    line-height: 1.5;
-  }
-  
-  .main-moss-block-desc {
-    font-size: 14px;
-    line-height: 1.7;
-  }
+  .ser-mos-title { font-size: 22px; }
 }
 
-@keyframes main-moss-fade-up {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+
 
 .faq-japan-section {
   background-color: #ffffff;
@@ -1882,8 +1707,11 @@ button:focus, input:focus, .btn:focus { outline: 3px solid rgba(25,140,222,0.12)
 }
 
 
+/* -----------------------------------------------------------
+   Japan Notyo Section (Blue Gradient)
+   ----------------------------------------------------------- */
 .japan-notyo-section {
-  background: linear-gradient(135deg, #0060DE, #259AED);
+  background: linear-gradient(135deg, #000);
   padding: 100px 20px;
   font-family: 'Inter', sans-serif;
 }
@@ -1894,19 +1722,17 @@ button:focus, input:focus, .btn:focus { outline: 3px solid rgba(25,140,222,0.12)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
   gap: 40px;
 }
 
 .japan-notyo-column {
-  flex: 1 1 48%;
+  flex: 1;
 }
 
 .japan-notyo-heading {
   font-size: 36px;
   font-weight: 700;
   color: #fff;
-  text-align: left;
   line-height: 1.4;
   opacity: 0;
   transform: translateY(30px);
@@ -1918,7 +1744,6 @@ button:focus, input:focus, .btn:focus { outline: 3px solid rgba(25,140,222,0.12)
   font-size: 16px;
   font-weight: 700;
   color: #fff;
-  text-align: left;
   line-height: 1.8;
   opacity: 0;
   transform: translateY(30px);
@@ -1927,7 +1752,7 @@ button:focus, input:focus, .btn:focus { outline: 3px solid rgba(25,140,222,0.12)
 
 .japan-notyo-image {
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   display: block;
   opacity: 0;
   transform: scale(0.9);
@@ -1941,507 +1766,153 @@ button:focus, input:focus, .btn:focus { outline: 3px solid rgba(25,140,222,0.12)
   transform: none;
 }
 
-@media (max-width: 768px) {
-  .japan-notyo-container {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .japan-notyo-column {
-    flex: 1 1 100%;
-  }
-
-  .japan-notyo-heading {
-    text-align: center;
-    font-size: 28px;
-  }
-
-  .japan-notyo-description {
-    text-align: center;
-    font-size: 15px;
-  }
-
-  .japan-notyo-image {
-    margin-top: 30px;
-  }
-}
-
-
 .jap-notto-section {
-  background-color: #ffffff;
-  padding: 80px 20px 60px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background-color: #00050a;
+  /* 背景の青いグリッド（サイバー感の演出） */
+  background-image: 
+    linear-gradient(rgba(0, 163, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 163, 255, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  padding: 120px 20px;
+  color: #fff;
+  font-family: "Hiragino Sans", "Meiryo", sans-serif;
 }
 
 .jap-notto-container {
-  max-width: 1800px;
+  max-width: 1200px;
   margin: 0 auto;
-  width: 100%;
 }
 
 .jap-notto-heading {
-  font-family: 'Inter', sans-serif;
-  font-size: 48px;
-  font-weight: 700;
-  color: #000000;
   text-align: center;
+  font-size: clamp(24px, 4vw, 42px);
+  font-weight: 800;
   margin-bottom: 80px;
-  opacity: 0;
-  transform: translateY(-20px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  span {
+    color: #00a3ff;
+    text-shadow: 0 0 15px rgba(0, 163, 255, 0.6);
+    margin: 0 0.2em;
+  }
 }
 
-.jap-notto-heading.jap-notto-visible {
-  opacity: 1;
-  transform: translateY(0);
+/* グリッド配置：上3枚、下2枚（中央寄せ） */
+.jap-notto-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 30px;
 }
 
-.jap-notto-semicircle-wrapper {
+/* メタリックカード本体 */
+.jap-notto-card {
+  grid-column: span 2;
   position: relative;
-  width: 100%;
-  max-width: 1600px;
-  height: 700px;
-  margin: 0 auto;
+  border-radius: 12px;
+  padding: 2px; /* 縁の太さ */
+  
+  /* --- メタリックフレーム（ここが重要） --- */
+  /* 複数の影を重ねて、金属の角、厚み、反射、ネオンの光を表現 */
+  background: linear-gradient(135deg, #444 0%, #222 50%, #555 100%);
+  box-shadow: 
+    /* 外側のネオン発光 */
+    0 0 20px 2px rgba(0, 163, 255, 0.3),
+    /* フレームの立体的な角（ハイライト） */
+    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+    /* 接地面への影 */
+    0 20px 40px rgba(0, 0, 0, 0.8);
+  
+  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), 
+              box-shadow 0.4s ease;
+
+  /* 下段2枚の配置調整 */
+  &.card-4 { grid-column: 2 / 4; }
+  &.card-5 { grid-column: 4 / 6; }
 }
 
-.jap-notto-image-container {
-  position: absolute;
-  width: 300px;
-  height: 300px;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 0.6s ease, transform 0.3s ease;
-}
-
-.jap-notto-image-container.jap-notto-visible {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.jap-notto-image-container:hover {
-  transform: scale(1.08);
-}
-
-.jap-notto-image {
-  width: 100%;
+/* カード内部（ヘアラインメタル加工） */
+.card-inner {
+  background: 
+    /* 金属の反射をシミュレートする多段グラデーション */
+    linear-gradient(135deg, 
+      #1a1d20 0%, 
+      #111416 45%, 
+      #0a0c0e 50%, 
+      #111416 55%, 
+      #1a1d20 100%
+    );
+  border-radius: 10px;
+  padding: 45px 25px;
   height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.1));
-  transition: filter 0.3s ease;
-}
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
 
-.jap-notto-image-container:hover .jap-notto-image {
-  filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.15));
-}
-
-.jap-notto-image-1 {
-  left: 0;
-  top: 200px;
-  transition-delay: 0.2s;
-}
-
-.jap-notto-image-2 {
-  left: 300px;
-  top: 50px;
-  transition-delay: 0.4s;
-}
-
-.jap-notto-image-3 {
-  left: 50%;
-  transform: translateX(-50%) scale(0.8);
-  top: 0;
-  transition-delay: 0.6s;
-}
-
-.jap-notto-image-3.jap-notto-visible {
-  transform: translateX(-50%) scale(1);
-}
-
-.jap-notto-image-3:hover {
-  transform: translateX(-50%) scale(1.08);
-}
-
-.jap-notto-image-4 {
-  right: 300px;
-  top: 50px;
-  transition-delay: 0.8s;
-}
-
-.jap-notto-image-5 {
-  right: 0;
-  top: 200px;
-  transition-delay: 1s;
-}
-
-.jap-notto-center-image {
-  position: absolute;
-  left: 50%;
-  top: 70%;
-  transform: translate(-50%, -50%) scale(0.8);
-  width: 280px;
-  height: 280px;
-  opacity: 0;
-  transition: opacity 0.8s ease 1.2s, transform 0.8s ease 1.2s;
-  z-index: 10;
-}
-
-.jap-notto-center-image.jap-notto-visible {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
-
-.jap-notto-center-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 6px 25px rgba(0, 0, 0, 0.12));
-}
-
-@media (max-width: 1600px) {
-  .jap-notto-semicircle-wrapper {
-    max-width: 1400px;
-    height: 620px;
-  }
-  
-  .jap-notto-image-container {
-    width: 280px;
-    height: 280px;
-  }
-  
-  .jap-notto-image-1 {
-    left: 20px;
-    top: 180px;
-  }
-  
-  .jap-notto-image-2 {
-    left: 280px;
-    top: 50px;
-  }
-  
-  .jap-notto-image-4 {
-    right: 280px;
-    top: 50px;
-  }
-  
-  .jap-notto-image-5 {
-    right: 20px;
-    top: 180px;
-  }
-  
-  .jap-notto-center-image {
-    width: 260px;
-    height: 260px;
+  /* 内側の青い反射光 */
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle at center, rgba(0, 163, 255, 0.1) 0%, transparent 70%);
+    pointer-events: none;
   }
 }
 
-@media (max-width: 1400px) {
-  .jap-notto-semicircle-wrapper {
-    max-width: 1200px;
-    height: 560px;
-  }
-  
-  .jap-notto-image-container {
-    width: 260px;
-    height: 260px;
-  }
-  
-  .jap-notto-image-1 {
-    left: 30px;
-    top: 165px;
-  }
-  
-  .jap-notto-image-2 {
-    left: 250px;
-    top: 45px;
-  }
-  
-  .jap-notto-image-4 {
-    right: 250px;
-    top: 45px;
-  }
-  
-  .jap-notto-image-5 {
-    right: 30px;
-    top: 165px;
-  }
-  
-  .jap-notto-center-image {
-    width: 240px;
-    height: 240px;
+/* ホバー時の挙動（よりギラつかせる） */
+.jap-notto-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 
+    0 0 40px 5px rgba(0, 163, 255, 0.6),
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    0 30px 60px rgba(0, 0, 0, 0.9);
+
+  .card-inner {
+    background: linear-gradient(135deg, #25282c 0%, #111416 50%, #25282c 100%);
   }
 }
 
-@media (max-width: 1200px) {
-  .jap-notto-heading {
-    font-size: 44px;
-    margin-bottom: 70px;
-  }
-  
-  .jap-notto-semicircle-wrapper {
-    max-width: 1000px;
-    height: 500px;
-  }
-  
-  .jap-notto-image-container {
-    width: 230px;
-    height: 230px;
-  }
-  
-  .jap-notto-image-1 {
-    left: 30px;
-    top: 150px;
-  }
-  
-  .jap-notto-image-2 {
-    left: 210px;
-    top: 40px;
-  }
-  
-  .jap-notto-image-4 {
-    right: 210px;
-    top: 40px;
-  }
-  
-  .jap-notto-image-5 {
-    right: 30px;
-    top: 150px;
-  }
-  
-  .jap-notto-center-image {
-    width: 210px;
-    height: 210px;
+/* アイコンとテキスト */
+.card-icon {
+  margin-bottom: 25px;
+  .card-img {
+    width: 80px;
+    height: auto;
+    /* ネオン管のような発光 */
+    filter: 
+      drop-shadow(0 0 8px rgba(0, 163, 255, 0.8))
+      drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
   }
 }
 
-@media (max-width: 1024px) {
-  .jap-notto-heading {
-    font-size: 40px;
-    margin-bottom: 60px;
-  }
-  
-  .jap-notto-section {
-    padding: 70px 20px 50px 20px;
-  }
-  
-  .jap-notto-semicircle-wrapper {
-    max-width: 850px;
-    height: 450px;
-  }
-  
-  .jap-notto-image-container {
-    width: 200px;
-    height: 200px;
-  }
-  
-  .jap-notto-image-1 {
-    left: 25px;
-    top: 140px;
-  }
-  
-  .jap-notto-image-2 {
-    left: 180px;
-    top: 35px;
-  }
-  
-  .jap-notto-image-4 {
-    right: 180px;
-    top: 35px;
-  }
-  
-  .jap-notto-image-5 {
-    right: 25px;
-    top: 140px;
-  }
-  
-  .jap-notto-center-image {
-    width: 180px;
-    height: 180px;
+.card-text {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.card-sub {
+  font-size: 13px;
+  color: #888;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* レスポンシブ */
+@media (max-width: 900px) {
+  .jap-notto-grid {
+    grid-template-columns: repeat(2, 1fr);
+    .jap-notto-card { grid-column: span 1 !important; }
   }
 }
 
-@media (max-width: 768px) {
-  .jap-notto-heading {
-    font-size: 36px;
-    margin-bottom: 50px;
-  }
-  
-  .jap-notto-section {
-    padding: 60px 20px 40px 20px;
-  }
-  
-  .jap-notto-semicircle-wrapper {
-    max-width: 650px;
-    height: 380px;
-  }
-  
-  .jap-notto-image-container {
-    width: 160px;
-    height: 160px;
-  }
-  
-  .jap-notto-image-1 {
-    left: 20px;
-    top: 120px;
-  }
-  
-  .jap-notto-image-2 {
-    left: 140px;
-    top: 30px;
-  }
-  
-  .jap-notto-image-4 {
-    right: 140px;
-    top: 30px;
-  }
-  
-  .jap-notto-image-5 {
-    right: 20px;
-    top: 120px;
-  }
-  
-  .jap-notto-center-image {
-    width: 140px;
-    height: 140px;
+@media (max-width: 500px) {
+  .jap-notto-grid {
+    grid-template-columns: 1fr;
   }
 }
-
-@media (max-width: 600px) {
-  .jap-notto-heading {
-    font-size: 32px;
-    margin-bottom: 45px;
-  }
-  
-  .jap-notto-semicircle-wrapper {
-    max-width: 500px;
-    height: 320px;
-  }
-  
-  .jap-notto-image-container {
-    width: 130px;
-    height: 130px;
-  }
-  
-  .jap-notto-image-1 {
-    left: 15px;
-    top: 105px;
-  }
-  
-  .jap-notto-image-2 {
-    left: 110px;
-    top: 25px;
-  }
-  
-  .jap-notto-image-4 {
-    right: 110px;
-    top: 25px;
-  }
-  
-  .jap-notto-image-5 {
-    right: 15px;
-    top: 105px;
-  }
-  
-  .jap-notto-center-image {
-    width: 115px;
-    height: 115px;
-  }
-}
-
-@media (max-width: 480px) {
-  .jap-notto-heading {
-    font-size: 28px;
-    margin-bottom: 40px;
-  }
-  
-  .jap-notto-section {
-    padding: 50px 15px 35px 15px;
-  }
-  
-  .jap-notto-semicircle-wrapper {
-    max-width: 420px;
-    height: 280px;
-  }
-  
-  .jap-notto-image-container {
-    width: 110px;
-    height: 110px;
-  }
-  
-  .jap-notto-image-1 {
-    left: 10px;
-    top: 95px;
-  }
-  
-  .jap-notto-image-2 {
-    left: 90px;
-    top: 22px;
-  }
-  
-  .jap-notto-image-4 {
-    right: 90px;
-    top: 22px;
-  }
-  
-  .jap-notto-image-5 {
-    right: 10px;
-    top: 95px;
-  }
-  
-  .jap-notto-center-image {
-    width: 100px;
-    height: 100px;
-  }
-}
-
-@media (max-width: 380px) {
-  .jap-notto-heading {
-    font-size: 24px;
-    margin-bottom: 35px;
-  }
-  
-  .jap-notto-section {
-    padding: 45px 15px 30px 15px;
-  }
-  
-  .jap-notto-semicircle-wrapper {
-    max-width: 340px;
-    height: 250px;
-  }
-  
-  .jap-notto-image-container {
-    width: 90px;
-    height: 90px;
-  }
-  
-  .jap-notto-image-1 {
-    left: 8px;
-    top: 88px;
-  }
-  
-  .jap-notto-image-2 {
-    left: 55px;
-    top: 20px;
-  }
-  
-  .jap-notto-image-4 {
-    right: 55px;
-    top: 20px;
-  }
-  
-  .jap-notto-image-5 {
-    right: 8px;
-    top: 88px;
-  }
-  
-  .jap-notto-center-image {
-    width: 85px;
-    height: 85px;
-  }
-}
-
-
 
 
 

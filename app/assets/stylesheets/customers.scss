@@ -105,3 +105,102 @@
 .ai-col-company a:hover { color: #764ba2; }
 .ai-col-industry small { display: block; color: #888; }
 .ai-col-links a { margin-right: 8px; color: #666; }
+
+/* ── 進捗ダッシュボード ── */
+.ai-dash-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 768px) {
+  .ai-dash-summary-grid { grid-template-columns: 1fr; }
+}
+.ai-summary-block {
+  background: #f7f9fc;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+.ai-summary-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: #333;
+  border-bottom: 1px solid #e1e6ef;
+  padding-bottom: 6px;
+}
+.ai-summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.ai-summary-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 0.9rem;
+}
+.ai-summary-list li.ai-summary-total {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed #cfd6e3;
+  font-weight: 600;
+}
+.ai-summary-list .ai-label { color: #555; }
+.ai-summary-list .ai-count { color: #2c3e50; }
+
+/* ── フィルタ ── */
+.ai-dash-filter-form {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.ai-dash-filter-form .ai-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+.ai-dash-filter-form label { font-size: 0.85rem; color: #555; }
+.ai-dash-filter-form .ai-checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.ai-input-text {
+  padding: 6px 8px;
+  border: 1px solid #cfd6e3;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.ai-btn-tertiary {
+  background: #eef1f7;
+  color: #555;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+}
+
+/* ── バッジ・○× ── */
+.ai-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.ai-badge-gray   { background: #e3e6ec; color: #555; }
+.ai-badge-yellow { background: #fff3cd; color: #856404; }
+.ai-badge-green  { background: #d4edda; color: #155724; }
+.ai-badge-blue   { background: #d1ecf1; color: #0c5460; }
+
+.ai-fill-ok { color: #28a745; font-weight: 700; }
+.ai-fill-ng { color: #dc3545; font-weight: 700; }
+
+.ai-col-fill { text-align: center; }
+.ai-col-serp-status { white-space: nowrap; }

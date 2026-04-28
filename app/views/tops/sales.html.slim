@@ -16,11 +16,11 @@ section.hero-main
     .hero-action-area
       button.btn.btn-glow-blue
         span.btn-text 無料で資料ダウンロード
-        span.btn-subtext わずか1分で登録完了
+        span.btn-subtext かんたん30秒で入力完了
 
   .hero-bottom-sparkle
   
-section.hero-main-section.position-relative(style="background-image: url(#{asset_path('base.webp')});")
+/section.hero-main-section.position-relative(style="background-image: url(#{asset_path('base.webp')});")
   .container
     .row.align-items-center.gy-4
       .col-lg-6
@@ -115,6 +115,8 @@ section.brand-marquee-section.py-4
       = image_tag "okurite4.png", alt: "Icon 4"
       = image_tag "okurite5.png", alt: "Icon 5"
       = image_tag "okurite6.png", alt: "Icon 6"
+
+
 section.japan-notyo-section
   .japan-notyo-container
     .japan-notyo-column.japan-notyo-text-column
@@ -129,8 +131,57 @@ section.japan-notyo-section
         br
         |  企業が主体的に問い合わせた「成約に直結する商談」のみを提供します。
     .japan-notyo-column.japan-notyo-image-column
-      = image_tag "app-icon.png", class: "japan-notyo-image", alt: "Tool illustration"
+      = image_tag "company-logo.png", class: "japan-notyo-image", alt: "Tool illustration"
+
 section.jap-notto-section
+ .sp-company
+  .sp-company-inner
+    .sp-section-header
+      span.en-sub CCURRENT CHALLENGES
+      h2 営業の最大化はできていますか？
+      p.desc 成果を最大化するために、今解決すべきボトルネック
+  .jap-notto-container
+    .jap-notto-grid
+      / カード 1
+      .jap-notto-card
+        .card-inner
+          .card-icon
+            = image_tag "mainn-app1.png", class: "card-img", alt: "営業リスト作成"
+          p.card-text 営業リスト作成が
+          span.card-sub 営業リスト作成が少なすぎる、たちない
+
+      / カード 2
+      .jap-notto-card
+        .card-inner
+          .card-icon
+            = image_tag "test.png", class: "card-img", alt: "送信作業"
+          p.card-text 送信作業が
+          span.card-sub AIレターまで送信作業がない
+
+      / カード 3
+      .jap-notto-card
+        .card-inner
+          .card-icon
+            = image_tag "mainn-app3.png", class: "card-img", alt: "フォーム対応"
+          p.card-text フォーム対応が
+          span.card-sub フォーム対応がデータに理解してない
+
+      / カード 4 (下段配置用クラス)
+      .jap-notto-card.card-4
+        .card-inner
+          .card-icon
+            = image_tag "mainn-app4.png", class: "card-img", alt: "成果"
+          p.card-text 成果が出ない
+          span.card-sub 営業やターゲティングの成果が出ない
+
+      / カード 5 (下段配置用クラス)
+      .jap-notto-card.card-5
+        .card-inner
+          .card-icon
+            = image_tag "mainn-app5.png", class: "card-img", alt: "コスト"
+          p.card-text コストが高い
+          span.card-sub コストの増え過ぎでコストが高い
+/section.jap-notto-section
   .jap-notto-container
     h2.jap-notto-heading
       | こんなお悩みはありませんか？
@@ -148,12 +199,12 @@ section.jap-notto-section
       .jap-notto-center-image
         = image_tag "transparent.png", class: "jap-notto-center-img", alt: "Center Image"
 section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
-  .container.py-5.text-center
-    .ser-mos-headings.mb-4
-      .ser-mos-kicker
-        | AI営業代行パッケージ
-      h2.ser-mos-title
-        | Okuriteの獲得手法
+ .sp-company
+  .sp-company-inner
+    .sp-section-header
+      span.en-sub Package
+      h2 AI営業代行パッケージ
+      p.desc Okuriteの獲得手法
     .ser-mos-panel.mx-auto.p-4.rounded-4
       .row.g-4
         .col-lg-6
@@ -223,11 +274,12 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
               | 詳しく見る 
               = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
 section.main-moss-section
-  .container.text-center.main-moss-header
-    h2.main-moss-title
-      | 『Okurite』が選ばれる理由
-    h3.main-moss-subtitle
-      | 
+ .sp-company
+  .sp-company-inner
+    .sp-section-header
+      span.en-sub Package
+      h2 AI営業代行パッケージ
+      p.desc Okuriteの獲得手法
   .container-fluid.main-moss-block
     .row.align-items-center
       .col-lg-6.text-center
@@ -500,9 +552,12 @@ section.pricing-cards-section[style="background-image: url('#{asset_path('bg-ima
 
 
 .section#case.cards-moos-section.py-5
-  .container.text-center
-    h2.cards-moos-title.mb-5
-      | AI営業代行記事一覧
+ .sp-company
+  .sp-company-inner
+    .sp-section-header
+      span.en-sub Package
+      h2 AI営業代行パッケージ
+      p.desc Okuriteの獲得手法
     .row.g-4.cards-moos-row.d-none.d-md-flex
       - Column.where(genre: "app").order(created_at: :desc).limit(3).each do |column|
         .col-lg-4.col-md-6
@@ -519,9 +574,12 @@ section.pricing-cards-section[style="background-image: url('#{asset_path('bg-ima
       
 
 section.faq-japan-section.py-5
-  .container.text-center
-    h2.faq-japan-title.mb-5
-      | よくある質問
+ .sp-company
+  .sp-company-inner
+    .sp-section-header
+      span.en-sub Package
+      h2 AI営業代行パッケージ
+      p.desc Okuriteの獲得手法
     .faq-japan-container
       .faq-japan-item
         .faq-japan-question.d-flex.align-items-center.justify-content-between
@@ -565,9 +623,12 @@ section.faq-japan-section.py-5
           p
             |  SaaS、人材サービス、広告、コンサルティングなど、BtoB向けのサービス全般で高い効果を発揮します。定期的に同一企業へのアプローチも可能なので、取りこぼしを最小限にアプローチできます。
 section.cards-moos-section.py-5
-  .container.text-center
-    h2.cards-moos-title.mb-5
-      | 導入事例
+ .sp-company
+  .sp-company-inner
+    .sp-section-header
+      span.en-sub Package
+      h2 AI営業代行パッケージ
+      p.desc Okuriteの獲得手法
     .row.g-4.cards-moos-row.d-none.d-md-flex
       .col-lg-4.col-md-6
         .cards-moos-card
