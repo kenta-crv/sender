@@ -148,7 +148,19 @@ class FormSender
     options.add_argument('--disable-background-networking') # バックグラウンド通信抑制
     options.add_argument('--js-flags=--max-old-space-size=256')  # JSヒープ上限256MB
 
+    # 自動ダウンロードを完全に無効化（フォーム送信時の添付ファイル等でディスクが圧迫される問題対策）
+    options.add_preference('download.prompt_for_download', false)
+    options.add_preference('download.default_directory', '/dev/null')
+    options.add_preference('plugins.always_open_pdf_externally', false)
+    options.add_preference('safebrowsing.enabled', false)
+
     @driver = Selenium::WebDriver.for(:chrome, options: options)
+    # CDP経由でダウンロードを完全拒否（prefsだけでは抜ける場合の二重防御）
+    begin
+      @driver.execute_cdp('Page.setDownloadBehavior', behavior: 'deny')
+    rescue => e
+      log "Page.setDownloadBehavior設定失敗（処理は継続）: #{e.message}" if @debug
+    end
     @driver.manage.timeouts.implicit_wait = 0  # 暗黙的待機なし（find_element失敗時の3秒ペナルティを排除）
     @driver.manage.timeouts.page_load = 15  # ページ読み込みタイムアウト（15秒）遅いサーバーでの長時間ブロック防止
   end

@@ -40,6 +40,15 @@ find /tmp -maxdepth 1 -name 'chrome_crashpad*' -mmin +60 -exec rm -rf {} \; 2>/d
 find /tmp -maxdepth 1 -name 'scoped_dir*' -mmin +60 -exec rm -rf {} \; 2>/dev/null
 echo "  /tmp: Chrome一時ファイルを削除"
 
+# Chromeダウンロードフォルダの安全網（フォーム送信時の自動DL対策の二重防御）
+# 1時間以上前のファイルを削除。Selenium側でダウンロード自体を抑止しているため通常は空のはず
+for dl_dir in "$HOME/Downloads" "/root/Downloads"; do
+  if [ -d "$dl_dir" ]; then
+    find "$dl_dir" -maxdepth 1 -type f -mmin +60 -delete 2>/dev/null
+    echo "  $dl_dir: 1時間以上前のダウンロードファイルを削除"
+  fi
+done
+
 # ディスク使用率チェック
 DISK_USAGE=$(df -h "$APP_DIR" | tail -1 | awk '{print $5}' | tr -d '%')
 echo "  ディスク使用率: ${DISK_USAGE}%"
