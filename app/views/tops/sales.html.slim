@@ -327,198 +327,66 @@ section.main-moss-section
           |  ご利用は１ヶ月〜可能となっているので、満足できなければいつでも解約いただけます。（ライトプランの場合）
 
 
-section.pricing-cards-section[style="background-image: url('#{asset_path('bg-imagee.png')}');"]
-  .container
-    h2.pricing-cards-title
-      | 料金プラン
-    .row.justify-content-center.g-4
-      .col-lg-4.col-md-6
-        .pricing-cards-card
-          h3.pricing-cards-plan-title
-            | ライトプラン
-          p.pricing-cards-plan-sub
-            | Light Plan
-          h4.pricing-cards-price
-            | 
-          button.pricing-cards-btn.btn-gray
-            | フォーム送信特化型
-          p 問い合わせフォームからのAI自動営業送信に特化した、手軽に始められるプラン
-          .pricing-cards-features
-            .pricing-cards-feature
-              span
-                | 初期費用
-              span
-                | 0円
-            hr
-            .pricing-cards-feature
-              span
-                | 月額費用
-              span
-                | 39,800円
-            hr
-            .pricing-cards-feature
-              span
-                | AIリスト制作
-              span
-                | 込
-            hr
-            .pricing-cards-feature
-              span
-                | 自動フォーム営業
-              span
-                | 20,000件
-            hr
-            .pricing-cards-feature
-              span
-                | AI架電フロント対応
-              span
-                | -
-            hr
-            .pricing-cards-feature
-              span
-                | テレアポ代行
-              span
-                | -
-            hr
-            .pricing-cards-feature
-              span
-                | 営業商談提供
-              span
-                | -
-            hr
-            .pricing-cards-feature
-              span
-                | 定期ミーティング
-              span
-                | -
-          br/
-          a.pricing-cards-main-btn.btn-gray.nav-link-custom href="javascript:void(0)" data-target="inquiry"
-            | 無料トライアル 〉
-      .col-lg-4.col-md-6
-        .pricing-cards-card
-          h3.pricing-cards-plan-title
-            | スタンダードプラン
-          p.pricing-cards-plan-sub
-            | Standard Plan
-          h4.pricing-cards-price
-            | 
-          button.pricing-cards-btn.btn-blue
-            | AIフルパッケージ
-          p リスト制作・フォーム送信からAIテレアポ実施まで、商談設計をトータルでAIがフルサポートする標準プラン。
-          .pricing-cards-features
-            .pricing-cards-feature
-              span
-                | 初期費用
-              span
-                | 50,000円
-            hr
-            .pricing-cards-feature
-              span
-                | 月額費用
-              span
-                | 198,000円
-            hr
-            .pricing-cards-feature
-              span
-                | AIリスト制作
-              span
-                | 3,000件
-            hr
-            .pricing-cards-feature
-              span
-                | 自動フォーム営業
-              span
-                | 20,000件
-            hr
-            .pricing-cards-feature
-              span
-                | AI架電フロント対応
-              span
-                | 込
-            hr
-            .pricing-cards-feature
-              span
-                | テレアポ代行
-              span
-                | 800call相当
-            hr
-            .pricing-cards-feature
-              span
-                | 有効商談提供
-              span
-                | 10件
-            hr
-            .pricing-cards-feature
-              span
-                | 定期ミーティング
-              span
-                | 1回
-          br/
-          a.pricing-cards-main-btn.btn-blue.nav-link-custom href="javascript:void(0)" data-target="inquiry"
-            | まずは無料見積 〉
-      .col-lg-4.col-md-6
-        .pricing-cards-card
-          h3.pricing-cards-plan-title
-            | エンタープライズプラン
-          p.pricing-cards-plan-sub
-            | Enterprise Plan
-          h4.pricing-cards-price
-            |
-          button.pricing-cards-btn.btn-green
-            | 最大活用フルパッケージ
-          p AI技術を最大限に活用し、リスト・フォーム営業・架電・商談の全てを最大化したい成長企業向け。
-          .pricing-cards-features
-            .pricing-cards-feature
-              span
-                | 初期費用
-              span
-                | 50,000円
-            hr
-            .pricing-cards-feature
-              span
-                | 月額費用
-              span
-                | 298,000円
-            hr
-            .pricing-cards-feature
-              span
-                | AIリスト制作
-              span
-                | 10,000件
-            hr
-            .pricing-cards-feature
-              span
-                | 自動フォーム営業
-              span
-                | 制限なし
-            hr
-            .pricing-cards-feature
-              span
-                | AI架電フロント対応
-              span
-                | 込
-            hr
-            .pricing-cards-feature
-              span
-                | テレアポ代行
-              span
-                | 1600call相当
-            hr
-            .pricing-cards-feature
-              span
-                | 有効商談提供
-              span
-                | 20件
-            hr
-            .pricing-cards-feature
-              span
-                | 定期ミーティング
-              span
-                | 1回                hr
-          br/
-          a.pricing-cards-main-btn.btn-green.nav-link-custom href="javascript:void(0)" data-target="inquiry"
-            | まずは無料見積 〉
 
+- plans = [ \
+  { title: "ライトプラン", sub: "Light Plan", btn: "フォーム送信特化型", btn_class: "btn-gray", desc: "問い合わせフォームからのAI自動営業送信に特化した、手軽に始められるプラン", features: [ \
+    ["初期費用","0円"], \
+    ["月額費用","39,800円"], \
+    ["AIリスト制作","込"], \
+    ["自動フォーム営業","20,000件"], \
+    ["AI架電フロント対応","-"], \
+    ["テレアポ代行","-"], \
+    ["営業商談提供","-"], \
+    ["定期ミーティング","-"] \
+  ], cta: "無料トライアル 〉" }, \
+  { title: "スタンダードプラン", sub: "Standard Plan", btn: "AIフルパッケージ", btn_class: "btn-blue", desc: "リスト制作・フォーム送信からAIテレアポ実施まで、商談設計をトータルでAIがフルサポートする標準プラン。", features: [ \
+    ["初期費用","50,000円"], \
+    ["月額費用","198,000円"], \
+    ["AIリスト制作","3,000件"], \
+    ["自動フォーム営業","20,000件"], \
+    ["AI架電フロント対応","込"], \
+    ["テレアポ代行","800call相当"], \
+    ["有効商談提供","10件"], \
+    ["定期ミーティング","1回"] \
+  ], cta: "まずは無料見積 〉" }, \
+  { title: "エンタープライズプラン", sub: "Enterprise Plan", btn: "最大活用フルパッケージ", btn_class: "btn-green", desc: "AI技術を最大限に活用し、リスト・フォーム営業・架電・商談の全てを最大化したい成長企業向け。", features: [ \
+    ["初期費用","50,000円"], \
+    ["月額費用","298,000円"], \
+    ["AIリスト制作","10,000件"], \
+    ["自動フォーム営業","制限なし"], \
+    ["AI架電フロント対応","込"], \
+    ["テレアポ代行","1600call相当"], \
+    ["有効商談提供","20件"], \
+    ["定期ミーティング","1回"] \
+  ], cta: "まずは無料見積 〉" } \
+]
+
+section.pricing-cards-section
+ .sp-company
+  .sp-company-inner
+    .sp-section-header
+      span.en-sub Package
+      h2 AI営業代行パッケージ
+      p.desc Okuriteの獲得手法
+    .row.justify-content-center.g-4
+      - plans.each do |plan|
+        .col-lg-4.col-md-6
+          .pricing-cards-card
+            h3.pricing-cards-plan-title = plan[:title]
+            p.pricing-cards-plan-sub = plan[:sub]
+            button.pricing-cards-btn class=plan[:btn_class] = plan[:btn]
+            p = plan[:desc]
+
+            .pricing-cards-features
+              - plan[:features].each do |label, value|
+                .pricing-cards-feature
+                  span = label
+                  span = value
+                hr
+
+            br
+            a.pricing-cards-main-btn class=plan[:btn_class] href="javascript:void(0)" data-target="inquiry"
+              = plan[:cta]
 
 .sp-content-container
     .sp-solutions
@@ -549,79 +417,38 @@ section.pricing-cards-section[style="background-image: url('#{asset_path('bg-ima
             p.text-detail 専用管理画面から問い合わせフォーム送信を自由自在に実行。新規開拓の機動力を最大化するサブスクリプション型サービス。
             = link_to okurite_path, class: 'btn sp-btn-modern' do
                 span View Detail 
-
-
-.section#case.cards-moos-section.py-5
- .sp-company
-  .sp-company-inner
-    .sp-section-header
-      span.en-sub Package
-      h2 AI営業代行パッケージ
-      p.desc Okuriteの獲得手法
-    .row.g-4.cards-moos-row.d-none.d-md-flex
-      - Column.where(genre: "app").order(created_at: :desc).limit(3).each do |column|
-        .col-lg-4.col-md-6
-          = link_to column_path(column) do
-            .cards-moos-card
-              - if column.file.present?
-               = image_tag column.file.to_s, width:"100%", class: 'column-thumb', alt: column.title
-              h3.cards-moos-heading
-                = column.title
-              p.cards-moos-desc
-                = truncate(column.description, length: 200)
-    .mt-4
-      = columns_index_link("app", "AI営業代行・記事一覧を見る")
       
 
-section.faq-japan-section.py-5
- .sp-company
-  .sp-company-inner
-    .sp-section-header
-      span.en-sub Package
-      h2 AI営業代行パッケージ
-      p.desc Okuriteの獲得手法
-    .faq-japan-container
-      .faq-japan-item
-        .faq-japan-question.d-flex.align-items-center.justify-content-between
-          p
-            | AI営業代行での商談提供の定義を教えてください。
-          = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
-        .faq-japan-answer
-          p
-            |  『Okurite』では、AIアプローチに対して顧客が主体的に問い合わせや返信を行い、商談の合意が取れた状態を「有効商談」と基本定義しています。しかし、成功報酬会社ではないため、具体的な商談定義は、取引企業様毎に決定しております。
-      .faq-japan-item
-        .faq-japan-question.d-flex.align-items-center.justify-content-between
-          p
-            | 毎月の報告はありますか？
-          = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
-        .faq-japan-answer
-          p
-            |  はい。毎月の実績報告および、Webミーティングで毎月状況報告とPDCA設計を行います。
+- faqs = [ \
+  ["AI営業代行での商談提供の定義を教えてください。", "『Okurite』では、AIアプローチに対して顧客が主体的に問い合わせや返信を行い、商談の合意が取れた状態を「有効商談」と基本定義しています。しかし、成功報酬会社ではないため、具体的な商談定義は、取引企業様毎に決定しております。"], \
+  ["毎月の報告はありますか？", "はい。毎月の実績報告および、Webミーティングで毎月状況報告とPDCA設計を行います。"], \
+  ["自動フォーム営業ができない業種はありますか？", "基本的にはBtoB全般で利用可能ですが、問い合わせフォームの形式が通常と異なる場合は、AI対策をしている先にアプローチすることはできません。全件送信を実現したい場合、手動送信が可能なエンタープライズを導入してください。"], \
+  ["成約時の成果報酬は発生しますか？", "当社のパッケージは「有効商談の提供」までのサポートとなっており、成約時の成果報酬はいただいておりません。月額の範囲内で獲得した商談からの売上はすべて御社の利益となります。"], \
+  ["『Okurite』で結果が出やすい商材は？", "SaaS、人材サービス、広告、コンサルティングなど、BtoB向けのサービス全般で高い効果を発揮します。定期的に同一企業へのアプローチも可能なので、取りこぼしを最小限にアプローチできます。"] \
+]
 
-      .faq-japan-item
-        .faq-japan-question.d-flex.align-items-center.justify-content-between
-          p
-            | 自動フォーム営業ができない業種はありますか？
-          = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
-        .faq-japan-answer
-          p
-            |  基本的にはBtoB全般で利用可能ですが、問い合わせフォームの形式が通常と異なる場合は、AI対策をしている先にアプローチすることはできません。全件送信を実現したい場合、手動送信が可能なエンタープライズを導入してください。
-      .faq-japan-item
-        .faq-japan-question.d-flex.align-items-center.justify-content-between
-          p
-            | 成約時の成果報酬は発生しますか？
-          = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
-        .faq-japan-answer
-          p
-            |  当社のパッケージは「有効商談の提供」までのサポートとなっており、成約時の成果報酬はいただいておりません。月額の範囲内で獲得した商談からの売上はすべて御社の利益となります。
-      .faq-japan-item
-        .faq-japan-question.d-flex.align-items-center.justify-content-between
-          p
-            | 『Okurite』で結果が出やすい商材は？
-          = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
-        .faq-japan-answer
-          p
-            |  SaaS、人材サービス、広告、コンサルティングなど、BtoB向けのサービス全般で高い効果を発揮します。定期的に同一企業へのアプローチも可能なので、取りこぼしを最小限にアプローチできます。
+section.faq-japan-section.py-5
+  .sp-company
+    .sp-company-inner
+      .sp-section-header
+        span.en-sub Package
+        h2 AI営業代行パッケージ
+        p.desc Okuriteの獲得手法
+
+      .faq-japan-container
+        - faqs.each do |q, a|
+          .faq-japan-item
+            .faq-japan-question.d-flex.align-items-center.justify-content-between
+              p = q
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+            .faq-japan-answer
+              p = a
+
+
+
+
+
+
 section.cards-moos-section.py-5
  .sp-company
   .sp-company-inner
