@@ -108,9 +108,15 @@
               ], params[:fill_filter]),\
               class: "ai-select"
         .ai-field-group
+          label 最終更新 From
+          = date_field_tag :updated_from, params[:updated_from], class: "ai-input-text"
+        .ai-field-group
+          label 最終更新 To
+          = date_field_tag :updated_to, params[:updated_to], class: "ai-input-text"
+        .ai-field-group
           label.ai-checkbox-label
             = check_box_tag :updated_today, "1", params[:updated_today] == "1"
-            | 最終更新が今日のみ
+            | 今日のみ（From/To 未指定時）
         .ai-field-group
           label 業種
           = text_field_tag :industry_name, params[:industry_name], class: "ai-input-text", placeholder: "業種名"
@@ -136,6 +142,7 @@
             th tel
             th url
             th contact
+            th 業種
             th 業種/職種
             th リンク
             th 最終更新
@@ -152,8 +159,11 @@
               td.ai-col-fill = fill_icon(customer&.tel)
               td.ai-col-fill = fill_icon(customer&.url)
               td.ai-col-fill = fill_icon(customer&.contact_url)
+              / 業種 ○×: industry / business / genre のいずれかが入っていれば ○
+              - industry_filled = [customer&.industry, customer&.business, customer&.genre].any? { |v| v.to_s.strip.present? }
+              td.ai-col-fill = fill_icon(industry_filled ? "1" : nil)
               td.ai-col-industry
-                div = customer&.business
+                div = customer&.industry.presence || customer&.business
                 small = customer&.genre
               td.ai-col-links
                 - if customer&.url.present?

@@ -574,8 +574,20 @@ def draft
     @customers = @customers.where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = ''")
   end
 
-  # 「最終更新が今日」フィルタ
-  if params[:updated_today] == "1"
+  # 最終更新日のフィルタ
+  # 優先順位: updated_from / updated_to が指定されていればそれを使用、
+  # それ以外で updated_today=1 なら本日のみ。
+  updated_from = (Date.parse(params[:updated_from]) rescue nil) if params[:updated_from].present?
+  updated_to   = (Date.parse(params[:updated_to])   rescue nil) if params[:updated_to].present?
+  if updated_from || updated_to
+    if updated_from && updated_to
+      @customers = @customers.where(updated_at: updated_from.beginning_of_day..updated_to.end_of_day)
+    elsif updated_from
+      @customers = @customers.where("updated_at >= ?", updated_from.beginning_of_day)
+    else
+      @customers = @customers.where("updated_at <= ?", updated_to.end_of_day)
+    end
+  elsif params[:updated_today] == "1"
     @customers = @customers.where(updated_at: Time.current.beginning_of_day..Time.current.end_of_day)
   end
 

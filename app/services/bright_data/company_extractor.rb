@@ -1,6 +1,24 @@
 # frozen_string_literal: true
 
 module BrightData
+  # === 業種（industry）抽出ロジックについて ===
+  #
+  # 現状、業種は以下の限定的なソースからしか取得できない:
+  #   - SERP local_results の "type" / "category"   ← Google Maps カード相当
+  #   - SERP knowledge_graph の "type"              ← ナレッジパネル相当
+  #
+  # organic_results（通常の Web 検索結果）からは業種は取得していない（常に nil）。
+  # WebEnricher（HTMLクロール）も業種抽出は実装していない。
+  # business / genre カラムは本パイプラインでは一切セットされず、
+  # 既存の手動入力 / 別フローで設定された値を保持するのみ。
+  #
+  # → 取引先向け補足:
+  #   B2B 検索（"〇〇株式会社 会社概要" など）では SERP の local_results /
+  #   knowledge_graph がヒットしないクエリが大半のため、
+  #   industry が埋まる確率は低いのが想定動作です。
+  #   業種を網羅的に補完したい場合は、HTML から
+  #   meta keywords / panhkuzu / 業種別ディレクトリ等を
+  #   推定する別ロジックの実装が必要です。
   class CompanyExtractor
     # organic_results から採用する上位件数（BrightData コスト削減と精度向上のため）
     MAX_ORGANIC_RESULTS = 5

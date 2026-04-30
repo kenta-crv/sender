@@ -1,6 +1,6 @@
 class Call < ApplicationRecord
   belongs_to :customer
-  belongs_to :worker
+  belongs_to :worker, optional: true
   belongs_to :call_batch, optional: true
   # Validations for recording fields
   #validates :recording_url, presence: true, if: :recording_duration?

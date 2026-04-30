@@ -263,7 +263,37 @@ class CompanyInfoExtractor
     s = s.gsub(/[\t\r\n]+/, " ").gsub(/[ 　]{2,}/, " ")
     # 末尾の区切り記号・空白を除去
     s = s.sub(/[\s　、。,.:：;；\-－ー｜|／\/]+\z/, "")
-    s.strip.presence
+    s = s.strip.presence
+    return nil if s.nil?
+
+    # 住所として妥当か検証する。妥当でなければ nil を返す。
+    valid_address?(s) ? s : nil
+  end
+
+  # 住所として妥当か検証する。
+  # NG 例:
+  #   - "大阪府のWebマーケティ."        ← 都道府県の直後に助詞「の」（文章の一部）
+  #   - "富山県、石川県において、…"     ← 文章中の地名列挙
+  #   - "東京都"                       ← 市区町村以下が無い
+  # OK 例:
+  #   - "埼玉県 幸手市 千塚398-5"
+  #   - "東京都新宿区西新宿1-1-1"
+  def valid_address?(text)
+    return false if text.blank?
+
+    # 1. 都道府県名で始まること
+    pref_match = text.match(/\A(?:北海道|青森県|岩手県|宮城県|秋田県|山形県|福島県|茨城県|栃木県|群馬県|埼玉県|千葉県|東京都|神奈川県|新潟県|富山県|石川県|福井県|山梨県|長野県|岐阜県|静岡県|愛知県|三重県|滋賀県|京都府|大阪府|兵庫県|奈良県|和歌山県|鳥取県|島根県|岡山県|広島県|山口県|徳島県|香川県|愛媛県|高知県|福岡県|佐賀県|長崎県|熊本県|大分県|宮崎県|鹿児島県|沖縄県)/)
+    return false if pref_match.nil?
+
+    after_pref = text[pref_match.end(0)..]
+
+    # 2. 都道府県名の直後に助詞・読点が続く場合は文章の一部 → 除外
+    return false if after_pref.match?(/\A(?:の|や|や、|において|では|から|へ|を|が|は|も|と|、|，|・|及び|および)/)
+
+    # 3. 市区町村（市/区/町/村/郡）が含まれていること
+    return false unless after_pref.match?(/(?:市|区|町|村|郡)/)
+
+    true
   end
 
   def extract_contact_url

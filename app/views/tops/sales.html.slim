@@ -1,5 +1,5 @@
-- set_meta_tags title: '家事代行・ハウスキーピング・お手伝いさん募集なら『J Work』'
-- set_meta_tags description: '家事代行・ハウスキーピング・お手伝いさん募集なら『J Work』'
+- set_meta_tags title: '【AI営業代行】AIとプロフェッショナル営業マンが実現する営業効率の『超最大化』'
+- set_meta_tags description: 'AI営業代行を活用しませんか？現代のAI技術を可能な限り駆使することで、最高の営業パフォーマンスを見出すことができます。'
 
 
 section.hero-main
@@ -9,8 +9,11 @@ section.hero-main
   .hero-content
 
     .hero-main-area
-      h1.hero-catch Aiが、あなたの営業を最速化する。
-      p.hero-sub-copy 正確に、迅速に、そして成果へ。
+      h1.hero-catch 
+       |次世代 AI営業代行
+       br/
+       | AIが導く営業ボリュームの最大化。
+      p.hero-sub-copy 圧倒的アプローチ数、営業を最大化、そして成果へ。
 
     / ボタンを右側に配置
     .hero-action-area
@@ -20,92 +23,6 @@ section.hero-main
 
   .hero-bottom-sparkle
   
-/section.hero-main-section.position-relative(style="background-image: url(#{asset_path('base.webp')});")
-  .container
-    .row.align-items-center.gy-4
-      .col-lg-6
-        .hero-main-left
-          .hero-main-top
-            button.hero-main-top-btn
-              | 効率的な新規開拓を実現したい法人営業担当者へ
-          h1.hero-main-title.mt-4
-            span.noto
-              | AI営業代行パッケージ
-              br/
-              |『Okurite』
-          h2.hero-main-subtitle.mt-3
-            span.noto
-              | AI×自動化技術が「売れる」有効商談をスピーディーに提供
-          .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
-            button.hero-main-badge
-              |  ✓ AIリスト抽出
-            p.hero-main-badge-text
-              | ターゲットをAIが自動分析し、最適なリストを瞬時に生成
-          .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
-            button.hero-main-badge
-              |  ✓ 自動フォーム営業
-            p.hero-main-badge-text
-              | 問い合わせフォームを自動検出し、効率的にアプローチ
-          .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
-            button.hero-main-badge
-              |  ✓ AIテレアポ対応
-            p.hero-main-badge-text
-              | AIによるフロント対応で圧倒的な架電量と商談獲得を実現
-          .d-flex.align-items-center.mt-4.hero-main-badges.gap-3
-            p.hero-main-badge-text
-              | 
-      .col-lg-6
-        .hero-main-right.p-4.rounded-3
-          h3.hero-main-trial.text-center
-            | ＼まずは無料で見積から／
-          = form_with model: @contract, url: contracts_path, local: true, html: { id: "hero-main-top", class: "hero-main-form mt-3 p-4 rounded-3" } do |f|
-            = f.hidden_field :origin, value: request.path
-            .row.g-3
-              .col-12
-                label.form-label.hero-main-label
-                  | 会社名 
-                  span.required-badge
-                    | 必須
-                = f.text_field :company, class: "form-control hero-main-input", placeholder: "株式会社〇〇〇〇", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | ご担当者様名
-                  span.required-badge
-                    | 必須
-                = f.text_field :name, class: "form-control hero-main-input", placeholder: "山田太郎", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | 電話番号 
-                  span.required-badge
-                    | 必須
-                = f.telephone_field :tel, class: "form-control hero-main-input", placeholder: "050-1234-5678", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | 住所
-                  span.required-badge
-                    | 必須
-                = f.text_field :address, class: "form-control hero-main-input", placeholder: "東京都東京市東京町1-1-1東京ビル111", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | URL
-                  span.required-badge
-                    | 必須
-                = f.url_field :url, class: "form-control hero-main-input", placeholder: "https://ri-plus.jp/", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | メールアドレス 
-                  span.required-badge
-                    | 必須
-                = f.email_field :email, class: "form-control hero-main-input", placeholder: "test@example.com", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | 備考・要望 
-                  span.required-badge
-                    | 任意
-                = f.text_area :message, class: "form-control hero-main-input", placeholder:"（例）お問い合わせ内容"
-              .col-12
-                = f.submit "まずは無料で見積から", class: "btn hero-main-submit w-100"
-  .hero-main-overlay
 section.brand-marquee-section.py-4
   .brand-marquee
     .brand-track
@@ -121,15 +38,16 @@ section.japan-notyo-section
   .japan-notyo-container
     .japan-notyo-column.japan-notyo-text-column
       h2.japan-notyo-heading
-        | AIが導く圧倒的な商談数。リスクを最小化し有効商談を提供
+        | AIが導く圧倒的な商談数。絶対量を増やし最大化できる
       h2.japan-notyo-heading
         | 
       p.japan-notyo-description
-        |  『Okurite』は、最新のAI技術と営業代行実績を融合させた
+        |  『Ri-Plus』は、独自のAI技術と営業代行実績を融合させた
         br
-        |  次世代の営業支援パッケージです。AIによる自動アプローチから、
+        |  次世代の営業代行パッケージサービスです。AIによる自動アプローチと
         br
-        |  企業が主体的に問い合わせた「成約に直結する商談」のみを提供します。
+        |  効率的な営業クロージングによりアポイントの最大化を行います。
+        br
     .japan-notyo-column.japan-notyo-image-column
       = image_tag "company-logo.png", class: "japan-notyo-image", alt: "Tool illustration"
 
@@ -146,41 +64,41 @@ section.jap-notto-section
       .jap-notto-card
         .card-inner
           .card-icon
-            = image_tag "mainn-app1.png", class: "card-img", alt: "営業リスト作成"
-          p.card-text 営業リスト作成が
-          span.card-sub 営業リスト作成が少なすぎる、たちない
+            = image_tag "ser-ai1.png", class: "card-img", alt: "営業リスト作成"
+          p.card-text 営業リスト作成
+          span.card-sub が効率的に作成出来ていない
 
       / カード 2
       .jap-notto-card
         .card-inner
           .card-icon
-            = image_tag "test.png", class: "card-img", alt: "送信作業"
-          p.card-text 送信作業が
-          span.card-sub AIレターまで送信作業がない
+            = image_tag "ser-ai2.png", class: "card-img", alt: "送信作業"
+          p.card-text 問い合わせフォーム
+          span.card-sub のアプローチが行えていない
 
       / カード 3
       .jap-notto-card
         .card-inner
           .card-icon
-            = image_tag "mainn-app3.png", class: "card-img", alt: "フォーム対応"
-          p.card-text フォーム対応が
-          span.card-sub フォーム対応がデータに理解してない
+            = image_tag "ser-ai3.png", class: "card-img", alt: "フォーム対応"
+          p.card-text フォームアプローチデータ
+          span.card-sub からのデータ収集が出来ていない
 
       / カード 4 (下段配置用クラス)
       .jap-notto-card.card-4
         .card-inner
           .card-icon
             = image_tag "mainn-app4.png", class: "card-img", alt: "成果"
-          p.card-text 成果が出ない
-          span.card-sub 営業やターゲティングの成果が出ない
+          p.card-text テレフォンアポイント
+          span.card-sub の効果が確実に以前より下がっている
 
       / カード 5 (下段配置用クラス)
       .jap-notto-card.card-5
         .card-inner
           .card-icon
             = image_tag "mainn-app5.png", class: "card-img", alt: "コスト"
-          p.card-text コストが高い
-          span.card-sub コストの増え過ぎでコストが高い
+          p.card-text アプローチや商談
+          span.card-sub の絶対数自体を伸ばしきれていない
 /section.jap-notto-section
   .jap-notto-container
     h2.jap-notto-heading
@@ -202,9 +120,9 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
  .sp-company
   .sp-company-inner
     .sp-section-header
-      span.en-sub Package
-      h2 AI営業代行パッケージ
-      p.desc Okuriteの獲得手法
+      span.en-sub AI Sales Agent Package
+      h2 AI営業代行パッケージ全貌
+      p.desc 営業を成功に導く動線設計
     .ser-mos-panel.mx-auto.p-4.rounded-4
       .row.g-4
         .col-lg-6
@@ -223,31 +141,20 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
             .ser-mos-card-media
               = image_tag "ser-app2.png", class: "ser-mos-card-img", alt: "Service 2"
             h3.ser-mos-card-title
-              | 問い合わせフォーム自動検出・営業
+              | フォーム情報の自動検出
             p.ser-mos-card-desc
-              |  AIが企業HPの問い合わせフォームを自動で特定。最適なタイミングでメッセージを送信し、効率的に認知と興味を拡大させます。
+              |  AIが企業HPの問い合わせフォームを自動で特定。手作業で探す必要がなく、AIが高確率でフォーム情報を取得します。
             /button.ser-mos-card-btn
               | 詳しく見る 
               = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
         .col-lg-6
           article.ser-mos-card
             .ser-mos-card-media
-              = image_tag "ser-app3.png", class: "ser-mos-card-img", alt: "Service 3"
+              = image_tag "ser-app1.png", class: "ser-mos-card-img", alt: "Service 1"
             h3.ser-mos-card-title
-              | AIによるフロントテレアポ対応
+              | AI自動問い合わせフォーム送信
             p.ser-mos-card-desc
-              |  テレアポのフロント対応をAIが担うことで、人では不可能な圧倒的な架電量を実現。見込み度の高いリードを確実にキャッチアップします。
-            /button.ser-mos-card-btn
-              | 詳しく見る 
-              = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
-        .col-lg-6
-          article.ser-mos-card
-            .ser-mos-card-media
-              = image_tag "ser-app8.png", class: "ser-mos-card-img", alt: "Service 4"
-            h3.ser-mos-card-title
-              | 行動データに基づく最適な導線設計
-            p.ser-mos-card-desc
-              |   興味関心データをリアルタイムで解析し、関心度の高い企業情報を即時に提示します。
+              | 事前に用意したリストに対してAIが24時間365日あなたの代わりに問い合わせフォームに送信を行い、アプローチを行います。
             /button.ser-mos-card-btn
               | 詳しく見る 
               = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
@@ -265,11 +172,22 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
         .col-lg-6
           article.ser-mos-card
             .ser-mos-card-media
-              = image_tag "ser-app10.png", class: "ser-mos-card-img", alt: "Service 6"
+              = image_tag "ser-app3.png", class: "ser-mos-card-img", alt: "Service 3"
             h3.ser-mos-card-title
-              | 有効商談のみを選別して提供
+              | AIによるフロントテレアポ対応
             p.ser-mos-card-desc
-              |  企業側から主体的に問い合わせがあった、ニーズの明確な「有効商談」のみを厳選。営業担当者はクロージングに集中できる環境を構築します。
+              |  テレアポのフロント対応をAIが担うことで、人では不可能な圧倒的な架電量を実現。見込み度の高いリードを確実にキャッチアップし、テレアポクローザーがアポイントを獲得
+            /button.ser-mos-card-btn
+              | 詳しく見る 
+              = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+        .col-lg-6
+          article.ser-mos-card
+            .ser-mos-card-media
+              = image_tag "ser-app8.png", class: "ser-mos-card-img", alt: "Service 4"
+            h3.ser-mos-card-title
+              | 全データをリアルタイム解析
+            p.ser-mos-card-desc
+              |  アプローチ結果による興味関心におけるそれぞれのデータをリアルタイムで保持・解析し、次回の営業アプローチデータに活かします。
             /button.ser-mos-card-btn
               | 詳しく見る 
               = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
@@ -277,9 +195,9 @@ section.main-moss-section
  .sp-company
   .sp-company-inner
     .sp-section-header
-      span.en-sub Package
-      h2 AI営業代行パッケージ
-      p.desc Okuriteの獲得手法
+      span.en-sub AI Sales Effect
+      h2 AI営業代行による効果
+      p.desc 人力の営業代行より明らかな効率化
   .container-fluid.main-moss-block
     .row.align-items-center
       .col-lg-6.text-center

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "set"
+require "concurrent"
 
 module BrightData
   class Pipeline
@@ -114,77 +115,69 @@ module BrightData
         companies = CompanyExtractor.extract_batch(batch)
 
         # Web補完: SERP で取得した URL から tel/address/contact_url を抽出して既存レコードを更新
+        # 並列化方針:
+        #   - SERP API 呼び出しは直列のまま（API レート制限のため変更不可）
+        #   - WebEnricher の HTTP クロールは customer 単位で並列実行
+        #   - 同一 customer の URL 群はスレッド内で「先頭からマッチした1件」を採用
+        #     （短い社名で複数別会社にマッチして住所が連続上書きされる事故を防止）
+        #   - 並列度は ENV["WEB_ENRICHER_CONCURRENCY"] (default 3) で調整可能
         unless dry_run
-          web_enrich_count = 0
-          skipped_no_url = 0
-          skipped_no_customer = 0
-          skipped_already_updated = 0
-          # 同一 customer に対しては「最初にマッチした公式サイト」1社のみで更新する。
-          # 短い社名（例: 「東和」）が複数の別会社にマッチし、住所等が
-          # 繰り返し上書きされるのを防ぐための安全策。
-          updated_customer_ids = Set.new
+          counters = Hash.new(0)
+          mutex    = Mutex.new
           with_url = companies.count { |c| c[:url].present? }
-          puts "[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件"
-          companies.each_with_index do |company, idx|
-            if company[:url].blank?
-              skipped_no_url += 1
-              next
-            end
-            customer = query_customer_map[company[:query]]
-            if customer.nil?
-              skipped_no_customer += 1
-              puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer未マッチ query='#{company[:query]}' url=#{company[:url]} → SKIP"
-              next
-            end
-            if updated_customer_ids.include?(customer.id)
-              skipped_already_updated += 1
-              puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer ID=#{customer.id} は既に更新済み → SKIP"
-              next
-            end
+          concurrency = ENV.fetch("WEB_ENRICHER_CONCURRENCY", "3").to_i.clamp(1, 10)
+          puts "[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件 / 並列度 #{concurrency}"
 
-            puts "[WebEnricher] #{idx + 1}/#{companies.size}: #{company[:company]} (#{company[:url]})"
-            begin
-              web_data = WebEnricher.enrich_from_url(company[:url], customer)
+          # customer_id ごとにグループ化（nil customer は処理対象外）
+          groups = companies.each_with_index.group_by { |c, _| query_customer_map[c[:query]]&.id }
+          counters[:no_customer] = (groups[nil] || []).size
+          (groups[nil] || []).each do |c, idx|
+            puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer未マッチ query='#{c[:query]}' url=#{c[:url]} → SKIP"
+          end
+          groups.delete(nil)
 
-              updates = {}
-              # URL: 会社名マッチが確認できた場合のみ SERP URL を採用
-              # matched=true(確認済み) or matched=nil かつ有益なデータが得られた場合
-              # ディレクトリサイトは url として保存しない
-              url_reliable = web_data[:matched] == true ||
-                             (web_data[:matched].nil? && (web_data[:tel].present? || web_data[:contact_url].present? || web_data[:address].present?))
-              url_is_directory = WebEnricher.directory_url?(company[:url])
-              updates[:url]         = company[:url]           if customer.url.blank?         && company[:url].present? && url_reliable && !url_is_directory
-              updates[:tel]         = web_data[:tel]           if customer.tel.blank?         && web_data[:tel].present?
-              # address: 都道府県始まりの正規化住所が取得できた場合は既存値を上書き（部分住所を完全住所に補完）
-              #          都道府県始まりでない場合は誤データ防止のため既存値を維持
-              if web_data[:address].present? && web_data[:address].match?(CompanyInfoExtractor::PREF_PATTERN)
-                updates[:address] = web_data[:address]
-                if customer.address.present? && customer.address != web_data[:address]
-                  puts "  [WebEnricher] address上書き: '#{customer.address}' → '#{web_data[:address]}'"
+          pool = Concurrent::FixedThreadPool.new(concurrency)
+          futures = groups.map do |customer_id, group|
+            Concurrent::Promises.future_on(pool) do
+              customer = Customer.find_by(id: customer_id)
+              next if customer.nil?
+
+              # group は [[company_hash, idx], ...] の配列。
+              # SERP の上位順を保ったまま走査し、最初に updates が成立した時点で打ち切る。
+              group.sort_by { |_, idx| idx }.each do |company, idx|
+                if company[:url].blank?
+                  mutex.synchronize { counters[:no_url] += 1 }
+                  next
+                end
+
+                mutex.synchronize { puts "[WebEnricher] #{idx + 1}/#{companies.size}: #{company[:company]} (#{company[:url]})" }
+                begin
+                  web_data = WebEnricher.enrich_from_url(company[:url], customer)
+                  updates = build_web_updates(customer, company, web_data)
+
+                  if updates.any?
+                    customer.update_columns(updates.merge(updated_at: Time.current))
+                    mutex.synchronize do
+                      counters[:enriched] += 1
+                      puts "  -> 更新: #{updates.keys.join(', ')} (customer ID=#{customer.id})"
+                    end
+                    break  # この customer は決着済み。後続 URL は処理しない
+                  else
+                    mutex.synchronize { puts "  -> 更新なし（既存データあり or 取得不可） customer ID=#{customer.id}" }
+                  end
+                rescue => e
+                  Rails.logger.warn("[Pipeline] WebEnricher error for #{company[:url]}: #{e.message}")
+                  mutex.synchronize { puts "  -> ERROR (skipping): #{e.message}" }
                 end
               end
-              updates[:contact_url] = web_data[:contact_url]   if customer.contact_url.blank? && web_data[:contact_url].present?
-
-              if updates.any?
-                # update_columns でバリデーション・コールバックをスキップ。
-                # 取引先環境で Customer に belongs_to :client 等が追加されている場合でも
-                # "Client must exist" などで失敗しないようにする。
-                # updated_at は手動で付与（update_columns は自動更新しないため）。
-                customer.update_columns(updates.merge(updated_at: Time.current))
-                updated_customer_ids << customer.id
-                web_enrich_count += 1
-                puts "  -> 更新: #{updates.keys.join(', ')}"
-              else
-                puts "  -> 更新なし（既存データあり or 取得不可）"
-              end
-            rescue => e
-              Rails.logger.warn("[Pipeline] WebEnricher error for #{company[:url]}: #{e.message}")
-              puts "  -> ERROR (skipping): #{e.message}"
             end
-
-            sleep(0.5)
           end
-          puts "[Pipeline] Web補完 完了: #{web_enrich_count}件更新 / スキップ(URL無) #{skipped_no_url}件 / スキップ(顧客未マッチ) #{skipped_no_customer}件 / スキップ(更新済) #{skipped_already_updated}件"
+
+          Concurrent::Promises.zip(*futures).wait
+          pool.shutdown
+          pool.wait_for_termination
+
+          puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
         end
 
         companies = ContactUrlEnricher.enrich(companies) if detect_contact
@@ -244,6 +237,26 @@ module BrightData
         puts "[Pipeline] ERROR: #{e.message}"
         raise
       end
+    end
+
+    # WebEnricher の取得結果から実際に DB に書き込む updates ハッシュを生成
+    # （並列実行時もスレッドセーフ — 純粋関数）
+    def self.build_web_updates(customer, company, web_data)
+      updates = {}
+      url_reliable = web_data[:matched] == true ||
+                     (web_data[:matched].nil? &&
+                      (web_data[:tel].present? || web_data[:contact_url].present? || web_data[:address].present?))
+      url_is_directory = WebEnricher.directory_url?(company[:url])
+
+      updates[:url]         = company[:url]         if customer.url.blank? && company[:url].present? && url_reliable && !url_is_directory
+      updates[:tel]         = web_data[:tel]        if customer.tel.blank? && web_data[:tel].present?
+      # address: 都道府県始まり かつ 市区町村を含む正規化住所が取得できた場合のみ採用。
+      # 部分住所を完全住所に補完する用途（既存値があっても上書き）。
+      if web_data[:address].present? && web_data[:address].match?(CompanyInfoExtractor::PREF_PATTERN)
+        updates[:address] = web_data[:address]
+      end
+      updates[:contact_url] = web_data[:contact_url] if customer.contact_url.blank? && web_data[:contact_url].present?
+      updates
     end
   end
 end
