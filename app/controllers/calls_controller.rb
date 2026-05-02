@@ -1,7 +1,7 @@
 class CallsController < ApplicationController
   before_action :load_customer
   before_action :load_call, only: [:edit,:update,:show,:destroy]
-  #before_action :authenticate_admin!
+  before_action :authenticate_admin!
 
   def load_customer
     last_call_customer_ids = nil
