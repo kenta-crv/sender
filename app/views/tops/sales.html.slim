@@ -88,7 +88,7 @@ section.jap-notto-section
       .jap-notto-card.card-4
         .card-inner
           .card-icon
-            = image_tag "mainn-app4.png", class: "card-img", alt: "成果"
+            /= image_tag "mainn-app4.png", class: "card-img", alt: "成果"
           p.card-text テレフォンアポイント
           span.card-sub の効果が確実に以前より下がっている
 
@@ -96,26 +96,9 @@ section.jap-notto-section
       .jap-notto-card.card-5
         .card-inner
           .card-icon
-            = image_tag "mainn-app5.png", class: "card-img", alt: "コスト"
+            /= image_tag "mainn-app5.png", class: "card-img", alt: "コスト"
           p.card-text アプローチや商談
           span.card-sub の絶対数自体を伸ばしきれていない
-/section.jap-notto-section
-  .jap-notto-container
-    h2.jap-notto-heading
-      | こんなお悩みはありませんか？
-    .jap-notto-semicircle-wrapper
-      .jap-notto-image-container.jap-notto-image-1
-        = image_tag "mainn-app1.png", class: "jap-notto-image", alt: "Issue 1"
-      .jap-notto-image-container.jap-notto-image-2
-        = image_tag "mainn-app2.png", class: "jap-notto-image", alt: "Issue 2"
-      .jap-notto-image-container.jap-notto-image-3
-        = image_tag "mainn-app3.png", class: "jap-notto-image", alt: "Issue 3"
-      .jap-notto-image-container.jap-notto-image-4
-        = image_tag "mainn-app4.png", class: "jap-notto-image", alt: "Issue 4"
-      .jap-notto-image-container.jap-notto-image-5
-        = image_tag "mainn-app5.png", class: "jap-notto-image", alt: "Issue 5"
-      .jap-notto-center-image
-        = image_tag "transparent.png", class: "jap-notto-center-img", alt: "Center Image"
 section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
  .sp-company
   .sp-company-inner
