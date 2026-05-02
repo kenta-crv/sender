@@ -1,7 +1,7 @@
 class SubmissionsController < ApplicationController
   before_action :authenticate_admin_or_client!
   before_action :set_submission, only: [:show, :edit, :update, :destroy, :manual, :history]
-
+  before_action :authenticate_admin!
   # =========================
   # 一覧
   # =========================

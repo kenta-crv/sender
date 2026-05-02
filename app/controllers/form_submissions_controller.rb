@@ -1,6 +1,6 @@
 class FormSubmissionsController < ApplicationController
   before_action :set_batch, only: [:show, :cancel, :resume, :progress, :destroy]
-
+  before_action :authenticate_admin!
   # GET /form_submissions
 def index
   # -------------------------
