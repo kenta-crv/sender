@@ -88,7 +88,7 @@ section.jap-notto-section
       .jap-notto-card.card-4
         .card-inner
           .card-icon
-            /= image_tag "mainn-app4.png", class: "card-img", alt: "成果"
+            = image_tag "ser-ai4.png", class: "card-img", alt: "成果"
           p.card-text テレフォンアポイント
           span.card-sub の効果が確実に以前より下がっている
 
@@ -96,7 +96,7 @@ section.jap-notto-section
       .jap-notto-card.card-5
         .card-inner
           .card-icon
-            /= image_tag "mainn-app5.png", class: "card-img", alt: "コスト"
+            = image_tag "ser-ai5.png", class: "card-img", alt: "コスト"
           p.card-text アプローチや商談
           span.card-sub の絶対数自体を伸ばしきれていない
 section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
@@ -133,7 +133,7 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
         .col-lg-6
           article.ser-mos-card
             .ser-mos-card-media
-              = image_tag "ser-app1.png", class: "ser-mos-card-img", alt: "Service 1"
+              = image_tag "ser-app0.png", class: "ser-mos-card-img", alt: "Service 1"
             h3.ser-mos-card-title
               | AI自動問い合わせフォーム送信
             p.ser-mos-card-desc
@@ -174,6 +174,9 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
             /button.ser-mos-card-btn
               | 詳しく見る 
               = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
+
+
+
 section.main-moss-section
  .sp-company
   .sp-company-inner
@@ -187,88 +190,109 @@ section.main-moss-section
         = image_tag "main-app5.png", class: "main-moss-img img-fluid", alt: "Feature Image"
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
-          | 成約に直結する「能動的」な商談
+          | AIによる検索エンジンからの最新リスト取得
         p.main-moss-block-desc
-          |  AIによる適切なアプローチの結果、企業側から「話を聞きたい」と返ってきた商談のみを提供するため、成約率が格段に高まります。
+          |  SERP AI技術により、信頼性の高いGoogle検索エンジンのみを活用し、リストの自動生成を行うため、有効で機能しているアプローチリストをし取得できます。
   .container-fluid.main-moss-block
     .row.align-items-center.flex-row-reverse
       .col-lg-6.text-center
         = image_tag "main-app6.png", class: "main-moss-img img-fluid", alt: "Feature Image"
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
-          | テクノロジーによる大量架電の実現
+          | 24時間稼働するAI問い合わせフォーム送信
         p.main-moss-block-desc
-          |  AIテレアポ技術を活用することで、従来の営業代行では不可能だったアプローチ件数を達成し、機会損失を最小限に抑えます。
+          |  AIが24時間稼働し続けて問い合わせフォーム送信を実施することで、毎月営業の効率化と最大化をサポートします。
   .container-fluid.main-moss-block
     .row.align-items-center
       .col-lg-6.text-center
         = image_tag "main-app7.png", class: "main-moss-img img-fluid", alt: "Feature Image"
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
-          | 安心のパッケージ料金モデル
+          | テクノロジーによる大量架電の実現
         p.main-moss-block-desc
-          |  リスト抽出からフォーム営業、AI架電までをパッケージ化。透明性の高い料金体系で、リスクを抑えた営業活動の加速をサポートします。
+          |  AIテレアポ技術を活用することで、従来の営業代行では不可能だったアプローチ件数を達成し、機会損失を最小限に抑えます。
   .container-fluid.main-moss-block
     .row.align-items-center.flex-row-reverse
       .col-lg-6.text-center
         = image_tag "main-cargo3.png", class: "main-moss-img img-fluid", alt: "Feature Image"
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
-          | 日本全国対応
+          | 安心のパッケージ料金モデル
         p.main-moss-block-desc
-          |  営業アプローチ先は東京・名古屋・大阪はもちろんのこと、北海道から沖縄までどこでも対応可能。
-  .container-fluid.main-moss-block
-    .row.align-items-center
-      .col-lg-6.text-center
-        = image_tag "main-app8.png", class: "main-moss-img img-fluid", alt: "Feature Image"
-      .col-lg-6.text-center.main-moss-content
-        h3.main-moss-block-title
-          | 最短１ヶ月で解約OK
-        p.main-moss-block-desc
-          |  ご利用は１ヶ月〜可能となっているので、満足できなければいつでも解約いただけます。（ライトプランの場合）
+          |  リスト抽出からフォーム営業、AI架電までをパッケージ化。透明性の高い料金体系で、リスクを抑えた営業活動の加速をサポートします。
+
+
+
+section.admin-preview-section
+  .sp-solutions
+      .sp-section-header
+        span.en-sub 直感的な管理画面で、営業を科学する
+        h2 Management Console
+        p.desc 複雑なデータも、洗練されたダッシュボードで一目で把握。
+  .container
+    .admin-visual-container
+      / メインのノートPCモックアップ風画像
+      .main-device-wrapper
+        = image_tag "dashboard-capture.png", class: "admin-main-img", alt: "Okurite Dashboard"
+        
+        / 画像に重なる、あるいは周辺に配置する注釈
+        .admin-pointer.p-1 style="top: 40%; left: 10%;"
+          span.label 問い合わせフォーム送信
+          p.detail 全体送信からの送信到達率を確認
+        .admin-pointer.p-2 style="top: 60%; right: 10%;"
+          span.label URLトラッキング
+          p.detail 受信企業がそのURLをチェックしたかどうか把握
+        / 画像に重なる、あるいは周辺に配置する注釈
+        .admin-pointer.p-1 style="top: 60%; left: 10%;"
+          span.label テレアポ稼働
+          p.detail テレアポがどのように進捗しているかをリアルタイム把握
+        .admin-pointer.p-2 style="top: 40%; right: 10%;"
+          span.label 見やすいUIUX
+          p.detail 直感的に把握できる分かりやすく、アクセスしたくなる管理画面設計
 
 
 
 - plans = [ \
   { title: "ライトプラン", sub: "Light Plan", btn: "フォーム送信特化型", btn_class: "btn-gray", desc: "問い合わせフォームからのAI自動営業送信に特化した、手軽に始められるプラン", features: [ \
     ["初期費用","0円"], \
-    ["月額費用","39,800円"], \
-    ["AIリスト制作","込"], \
-    ["自動フォーム営業","20,000件"], \
+    ["月額費用","49,800円"], \
+    ["AIリスト制作","-"], \
+    ["フォーム自動検出","15,000件"], \
+    ["自動フォーム営業","15,000件"], \
     ["AI架電フロント対応","-"], \
     ["テレアポ代行","-"], \
-    ["営業商談提供","-"], \
     ["定期ミーティング","-"] \
-  ], cta: "無料トライアル 〉" }, \
+  ], cta: "トライアル 〉" }, \
   { title: "スタンダードプラン", sub: "Standard Plan", btn: "AIフルパッケージ", btn_class: "btn-blue", desc: "リスト制作・フォーム送信からAIテレアポ実施まで、商談設計をトータルでAIがフルサポートする標準プラン。", features: [ \
     ["初期費用","50,000円"], \
     ["月額費用","198,000円"], \
     ["AIリスト制作","3,000件"], \
+    ["フォーム自動検出","15,000件"], \
     ["自動フォーム営業","20,000件"], \
     ["AI架電フロント対応","込"], \
-    ["テレアポ代行","800call相当"], \
-    ["有効商談提供","10件"], \
+    ["テレアポ代行","1000call相当"], \
     ["定期ミーティング","1回"] \
-  ], cta: "まずは無料見積 〉" }, \
+  ], cta: "資料ダウンロード 〉" }, \
   { title: "エンタープライズプラン", sub: "Enterprise Plan", btn: "最大活用フルパッケージ", btn_class: "btn-green", desc: "AI技術を最大限に活用し、リスト・フォーム営業・架電・商談の全てを最大化したい成長企業向け。", features: [ \
     ["初期費用","50,000円"], \
     ["月額費用","298,000円"], \
     ["AIリスト制作","10,000件"], \
+    ["フォーム自動検出","制限なし"], \
     ["自動フォーム営業","制限なし"], \
     ["AI架電フロント対応","込"], \
-    ["テレアポ代行","1600call相当"], \
-    ["有効商談提供","20件"], \
+    ["テレアポ代行","2000call相当"], \
     ["定期ミーティング","1回"] \
-  ], cta: "まずは無料見積 〉" } \
+  ], cta: "資料ダウンロード 〉" } \
 ]
+
 
 section.pricing-cards-section
  .sp-company
   .sp-company-inner
     .sp-section-header
-      span.en-sub Package
-      h2 AI営業代行パッケージ
-      p.desc Okuriteの獲得手法
+      span.en-sub 料金のご案内
+      h2 Service Price
+      p.desc フォーム送信特化型から営業代行パッケージプランまでご用意
     .row.justify-content-center.g-4
       - plans.each do |plan|
         .col-lg-4.col-md-6
@@ -288,6 +312,193 @@ section.pricing-cards-section
             br
             a.pricing-cards-main-btn class=plan[:btn_class] href="javascript:void(0)" data-target="inquiry"
               = plan[:cta]
+
+
+
+
+
+
+
+section.compare-fixed
+  .sp-solutions
+    .sp-section-header
+      span.en-sub 人間の営業とAI営業代行の違い
+      h2 Human vs AI
+      p.desc 成果につながるプロセスと結果を、定量データで比較
+
+  .compare-fixed__bg
+    = image_tag "ai_vs_human_bg.png", alt: "Human vs AI Background"
+
+  .compare-fixed__overlay
+
+    / ===== 左：人間 =====
+    .compare-fixed__left
+      .compare-group
+        .card
+          strong 非効率なリスト作成
+          span Google検索で手動リスト化。網羅性に限界
+
+        .card
+          strong 手作業によるフォーム営業
+          span 入力・送信を人力対応。工数増大
+
+        .card
+          strong ストレスの高いテレアポ
+          span 同一トークの繰り返しで心理的負荷
+
+        .card
+          strong 労働集約型モデル
+          span 成果を伸ばすには人員増が前提。固定費が膨張
+
+        .card
+          strong データ活用の不完全性
+          span 情報が分散し、改善サイクルが機能しにくい
+
+      .result
+        /.result__title 成果指標（目安）
+
+        .result__item
+          span.label 正社員コスト
+          span.value 350,000円/人
+
+        .result__item
+          span.label テレアポ
+          span.value 40時間
+
+        .result__item
+          span.label フォーム送信
+          span.value 約800時間
+
+
+    / ===== 中央 =====
+    .compare-fixed__center
+      span VS
+
+
+    / ===== 右：AI =====
+    .compare-fixed__right
+      .compare-group
+        .card.card--blue
+          strong AIによるリスト自動生成
+          span 企業情報からSERP AIが高精度抽出
+
+        .card.card--blue
+          strong 24時間フォーム営業自動化
+          span 人手不要で継続的にアプローチを実行
+
+        .card.card--blue
+          strong AIフロント対応（テレアポ代替）
+          span 初期接触・ヒアリングをAIが自動対応
+
+        .card.card--blue
+          strong 圧倒的スケーラビリティ
+          span 人員増なしで数千件規模の営業が可能
+
+        .card.card--blue
+          strong 完全データドリブン運用
+          span 全行動ログをリアルタイム蓄積・分析・改善
+
+      .result.result--blue
+        /.result__title 成果指標（目安）
+
+        .result__item
+          span.label 月額コスト
+          span.value 198,000円
+
+        .result__item
+          span.label テレアポ数
+          span.value 月間1,000コール
+
+        .result__item
+          span.label フォーム送信
+          span.value 月間20,000
+
+
+
+
+
+
+
+/ app/views/partials/_service_compare.html.slim
+
+section.service-compare
+  .sp-solutions
+      .sp-section-header
+        span.en-sub AI営業代行の成果を、徹底比較。
+        h2 Okurite vs Other
+        p.desc 成果につながる仕組み・対応力・データ活用力のすべてが、Okuriteは次のレベルへ。
+  .sc
+
+    / ===== データ定義 =====
+    - labels = [ \
+      ["アプローチ数"], \
+      ["テレアポコール"], \
+      ["料金"], \
+      ["データ取得"], \
+      ["網羅性"] \
+    ]
+
+    - okurite = [ \
+      ["20,000件以上の圧倒的な件数", "にアプローチできるので結果が出やすい"], \
+      ["独自のダッシュボードで", "リアルタイムに可視化"], \
+      ["アプローチコスト10円以下と", "コストパフォーマンスに優れる"], \
+      ["独自のダッシュボードで", "リアルタイムに可視化"], \
+      ["フォーム営業からテレアポ迄", "様々な角度でアプローチできる"] \
+    ]
+
+    - a_company = [ \
+      "1時間25コールと属人型なので件数が少ない", \
+      "架電数を増やすとその分高額になる", \
+      "成果報酬でも1単価30,000円から", \
+      "レポートとして提出されてもリアルタイムではない", \
+      "テレアポのみの単一的アプローチ" \
+    ]
+
+    - b_company = [ \
+      "メール送信サービスは新規アプローチに非常に弱い", \
+      "ー", \
+      "単価は安いが新規営業に向かない", \
+      "送信履歴はリアルタイムに確認できる", \
+      "メール送信のみのため結果が出にくい" \
+    ]
+
+    / ===== TABLE =====
+    .sc__table
+
+      / ラベル列
+      .sc__col.sc__col--labels
+        .sc__col-header
+        - labels.each do |item|
+          .sc__cell.sc__cell--label
+            strong = item[0]
+            span = item[1]
+
+      / Okurite
+      .sc__col.sc__col--main
+        .sc__col-header Okurite
+        - okurite.each do |item|
+          .sc__cell.sc__cell--main
+            span.circle
+            div
+              strong = item[0]
+              span = item[1]
+
+      / A社
+      .sc__col
+        .sc__col-header A社（テレアポ代行）
+        - a_company.each do |text|
+          .sc__cell
+            p = text
+
+      / B社
+      .sc__col
+        .sc__col-header B社（メール送信サービス）
+        - b_company.each do |text|
+          .sc__cell
+            p = text
+
+
+
 
 .sp-content-container
     .sp-solutions

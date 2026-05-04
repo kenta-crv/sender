@@ -1,38 +1,49 @@
-.container.mt-4
-  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
-    | 手動送信リスト（URL未設定）
-  = link_to '入力内容を表示', submission_path(@submission), target: '_blank', class: 'btn btn-primary'
-  br/
-  br
+.sc-detect.container
+  h2.sc-detect__title 手動送信リスト（URL未設定）
+  
+  .mb-4
+    / 定義済みの .sc-detect__btn--primary を適用
+    = link_to submission_path(@submission), target: '_blank', class: 'sc-detect__btn sc-detect__btn--primary' do
+      i.fas.fa-external-link-alt.me-1
+      | 入力内容を表示
+
   - if alert
-    .alert.alert-warning = alert
+    .sc-detect__alert.sc-detect__alert--info.mb-4
+      div
+        i.fas.fa-exclamation-triangle.me-2
+        = alert
 
-  table.table.table-bordered.table-hover.table-sm
-    thead
-      tr
-        th 顧客ID
-        th 会社名
-        th ステータス
-        th 送信日時
-        th 詳細
-    tbody
-      - @display_rows.each_with_index do |row, index|
-        - customer = row[:customer]
-        - call = row[:latest_call]
-        - status_text = row[:status_text]
+  .sc-detect__table-wrapper
+    table.sc-detect__table
+      thead
+        tr
+          th 顧客ID
+          th 会社名
+          th ステータス
+          th 送信日時
+          th 操作
+      tbody
+        - @display_rows.each_with_index do |row, index|
+          - customer = row[:customer]
+          - call = row[:latest_call]
+          - status_text = row[:status_text]
 
-        tr.table-warning
-          td = customer.id
-          td = customer.company
-          td
-            span.btn.btn-sm.btn-danger
-              = status_text
-          td 
-            - if call.present?
-              = call.created_at.strftime('%Y/%m/%d %H:%M:%S')
+          / 注意が必要な行として微かな警告色を背景に適用
+          tr style="background: rgba(245, 158, 11, 0.05);"
+            td = customer.id
+            td.fw-bold = customer.company
+            td
+              / 文字色が赤くなるようにスタイルを固定
+              span.sc-detect__badge.sc-detect__badge--danger style="color: #ef4444 !important;"
+                = status_text
+            td 
+              - if call.present?
+                = call.created_at.strftime('%y/%m/%d %H:%M')
 
-          td
-            = link_to '詳細', customer_path(customer, \
-                all_ids: @all_target_ids.join(','), \
-                current_index: index), \
-                class: 'btn btn-primary btn-sm'
+            td
+              / 詳細ボタン（定義済みの primary スタイル）
+              = link_to customer_path(customer, \
+                  all_ids: @all_target_ids.join(','), \
+                  current_index: index), \
+                  class: 'sc-detect__btn sc-detect__btn--primary' do
+                | 詳細

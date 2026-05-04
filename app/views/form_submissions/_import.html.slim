@@ -1,14 +1,24 @@
-.container.mt-4
-  .card.border-primary.mb-4
-    .card-header.bg-primary.text-white
-      h5.mb-0 顧客リスト一括インポート
-    .card-body
+.sc-detect.container
+  / インポートセクション
+  h2.sc-detect__title 顧客データ管理
+
+  .sc-detect__card
+    .sc-detect__card-header
+      h5 顧客リスト一括インポート
+    
+    .sc-detect__card-body
       = form_tag import_customers_form_submissions_path, multipart: true do
         .row.align-items-end
-          .col-md-6
-            label.form-label CSVファイルを選択 (ヘッダー: 会社名, 電話番号, HP URL, 問い合わせURL, メールアドレス, 住所, 業種, 職種, 携帯番号)
-            = file_field_tag :file, class: 'form-control', accept: '.csv'
-          .col-md-3
-            = submit_tag 'インポート実行', class: 'btn btn-primary w-100'
-      .mt-2.small.text-muted
-        | ※ 同名の会社が存在する場合は情報を上書き（更新）します。
+          .col-md-8
+            label.sc-detect__card-body.p-0.mb-2 
+              | CSVファイルを選択
+              span.ms-2.small(style="opacity: 0.6;") (ヘッダー: 会社名, 電話番号, HP URL, 問い合わせURL, メールアドレス, 住所, 業種, 職種, 携帯番号)
+            = file_field_tag :file, class: 'sc-detect__file-input', accept: '.csv'
+          
+          .col-md-4
+            = submit_tag 'インポート実行', class: 'sc-detect__btn sc-detect__btn--primary w-100'
+      
+      .sc-detect__alert.sc-detect__alert--secondary.mt-3
+        div
+          i.fas.fa-info-circle.me-2
+          | 同名の会社が存在する場合は情報を上書き（更新）します。

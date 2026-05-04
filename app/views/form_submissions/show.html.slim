@@ -1,128 +1,136 @@
-.container.mt-4
-  h2
-    | バッチ詳細 ##{@batch.id}
-  / --- 進捗バー ---
+.sc-detect.container
+  h2.sc-detect__title バッチ詳細 ##{@batch.id}
+
+  / --- 進捗ボード ---
   #batch-progress data-batch-id=@batch.id data-status=@batch.status
-    .card.mb-4
-      .card-body
-        .row
+    .sc-detect__card.mb-4
+      .sc-detect__card-body
+        .row.text-center.mb-3
           .col-md-3
-            strong ステータス:
-            span.ml-2 id="batch-status"
+            .sc-detect__label ステータス
+            span id="batch-status"
               - case @batch.status
               - when 'pending'
-                span.badge.badge-secondary 待機中
+                span.sc-detect__badge.sc-detect__badge--secondary 待機中
               - when 'processing'
-                span.badge.badge-primary 処理中
+                span.sc-detect__badge.sc-detect__badge--info 処理中
               - when 'completed'
-                span.badge.badge-success 完了
+                span.sc-detect__badge.sc-detect__badge--success 完了
               - when 'cancelled'
-                span.badge.badge-warning キャンセル
+                span.sc-detect__badge.sc-detect__badge--warning キャンセル
           .col-md-2
-            strong 合計:
-            span.ml-1 id="batch-total" = @batch.total_count
+            .sc-detect__label 合計
+            span.fw-bold id="batch-total" = @batch.total_count
           .col-md-2
-            strong 成功:
-            span.ml-1.text-success id="batch-success" = @batch.success_count
+            .sc-detect__label 成功
+            span.text-success.fw-bold id="batch-success" = @batch.success_count
           .col-md-2
-            strong 失敗:
-            span.ml-1.text-danger id="batch-failure" = @batch.failure_count
+            .sc-detect__label 失敗
+            span.text-danger.fw-bold id="batch-failure" = @batch.failure_count
           .col-md-3
-            strong 処理済:
-            span.ml-1 id="batch-processed" = @batch.processed_count
+            .sc-detect__label 処理済
+            span.fw-bold id="batch-processed" = @batch.processed_count
 
-        .progress.mt-3 style="height: 25px;"
-          - percent = @batch.total_count.to_i > 0 ? ((@batch.processed_count.to_f / @batch.total_count) * 100).round(1) : 0
-          .progress-bar.progress-bar-striped role="progressbar" style="width: #{percent}%" id="batch-progress-bar"
-            span id="batch-percent" = "#{percent}%"
+        / 進捗バー（ネオンアニメーション適用）
+        - percent = @batch.total_count.to_i > 0 ? ((@batch.processed_count.to_f / @batch.total_count) * 100).round(1) : 0
+        span.sc-detect__progress-label id="batch-percent" = "#{percent}%"
+        .sc-detect__progress
+          .sc-detect__progress-bar style="width: #{percent}%" id="batch-progress-bar"
 
-        .mt-3
+        .mt-4.small.d-flex.gap-4
           - if @batch.started_at
-            span.mr-3
-              strong 開始:
+            span
+              strong.me-1 style="color: #7dd3fc;" 開始:
               = @batch.started_at.strftime('%Y/%m/%d %H:%M:%S')
           - if @batch.completed_at
             span
-              strong 完了:
+              strong.me-1 style="color: #7dd3fc;" 完了:
               = @batch.completed_at.strftime('%Y/%m/%d %H:%M:%S')
 
-        - if @batch.status.in?(['pending', 'processing'])
-          .mt-3
-            = link_to 'キャンセル', cancel_form_submission_path(@batch), method: :patch, class: 'btn btn-danger', data: { confirm: 'バッチ送信をキャンセルしますか？' }
+        .d-flex.gap-2.mt-4
+          - if @batch.status.in?(['pending', 'processing'])
+            = link_to cancel_form_submission_path(@batch), method: :patch, class: 'sc-detect__badge sc-detect__badge--danger', style: 'text-decoration: none; padding: 10px 20px;', data: { confirm: 'バッチ送信をキャンセルしますか？' } do
+              i.fas.fa-stop-circle.me-1
+              | キャンセル
 
-        - unless @batch.status == 'processing'
-          - unprocessed_count = @batch.unprocessed_customer_ids.size
-          - if unprocessed_count > 0
-            .mt-3
-              = link_to "再開（未処理 #{unprocessed_count}件）", resume_form_submission_path(@batch), method: :post, class: 'btn btn-info', data: { confirm: "未処理の#{unprocessed_count}件を再開しますか？" }
+          - unless @batch.status == 'processing'
+            - unprocessed_count = @batch.unprocessed_customer_ids.size
+            - if unprocessed_count > 0
+              = link_to resume_form_submission_path(@batch), method: :post, class: 'sc-detect__btn sc-detect__btn--warning', data: { confirm: "未処理の#{unprocessed_count}件を再開しますか？" } do
+                i.fas.fa-play.me-1
+                | 再開（未処理 #{unprocessed_count}件）
 
   / --- Submission情報 ---
   - if @batch.submission
-    .card.mb-4
-      .card-header
+    .sc-detect__card.mb-4
+      .sc-detect__card-header
         h5
-          | 送信内容:
-          = @batch.submission.headline
-      .card-body
+          i.fas.fa-paper-plane.me-2
+          | 送信内容: #{@batch.submission.headline}
+      .sc-detect__card-body
         .row
-          .col-md-4
-            strong 会社名:
-            span.ml-1 = @batch.submission.company
-          .col-md-4
-            strong 担当者:
-            span.ml-1 = @batch.submission.person
-          .col-md-4
-            strong メール:
-            span.ml-1 = @batch.submission.email
-        .row.mt-2
-          .col-md-4
-            strong 電話:
-            span.ml-1 = @batch.submission.tel
-          .col-md-4
-            strong 住所:
-            span.ml-1 = @batch.submission.address
-          .col-md-4
-            = link_to '送信内容詳細', submission_path(@batch.submission), class: 'btn btn-sm btn-outline-info'
+          .col-md-4.mb-2
+            strong.me-1 style="color: #38bdf8;" 会社名:
+            = @batch.submission.company
+          .col-md-4.mb-2
+            strong.me-1 style="color: #38bdf8;" 担当者:
+            = @batch.submission.person
+          .col-md-4.mb-2
+            strong.me-1 style="color: #38bdf8;" メール:
+            = @batch.submission.email
+          .col-md-12.mt-2
+            = link_to submission_path(@batch.submission), class: 'sc-detect__btn sc-detect__btn--primary' do
+              i.fas.fa-search.me-1
+              | 送信内容詳細を表示
 
   / --- 送信結果一覧 ---
-  h4.mt-4 送信結果
-  table.table.table-bordered.table-hover.table-sm
-    thead
-      tr
-        th 顧客ID
-        th 会社名
-        th ステータス
-        th コメント
-        th 送信日時
-    tbody
-      - @results.each do |call|
-        - row_class = %w[自動送信成功 送信成功].include?(call.status) ? 'table-success' : call.status == 'CAPTCHA NG' ? 'table-warning' : %w[自動送信失敗 送信失敗].include?(call.status) ? 'table-danger' : ''
-        tr class=row_class
-          td = call.customer_id
-          td = @customers_by_id[call.customer_id]&.company
-          td = call.status
-          td = call.comment
-          td = call.created_at.strftime('%Y/%m/%d %H:%M:%S')
+  h2.sc-detect__title style="font-size: 20px;" 送信結果
+  .sc-detect__table-wrapper.mb-5
+    table.sc-detect__table
+      thead
+        tr
+          th 顧客ID
+          th 会社名
+          th ステータス
+          th コメント
+          th 送信日時
+      tbody
+        - @results.each do |call|
+          - is_success = %w[自動送信成功 送信成功].include?(call.status)
+          - is_warning = call.status == 'CAPTCHA NG'
+          - is_danger = %w[自動送信失敗 送信失敗].include?(call.status)
+          
+          tr style=(is_danger ? "background: rgba(239, 68, 68, 0.05);" : is_warning ? "background: rgba(245, 158, 11, 0.05);" : "")
+            td = call.customer_id
+            td.fw-bold = @customers_by_id[call.customer_id]&.company
+            td
+              - b_class = is_success ? 'success' : is_warning ? 'warning' : is_danger ? 'danger' : 'secondary'
+              span class="sc-detect__badge sc-detect__badge--#{b_class}" = call.status
+            td = call.comment
+            td = call.created_at.strftime('%Y/%m/%d %H:%M')
 
   / --- エラーログ ---
   - errors = @batch.parsed_error_log
   - if errors.any?
-    h4.mt-4.text-danger エラーログ
-    table.table.table-bordered.table-sm
-      thead
-        tr
-          th 顧客ID
-          th エラー内容
-          th 発生日時
-      tbody
-        - errors.each do |err|
+    h2.sc-detect__title style="font-size: 20px; color: #ef4444;" エラーログ
+    .sc-detect__table-wrapper.mb-5
+      table.sc-detect__table
+        thead
           tr
-            td = err['customer_id']
-            td = err['message']
-            td = err['at']
+            th 顧客ID
+            th エラー内容
+            th 発生日時
+        tbody
+          - errors.each do |err|
+            tr
+              td = err['customer_id']
+              td.text-danger = err['message']
+              td = err['at']
 
-  .mt-4
-    = link_to '一覧に戻る', form_submissions_path, class: 'btn btn-secondary'
+  .mt-4.mb-5
+    = link_to form_submissions_path, class: 'sc-detect__btn sc-detect__btn--primary', style: 'text-decoration: none;' do
+      i.fas.fa-arrow-left.me-1
+      | 一覧に戻る
 
 - if @batch.status.in?(['pending', 'processing'])
   javascript:
@@ -135,17 +143,12 @@
       function startPolling() {
         if (pollingActive) return;
         pollingActive = true;
-        errorCount = 0;
-
         var interval = setInterval(function() {
           var el = document.getElementById('batch-progress');
           if (!el) { clearInterval(interval); pollingActive = false; return; }
 
           fetch('/form_submissions/' + batchId + '/progress')
-            .then(function(res) {
-              if (!res.ok) throw new Error('HTTP ' + res.status);
-              return res.json();
-            })
+            .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
             .then(function(data) {
               errorCount = 0;
               document.getElementById('batch-total').textContent = data.total_count;
@@ -157,41 +160,26 @@
 
               var statusEl = document.getElementById('batch-status');
               if (statusEl) {
-                if (data.status === 'processing') {
-                  statusEl.innerHTML = '<span class="badge badge-primary">処理中</span>';
-                } else if (data.status === 'pending') {
-                  statusEl.innerHTML = '<span class="badge badge-secondary">待機中</span>';
-                }
+                var badge = '';
+                if (data.status === 'processing') badge = '<span class="sc-detect__badge sc-detect__badge--info">処理中</span>';
+                else if (data.status === 'pending') badge = '<span class="sc-detect__badge sc-detect__badge--secondary">待機中</span>';
+                statusEl.innerHTML = badge;
               }
 
               if (data.status === 'completed' || data.status === 'cancelled') {
                 clearInterval(interval);
-                pollingActive = false;
                 location.reload();
               }
             })
             .catch(function(err) {
-              console.error('Progress fetch error:', err);
               errorCount++;
               if (errorCount >= maxErrors) {
                 clearInterval(interval);
-                pollingActive = false;
                 var statusEl = document.getElementById('batch-status');
-                if (statusEl) {
-                  statusEl.innerHTML = '<span class="badge badge-danger">通信エラー</span> <a href="javascript:location.reload()" class="btn btn-sm btn-outline-primary ml-2">再読み込み</a>';
-                }
+                if (statusEl) statusEl.innerHTML = '<span class="sc-detect__badge sc-detect__badge--danger">通信エラー</span>';
               }
             });
         }, 3000);
       }
-
       startPolling();
-
-      document.addEventListener('turbolinks:load', function() {
-        pollingActive = false;
-        var el = document.getElementById('batch-progress');
-        if (el && (el.dataset.status === 'pending' || el.dataset.status === 'processing')) {
-          startPolling();
-        }
-      });
     })();

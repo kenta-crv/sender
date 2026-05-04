@@ -17,9 +17,9 @@ html lang="ja"
             = image_tag "logo2.png", class: "main-logo", alt: "Home"
 
     .floating-contact
-      a.contact-box href="javascript:void(0)" data-target="inquiry"
+      = link_to '/contracts/new', class: 'contact-box', target: '_blank', rel: 'noopener' do
         .icon-container
           = image_tag "arrow-down.png", class: "main-icon", alt: "Inquiry"
-        .text-container
-          span CONTACT
-          small お問い合わせ
+        .text-container style="display: flex; flex-direction: column; justify-content: center;"
+          span style="line-height: 1; margin-bottom: 2px;" CONTACT
+          small style="line-height: 1;" お問い合わせ

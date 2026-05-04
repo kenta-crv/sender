@@ -1,99 +1,100 @@
-.container.mt-4
-  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
-    | 送信履歴
-  table.table.table-bordered.table-hover
-    thead
-      tr
-        th ID
-        th ステータス
-        th 送信元情報
-        th 合計
-        th 成功
-        th 失敗
-        th 送信率
-        th 進捗
-        th 開始日時
-        th 完了日時
-        th 操作
-    tbody
-      - @batches.each do |batch|
+.sc-detect.container
+  / 送信履歴セクション
+  h2.sc-detect__title 送信履歴
+
+  .sc-detect__table-wrapper.mb-5
+    table.sc-detect__table
+      thead
         tr
-          td = batch.id
-          td
-            - case batch.status
-            - when 'pending'
-              span.btn.btn-sm.btn-secondary pending
-            - when 'processing'
-              span.btn.btn-sm.btn-primary processing
-            - when 'completed'
-              span.btn.btn-sm.btn-success completed
-            - when 'cancelled'
-              span.btn.btn-sm.btn-warning cancelled
+          th ID
+          th 状態
+          th 送信元情報
+          th 合計
+          th 成功
+          th 失敗
+          th 送信率
+          th 進捗状況
+          th 開始日時
+          th 操作
+      tbody
+        - @batches.each do |batch|
+          tr
+            td = batch.id
+            td
+              - status_class = case batch.status when 'pending' then 'secondary' when 'processing' then 'info' when 'completed' then 'success' when 'cancelled' then 'warning' end
+              span class="sc-detect__badge sc-detect__badge--#{status_class}" = batch.status
 
-          td
-            - if batch.submission.present?
-              = batch.submission.title
-            - else
-              span.text-muted test
+            td
+              - if batch.submission.present?
+                = batch.submission.title
+              - else
+                span.text-muted -
 
-          td = batch.total_count
-          td = batch.success_count
-          td = batch.failure_count
-          td 
-             - rate = batch.total_count.to_i > 0 ? ((batch.success_count.to_f / batch.total_count) * 100).round(1) : 0
-             = "#{rate}%"
-          td
-            - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round(1) : 0
-            .progress
-              .progress-bar role="progressbar" style="width: #{percent}%"
-                = "#{percent}%"
+            td = batch.total_count
+            td.text-success = batch.success_count
+            td.text-danger = batch.failure_count
+            td 
+               - rate = batch.total_count.to_i > 0 ? ((batch.success_count.to_f / batch.total_count) * 100).round(1) : 0
+               | #{rate}%
+            td style="min-width: 150px;"
+              - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round(1) : 0
+              span.sc-detect__progress-label = "#{percent}%"
+              .sc-detect__progress
+                .sc-detect__progress-bar style="width: #{percent}%"
 
-          td = batch.started_at&.strftime('%Y/%m/%d %H:%M')
-          td = batch.completed_at&.strftime('%Y/%m/%d %H:%M')
+            td = batch.started_at&.strftime('%m/%d %H:%M')
 
-          td
-            = link_to 'Detail', form_submission_path(batch), class: 'btn btn-sm btn-info mr-1'
-            = link_to 'Delete',
-              form_submission_path(batch),
-              method: :delete,
-              data: { confirm: 'このバッチを削除してもよろしいですか？' },
-              class: 'btn btn-sm btn-danger'
+            td
+              .d-flex.gap-2
+                / 詳細ボタン（定義済みの primary スタイル）
+                = link_to form_submission_path(batch), class: 'sc-detect__btn sc-detect__btn--primary' do
+                  i.fas.fa-file-alt
+                  | Detail
+                
+                / 削除ボタン：リンクのデフォルト色を打ち消すため !important レベルで色を固定
+                = link_to form_submission_path(batch), method: :delete, data: { confirm: 'この送信バッチ履歴を完全に削除しますか？' }, class: 'sc-detect__badge sc-detect__badge--danger', style: 'color: #ef4444 !important; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; min-width: 80px;' do
+                  i.fas.fa-trash-alt.me-1
+                  | Delete
 
-  = paginate @batches
+    .mt-3
+      = paginate @batches
 
-.container.mt-4
-  h2.border-bottom.pb-2.mb-4.fw-semibold.text-default
-    | Submission別送信件数
+  / 統計セクション
+  h2.sc-detect__title Submission別送信統計
 
-  table.table.table-bordered.table-hover
-    thead
-      tr
-        th Submission
-        th 送信件数合計
-        th 成功
-        th 失敗
-        th 成功率
-        th 最終送信日時
-        th ✔︎
-        th 詳細
-    tbody
-      - @submission_stats.each do |stat|
-        - total = stat[:total_sent]
-        - success = stat[:success_count]
-        - failure = stat[:failure_count]
-        - rate = total.positive? ? ((success.to_f / total) * 100).round(1) : 0
-        - submission = stat[:submission]
-
+  .sc-detect__table-wrapper
+    table.sc-detect__table
+      thead
         tr
-          td = stat[:submission].title
-          td = total
-          td.text-success = success
-          td.text-danger = failure
-          td = "#{rate}%"
-          td = stat[:last_sent_at]&.strftime('%Y/%m/%d %H:%M') || '-'
-          td
-            = form_with url: update_manual_form_submission_path(submission), method: :patch, local: true do |f|
-              = f.check_box :manual, { checked: submission.manual, onchange: 'this.form.submit()' }
-          td 
-            = link_to '履歴', history_submission_path(stat[:submission]),
-              class: 'btn btn-sm btn-primary'
+          th Submission
+          th 送信合計
+          th 成功
+          th 失敗
+          th 成功率
+          th 最終送信
+          th 手動設定
+          th 操作
+      tbody
+        - @submission_stats.each do |stat|
+          - total = stat[:total_sent]
+          - success = stat[:success_count]
+          - failure = stat[:failure_count]
+          - rate = total.positive? ? ((success.to_f / total) * 100).round(1) : 0
+          - submission = stat[:submission]
+
+          tr
+            td.fw-bold = submission.title
+            td = total
+            td.text-success = success
+            td.text-danger = failure
+            td = "#{rate}%"
+            td = stat[:last_sent_at]&.strftime('%m/%d %H:%M') || '-'
+            td
+              .sc-detect__check-group
+                = form_with url: update_manual_form_submission_path(submission), method: :patch, local: true do |f|
+                  = f.check_box :manual, checked: submission.manual, onchange: 'this.form.submit()', id: "manual_#{submission.id}"
+                  label(for="manual_#{submission.id}") ON
+            td 
+              = link_to history_submission_path(submission), class: 'sc-detect__btn sc-detect__btn--primary' do
+                i.fas.fa-history
+                | 履歴

@@ -1,54 +1,56 @@
 = form_for @submission do |f|
   - if @submission.errors.any?
-    .alert.alert-danger
-      ul.mb-0
+    .sc-detect__alert.sc-detect__alert--secondary.mb-4
+      ul.mb-0 style="list-style: none; padding: 0;"
         - @submission.errors.full_messages.each do |msg|
-          li = msg
+          li 
+            i.fas.fa-exclamation-circle.me-2 style="color: #ef4444;"
+            = msg
 
-  .form-group.mb-3
-    = f.label :headline, '見出し'
-    = f.text_field :headline, class: 'form-control'
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 見出し
+    = f.text_field :headline, class: 'sc-detect__input'
+  
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 会社名
+    = f.text_field :company, class: 'sc-detect__input'
 
-  .form-group.mb-3
-    = f.label :company, '会社名'
-    = f.text_field :company, class: 'form-control'
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 担当者名
+    = f.text_field :person, class: 'sc-detect__input'
 
-  .form-group.mb-3
-    = f.label :person, '担当者名'
-    = f.text_field :person, class: 'form-control'
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 担当者名カナ
+    = f.text_field :person_kana, class: 'sc-detect__input'
 
-  .form-group.mb-3
-    = f.label :person_kana, '担当者名カナ'
-    = f.text_field :person_kana, class: 'form-control'
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 電話番号
+    = f.text_field :tel, class: 'sc-detect__input'
 
-  .form-group.mb-3
-    = f.label :tel, '電話番号'
-    = f.text_field :tel, class: 'form-control'
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 FAX
+    = f.text_field :fax, class: 'sc-detect__input'
 
-  .form-group.mb-3
-    = f.label :fax, 'FAX'
-    = f.text_field :fax, class: 'form-control'
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 住所
+    = f.text_field :address, class: 'sc-detect__input'
 
-  .form-group.mb-3
-    = f.label :address, '住所'
-    = f.text_field :address, class: 'form-control'
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 メールアドレス
+    = f.text_field :email, class: 'sc-detect__input'
 
-  .form-group.mb-3
-    = f.label :email, 'メールアドレス'
-    = f.text_field :email, class: 'form-control'
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 URL
+    = f.text_field :url, class: 'sc-detect__input'
 
-  .form-group.mb-3
-    = f.label :url, 'URL'
-    = f.text_field :url, class: 'form-control'
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 お問い合わせ件名
+    = f.text_field :title, class: 'sc-detect__input'
 
-  .form-group.mb-3
-    = f.label :title, 'お問い合わせ件名'
-    = f.text_field :title, class: 'form-control'
+  .mb-4
+    label.sc-detect__card-body.p-0.mb-2 お問い合わせ内容
+    = f.text_area :content, class: 'sc-detect__input', rows: 10, style: 'height: auto;'
 
-  .form-group.mb-3
-    = f.label :content, 'お問い合わせ内容'
-    = f.text_area :content, class: 'form-control', rows: 10
-
-  .mt-3
-    = f.submit class: 'btn btn-primary'
-    = link_to 'キャンセル', submissions_path, class: 'btn btn-secondary ml-2'
+  .mt-5.d-flex.gap-3
+    = f.submit '保存する', class: 'sc-detect__btn sc-detect__btn--warning'
+    = link_to 'キャンセル', submissions_path, class: 'sc-detect__btn sc-detect__btn--primary', style: 'text-decoration: none;'

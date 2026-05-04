@@ -1,0 +1,56 @@
+.container
+  h1.mb-4 契約詳細
+
+  .card.shadow-sm
+    .card-body
+
+      table.table
+        tr
+          th 会社名
+          td = @contract.company
+
+        tr
+          th 問い合わせ元
+          td = @contract.origin
+
+        tr
+          th 担当者
+          td = @contract.name
+
+        tr
+          th 電話番号
+          td = @contract.tel
+
+        tr
+          th メール
+          td = @contract.email
+
+        tr
+          th 所在地
+          td = @contract.address
+
+        tr
+          th URL
+          td
+            - if @contract.url.present?
+              = link_to @contract.url, @contract.url, target: "_blank"
+
+        tr
+          th 導入時期
+          td = @contract.period
+
+        tr
+          th 備考
+          td = @contract.message
+
+        tr
+          th 作成日
+          td.text-muted = @contract.created_at.strftime("%Y-%m-%d")
+
+    .card-footer.text-end
+      = link_to "編集", edit_contract_path(@contract), class: "btn btn-outline-success"
+      = link_to "削除", contract_path(@contract),
+        method: :delete,
+        data: { confirm: "本当に削除しますか？" },
+        class: "btn btn-outline-danger ms-2"
+      = link_to "一覧へ", contracts_path, class: "btn btn-secondary ms-2"

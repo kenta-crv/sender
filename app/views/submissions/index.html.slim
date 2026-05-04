@@ -1,29 +1,46 @@
-.container.mt-4
-  h2 送信内容管理
+.sc-detect.container
+  h2.sc-detect__title 送信内容管理
 
-  .mb-3
-    = link_to '新規作成', new_submission_path, class: 'btn btn-primary'
+  .mb-4
+    / 定義済みの .sc-detect__btn--warning を適用
+    = link_to new_submission_path, class: 'sc-detect__btn sc-detect__btn--warning' do
+      i.fas.fa-plus
+      |新規作成
 
-  table.table.table-bordered.table-hover
-    thead
-      tr
-        th ID
-        th 見出し
-        th 会社名
-        th 担当者
-        th メール
-        th 電話
-        th 操作
-    tbody
-      - @submissions.each do |sub|
+  .sc-detect__table-wrapper
+    table.sc-detect__table
+      thead
         tr
-          td = sub.id
-          td = sub.headline
-          td = sub.company
-          td = sub.person
-          td = sub.email
-          td = sub.tel
-          td
-            = link_to '詳細', submission_path(sub), class: 'btn btn-sm btn-info mr-1'
-            = link_to '編集', edit_submission_path(sub), class: 'btn btn-sm btn-warning mr-1'
-            = link_to '削除', submission_path(sub), method: :delete, class: 'btn btn-sm btn-danger', data: { confirm: '削除しますか？' }
+          th ID
+          th 見出し
+          th 会社名
+          th 担当者
+          th メール
+          th 電話
+          th 操作
+      tbody
+        - @submissions.each do |sub|
+          tr
+            td = sub.id
+            td = sub.headline
+            td = sub.company
+            td = sub.person
+            td = sub.email
+            td = sub.tel
+            td
+              .d-flex.gap-2
+                / 詳細・編集は定義済みの primary スタイル
+                = link_to submission_path(sub), class: 'sc-detect__btn sc-detect__btn--primary' do
+                  | 詳細
+                
+                = link_to edit_submission_path(sub), class: 'sc-detect__btn sc-detect__btn--primary' do
+                  | 編集
+                
+                / 削除は赤色のバッジスタイルを適用して文字色を固定
+                = link_to submission_path(sub), 
+                          method: :delete, 
+                          class: 'sc-detect__badge sc-detect__badge--danger', 
+                          style: 'color: #ef4444 !important; text-decoration: none; padding: 6px 12px; display: inline-flex; align-items: center;',
+                          data: { confirm: 'この送信内容を削除しますか？' } do
+                  i.fas.fa-trash-alt.me-1
+                  | 削除

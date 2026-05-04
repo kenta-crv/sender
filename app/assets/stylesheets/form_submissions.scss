@@ -1,0 +1,424 @@
+// Place all the styles related to the submissions controller here.
+// They will automatically be included in application.css.
+// You can use Sass (SCSS) here: http://sass-lang.com/
+
+/* ========================================
+   FORM SUBMISSIONS / SEARCH (DARK & NEON)
+======================================== */
+/* ========================================
+   FORM DETECTION SECTION (DARK & NEON)
+======================================== */
+.sc-detect {
+  &.container {
+    max-width: 1200px;
+    margin: 40px auto;
+  }
+
+  /* タイトル */
+  .sc-detect__title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+    padding-bottom: 15px;
+    margin-bottom: 30px;
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+  }
+
+  /* カードデザイン（ガラス質感） */
+  .sc-detect__card {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 16px;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    margin-bottom: 30px;
+    overflow: hidden;
+  }
+
+  .sc-detect__card-header {
+    background: rgba(56, 189, 248, 0.1);
+    padding: 15px 25px;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+
+    h5 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #38bdf8;
+    }
+  }
+
+  .sc-detect__card-body {
+    padding: 25px;
+    color: #e5e7eb;
+
+    p {
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 10px;
+      opacity: 0.9;
+    }
+
+    strong {
+      color: #38bdf8;
+      font-size: 1.1em;
+      margin: 0 4px;
+    }
+  }
+
+  /* テーブルデザイン */
+  .sc-detect__table-wrapper {
+    background: rgba(2, 6, 23, 0.4);
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    margin: 20px 0;
+    max-height: 400px;
+    overflow-y: auto;
+
+    /* スクロールバーのカスタマイズ */
+    &::-webkit-scrollbar { width: 8px; }
+    &::-webkit-scrollbar-track { background: rgba(2, 6, 23, 0.2); }
+    &::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
+  }
+
+  .sc-detect__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th {
+      background: rgba(15, 23, 42, 0.9);
+      color: #7dd3fc;
+      font-weight: 600;
+      text-align: left;
+      padding: 12px 15px;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    td {
+      padding: 10px 15px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+      color: rgba(229, 231, 235, 0.8);
+    }
+
+    tr:hover td {
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    a {
+      color: #38bdf8;
+      text-decoration: none;
+      &:hover { text-decoration: underline; }
+    }
+  }
+
+  /* カスタムチェックボックス（一括選択・各行） */
+  .sc-detect__check-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 1px solid #38bdf8;
+      border-radius: 4px;
+      background: rgba(2, 6, 23, 0.8);
+      position: relative;
+      cursor: pointer;
+
+      &:checked {
+        background: #38bdf8;
+        &::after {
+          content: "✔";
+          position: absolute;
+          color: #01040a;
+          font-size: 12px;
+          left: 3px;
+          top: -1px;
+        }
+      }
+    }
+
+    label {
+      font-size: 14px;
+      color: #e5e7eb;
+      cursor: pointer;
+    }
+  }
+
+  /* ボタン */
+  .sc-detect__btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    &--warning {
+      background: #38bdf8;
+      color: #01040a;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+      &:hover {
+        background: #ffffff;
+        box-shadow: 0 0 25px rgba(56, 189, 248, 0.6);
+        transform: translateY(-2px);
+      }
+    }
+
+    &--primary {
+      background: transparent;
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      padding: 6px 16px;
+      font-size: 13px;
+      &:hover {
+        background: rgba(56, 189, 248, 0.1);
+        color: #ffffff;
+      }
+    }
+  }
+
+  /* アラート・情報エリア */
+  .sc-detect__alert {
+    padding: 15px 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    &--secondary {
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      color: rgba(229, 231, 235, 0.7);
+    }
+
+    &--info {
+      background: rgba(56, 189, 248, 0.05);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      color: #e5e7eb;
+    }
+  }
+}
+
+/* ページネーションの色合わせ */
+.sc-detect .pagination {
+  margin-top: 15px;
+  .page-item.active .page-link {
+    background-color: #38bdf8;
+    border-color: #38bdf8;
+    color: #01040a;
+  }
+  .page-link {
+    background-color: rgba(15, 23, 42, 0.8);
+    border-color: rgba(56, 189, 248, 0.3);
+    color: #38bdf8;
+  }
+}
+
+/* 検索フォーム・バッチ送信用の追加スタイル */
+.sc-detect {
+  /* 入力フィールドの統一スタイル */
+  .sc-detect__input, .sc-detect__select {
+    width: 100%;
+    background: rgba(2, 6, 23, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #ffffff;
+    font-size: 14px;
+    transition: all 0.3s ease;
+
+    &:focus {
+      border-color: #38bdf8;
+      outline: none;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+      background: rgba(2, 6, 23, 0.9);
+    }
+  }
+
+  /* バッジスタイル */
+  .sc-detect__badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    &--success { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
+    &--warning { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
+    &--danger { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+    &--info { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; }
+  }
+
+  /* インプットグループ（件数指定など） */
+  .sc-detect__input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    .sc-detect__input { max-width: 200px; }
+  }
+}
+
+
+/* ファイル入力のカスタマイズ */
+  .sc-detect__file-input {
+    width: 100%;
+    background: rgba(2, 6, 23, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #ffffff;
+    font-size: 14px;
+    cursor: pointer;
+
+    &::-webkit-file-upload-button {
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid #38bdf8;
+      border-radius: 4px;
+      color: #38bdf8;
+      padding: 4px 12px;
+      margin-right: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      &:hover {
+        background: #38bdf8;
+        color: #01040a;
+      }
+    }
+  }
+
+/* 進捗ボード・ステータス表示の強化 */
+.sc-detect {
+  /* 進捗レールのカスタマイズ（ガラス質感） */
+  .sc-detect__progress {
+    background: rgba(2, 6, 23, 0.6);
+    border-radius: 12px;
+    height: 14px;
+    position: relative;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    
+    /* 進捗バー本体 */
+    .sc-detect__progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc);
+      box-shadow: 
+        0 0 10px rgba(56, 189, 248, 0.6),
+        0 0 20px rgba(56, 189, 248, 0.2);
+      transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+      position: relative;
+
+      /* バー表面の光沢アニメーション */
+      &::after {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        animation: progress-shine 2s infinite;
+      }
+    }
+  }
+
+  /* 進捗率テキスト */
+  .sc-detect__progress-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #7dd3fc;
+    margin-bottom: 4px;
+    display: block;
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace; /* あれば */
+  }
+}
+
+@keyframes progress-shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+
+
+/* ========================================
+   FORM COMPONENT FIXES
+======================================== */
+.sc-detect {
+  /* 各入力項目のラッパー */
+  .sc-detect__form-group {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ラベル：色を明るくし、間隔を固定 */
+  .sc-detect__label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #7dd3fc; /* 明るいブルー */
+    margin-bottom: 10px;
+    letter-spacing: 0.02em;
+  }
+
+  /* 入力フィールド：背景の透過度と枠線を調整 */
+  .sc-detect__input, 
+  .sc-detect__select,
+  .sc-detect__textarea {
+    width: 100%;
+    box-sizing: border-box; /* パディングを含めたサイズ計算 */
+    background: rgba(2, 6, 23, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: #ffffff;
+    font-size: 16px; /* モバイルでのズーム防止 */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &:focus {
+      border-color: #38bdf8;
+      outline: none;
+      background: rgba(2, 6, 23, 0.9);
+      box-shadow: 
+        0 0 0 1px rgba(56, 189, 248, 0.4),
+        0 0 15px rgba(56, 189, 248, 0.2);
+    }
+
+    &::placeholder {
+      color: rgba(229, 231, 235, 0.3);
+    }
+  }
+
+  /* テキストエリア専用：最小高さを設定 */
+  .sc-detect__textarea {
+    min-height: 240px;
+    line-height: 1.6;
+    resize: vertical;
+  }
+
+  /* 保存ボタンエリアの区切り */
+  .sc-detect__form-actions {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 1px solid rgba(56, 189, 248, 0.2);
+    display: flex;
+    gap: 16px;
+  }
+}

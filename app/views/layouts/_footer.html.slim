@@ -7,7 +7,7 @@ footer.custom-footer.bg-dark.text-white.py-4.mt-5
         nav.footer-nav
           ul.d-flex.flex-wrap.justify-content-center.list-unstyled.mb-0.gap-4
             li = link_to "トップ", "/" , class: "footer-link"
-            li = link_to "ブログ", "https://j-work.jp/columns", data: { target: "service" }, class: "footer-link"
+            li = link_to "ブログ", "https://ri-plus.jp/columns", target: "_blank", rel: "noopener noreferrer", class: "footer-link"
             li 
              - if client_signed_in?
               = link_to "ログアウト", destroy_client_session_path, method: :delete, class: "footer-link" 

@@ -49,6 +49,6 @@
           = link_to "ログアウト", destroy_client_session_path, method: :delete, class: "btn login-btn"
         - else
           = link_to "ログイン", new_client_session_path, class: "btn login-btn"
-        button.btn.contact-btn.d-flex.align-items-center.gap-2
-          a.nav-link-custom href="javascript:void(0)" data-target="inquiry" お問い合わせ
+        a.btn.contact-btn.d-flex.align-items-center.justify-content-center.gap-2.nav-link-custom href="/contracts/new" target="_blank" rel="noopener" style="text-decoration: none;"
+          span お問い合わせ
           = image_tag "arrow-down.png", class: "arrow-icon", alt: "Arrow"

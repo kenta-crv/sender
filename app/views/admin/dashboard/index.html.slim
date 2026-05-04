@@ -12,13 +12,11 @@
       / ===== KPI =====
       .stats-grid
         .glass-card
-          .card-inner
-            .card-info
-              .card-label Total Sends
-              .card-value
+            .card-label Total Sends
+            .card-value
                 = number_with_delimiter(@total_sent)
                 span.unit 件
-              p.resets-in 全期間の送信件数
+            p.resets-in 全期間の送信件数
             - percent = @total_sent > 0 ? ((@total_success.to_f / @total_sent) * 100).round : 0
             .progress-circle style="--value: #{percent};"
               .progress-value = "#{percent}%"
