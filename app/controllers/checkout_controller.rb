@@ -140,94 +140,80 @@ class CheckoutController < ApplicationController
     end
   end
 
-  def process_subscription_payment(plan_type, payjp_token)
-    unless plan_type.present? && Subscription::PLAN_PRICES.key?(plan_type.to_sym)
-      redirect_to plans_path, alert: "無効なプランです。"
-      return
-    end
-    
-    amount = Subscription::PLAN_PRICES[plan_type.to_sym]
-    
-    Rails.logger.info "Processing subscription payment - plan: #{plan_type}, amount: #{amount}"
-  
-    customer_id = current_client.payjp_customer_id
-  
-    unless customer_id
-      customer = Payjp::Customer.create(
-        email: current_client.email,
-        description: "User #{current_client.id}",
-        card: payjp_token
-      )
-      customer_id = customer.id
-      current_client.update!(payjp_customer_id: customer_id)
-      Rails.logger.info "Created Pay.jp customer: #{customer_id}"
-    else
-      customer = Payjp::Customer.retrieve(customer_id)
-      customer.cards.create(card: payjp_token)
-      Rails.logger.info "Updated Pay.jp customer with new card: #{customer_id}"
-    end
-  
-    if plan_type == 'trial'
-      unless current_client.created_at > 15.days.ago
-        redirect_to plans_path, alert: "無料トライアルは新規アカウントのみ利用できます。"
-        return
-      end
-      
-      current_client.subscriptions.where(status: :active).update_all(status: :cancelled)
-      
-      subscription = current_client.subscriptions.create!(
-        plan_type: :trial,
-        status: :active,
-        trial_ends_at: 15.days.from_now
-      )
-  
-      current_client.update!(
-        subscription_plan: "trial",
-        subscription_status: "active",
-        trial_ends_at: 15.days.from_now
-      )
-  
-      Rails.logger.info "Trial subscription created successfully - ID: #{subscription.id}"
-      
-      redirect_to checkout_success_path(subscription_id: subscription.id), 
-                  notice: "無料トライアルを開始しました。15日後に自動的に標準プランへ切り替わります。"
-      return
-    end
-  
-    charge_params = {
-      amount: amount,
-      currency: 'jpy',
-      customer: customer_id,
-      description: "#{plan_type.capitalize} Plan subscription"
-    }
-  
-    Rails.logger.info "Creating Pay.jp charge with params: #{charge_params.inspect}"
-  
-    charge = Payjp::Charge.create(charge_params)
-    Rails.logger.info "Charge created - ID: #{charge.id}, Paid: #{charge.paid}"
-  
-    if charge.paid
-      current_client.subscriptions.where(status: :active).update_all(status: :cancelled)
-      
-      subscription = current_client.subscriptions.create!(
-        plan_type: plan_type,
-        status: :active,
-        payjp_subscription_id: charge.id,
-        trial_ends_at: nil
-      )
-  
-      current_client.update!(subscription_plan: plan_type)
-  
-      Rails.logger.info "Subscription created successfully - ID: #{subscription.id}"
-      
-      redirect_to checkout_success_path(subscription_id: subscription.id), 
-                  notice: "プランの登録が完了しました。"
-    else
-      Rails.logger.error "Charge not paid - Paid: #{charge.paid}, Failure: #{charge.failure_message}"
-      redirect_to checkout_confirmation_path(plan_type: plan_type),
-                  alert: "決済に失敗しました。#{charge.failure_message.presence || '不明なエラー'}"
-    end
+def process_subscription_payment(plan_type, payjp_token)
+  unless plan_type.present? && Subscription::PLAN_PRICES.key?(plan_type.to_sym)
+    redirect_to plans_path, alert: "無効なプランです。"
+    return
   end
+
+  amount = Subscription::PLAN_PRICES[plan_type.to_sym]
+
+  customer_id = current_client.payjp_customer_id
+
+  unless customer_id
+    customer = Payjp::Customer.create(
+      email: current_client.email,
+      description: "User #{current_client.id}",
+      card: payjp_token
+    )
+    customer_id = customer.id
+    current_client.update!(payjp_customer_id: customer_id)
+  else
+    customer = Payjp::Customer.retrieve(customer_id)
+    customer.cards.create(card: payjp_token)
+  end
+
+  # =========================
+  # TRIAL
+  # =========================
+  if plan_type == 'trial'
+    current_client.subscriptions.where(status: :active).update_all(status: :cancelled)
+
+    subscription = current_client.subscriptions.create!(
+      plan_type: :trial,
+      status: :active,
+      trial_ends_at: Subscription::TRIAL_DAYS.days.from_now
+    )
+
+    current_client.update!(
+      subscription_plan: "trial",
+      subscription_status: "active",
+      trial_ends_at: subscription.trial_ends_at
+    )
+
+    redirect_to checkout_success_path(subscription_id: subscription.id),
+                notice: "トライアルを開始しました。"
+    return
+  end
+
+  # =========================
+  # PAID PLAN
+  # =========================
+  charge = Payjp::Charge.create(
+    amount: amount,
+    currency: 'jpy',
+    customer: customer_id,
+    description: "#{plan_type} Plan"
+  )
+
+  if charge.paid
+    current_client.subscriptions.where(status: :active).update_all(status: :cancelled)
+
+    subscription = current_client.subscriptions.create!(
+      plan_type: plan_type,
+      status: :active,
+      payjp_subscription_id: charge.id
+    )
+
+    current_client.update!(subscription_plan: plan_type)
+
+    redirect_to checkout_success_path(subscription_id: subscription.id),
+                notice: "プラン登録完了"
+  else
+    redirect_to checkout_confirmation_path(plan_type: plan_type),
+                alert: "決済失敗"
+  end
+end
 
   def send_campaign(campaign)
     ::PushNotificationSender.deliver(campaign)

@@ -112,88 +112,104 @@ def index
   end
 end
   # POST /form_submissions
-  def create
-    # 送信対象: indexの@customersと同じスコープ（contact_url設定済み）
-    eligible_scope = Customer.where.not(contact_url: [nil, '', 'not_detected'])
-                             .where(fobbiden: [nil, false, 0])
-                             .order(:id)
+def create
+  # 送信対象: indexの@customersと同じスコープ（contact_url設定済み）
+  eligible_scope = Customer.where.not(contact_url: [nil, '', 'not_detected'])
+                           .where(fobbiden: [nil, false, 0])
+                           .order(:id)
 
-    # 検索条件（Ransack）を適用
-    if params[:q].present?
-      eligible_scope = eligible_scope.ransack(params[:q]).result
-    end
+  # 検索条件（Ransack）を適用
+  if params[:q].present?
+    eligible_scope = eligible_scope.ransack(params[:q]).result
+  end
 
-    # 最終送信条件を適用
-    if params[:last_call].present?
-      lc = params[:last_call]
-      statuses = Array(lc[:status]).reject(&:blank?)
-      has_filter = lc[:calls_id_null] == "true" ||
-                   statuses.any? ||
-                   lc[:created_at_from].present? ||
-                   lc[:created_at_to].present?
+  # 最終送信条件を適用
+  if params[:last_call].present?
+    lc = params[:last_call]
+    statuses = Array(lc[:status]).reject(&:blank?)
+    has_filter = lc[:calls_id_null] == "true" ||
+                 statuses.any? ||
+                 lc[:created_at_from].present? ||
+                 lc[:created_at_to].present?
 
-      if has_filter
-        eligible_scope = eligible_scope.left_joins(:calls).distinct
-                           .where('calls.call_type IS NULL OR calls.call_type = ?', 'form')
+    if has_filter
+      eligible_scope = eligible_scope.left_joins(:calls).distinct
+                         .where('calls.call_type IS NULL OR calls.call_type = ?', 'form')
 
-        if lc[:calls_id_null] == "true"
-          eligible_scope = eligible_scope.where(calls: { id: nil })
-        end
+      if lc[:calls_id_null] == "true"
+        eligible_scope = eligible_scope.where(calls: { id: nil })
+      end
 
-        if statuses.any?
-          eligible_scope = eligible_scope.where(calls: { status: statuses })
-        end
+      if statuses.any?
+        eligible_scope = eligible_scope.where(calls: { status: statuses })
+      end
 
-        if lc[:created_at_from].present?
-          eligible_scope = eligible_scope.where('calls.created_at >= ?', lc[:created_at_from])
-        end
+      if lc[:created_at_from].present?
+        eligible_scope = eligible_scope.where('calls.created_at >= ?', lc[:created_at_from])
+      end
 
-        if lc[:created_at_to].present?
-          eligible_scope = eligible_scope.where('calls.created_at <= ?', lc[:created_at_to])
-        end
+      if lc[:created_at_to].present?
+        eligible_scope = eligible_scope.where('calls.created_at <= ?', lc[:created_at_to])
       end
     end
-
-    send_count = params[:send_count].to_i if params[:send_count].present?
-
-    customer_ids = if params[:select_all] == '1'
-                     # 全件選択 → ページネーションに関係なく全対象顧客を取得
-                     eligible_scope.pluck(:id)
-                   elsif params[:customer_ids].present?
-                     Array(params[:customer_ids]).map(&:to_i)
-                   elsif send_count && send_count > 0
-                     # 件数指定のみ（チェックなし）→ eligible_scopeから先頭N件
-                     eligible_scope.limit(send_count).pluck(:id)
-                   else
-                     []
-                   end
-
-    # 件数指定がある場合、チェック済みでも件数で切り詰め
-    if send_count && send_count > 0 && customer_ids.size > send_count
-      customer_ids = customer_ids.first(send_count)
-    end
-
-    if customer_ids.empty?
-      redirect_to form_submissions_path, alert: '送信対象の顧客が選択されていません。件数を指定するか、顧客を選択してください。'
-      return
-    end
-
-    batch = FormSubmissionBatch.create!(
-      total_count: customer_ids.size,
-      customer_ids: customer_ids.to_json,
-      status: 'processing',
-      started_at: Time.current,
-      error_log: '[]',
-      submission_id: params[:submission_id].presence
-    )
-
-    # 並列処理: 各顧客を独立したジョブとしてキューに投入
-    customer_ids.each do |cid|
-      FormSendJob.perform_later(batch.id, cid)
-    end
-
-    redirect_to form_submission_path(batch), notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
   end
+
+  send_count = params[:send_count].to_i if params[:send_count].present?
+
+  customer_ids =
+    if params[:select_all] == '1'
+      eligible_scope.pluck(:id)
+    elsif params[:customer_ids].present?
+      Array(params[:customer_ids]).map(&:to_i)
+    elsif send_count && send_count > 0
+      eligible_scope.limit(send_count).pluck(:id)
+    else
+      []
+    end
+
+  if send_count && send_count > 0 && customer_ids.size > send_count
+    customer_ids = customer_ids.first(send_count)
+  end
+
+  if customer_ids.empty?
+    redirect_to form_submissions_path,
+                alert: '送信対象の顧客が選択されていません。件数を指定するか、顧客を選択してください。'
+    return
+  end
+
+  # =========================
+  # 月次制限チェック（追加）
+  # =========================
+  client = current_client
+
+  unless client.can_send_this_month?(customer_ids.size)
+    redirect_to form_submissions_path,
+                alert: "今月の送信上限に達しています（#{client.monthly_sent_count}/#{client.monthly_limit}）"
+    return
+  end
+
+  batch = FormSubmissionBatch.create!(
+    total_count: customer_ids.size,
+    customer_ids: customer_ids.to_json,
+    status: 'processing',
+    started_at: Time.current,
+    error_log: '[]',
+    submission_id: params[:submission_id].presence
+  )
+
+  # =========================
+  # 月次カウント加算（追加）
+  # =========================
+  client.increment_monthly_sent!(customer_ids.size)
+
+  # 並列処理: 各顧客を独立したジョブとしてキューに投入
+  customer_ids.each do |cid|
+    FormSendJob.perform_later(batch.id, cid)
+  end
+
+  redirect_to form_submission_path(batch),
+              notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
+end
 
   # POST /form_submissions/detect_contact_urls
   def detect_contact_urls

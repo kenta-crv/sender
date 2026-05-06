@@ -1,0 +1,127 @@
+.sc-detect.container
+  .text-center.mb-5
+    h1.sc-detect__title style="border-bottom: none; margin-bottom: 10px;" プラン選択
+    p.lead style="color: rgba(229, 231, 235, 0.7);" あなたにぴったりのプランをお選びください
+
+  - subscription = @current_subscription
+
+  - if @is_new_account
+    .sc-detect__alert.sc-detect__alert--info.mb-5 style="justify-content: center; padding: 1.5rem 0;"
+      div
+        i.fas.fa-info-circle.me-2
+        | 新規アカウントは
+        strong style="color: #38bdf8; margin: 0 5px;" = "#{Subscription::TRIAL_DAYS}日間の無料トライアル"
+        | が利用できます（最大#{Subscription::PLAN_DELIVERY_LIMITS[:trial]}配信まで）。
+
+  .row.row-cols-1.row-cols-md-3.g-4
+
+    / =========================
+    / TRIAL
+    / =========================
+    - if @is_new_account
+      - is_trial_active = subscription&.trial_active?
+      - trial = Subscription.new(plan_type: :trial)
+
+      .col
+        .sc-detect__card.h-100 style=(is_trial_active ? "border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);" : "")
+          .sc-detect__card-header
+            h5.text-center = trial.plan_name
+
+          .sc-detect__card-body.d-flex.flex-column.text-center
+            .mb-4
+              span.display-5.fw-bold style="color: #ffffff;" = "¥#{trial.price}"
+              span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;" 
+                |  / #{Subscription::TRIAL_DAYS}日間
+            
+            ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 最大#{trial.delivery_limit}回実行可能
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | #{Subscription::TRIAL_DAYS}日間無料
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 終了後、#{Subscription::PLAN_NAMES[:standard]}へ移行
+
+            .mt-auto
+              - if is_trial_active
+                button.sc-detect__btn.w-100 disabled="disabled" style="background: rgba(148, 163, 184, 0.2); color: rgba(229, 231, 235, 0.5); cursor: default; justify-content: center;" 
+                  | 現在のプラン
+              - else
+                = link_to checkout_confirmation_path(plan_type: "trial"), class: "sc-detect__btn sc-detect__btn--warning w-100", style: "justify-content: center; text-decoration: none;"
+                  | このプランを選択
+
+
+    / =========================
+    / STANDARD
+    / =========================
+    - is_standard = subscription&.plan_type == 'standard' && subscription&.active?
+    - standard = Subscription.new(plan_type: :standard)
+
+    .col
+      .sc-detect__card.h-100 style=(is_standard ? "border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);" : "")
+        .sc-detect__card-header
+          h5.text-center = standard.plan_name
+
+        .sc-detect__card-body.d-flex.flex-column.text-center
+          .mb-4
+            span.display-5.fw-bold style="color: #ffffff;" = "¥#{standard.price}"
+            span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;" 
+              |  / 月
+          
+            ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 最大#{standard.delivery_limit}回実行可能
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 月#{standard.price}円
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 解約はいつでも可能
+
+          .mt-auto
+            - if is_standard
+              button.sc-detect__btn.w-100 disabled="disabled" style="background: rgba(148, 163, 184, 0.2); color: rgba(229, 231, 235, 0.5); cursor: default; justify-content: center;"
+                | 現在のプラン
+            - else
+              = link_to checkout_confirmation_path(plan_type: "standard"), class: "sc-detect__btn sc-detect__btn--primary w-100", style: "justify-content: center; text-decoration: none;"
+                | このプランを選択
+
+
+    / =========================
+    / ENTERPRISE
+    / =========================
+    - is_enterprise = subscription&.plan_type == 'enterprise' && subscription&.active?
+    - enterprise = Subscription.new(plan_type: :enterprise)
+
+    .col
+      .sc-detect__card.h-100 style=(is_enterprise ? "border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);" : "")
+        .sc-detect__card-header
+          h5.text-center = enterprise.plan_name
+
+        .sc-detect__card-body.d-flex.flex-column.text-center
+          .mb-4
+            span.display-5.fw-bold style="color: #ffffff;" = "¥#{enterprise.price}"
+            span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;" 
+              |  / 月
+          
+            ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 最大#{enterprise.delivery_limit}回実行可能
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 月#{enterprise.price}円
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 解約はいつでも可能
+
+          .mt-auto
+            - if is_enterprise
+              button.sc-detect__btn.w-100 disabled="disabled" style="background: rgba(148, 163, 184, 0.2); color: rgba(229, 231, 235, 0.5); cursor: default; justify-content: center;"
+                | 現在のプラン
+            - else
+              = link_to checkout_confirmation_path(plan_type: "enterprise"), class: "sc-detect__btn sc-detect__btn--primary w-100", style: "justify-content: center; text-decoration: none;"
+                | このプランを選択

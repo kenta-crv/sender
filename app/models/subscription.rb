@@ -1,6 +1,4 @@
 class Subscription < ApplicationRecord
-end
-class Subscription < ApplicationRecord
   belongs_to :client
 
   enum plan_type: { trial: "trial", standard: "standard", enterprise: "enterprise" }
@@ -9,19 +7,43 @@ class Subscription < ApplicationRecord
   validates :plan_type, presence: true
   validates :status, presence: true
 
+  # =========================
+  # 表示名（追加）
+  # =========================
+  PLAN_NAMES = {
+    trial: "トライアルプラン",
+    standard: "スタンダードプラン",
+    enterprise: "エンタープライズプラン"
+  }.freeze
+
+  # =========================
+  # 価格
+  # =========================
   PLAN_PRICES = {
     trial: 0,
-    standard: 98_000,
-    enterprise: 198_000
+    standard: 49_800,
+    enterprise: 98_000
   }.freeze
 
   DELIVERY_COST = 50
 
+  # =========================
+  # 上限
+  # =========================
   PLAN_DELIVERY_LIMITS = {
-    trial: 2,
-    standard: 50,
-    enterprise: Float::INFINITY
+    trial: 1000,
+    standard: 15_000,
+    enterprise: 40_000
   }.freeze
+
+  TRIAL_DAYS = 10
+
+  # =========================
+  # helper（追加）
+  # =========================
+  def plan_name
+    PLAN_NAMES[plan_type.to_sym]
+  end
 
   def price
     PLAN_PRICES[plan_type.to_sym] || 0
@@ -47,5 +69,34 @@ class Subscription < ApplicationRecord
   def trial_active?
     trial? && trial_ends_at.present? && trial_ends_at > Time.current
   end
-end
 
+  def trial_expired?
+    trial? && trial_ends_at.present? && trial_ends_at <= Time.current
+  end
+
+  # =========================
+  # トライアル期限 → 自動移行
+  # =========================
+  def expire_trial_and_upgrade!
+    return unless trial?
+    return if trial_ends_at.blank?
+    return if trial_ends_at > Time.current
+    return if status != "active"
+
+    transaction do
+      update!(status: :expired)
+
+      client.subscriptions.where(status: :active).update_all(status: :cancelled)
+
+      client.subscriptions.create!(
+        plan_type: :standard,
+        status: :active
+      )
+
+      client.update!(
+        subscription_plan: "standard",
+        subscription_status: "active"
+      )
+    end
+  end
+end

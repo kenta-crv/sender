@@ -12,7 +12,7 @@
           .col-md-8
             label.sc-detect__card-body.p-0.mb-2 
               | CSVファイルを選択
-              span.ms-2.small(style="opacity: 0.6;") (ヘッダー: 会社名, 電話番号, HP URL, 問い合わせURL, メールアドレス, 住所, 業種, 職種, 携帯番号)
+              span.ms-2.small(style="opacity: 0.6;") (ヘッダー: company, tel, address, url, contact_url, business)
             = file_field_tag :file, class: 'sc-detect__file-input', accept: '.csv'
           
           .col-md-4

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_04_21_092357) do
+ActiveRecord::Schema.define(version: 2026_05_06_065631) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -228,6 +228,16 @@ ActiveRecord::Schema.define(version: 2026_04_21_092357) do
     t.index ["sluggable_type", "sluggable_id"], name: "index_friendly_id_slugs_on_sluggable_type_and_sluggable_id"
   end
 
+  create_table "monthly_usage_logs", force: :cascade do |t|
+    t.integer "client_id", null: false
+    t.string "month", null: false
+    t.integer "sent_count", default: 0, null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["client_id", "month"], name: "index_monthly_usage_logs_on_client_id_and_month", unique: true
+    t.index ["client_id"], name: "index_monthly_usage_logs_on_client_id"
+  end
+
   create_table "payments", force: :cascade do |t|
     t.integer "client_id", null: false
     t.integer "campaign_id", null: false
@@ -318,6 +328,7 @@ ActiveRecord::Schema.define(version: 2026_04_21_092357) do
   add_foreign_key "customers", "clients"
   add_foreign_key "fax_deliveries", "customers"
   add_foreign_key "form_submission_batches", "clients"
+  add_foreign_key "monthly_usage_logs", "clients"
   add_foreign_key "payments", "campaigns"
   add_foreign_key "payments", "clients"
   add_foreign_key "submissions", "clients"

@@ -1,0 +1,38 @@
+.sc-detect.container.py-5.mt-md-5
+  .row.justify-content-center
+    .col-md-8.col-lg-6.text-center
+      .sc-detect__card.p-4.p-md-5
+        .mb-4
+          / 成功を示すエメラルドグリーンの発光アイコン
+          .d-inline-flex.align-items-center.justify-content-center.rounded-circle style="width: 100px; height: 100px; background: rgba(16, 185, 129, 0.1); border: 2px solid rgba(16, 185, 129, 0.4); box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);"
+            i.fas.fa-check style="font-size: 3rem; color: #10b981; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);"
+
+        h1.sc-detect__title style="border-bottom: none; font-size: 1.75rem; margin-bottom: 1rem;" 
+          | 決済が完了しました！
+        p style="color: rgba(229, 231, 235, 0.7); line-height: 1.6;"
+          | お手続きありがとうございます。
+          br
+          | プランの適用が完了いたしました。
+
+        .sc-detect__table-wrapper.my-4 style="background: rgba(2, 6, 23, 0.5);"
+          table.sc-detect__table style="margin-bottom: 0;"
+            tbody
+              - if @payment
+                tr
+                  th style="width: 40%; color: rgba(229, 231, 235, 0.5);" 支払い金額
+                  td.fw-bold style="color: #ffffff;" = @payment.formatted_amount
+                tr
+                  th style="color: rgba(229, 231, 235, 0.5);" 決済ID
+                  td.small style="color: #7dd3fc; word-break: break-all;" = @payment.payjp_charge_id
+              - elsif @subscription
+                tr
+                  th style="width: 40%; color: rgba(229, 231, 235, 0.5);" プラン
+                  td.fw-bold style="color: #ffffff;" = @subscription.plan_type.capitalize
+                /tr
+                  th style="color: rgba(229, 231, 235, 0.5);" サブスクID
+                  td.small style="color: #7dd3fc; word-break: break-all;" = @subscription.payjp_subscription_id
+
+        .mt-5
+          = link_to client_dashboard_index_path, class: "sc-detect__btn sc-detect__btn--primary", style: "display: inline-flex; justify-content: center; padding: 16px 40px; text-decoration: none; min-width: 220px;" do
+            | マイページへ進む
+            i.fas.fa-arrow-right.ms-2
