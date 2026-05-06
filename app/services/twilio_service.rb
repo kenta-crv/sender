@@ -45,7 +45,7 @@ class TwilioService
     )
   end
 
-  # 音声認識キーワード判定
+
   def self.classify_speech(text)
     return ["unknown", nil] if text.nil? || text.empty?
 
@@ -63,6 +63,28 @@ class TwilioService
     when /不在|外出|席を外|いません|おりません|出かけ|留守/
       ["absent", text]
     when /用件/
+      ["inquiry", text]
+    else
+      ["unknown", text]
+    end
+  end
+
+  # 中間結果用の厳密な判定（誤判定リスクの低いキーワードのみ）
+  def self.classify_speech_strict(text)
+    return ["unknown", nil] if text.nil? || text.empty?
+
+    text = text.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') unless text.encoding == Encoding::UTF_8
+
+    case text
+    when /待たせ|担当|代わり|かわりました|分かりました/
+      ["transfer", text]
+    when /少々お待ち/
+      ["wait", text]
+    when /結構です|必要ありません|間に合って/
+      ["rejection", text]
+    when /不在|外出|留守|席を外/
+      ["absent", text]
+    when /ご用件/
       ["inquiry", text]
     else
       ["unknown", text]

@@ -36,6 +36,7 @@
    > TwilioConfig.current.update(stream_mode_enabled: true)
    ```
 
+<<<<<<< HEAD
 ### 起動
 
 #### 推奨：一括起動スクリプト
@@ -57,6 +58,9 @@ start_dev.bat をダブルクリック
 #### 手動起動（スクリプトが動かない場合）
 
 ターミナルを4つ開き、それぞれで以下を実行：
+=======
+### 起動（ターミナル4つ）
+>>>>>>> origin/master
 
 ```
 # ターミナル1: Redis
