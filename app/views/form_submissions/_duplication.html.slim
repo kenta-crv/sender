@@ -15,7 +15,7 @@
               th 削除対象となる件数
               th 操作
           tbody
-            - %w[company tel url contact_url].each do |attr|
+            - %w[contact_url].each do |attr|
               - duplicates = Customer.group(attr).having("count(#{attr}) > 1").count
               - next if duplicates.keys.compact.empty?
               - total_excess = duplicates.values.sum - duplicates.size

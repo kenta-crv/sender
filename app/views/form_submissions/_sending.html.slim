@@ -138,7 +138,8 @@
                         - status_class = case c.last_form_call.status when '自動送信成功', '送信成功' then 'success' when 'CAPTCHA NG' then 'warning' when '自動送信失敗', '送信失敗' then 'danger' else 'info' end
                         span class="sc-detect__badge sc-detect__badge--#{status_class}" = c.last_form_call.status
 
-          = paginate @customers, param_name: :customers_page
+          .sc-detect__pagination-zone.my-4.d-flex.justify-content-center
+            = paginate @customers, param_name: :customers_page
 
           .mt-4.text-center
             = submit_tag 'バッチ送信開始', class: 'sc-detect__btn sc-detect__btn--warning w-50', data: { confirm: '一括送信を実行しますか？' }

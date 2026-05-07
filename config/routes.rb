@@ -32,7 +32,7 @@ Rails.application.routes.draw do
     
     get 'subscription', to: 'subscriptions#show', as: :subscription
     patch 'subscription', to: 'subscriptions#update'
-    post 'subscription/cancel', to: 'subscriptions#cancel', as: :cancel
+    post 'subscription/cancel', to: 'subscriptions#cancel', as: :cancel_subscription
   end
 
   # クライアントリソース

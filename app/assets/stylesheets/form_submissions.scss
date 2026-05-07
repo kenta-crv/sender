@@ -422,3 +422,104 @@
     gap: 16px;
   }
 }
+
+
+/* --- .sc-detect 内の paginate 専用追加スタイル --- */
+
+/* 既存の .pagination 等を壊さないよう .sc-detect__pagination-zone 配下に限定 */
+.sc-detect .sc-detect__pagination-zone nav {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.sc-detect .sc-detect__pagination-zone ul.pagination {
+  display: flex !important;
+  gap: 6px !important;
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* リンク・ボタン要素の装飾（追加のみ） */
+.sc-detect .sc-detect__pagination-zone .page-item,
+.sc-detect .sc-detect__pagination-zone .page {
+  border: none !important;
+  background: transparent !important;
+}
+
+.sc-detect .sc-detect__pagination-zone .page-link,
+.sc-detect .sc-detect__pagination-zone a,
+.sc-detect .sc-detect__pagination-zone span {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  padding: 0 14px !important;
+  border-radius: 8px !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  color: #38bdf8 !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease-in-out !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+/* ホバー時の発光（追加） */
+.sc-detect .sc-detect__pagination-zone a:hover {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.5) !important;
+  background: rgba(56, 189, 248, 0.15) !important;
+  color: #ffffff !important;
+}
+
+/* 現在のページ（アクティブ）の状態を定義 */
+.sc-detect .sc-detect__pagination-zone .active span,
+.sc-detect .sc-detect__pagination-zone .current {
+  background: #38bdf8 !important;
+  color: #020617 !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.6) !important;
+  cursor: default !important;
+}
+
+/* 無効・ギャップ部分の減光 */
+.sc-detect .sc-detect__pagination-zone .disabled span,
+.sc-detect .sc-detect__pagination-zone .gap span {
+  border-color: rgba(229, 231, 235, 0.1) !important;
+  color: rgba(229, 231, 235, 0.2) !important;
+  background: rgba(2, 6, 23, 0.5) !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+
+/* キャンセルボタン（ネオンレッド）の追加 */
+.sc-detect .sc-detect__btn--danger {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  text-decoration: none !important;
+  justify-content: center;
+}
+
+.sc-detect .sc-detect__btn--danger:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.6) !important;
+}
+
+/* ラベルの既存クラスへの統合（もし不足していれば） */
+.sc-detect .sc-detect__label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(229, 231, 235, 0.5);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}

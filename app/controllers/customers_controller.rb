@@ -1,7 +1,7 @@
 class CustomersController < ApplicationController
   before_action :set_customers, only: [:update_all_status]
   protect_from_forgery with: :exception, prepend: true
-  before_action :authenticate_admin!
+  before_action :authenticate_admin_or_client!, only: [:draft]
 
   # SERP補完対象判定用正規表現（SQLite REGEXP非対応のためRubyで判定）
   SERP_CORP_PATTERN = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/.freeze
@@ -1003,6 +1003,13 @@ def cleanup_duplicates
 end
       
   private
+
+  def authenticate_admin_or_client!
+    # deviseなどを使用している場合の例
+    unless admin_signed_in? || client_signed_in?
+      render json: { error: 'Unauthorized' }, status: :unauthorized
+    end
+  end
 
   def set_customers
     customer_ids = params[:deletes]&.keys

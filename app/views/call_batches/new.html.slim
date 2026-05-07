@@ -1,66 +1,67 @@
-.container.mt-4
-  h2 新規自動発信
+.sc-detect.container style="padding-bottom: 100px; min-height: 100vh;"
+  h2.sc-detect__title 新規自動発信
 
   / --- 顧客検索（独立フォーム） ---
-  .card.mb-4
-    .card-header 顧客検索・フィルタ
-    .card-body
+  .sc-detect__card.mb-4
+    .sc-detect__card-header
+      i.fas.fa-search.me-2
+      | 顧客検索・フィルタ
+    .sc-detect__card-body
       = search_form_for @q, url: new_call_batch_path, method: :get do |f|
-        .row
+        .row.g-3
           .col-md-3
-            .form-group
-              label 会社名
-              = f.search_field :company_cont, class: 'form-control', placeholder: '会社名'
+            .sc-detect__form-group
+              label.sc-detect__label 会社名
+              = f.search_field :company_cont, class: 'sc-detect__input', placeholder: '会社名'
           .col-md-3
-            .form-group
-              label 業種
-              = f.search_field :industry_cont, class: 'form-control', placeholder: '業種'
+            .sc-detect__form-group
+              label.sc-detect__label 業種
+              = f.search_field :industry_cont, class: 'sc-detect__input', placeholder: '業種'
           .col-md-3
-            .form-group
-              label 電話番号
-              = f.search_field :tel_cont, class: 'form-control', placeholder: '電話番号'
-          .col-md-3
-            .form-group
-              label &nbsp;
-              .d-block
-                = f.submit '検索', class: 'btn btn-outline-primary'
+            .sc-detect__form-group
+              label.sc-detect__label 電話番号
+              = f.search_field :tel_cont, class: 'sc-detect__input', placeholder: '電話番号'
+          .col-md-3.d-flex.align-items-end
+            = f.submit '検索実行', class: 'sc-detect__btn sc-detect__btn--primary w-100', style: "justify-content: center;"
 
-  / --- 発信フォーム ---
+  / --- 発信設定・顧客一覧フォーム ---
   = form_tag call_batches_path, method: :post do
-    .card.mb-4
-      .card-header 発信設定
-      .card-body
-        .row
+    .sc-detect__card.mb-4
+      .sc-detect__card-header
+        i.fas.fa-cog.me-2
+        | 発信基本設定
+      .sc-detect__card-body
+        .row.g-3
           .col-md-4
-            .form-group
-              label バッチ名
-              = text_field_tag :name, nil, class: 'form-control', placeholder: '例: 3月営業リスト'
+            .sc-detect__form-group
+              label.sc-detect__label バッチ名
+              = text_field_tag :name, nil, class: 'sc-detect__input', placeholder: '例: 3月営業リスト'
           .col-md-3
-            .form-group
-              label 同時回線数
-              = select_tag :concurrent_lines, options_for_select([['3回線', 3], ['4回線', 4], ['5回線', 5]], 3), class: 'form-control'
+            .sc-detect__form-group
+              label.sc-detect__label 同時回線数
+              = select_tag :concurrent_lines, options_for_select([['3回線', 3], ['4回線', 4], ['5回線', 5]], 3), class: 'sc-detect__input'
           .col-md-3
-            .form-group
-              label 発信件数（空欄で全件）
-              = number_field_tag :send_count, nil, class: 'form-control', min: 1, placeholder: '件数指定'
-          .col-md-2
-            .form-group
-              label &nbsp;
-              .d-block
-                = check_box_tag :select_all, '1', false, id: 'select_all'
-                label for='select_all'  全件選択
+            .sc-detect__form-group
+              label.sc-detect__label 発信件数（空欄で全件）
+              = number_field_tag :send_count, nil, class: 'sc-detect__input', min: 1, placeholder: '件数指定'
+          .col-md-2.d-flex.align-items-center.pt-3
+            .sc-detect__form-group.mb-0
+              label.d-flex.align-items-center style="cursor: pointer; color: #7dd3fc;"
+                = check_box_tag :select_all, '1', false, id: 'select_all', class: 'me-2'
+                | 全件選択
 
-    / --- 顧客一覧 ---
-    .card.mb-4
-      .card-header
-        | 発信対象顧客
-        span.badge.badge-primary.ml-2 = @customers.total_count
-      .card-body
-        table.table.table-bordered.table-hover.table-sm
+    .sc-detect__card.mb-4
+      .sc-detect__card-header.d-flex.justify-content-between.align-items-center
+        div
+          i.fas.fa-users.me-2
+          | 発信対象顧客
+        span.sc-detect__badge.sc-detect__badge--info = "#{@customers.total_count} 件"
+      .sc-detect__table-wrapper style="max-height: 500px;"
+        table.sc-detect__table
           thead
             tr
-              th style='width:40px'
-                = check_box_tag :check_all, nil, false, id: 'check_all_customers'
+              th style='width:50px'
+                input type="checkbox" id="check_all_customers"
               th 会社名
               th 電話番号
               th 担当者
@@ -71,16 +72,23 @@
               tr
                 td
                   = check_box_tag 'customer_ids[]', customer.id, false, class: 'customer-check'
-                td = customer.company
+                td.fw-bold = customer.company
                 td = customer.tel
                 td = customer.name
                 td = customer.industry
-                td = customer.status
+                td
+                  span.sc-detect__badge.sc-detect__badge--secondary = customer.status
 
+      .p-3
         = paginate @customers
 
-    = submit_tag '発信開始', class: 'btn btn-primary btn-lg', data: { confirm: '自動発信を開始しますか？' }
-    = link_to 'キャンセル', call_batches_path, class: 'btn btn-outline-secondary btn-lg ms-2'
+    .d-flex.gap-3.pb-5
+      = button_tag type: 'submit', class: 'sc-detect__btn sc-detect__btn--warning', style: "padding: 15px 40px; font-size: 1.1rem;", data: { confirm: '自動発信を開始しますか？' } do
+        i.fas.fa-phone-alt.me-2
+        | 発信開始
+      
+      = link_to call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "padding: 15px 40px; text-decoration: none;" do
+        | キャンセル
 
   javascript:
     document.getElementById('check_all_customers').addEventListener('change', function() {
