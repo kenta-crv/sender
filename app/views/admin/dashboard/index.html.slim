@@ -113,7 +113,7 @@
                 th Rate
             tbody
               - @submissions.each do |submission|
-                - batches = submission.form_submission_batches.where(client_id: current_client.id)
+                - batches = submission.form_submission_batches
                 - total = batches.sum(:total_count)
                 - success = batches.sum(:success_count)
                 - failure = batches.sum(:failure_count)

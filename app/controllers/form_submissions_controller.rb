@@ -178,14 +178,17 @@ def create
   end
 
   # =========================
-  # 月次制限チェック（追加）
+  # 月次制限チェック
+  # Adminは制限なし
   # =========================
   client = current_client
 
-  unless client.can_send_this_month?(customer_ids.size)
-    redirect_to form_submissions_path,
-                alert: "今月の送信上限に達しています（#{client.monthly_sent_count}/#{client.monthly_limit}）"
-    return
+  if client.present?
+    unless client.can_send_this_month?(customer_ids.size)
+      redirect_to form_submissions_path,
+                  alert: "今月の送信上限に達しています（#{client.monthly_sent_count}/#{client.monthly_limit}）"
+      return
+    end
   end
 
   batch = FormSubmissionBatch.create!(
@@ -198,9 +201,12 @@ def create
   )
 
   # =========================
-  # 月次カウント加算（追加）
+  # 月次カウント加算
+  # Adminは加算しない
   # =========================
-  client.increment_monthly_sent!(customer_ids.size)
+  if client.present?
+    client.increment_monthly_sent!(customer_ids.size)
+  end
 
   # 並列処理: 各顧客を独立したジョブとしてキューに投入
   customer_ids.each do |cid|
