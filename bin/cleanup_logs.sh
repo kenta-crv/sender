@@ -47,13 +47,25 @@ find /tmp -maxdepth 1 -name 'chrome_crashpad*' -mmin +60 -exec rm -rf {} \; 2>/d
 find /tmp -maxdepth 1 -name 'scoped_dir*' -mmin +60 -exec rm -rf {} \; 2>/dev/null
 echo "  /tmp: Chrome一時ファイルを削除"
 
-# 残留Chrome/chromedriverプロセスのkill（30分以上経過したものをゾンビとみなす）
-# Sidekiqジョブ完了時のensureで終わらない異常ケースを定期的に救済
-ZOMBIE_PIDS=$(ps -eo pid,user,etimes,comm 2>/dev/null | awk '$2 == "smart" && $3 > 1800 && $4 ~ /chrome/ {print $1}')
-if [ -n "$ZOMBIE_PIDS" ]; then
-  ZOMBIE_COUNT=$(echo "$ZOMBIE_PIDS" | wc -l)
-  echo "  残留Chromeプロセス（30分超）: ${ZOMBIE_COUNT}個 → kill -9"
-  echo "$ZOMBIE_PIDS" | xargs -r kill -9 2>/dev/null
+# メモリ枯渇時の緊急モード: 空き200MB未満なら経過時間問わず全Chromeをkill
+# サーバー固着・他サービス巻き添え停止を防ぐための最終防衛線
+AVAILABLE_MB=$(free -m 2>/dev/null | awk '/^Mem:/ {print $7}')
+if [ -n "$AVAILABLE_MB" ] && [ "$AVAILABLE_MB" -lt 200 ] 2>/dev/null; then
+  EMERGENCY_PIDS=$(ps -eo pid,user,comm 2>/dev/null | awk '$2 == "smart" && $3 ~ /chrome/ {print $1}')
+  if [ -n "$EMERGENCY_PIDS" ]; then
+    EMERGENCY_COUNT=$(echo "$EMERGENCY_PIDS" | wc -l)
+    echo "  [緊急] メモリ空き${AVAILABLE_MB}MB → 全Chrome (${EMERGENCY_COUNT}個) を即時kill"
+    echo "$EMERGENCY_PIDS" | xargs -r kill -9 2>/dev/null
+  fi
+else
+  # 通常モード: 30分以上経過した残留Chrome/chromedriverプロセスのみkill
+  # Sidekiqジョブ完了時のensureで終わらない異常ケースを定期的に救済
+  ZOMBIE_PIDS=$(ps -eo pid,user,etimes,comm 2>/dev/null | awk '$2 == "smart" && $3 > 1800 && $4 ~ /chrome/ {print $1}')
+  if [ -n "$ZOMBIE_PIDS" ]; then
+    ZOMBIE_COUNT=$(echo "$ZOMBIE_PIDS" | wc -l)
+    echo "  残留Chromeプロセス（30分超）: ${ZOMBIE_COUNT}個 → kill -9"
+    echo "$ZOMBIE_PIDS" | xargs -r kill -9 2>/dev/null
+  fi
 fi
 
 # Chromeダウンロードフォルダの安全網（フォーム送信時の自動DL対策の二重防御）
