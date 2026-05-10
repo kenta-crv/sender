@@ -326,6 +326,10 @@ class FormSender
     rescue StandardError => e
       @result = { status: 'エラー', message: e.message }
       teardown_driver
+    ensure
+      # SignalException(SidekiqのTERM)・Interrupt等のStandardError外の例外でも
+      # 確実にChromeを終了させる。teardown_driver は @driver=nil で冪等
+      teardown_driver
     end
 
     # 送信結果をDBに保存
