@@ -12,6 +12,7 @@ class MediaStreamHandler
     @speech_stream = nil
     @phase = nil
     @redirected = false  # リダイレクト済みフラグ（1回だけリダイレクト）
+    @operator_dialed = false
     @mutex = Mutex.new
   end
 
@@ -131,14 +132,41 @@ class MediaStreamHandler
       return
     end
 
-    # 通常フェーズ: 分類結果に基づきリダイレクト（waitは除く）
-    unless category == 'wait'
-      do_redirect do
-        redirector = CallRedirector.new
-        redirector.redirect_call(@call_sid, @call_id, category)
+ # 通常フェーズ: 分類結果に基づきリダイレクト（waitは除く）
+      unless category == 'wait'
+        # transfer の場合、オペレーターを先行発信（リダイレクト前から鳴らす）
+        eager_dial_operator if category == 'transfer'
+
+        do_redirect do
+          redirector = CallRedirector.new
+          redirector.redirect_call(@call_sid, @call_id, category)
+        end
       end
     end
-  end
+
+    # オペレーターを先行発信（並列）— 転送時のラグ短縮用
+    def eager_dial_operator
+      @mutex.synchronize do
+        return if @operator_dialed
+        @operator_dialed = true
+      end
+
+      # /transfer の重複発信を防ぐため DB を先に更新
+      call = Call.find_by(id: @call_id)
+      call&.update(transferred_to: TwilioConfig.current.operator_number)
+
+      Thread.new do
+        begin
+          conference_name = "transfer_#{@call_id}"
+          base_url = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
+          service = TwilioService.new
+          service.call_operator_to_conference(conference_name, base_url)
+          Rails.logger.info("[MediaStreamHandler] eager operator dial start call_id=#{@call_id}")    
+        rescue => e
+          Rails.logger.error("[MediaStreamHandler] eager operator dial error: #{e.message}")
+        end
+      end
+    end
 
   def on_speech_error(error)
     Rails.logger.error("[MediaStreamHandler] Google Speech error: #{error.message}")

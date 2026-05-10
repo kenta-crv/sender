@@ -111,59 +111,61 @@ class Client::DashboardController < ApplicationController
     end
   end
 
+
 def sending
-  # ---------------------------------------------------------
-  # 【解決】rails c での検証に基づく修正
-  # 1. 必ず Customer から開始する
-  # 2. Ransack の result に明確に distinct: true を渡す
-  # ---------------------------------------------------------
-  base_customers = Customer
-                           .includes(:last_form_call)
-                           .left_joins(:calls)
-                           .distinct
+  # -------------------------
+  # 1. 権限によるベーススコープ
+  # -------------------------
+  if admin_signed_in?
+    base_scope = Customer.all
+    @submissions = Submission.order(created_at: :desc)
+  elsif client_signed_in?
+    base_scope = Customer.where(client_id: [current_client.id, nil])
+    @submissions = current_client.submissions.order(created_at: :desc)
+  else
+    base_scope = Customer.none
+    @submissions = Submission.none
+  end
 
-  # 検索オブジェクト
-  @q = base_customers.ransack(params[:q])
-
-  # 修正：distinct: true により、結合による重複や件数不整合を解消
+  # -------------------------
+  # 2. 検索（Ransack）
+  # -------------------------
+  @q = base_scope.includes(:last_form_call).ransack(params[:q])
   filtered = @q.result(distinct: true)
-  # -------------------------
-  # ページ番号安全化
-  # -------------------------
-  customers_page = params[:customers_page].presence || 1
-  detectable_page = params[:detectable_page].presence || 1
 
   # -------------------------
-  # 送信対象
+  # 3. 送信対象顧客の抽出（排他処理の徹底）
   # -------------------------
-  @customers = filtered.page(customers_page).per(20)
+  # 除外すべきステータスリスト
+  excluded_statuses = ['フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected']
 
-  # -------------------------
-  # 検出対象
-  # -------------------------
+  # 送信可能リスト：
+  # contact_url があり、かつ直近のコールステータスが「送信不可」なものではない顧客のみ
+  @customers = filtered
+                 .where.not(contact_url: [nil, '', 'not_detected'])
+                 .left_joins(:last_form_call)
+                 .where("calls.status NOT IN (?) OR calls.id IS NULL", excluded_statuses)
+                 .page(params[:customers_page]).per(50)
+
+  # 4. 自動検出待ちリスト
   @detectable_customers = filtered
                             .where(contact_url: [nil, ''])
                             .where.not(url: [nil, ''])
                             .where(fobbiden: [nil, false, 0])
-                            .page(detectable_page)
-                            .per(20)
+                            .page(params[:detectable_page]).per(50)
 
   # -------------------------
-  # カウント系も current_client スコープを遵守
+  # 5. カウント処理
   # -------------------------
-  @not_detected_count = Customer.where(contact_url: 'not_detected').count
+  @customers_count = @customers.total_count
+  @detectable_count = @detectable_customers.total_count
 
-  @no_url_customers_count = Customer
-                              .where(contact_url: [nil, ''])
-                              .where(url: [nil, ''])
-                              .count
-
-  # -------------------------
-  # Submission
-  # -------------------------
-  @submissions = current_client.submissions.order(created_at: :desc)
+  # 送信不可（検出失敗）の合計数
+  @not_detected_count = base_scope.left_joins(:last_form_call)
+                                  .where(contact_url: 'not_detected')
+                                  .or(base_scope.where(calls: { status: excluded_statuses }))
+                                  .distinct.count
 end
-
   def searching_form
     # -------------------------
     # 自分の顧客のみ
@@ -237,70 +239,4 @@ end
         last_sent_at: last_sent_at
       }
     end
-  end
-
-  def sending
-    # 修正：base_customers の定義を current_client に固定
-    base_customers = Customer
-                                   .includes(:last_form_call)
-                                   .left_joins(:calls)
-                                   .distinct
-    @q = base_customers.ransack(params[:q])
-    filtered = @q.result(distinct: true)
-
-    # 送信画面の表示に必要な変数群
-    @customers = filtered
-                   .where.not(contact_url: [nil, '', 'not_detected'])
-                   .page(params[:customers_page]).per(20)
-
-    @detectable_customers = filtered
-                              .where(contact_url: [nil, ''])
-                              .where.not(url: [nil, ''])
-                              .where(fobbiden: [nil, false, 0])
-                              .page(params[:detectable_page]).per(20)
-
-    @not_detected_count = Customer.where(contact_url: 'not_detected').count
-    @no_url_customers_count = Customer
-                                            .where(contact_url: [nil, ''])
-                                            .where(url: [nil, ''])
-                                            .count
-    @submissions = current_client.submissions.order(created_at: :desc)
-  end
-
-  def searching_form
-    # -------------------------
-    # 自分の顧客のみ
-    # -------------------------
-    base_customers = Customer
-                                   .includes(:last_form_call)
-                                   .left_joins(:calls)
-                                   .distinct
-
-    # -------------------------
-    # 検索（Ransack）
-    # -------------------------
-    @q = base_customers.ransack(params[:q])
-    filtered = @q.result(distinct: true)
-
-    # -------------------------
-    # 自動検出対象
-    # -------------------------
-    @detectable_customers = filtered
-                              .where(contact_url: [nil, ''])
-                              .where.not(url: [nil, ''])
-                              .where(fobbiden: [nil, false, 0])
-                              .page(params[:detectable_page]).per(50)
-
-    # -------------------------
-    # カウント系
-    # -------------------------
-    @not_detected_count = Customer.where(contact_url: 'not_detected').count
-
-    @no_url_customers_count = Customer
-                                            .where(contact_url: [nil, ''])
-                                            .where(url: [nil, ''])
-                                            .count
-  end
-
-  def setting
   end

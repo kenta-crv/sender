@@ -69,7 +69,7 @@ class GoogleSpeechStream
         buffer << chunk
 
         # 100ms分（800バイト @ 8kHz mulaw）ごとにまとめて送信
-        if buffer.bytesize >= 800
+        if buffer.bytesize >= 320
           yielder << Google::Cloud::Speech::V1::StreamingRecognizeRequest.new(
             audio_content: buffer
           )

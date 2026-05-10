@@ -76,26 +76,34 @@ module Twilio
       end
     end
 
+    
     # POST /twilio/transfer — Conference転送
-    def transfer
-      return head(:not_found) unless @call
+   def transfer
+    return head(:not_found) unless @call
 
-      conference_name = "transfer_#{@call.id}"
-      config = TwilioConfig.current
+    conference_name = "transfer_#{@call.id}"
+    config = TwilioConfig.current
 
-      Rails.logger.info("[TWILIO:TRANSFER] call_id=#{@call.id} → Conference '#{conference_name}'")
+    # eager dial 済みかチェック（既に transferred_to が設定されてれば eager dial 完了済）
+    already_dialed = @call.transferred_to.present?
 
-      @call.update(flow_phase: 'transfer', transferred_to: config.operator_number)
+    Rails.logger.info("[TWILIO:TRANSFER] call_id=#{@call.id} → Conference '#{conference_name}'       
+  (already_dialed=#{already_dialed})")
 
+    @call.update(flow_phase: 'transfer', transferred_to: config.operator_number)
+
+    # 既に eager dial 済みの場合はオペレーター発信スキップ（重複防止）
+    unless already_dialed
       # オペレーターをConferenceに呼び出し（非同期）
       Thread.new do
         begin
           service = TwilioService.new
           service.call_operator_to_conference(conference_name, base_url)
         rescue => e
-          Rails.logger.error("[TWILIO:TRANSFER] オペレーター発信エラー: #{e.message}")
+          Rails.logger.error("...")
         end
       end
+    end
 
       render_twiml builder.transfer_response(@call, conference_name, base_url)
     end
