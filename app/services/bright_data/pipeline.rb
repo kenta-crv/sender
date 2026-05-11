@@ -97,11 +97,9 @@ module BrightData
         return { targets: targets.size, queries: 0, extracted: 0, registered: { skipped_blank: 0 } }
       end
 
-      # 対象レコードをserp_queued にマーク（ループ防止）
-      # ensure で例外時も serp_done にフォールバックするため先にマーク
-      unless dry_run
-        Customer.where(id: targets.map(&:id)).update_all(serp_status: "serp_queued")
-      end
+      # Mark targets before network work so concurrent/manual runs do not pick
+      # the same rows. mark_serp_status also touches updated_at for UI filters.
+      mark_serp_status(targets, "serp_queued") unless dry_run
 
       companies = []
       batch = []
@@ -184,13 +182,18 @@ module BrightData
         normalized = DataNormalizer.normalize_batch(companies)
         ResultExporter.to_csv(normalized)
 
-        # DB登録
-        reg_stats = dry_run ? { dry_run: true } : CustomerRegistrar.register(normalized)
+        # DB mode enriches existing Customer rows only. The legacy registrar is
+        # intentionally skipped here because importing SERP candidates can create
+        # duplicate/low-confidence Customer rows.
+        reg_stats = if dry_run
+          { dry_run: true }
+        else
+          puts "[Pipeline] DB mode: skipped CustomerRegistrar import (existing customers were enriched above)"
+          { skipped_import: normalized.size, reason: "db_mode_updates_existing_customers_only" }
+        end
 
         # 実行済みステータスに更新
-        unless dry_run
-          Customer.where(id: targets.map(&:id)).update_all(serp_status: "serp_done")
-        end
+        mark_serp_status(targets, "serp_done") unless dry_run
 
         # 抽出率記録（SERP 生データの抽出率）
         label = industry.present? ? "serp_db_#{industry}_#{Time.current.strftime('%Y%m%d')}" : "serp_db_#{Time.current.strftime('%Y%m%d')}"
@@ -228,15 +231,25 @@ module BrightData
 
         puts "[Pipeline] 完了: #{targets.size}件対象 / #{companies.size}件抽出"
         { targets: targets.size, queries: queries.size, extracted: companies.size, registered: reg_stats }
+      rescue Interrupt => e
+        mark_serp_status(targets, "serp_error") unless dry_run
+        Rails.logger.warn("[Pipeline] execute_from_db interrupted: #{e.class} #{e.message}")
+        puts "[Pipeline] INTERRUPTED: #{e.message}"
+        raise
       rescue => e
-        # 例外発生時: serp_queued のままにせず serp_error にして再実行可能にする
-        unless dry_run
-          Customer.where(id: targets.map(&:id)).update_all(serp_status: nil)
-        end
+        # Keep failures visible and out of the automatic target scope.
+        mark_serp_status(targets, "serp_error") unless dry_run
         Rails.logger.error("[Pipeline] execute_from_db 例外: #{e.class} #{e.message}\n#{e.backtrace.first(5).join("\n")}")
         puts "[Pipeline] ERROR: #{e.message}"
         raise
       end
+    end
+
+    def self.mark_serp_status(targets, status)
+      ids = Array(targets).map(&:id).compact
+      return if ids.empty?
+
+      Customer.where(id: ids).update_all(serp_status: status, updated_at: Time.current)
     end
 
     # WebEnricher の取得結果から実際に DB に書き込む updates ハッシュを生成

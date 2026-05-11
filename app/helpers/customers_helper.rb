@@ -4,7 +4,8 @@ module CustomersHelper
     ""            => "未処理",
     "serp_queued" => "処理中",
     "serp_done"   => "完了",
-    "serp_imported" => "登録済み"
+    "serp_imported" => "登録済み",
+    "serp_error" => "エラー"
   }.freeze
 
   def serp_status_label(value)
@@ -17,6 +18,7 @@ module CustomersHelper
     when "serp_queued"  then "ai-badge-yellow"
     when "serp_done"    then "ai-badge-green"
     when "serp_imported" then "ai-badge-blue"
+    when "serp_error" then "ai-badge-red"
     else "ai-badge-gray"
     end
   end

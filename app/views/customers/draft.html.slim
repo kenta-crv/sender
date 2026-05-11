@@ -26,6 +26,9 @@
             li
               span.ai-label 登録済み
               strong.ai-count = "#{stats[:status][:imported]}件"
+            li
+              span.ai-label エラー
+              strong.ai-count = "#{stats[:status][:error]}件"
             li.ai-summary-total
               span.ai-label 全件数
               strong.ai-count = "#{total}件"
@@ -90,7 +93,8 @@
                 ["未処理", "null"],
                 ["処理中", "serp_queued"],
                 ["完了", "serp_done"],
-                ["登録済み", "serp_imported"]
+                ["登録済み", "serp_imported"],
+                ["エラー", "serp_error"]
               ], params[:serp_status_filter]),
               class: "ai-select"
         .ai-field-group

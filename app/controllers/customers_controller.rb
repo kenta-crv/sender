@@ -528,16 +528,16 @@ def draft
 
   # SERP補完対象候補を表示する一覧。
   # 取引先環境で status カラムは別用途に使われているため、
-  # 必須条件は serp_status（NULL/serp_queued/serp_done/serp_imported）に変更。
+  # 必須条件は serp_status（NULL/serp_queued/serp_done/serp_imported/serp_error）に変更。
   # status="draft" は任意フィルタとしてのみ適用可能。
-  draft_base = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported'])
+  draft_base = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
   draft_base = draft_base.where(status: params[:status_filter]) if params[:status_filter].present?
 
   # serp_status での絞り込み（"null" は NULL/'' を表す）
   case params[:serp_status_filter]
   when "null"
     draft_base = draft_base.where(serp_status: [nil, ''])
-  when "serp_queued", "serp_done", "serp_imported"
+  when "serp_queued", "serp_done", "serp_imported", "serp_error"
     draft_base = draft_base.where(serp_status: params[:serp_status_filter])
   end
 
@@ -628,7 +628,7 @@ def draft
 
   # ── ダッシュボードサマリー ──
   # SERP補完対象になり得る範囲（status カラムを参照しない）を母集団にする。
-  dash_scope = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported'])
+  dash_scope = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
   dash_scope = dash_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
 
   total = dash_scope.count
@@ -637,6 +637,7 @@ def draft
   queued_c   = status_counts["serp_queued"].to_i
   done_c     = status_counts["serp_done"].to_i
   imported_c = status_counts["serp_imported"].to_i
+  error_c    = status_counts["serp_error"].to_i
 
   tel_c     = dash_scope.where.not(tel: [nil, '', ' ']).count
   addr_c    = dash_scope.where.not(address: [nil, '', ' ']).count
@@ -651,7 +652,7 @@ def draft
   @dashboard_stats = {
     total: total,
     status: {
-      null: null_c, queued: queued_c, done: done_c, imported: imported_c
+      null: null_c, queued: queued_c, done: done_c, imported: imported_c, error: error_c
     },
     fill: {
       tel: tel_c, address: addr_c, url: url_c, contact_url: contact_c, full: full_c
