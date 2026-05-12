@@ -108,6 +108,11 @@ module BrightData
         client = SerpClient.new
         batch = client.batch_search(queries, delay_between: 1)
         ResultStore.save_batch(batch)
+        serp_error_customer_ids = batch.filter_map do |item|
+          next if item.dig("result", "error").blank?
+          query_customer_map[item["query"]]&.id
+        end.uniq
+        puts "[Pipeline] SERP APIエラー: #{serp_error_customer_ids.size}件（対象はserp_errorにします）" if serp_error_customer_ids.any?
 
         # 抽出
         companies = CompanyExtractor.extract_batch(batch)
@@ -143,6 +148,16 @@ module BrightData
               # group は [[company_hash, idx], ...] の配列。
               # SERP の上位順を保ったまま走査し、最初に updates が成立した時点で打ち切る。
               group.sort_by { |_, idx| idx }.each do |company, idx|
+                direct_updates = build_serp_updates(customer, company)
+                if direct_updates.any?
+                  customer.update_columns(direct_updates.merge(updated_at: Time.current))
+                  customer.reload
+                  mutex.synchronize do
+                    counters[:serp_direct] += 1
+                    puts "  -> SERP直接更新: #{direct_updates.keys.join(', ')} (customer ID=#{customer.id})"
+                  end
+                end
+
                 if company[:url].blank?
                   mutex.synchronize { counters[:no_url] += 1 }
                   next
@@ -175,7 +190,7 @@ module BrightData
           pool.shutdown
           pool.wait_for_termination
 
-          puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
+          puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / SERP直接更新 #{counters[:serp_direct]}件 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
         end
 
         companies = ContactUrlEnricher.enrich(companies) if detect_contact
@@ -192,8 +207,12 @@ module BrightData
           { skipped_import: normalized.size, reason: "db_mode_updates_existing_customers_only" }
         end
 
-        # 実行済みステータスに更新
-        mark_serp_status(targets, "serp_done") unless dry_run
+        # 実行済みステータスに更新。SERP API自体が失敗した対象は完了扱いにしない。
+        unless dry_run
+          done_ids = targets.map(&:id) - serp_error_customer_ids
+          mark_serp_status(done_ids, "serp_done")
+          mark_serp_status(serp_error_customer_ids, "serp_error")
+        end
 
         # 抽出率記録（SERP 生データの抽出率）
         label = industry.present? ? "serp_db_#{industry}_#{Time.current.strftime('%Y%m%d')}" : "serp_db_#{Time.current.strftime('%Y%m%d')}"
@@ -246,10 +265,28 @@ module BrightData
     end
 
     def self.mark_serp_status(targets, status)
-      ids = Array(targets).map(&:id).compact
+      ids = Array(targets).map { |target| target.respond_to?(:id) ? target.id : target }.compact
       return if ids.empty?
 
       Customer.where(id: ids).update_all(serp_status: status, updated_at: Time.current)
+    end
+
+    def self.build_serp_updates(customer, company)
+      return {} unless %w[local knowledge_graph].include?(company[:source].to_s)
+      return {} unless company_matches_customer?(customer.company, company[:company])
+
+      updates = {}
+      url_is_directory = WebEnricher.directory_url?(company[:url])
+
+      updates[:url] = company[:url] if customer.url.blank? && company[:url].present? && !url_is_directory
+      updates[:tel] = company[:tel] if customer.tel.blank? && company[:tel].present?
+
+      address = clean_address_candidate(company[:address])
+      if address.present? && better_address?(address, customer.address)
+        updates[:address] = address
+      end
+
+      updates
     end
 
     # WebEnricher の取得結果から実際に DB に書き込む updates ハッシュを生成
@@ -265,11 +302,42 @@ module BrightData
       updates[:tel]         = web_data[:tel]        if customer.tel.blank? && web_data[:tel].present?
       # address: 都道府県始まり かつ 市区町村を含む正規化住所が取得できた場合のみ採用。
       # 部分住所を完全住所に補完する用途（既存値があっても上書き）。
-      if web_data[:address].present? && web_data[:address].match?(CompanyInfoExtractor::PREF_PATTERN)
-        updates[:address] = web_data[:address]
+      address = clean_address_candidate(web_data[:address])
+      if address.present? && better_address?(address, customer.address)
+        updates[:address] = address
       end
       updates[:contact_url] = web_data[:contact_url] if customer.contact_url.blank? && web_data[:contact_url].present?
       updates
+    end
+
+    def self.clean_address_candidate(address)
+      return nil if address.blank?
+      CompanyInfoExtractor.new("").send(:clean_address, address)
+    end
+
+    def self.better_address?(candidate, current)
+      return false if candidate.blank?
+      return true if current.blank?
+
+      address_score(candidate) > address_score(current)
+    end
+
+    def self.address_score(address)
+      s = address.to_s.strip
+      return 0 if s.blank?
+
+      score = s.length
+      score += 50 if s.match?(/(?:市|区|町|村|郡)/)
+      score += 100 if s.match?(/[0-9０-９]|丁目|番地|番|号|[-－ー]/)
+      score
+    end
+
+    def self.company_matches_customer?(customer_name, candidate_name)
+      return false if customer_name.blank? || candidate_name.blank?
+
+      norm_customer = WebEnricher.send(:normalize_company, customer_name)
+      norm_candidate = WebEnricher.send(:normalize_company, candidate_name)
+      WebEnricher.send(:company_match?, norm_customer, norm_candidate)
     end
   end
 end
