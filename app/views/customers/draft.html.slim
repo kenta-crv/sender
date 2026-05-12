@@ -79,6 +79,8 @@
             | SERP補完開始
 
   / ── 絞り込みフィルタ ──
+  - serp_status_options = [["全て", ""], ["未処理", "null"], ["処理中", "serp_queued"], ["完了", "serp_done"], ["登録済み", "serp_imported"], ["エラー", "serp_error"]]
+  - fill_filter_options = [["全て", ""], ["tel未取得", "missing_tel"], ["address未取得", "missing_address"], ["url未取得", "missing_url"], ["contact_url未取得", "missing_contact_url"], ["全項目充足", "fully_enriched"], ["SERP完了かつtel未取得", "done_missing_tel"], ["SERP完了かつaddress未取得", "done_missing_address"]]
   section.ai-dash-card
     .ai-dash-header
       i.fas.fa-filter.ai-icon-blue
@@ -87,30 +89,10 @@
       = form_with url: draft_customers_path, method: :get, local: true, class: "ai-dash-filter-form" do
         .ai-field-group
           label SERPステータス
-          = select_tag :serp_status_filter,
-              options_for_select([
-                ["全て", ""],
-                ["未処理", "null"],
-                ["処理中", "serp_queued"],
-                ["完了", "serp_done"],
-                ["登録済み", "serp_imported"],
-                ["エラー", "serp_error"]
-              ], params[:serp_status_filter]),
-              class: "ai-select"
+          = select_tag :serp_status_filter, options_for_select(serp_status_options, params[:serp_status_filter]), class: "ai-select"
         .ai-field-group
           label 充足条件
-          = select_tag :fill_filter,
-              options_for_select([
-                ["全て", ""],
-                ["tel未取得", "missing_tel"],
-                ["address未取得", "missing_address"],
-                ["url未取得", "missing_url"],
-                ["contact_url未取得", "missing_contact_url"],
-                ["全項目充足", "fully_enriched"],
-                ["SERP完了かつtel未取得", "done_missing_tel"],
-                ["SERP完了かつaddress未取得", "done_missing_address"]
-              ], params[:fill_filter]),
-              class: "ai-select"
+          = select_tag :fill_filter, options_for_select(fill_filter_options, params[:fill_filter]), class: "ai-select"
         .ai-field-group
           label 最終更新 From
           = date_field_tag :updated_from, params[:updated_from], class: "ai-input-text"

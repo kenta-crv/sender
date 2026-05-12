@@ -605,8 +605,7 @@ def draft
     @customers = @customers.where(industry: params[:industry_name])
   end
 
-  # ページネーション（workerをincludesしてN+1を回避）
-  @customers = @customers.order(updated_at: :desc).includes(:worker).page(params[:page]).per(100)
+  @customers = @customers.order(updated_at: :desc).page(params[:page]).per(100)
 
   # 残り件数取得
   today_total = ExtractTracking
