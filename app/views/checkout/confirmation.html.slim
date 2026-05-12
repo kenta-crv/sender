@@ -9,7 +9,7 @@
             | お支払い内容の確認
 
         .sc-detect__card-body.p-4
-          / --- 金額表示エリア (ネオンデザインに統合) ---
+          / --- 金額表示エリア ---
           .sc-detect__table-wrapper.p-4.mb-4 style="background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2);"
             .d-flex.justify-content-between.mb-2
               span style="color: rgba(229, 231, 235, 0.6);" 選択プラン
@@ -28,73 +28,86 @@
           = form_with url: checkout_create_path, method: :post, id: "payment-form", local: true do |f|
             = hidden_field_tag :plan_type, @plan_type
             
-            .sc-detect__form-group
-              label.sc-detect__label カード情報
-              / Pay.jp フォーム：デザインに合わせて背景と枠線を調整
-              #card-element data-pk="#{ENV['PAYJP_PUBLIC_KEY']}" class="sc-detect__input" style="min-height: 60px; padding: 18px; background: rgba(2, 6, 23, 0.8);"
-                span style="color: rgba(229, 231, 235, 0.3);" 決済システムを読み込み中...
-              #card-errors.text-danger.small.mt-2 style="font-weight: 600;"
+            - if @has_saved_card
+              / --- 登録済みカードがある場合 ---
+              .sc-detect__form-group
+                label.sc-detect__label お支払い方法
+                .sc-detect__input style="background: rgba(56, 189, 248, 0.1); border: 1px dashed rgba(56, 189, 248, 0.4); display: flex; align-items: center; justify-content: center; min-height: 60px;"
+                  span style="color: #7dd3fc;"
+                    i.fas.fa-check-circle.me-2
+                    | 登録済みのクレジットカードを使用します
 
-            .sc-detect__form-actions
-              = f.submit "決済を確定する", class: "sc-detect__btn sc-detect__btn--warning w-100", id: "submit-button", disabled: true, style: "justify-content: center; font-size: 1.1rem; padding: 16px;"
+              .sc-detect__form-actions.mt-4
+                = f.submit "決済を確定する", class: "sc-detect__btn sc-detect__btn--warning w-100", style: "justify-content: center; font-size: 1.1rem; padding: 16px;"
 
-/ SDKの読み込み
-script src="https://js.pay.jp/v2/pay.js" onload="initPayjp()"
+            - else
+              / --- カード未登録の場合 ---
+              .sc-detect__form-group
+                label.sc-detect__label カード情報
+                #card-element data-pk="#{@payjp_public_key}" class="sc-detect__input" style="min-height: 60px; padding: 18px; background: rgba(2, 6, 23, 0.8);"
+                  span style="color: rgba(229, 231, 235, 0.3);" 決済システムを読み込み中...
+                #card-errors.text-danger.small.mt-2 style="font-weight: 600;"
 
-javascript:
-  function initPayjp() {
-    var el = document.getElementById('card-element');
-    if (!el || el.firstChild.nodeName === 'IFRAME') return;
+              .sc-detect__form-actions
+                = f.submit "決済を確定する", class: "sc-detect__btn sc-detect__btn--warning w-100", id: "submit-button", disabled: true, style: "justify-content: center; font-size: 1.1rem; padding: 16px;"
 
-    var pk = el.getAttribute('data-pk');
-    if (!pk || typeof Payjp === 'undefined') {
-      setTimeout(initPayjp, 200);
-      return;
-    }
+/ SDKの読み込み（未登録時のみ有効化するロジック）
+- unless @has_saved_card
+  script src="https://js.pay.jp/v2/pay.js" onload="initPayjp()"
 
-    var payjp = Payjp(pk);
-    var elements = payjp.elements();
-    
-    // デザインに合わせたスタイル設定
-    var card = elements.create('card', {
-      style: {
-        base: {
-          fontSize: '16px',
-          color: '#ffffff', // ダークテーマに合わせて白
-          letterSpacing: '0.05em',
-          '::placeholder': { color: 'rgba(229, 231, 235, 0.3)' }
-        },
-        invalid: { color: '#ef4444' }
+  javascript:
+    function initPayjp() {
+      var el = document.getElementById('card-element');
+      if (!el || el.firstChild.nodeName === 'IFRAME') return;
+
+      var pk = el.getAttribute('data-pk');
+      if (!pk || typeof Payjp === 'undefined') {
+        setTimeout(initPayjp, 200);
+        return;
       }
-    });
 
-    el.innerHTML = '';
-    card.mount('#card-element');
-
-    card.on('ready', function() {
-      document.getElementById('submit-button').disabled = false;
-    });
-
-    var form = document.getElementById('payment-form');
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      var btn = document.getElementById('submit-button');
-      btn.disabled = true;
-
-      payjp.createToken(card).then(function(r) {
-        if (r.error) {
-          document.getElementById('card-errors').innerText = r.error.message;
-          btn.disabled = false;
-        } else {
-          var tokenInput = document.createElement('input');
-          tokenInput.type = 'hidden';
-          tokenInput.name = 'payjp_token';
-          tokenInput.value = r.id;
-          form.appendChild(tokenInput);
-          form.submit();
+      var payjp = Payjp(pk);
+      var elements = payjp.elements();
+      
+      var card = elements.create('card', {
+        style: {
+          base: {
+            fontSize: '16px',
+            color: '#ffffff',
+            letterSpacing: '0.05em',
+            '::placeholder': { color: 'rgba(229, 231, 235, 0.3)' }
+          },
+          invalid: { color: '#ef4444' }
         }
       });
-    });
-  }
 
-  if (window.Payjp) initPayjp();
+      el.innerHTML = '';
+      card.mount('#card-element');
+
+      card.on('ready', function() {
+        document.getElementById('submit-button').disabled = false;
+      });
+
+      var form = document.getElementById('payment-form');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var btn = document.getElementById('submit-button');
+        btn.disabled = true;
+
+        payjp.createToken(card).then(function(r) {
+          if (r.error) {
+            document.getElementById('card-errors').innerText = r.error.message;
+            btn.disabled = false;
+          } else {
+            var tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = 'payjp_token';
+            tokenInput.value = r.id;
+            form.appendChild(tokenInput);
+            form.submit();
+          }
+        });
+      });
+    }
+
+    if (window.Payjp) initPayjp();

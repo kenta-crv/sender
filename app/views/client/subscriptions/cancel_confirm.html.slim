@@ -1,0 +1,31 @@
+#okurite-client-portal
+  .wrapper
+    = render 'client/dashboard/sidebar'
+
+    #content
+      header.top-header
+        h2 Subscription Cancellation
+
+      .settings-section.mt-4
+        .glass-card
+          .card-body style="text-align: center; padding-top: 3rem; padding-bottom: 3rem;"
+            h4 style="color: #ff8080; text-shadow: 0 0 10px rgba(255, 80, 80, 0.4); font-size: 1.5rem; font-weight: 700;"
+              | 本当にサブスクリプションを解約しますか？
+            
+            p.form-group style="margin-top: 1.5rem; line-height: 1.8;"
+              | 解約手続きを完了すると、即座にメッセージ送信機能などのすべての有料機能が利用できなくなります。
+              br
+              span style="color: var(--text-muted);" 再度利用するには、改めてプランへの加入が必要となります。
+            
+            .form-group style="margin-top: 2rem;"
+              span.card-label style="display: block; margin-bottom: 8px;" 現在のプラン
+              span.badge-electric style="font-size: 1rem; padding: 6px 20px;"
+                = current_client.subscription_plan&.capitalize || 'None'
+
+            hr
+
+            .d-flex style="justify-content: center; gap: 15px;"
+              = link_to '設定へ戻る', client_dashboard_setting_path, class: 'btn-electric-outline'
+              
+              / sign_outのスタイル定義（赤色）が当たるように属性を調整
+              = link_to '解約を確定する', client_cancel_subscription_path, method: :post, class: 'btn-electric-outline', style: 'border-color: rgba(255, 80, 80, 0.6); color: rgba(255, 80, 80, 0.8);'

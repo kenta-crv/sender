@@ -298,3 +298,82 @@
   from { opacity: 0; transform: translateY(20px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+
+
+/* フローティング・コンタクト全体の親 */
+.floating-contact {
+  z-index: 1000;
+}
+
+/* ダッシュボードモード専用のデザイン */
+.contact-box.dashboard-mode {
+  background: rgba(15, 23, 42, 0.85) !important; /* 深い紺色 */
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.15) !important;
+  border-radius: 12px !important; /* 少し角を落とす */
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  padding: 12px 18px !important;
+
+  /* アイコン部分：ネオン発光 */
+  .icon-container {
+    .dashboard-icon {
+      font-size: 1.2rem;
+      color: #38bdf8;
+      filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.8));
+    }
+  }
+
+  /* テキスト部分 */
+  .text-container {
+    margin-left: 12px;
+
+    .main-text {
+      color: #ffffff;
+      font-size: 0.95rem;
+      letter-spacing: 0.1em;
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+
+      /* シグナル部分：アニメーション付き */
+      .fa-angle-double-right {
+        color: #38bdf8;
+        font-size: 0.75rem;
+        margin-left: 8px;
+        opacity: 0.7;
+      }
+    }
+
+    .sub-text {
+      color: rgba(148, 163, 184, 0.8); /* グレーアウト */
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+  }
+
+  /* ホバーアクション */
+  &:hover {
+    background: rgba(56, 189, 248, 0.1) !important;
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.4) !important;
+    transform: translateY(-3px) scale(1.02);
+
+    .dashboard-icon {
+      transform: rotate(90deg);
+      transition: transform 0.4s ease;
+    }
+
+    .fa-angle-double-right {
+      opacity: 1;
+      animation: signal-bounce 0.8s infinite;
+    }
+  }
+}
+
+/* シグナルの跳ねるような動き */
+@keyframes signal-bounce {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(5px); }
+}

@@ -32,6 +32,7 @@ Rails.application.routes.draw do
     
     get 'subscription', to: 'subscriptions#show', as: :subscription
     patch 'subscription', to: 'subscriptions#update'
+    get 'subscription/cancel_confirm', to: 'subscriptions#cancel_confirm', as: :cancel_confirm_subscription
     post 'subscription/cancel', to: 'subscriptions#cancel', as: :cancel_subscription
   end
 

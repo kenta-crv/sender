@@ -6,6 +6,7 @@ html lang="ja"
   body
     .hero 
      = render "shared/breadcrumbs" if breadcrumbs.any?
+
     = yield
     = render "layouts/footer"
     = javascript_include_tag "application", "data-turbolinks-track": "reload"
@@ -16,10 +17,21 @@ html lang="ja"
           .logo-container
             = image_tag "logo2.png", class: "main-logo", alt: "Home"
 
+    / --- ログイン状態とパスによって出し分け ---
     .floating-contact
-      = link_to '/contracts/new', class: 'contact-box', target: '_blank', rel: 'noopener' do
-        .icon-container
-          = image_tag "arrow-down.png", class: "main-icon", alt: "Inquiry"
-        .text-container style="display: flex; flex-direction: column; justify-content: center;"
-          span style="line-height: 1; margin-bottom: 2px;" CONTACT
-          small style="line-height: 1;" お問い合わせ
+      - if client_signed_in?
+        / ダッシュボードモード
+        = link_to client_dashboard_index_path, class: 'contact-box dashboard-mode' do
+          .icon-container
+            span.dashboard-icon
+              i.fas.fa-th-large
+          .text-container
+            span style="line-height: 1; margin-bottom: 2px;" DASHBOARD
+      - else
+        / 未ログインまたは /client 内：通常の問い合わせ
+        = link_to '/contracts/new', class: 'contact-box', target: '_blank', rel: 'noopener' do
+          .icon-container
+            = image_tag "arrow-down.png", class: "main-icon", alt: "Inquiry"
+          .text-container style="display: flex; flex-direction: column; justify-content: center;"
+            span style="line-height: 1; margin-bottom: 2px;" CONTACT
+            small style="line-height: 1;" お問い合わせ
