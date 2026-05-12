@@ -2,3 +2,5 @@
 
 User-agent: *
 Disallow:
+
+Sitemap: https://ri-plus.jp/sitemaps/sitemap.xml.gz
