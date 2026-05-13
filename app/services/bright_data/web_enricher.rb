@@ -80,6 +80,17 @@ module BrightData
         end
       end
 
+      # SERPが会社概要ページを直接返す場合がある。
+      # そのページでtel/addressが取れているなら、別の概要リンクへ移動せず採用する。
+      top_result = top_extractor.extract
+      if top_result[:tel].present? || top_result[:address].present?
+        result = top_result.merge(matched: matched_flag)
+        if result[:contact_url].present?
+          result[:contact_url] = resolve_contact_url(result[:contact_url], url)
+        end
+        return result
+      end
+
       # 3. 会社概要ページのリンクを探す
       profile_url = find_profile_link(top_extractor.doc, url)
       puts "  [WebEnricher] profile_url: #{profile_url || '(not found, using top page)'}"
@@ -220,6 +231,8 @@ module BrightData
         if text.match?(PROFILE_LINK_TEXT) || href.match?(PROFILE_LINK_PATH)
           resolved = resolve_url(href, base_uri)
           next if resolved.nil?
+          next if UrlPolicy.excluded_url?(resolved, title: text)
+
           target_uri = URI.parse(resolved) rescue nil
           next if target_uri.nil?
           target_host = target_uri.host.to_s.sub(/\Awww\./, "")

@@ -254,7 +254,7 @@ class CompanyInfoExtractor
          営業時間|営業日|定休日?|受付時間|受付|
          E[-\s]?mail|Email|e-?mail|メール(?:アドレス)?|Mail|
          URL|ＵＲＬ|ホームページ|HP|
-         アクセス|最寄り?駅|地図|
+         アクセス|最寄り?駅|地図|Google\s*map|map|
          代表者|設立|資本金|従業員|業務内容)
     /x
     s = s.split(stop_pattern, 2).first.to_s
