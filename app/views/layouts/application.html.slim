@@ -7,5 +7,11 @@ html lang="ja"
     = render "layouts/header"
     .hero 
      = render "shared/breadcrumbs" if breadcrumbs.any?
+    - if notice.present? || alert.present?
+      .app-flash-container
+        - if notice.present?
+          .app-flash.app-flash-notice = notice
+        - if alert.present?
+          .app-flash.app-flash-alert = alert
     = yield
     = javascript_include_tag "application", "data-turbolinks-track": "reload", "data-turbolinks-suppress-warning": true

@@ -1,4 +1,7 @@
 module CustomersHelper
+  ADDRESS_MUNICIPALITY_PATTERN = /市|区|町|村|郡/.freeze
+  ADDRESS_DETAIL_PATTERN = /[0-9０-９]|丁目|番地|番|号|[-－ー]/.freeze
+
   SERP_STATUS_LABELS = {
     nil           => "未処理",
     ""            => "未処理",
@@ -28,6 +31,27 @@ module CustomersHelper
       content_tag(:span, "○", class: "ai-fill-ok", title: "取得済み")
     else
       content_tag(:span, "×", class: "ai-fill-ng", title: "未取得")
+    end
+  end
+
+  def detailed_address?(address)
+    normalized = address.to_s.strip
+    return false if normalized.blank?
+
+    normalized.match?(CustomersController::SERP_PREF_PATTERN) &&
+      normalized.match?(ADDRESS_MUNICIPALITY_PATTERN) &&
+      normalized.match?(ADDRESS_DETAIL_PATTERN)
+  end
+
+  def address_quality_icon(address)
+    normalized = address.to_s.strip
+
+    if normalized.blank?
+      content_tag(:span, "×", class: "ai-fill-ng", title: "住所未取得")
+    elsif detailed_address?(normalized)
+      content_tag(:span, "○", class: "ai-fill-ok", title: "番地相当まで取得済み")
+    else
+      content_tag(:span, "△", class: "ai-fill-warn", title: "都道府県・市区町村止まりの可能性")
     end
   end
 

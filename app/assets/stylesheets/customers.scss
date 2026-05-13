@@ -61,6 +61,36 @@
 .ai-btn-primary { background: #764ba2; color: white; }
 .ai-btn-secondary { background: #2193b0; color: white; }
 .ai-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+.ai-btn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+  transform: none;
+}
+
+.app-flash-container {
+  padding: 12px 20px 0;
+  background: #f9fbff;
+}
+
+.app-flash {
+  border-radius: 6px;
+  font-weight: 600;
+  margin: 0 auto 10px;
+  max-width: 1200px;
+  padding: 10px 14px;
+}
+
+.app-flash-notice {
+  background: #e8f7ee;
+  border: 1px solid #bde5c8;
+  color: #155724;
+}
+
+.app-flash-alert {
+  background: #fff3cd;
+  border: 1px solid #ffe08a;
+  color: #856404;
+}
 
 /* インラインフォーム */
 .ai-dash-form-inline form {
@@ -78,15 +108,35 @@
   background: #fcfcfc;
 }
 
+.ai-worker-state {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-right: 8px;
+  padding: 3px 10px;
+}
+
+.ai-worker-state.is-running {
+  background: #d4edda;
+  color: #155724;
+}
+
+.ai-worker-state.is-stopped {
+  background: #fff3cd;
+  color: #856404;
+}
+
 /* テーブル（専用） */
 .ai-table-wrapper {
   background: #fff;
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: 0 1px 5px rgba(0,0,0,0.05);
 }
 .ai-custom-table {
   width: 100%;
+  min-width: 1180px;
   border-collapse: collapse;
 }
 .ai-custom-table thead th {
@@ -103,8 +153,36 @@
 }
 .ai-col-company a { font-weight: bold; color: #333; text-decoration: none; }
 .ai-col-company a:hover { color: #764ba2; }
+.ai-col-address {
+  max-width: 260px;
+  word-break: break-word;
+}
 .ai-col-industry small { display: block; color: #888; }
 .ai-col-links a { margin-right: 8px; color: #666; }
+
+.ai-list-header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ai-list-count {
+  background: #eef1f7;
+  border-radius: 999px;
+  color: #555;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 4px 10px;
+}
+
+.ai-empty-row {
+  color: #777;
+  font-weight: 600;
+  padding: 24px !important;
+  text-align: center;
+}
 
 /* ── 進捗ダッシュボード ── */
 .ai-dash-summary-grid {
@@ -201,6 +279,7 @@
 .ai-badge-red    { background: #f8d7da; color: #721c24; }
 
 .ai-fill-ok { color: #28a745; font-weight: 700; }
+.ai-fill-warn { color: #b7791f; font-weight: 700; }
 .ai-fill-ng { color: #dc3545; font-weight: 700; }
 
 .ai-col-fill { text-align: center; }

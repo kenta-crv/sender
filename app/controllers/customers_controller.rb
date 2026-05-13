@@ -5,6 +5,8 @@ class CustomersController < ApplicationController
   # SERP補完対象判定用正規表現（SQLite REGEXP非対応のためRubyで判定）
   SERP_CORP_PATTERN = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/.freeze
   SERP_PREF_PATTERN = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/.freeze
+  ADDRESS_MUNICIPALITY_PATTERN = /市|区|町|村|郡/.freeze
+  ADDRESS_DETAIL_PATTERN = /[0-9０-９]|丁目|番地|番|号|[-－ー]/.freeze
 
 def index
   @last_call_params = params[:last_call] || {}
@@ -563,15 +565,20 @@ def draft
     @customers = @customers.where("url IS NULL OR TRIM(url) = ''")
   when "missing_contact_url"
     @customers = @customers.where("contact_url IS NULL OR TRIM(contact_url) = ''")
+  when "partial_address"
+    @customers = filter_partial_address(@customers)
   when "fully_enriched"
-    @customers = @customers.where.not(tel: [nil, '', ' '])
-                           .where.not(address: [nil, '', ' '])
-                           .where.not(url: [nil, '', ' '])
-                           .where.not(contact_url: [nil, '', ' '])
+    @customers = filter_detailed_address(
+      @customers.where.not(tel: [nil, '', ' '])
+                .where.not(url: [nil, '', ' '])
+                .where.not(contact_url: [nil, '', ' '])
+    )
   when "done_missing_tel"
     @customers = @customers.where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = ''")
   when "done_missing_address"
     @customers = @customers.where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = ''")
+  when "done_partial_address"
+    @customers = filter_partial_address(@customers.where(serp_status: "serp_done"))
   end
 
   # 最終更新日のフィルタ
@@ -605,6 +612,7 @@ def draft
     @customers = @customers.where(industry: params[:industry_name])
   end
 
+  @filtered_count = @customers.count
   @customers = @customers.order(updated_at: :desc).page(params[:page]).per(100)
 
   # 残り件数取得
@@ -624,6 +632,8 @@ def draft
                        )
   serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
   @serp_target_count = serp_scope.count
+  @serp_worker_running = serp_worker_running?
+  @serp_queue_size = serp_queue_size
 
   # ── ダッシュボードサマリー ──
   # SERP補完対象になり得る範囲（status カラムを参照しない）を母集団にする。
@@ -639,14 +649,14 @@ def draft
   error_c    = status_counts["serp_error"].to_i
 
   tel_c     = dash_scope.where.not(tel: [nil, '', ' ']).count
-  addr_c    = dash_scope.where.not(address: [nil, '', ' ']).count
+  addr_c    = detailed_address_count(dash_scope)
   url_c     = dash_scope.where.not(url: [nil, '', ' ']).count
   contact_c = dash_scope.where.not(contact_url: [nil, '', ' ']).count
-  full_c    = dash_scope.where.not(tel: [nil, '', ' '])
-                        .where.not(address: [nil, '', ' '])
-                        .where.not(url: [nil, '', ' '])
-                        .where.not(contact_url: [nil, '', ' '])
-                        .count
+  full_c    = detailed_address_count(
+    dash_scope.where.not(tel: [nil, '', ' '])
+              .where.not(url: [nil, '', ' '])
+              .where.not(contact_url: [nil, '', ' '])
+  )
 
   @dashboard_stats = {
     total: total,
@@ -716,24 +726,38 @@ end
       redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
     end
 
-    # Sidekiq経由で非同期実行。Redisが未起動の場合は同期フォールバック
+    # Sidekiq経由で非同期実行。ワーカー未起動時は小件数のみ同期確認を許可する。
     actual_limit = [limit, target_count].min
-    begin
-      SerpPipelineDbWorker.perform_async(industry, actual_limit)
-      redirect_to draft_customers_path,
-        notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
-    rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
-      Rails.logger.warn("[serp_search] Redis未起動のため同期実行にフォールバック: #{e.message}")
+    if serp_worker_running?
       begin
-        BrightData::Pipeline.execute_from_db(industry: industry.presence, limit: actual_limit, dry_run: false)
+        SerpPipelineDbWorker.perform_async(industry, actual_limit)
         redirect_to draft_customers_path,
-          notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
-      rescue => pipeline_err
-        Rails.logger.error("[serp_search] Pipeline error: #{pipeline_err.message}")
-        redirect_to draft_customers_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
+          notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
+      rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
+        Rails.logger.warn("[serp_search] Redis接続不可: #{e.message}")
+        run_serp_sync_or_alert(industry, actual_limit)
       end
+    else
+      run_serp_sync_or_alert(industry, actual_limit)
     end
   end
+
+  def run_serp_sync_or_alert(industry, actual_limit)
+    if actual_limit > 5
+      redirect_to draft_customers_path,
+        alert: "Sidekiqワーカーが起動していません。5件以下の同期テストにするか、Sidekiqを起動してから再実行してください。" and return
+    end
+
+    begin
+      BrightData::Pipeline.execute_from_db(industry: industry.presence, limit: actual_limit, dry_run: false)
+      redirect_to draft_customers_path,
+        notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
+    rescue => pipeline_err
+      Rails.logger.error("[serp_search] Pipeline error: #{pipeline_err.message}")
+      redirect_to draft_customers_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
+    end
+  end
+  private :run_serp_sync_or_alert
 
   # 進捗取得API（ポーリング用）
   # GET /draft/progress.json?industry=業界名
@@ -1009,6 +1033,60 @@ end
     else
       @customers = Customer.none
     end
+  end
+
+  def serp_worker_running?
+    return false unless redis_reachable?
+
+    require 'sidekiq/api'
+    Sidekiq::ProcessSet.new.any? do |process|
+      queues = process["queues"].to_a
+      queues.include?("serp_enrichment") || queues.include?("default")
+    end
+  rescue Redis::CannotConnectError, Errno::ECONNREFUSED, StandardError
+    false
+  end
+
+  def serp_queue_size
+    return nil unless redis_reachable?
+
+    require 'sidekiq/api'
+    Sidekiq::Queue.new("serp_enrichment").size
+  rescue Redis::CannotConnectError, Errno::ECONNREFUSED, StandardError
+    nil
+  end
+
+  def redis_reachable?
+    require 'socket'
+    require 'uri'
+
+    uri = URI.parse(ENV.fetch('REDIS_URL', 'redis://localhost:6379/0'))
+    Socket.tcp(uri.host, uri.port, connect_timeout: 0.2) { true }
+  rescue StandardError
+    false
+  end
+
+  def filter_detailed_address(scope)
+    ids = scope.pluck(:id, :address).select { |_, address| detailed_address_value?(address) }.map(&:first)
+    scope.where(id: ids)
+  end
+
+  def filter_partial_address(scope)
+    ids = scope.pluck(:id, :address).reject { |_, address| detailed_address_value?(address) }.map(&:first)
+    scope.where(id: ids)
+  end
+
+  def detailed_address_count(scope)
+    scope.pluck(:address).count { |address| detailed_address_value?(address) }
+  end
+
+  def detailed_address_value?(address)
+    normalized = address.to_s.strip
+    return false if normalized.blank?
+
+    normalized.match?(SERP_PREF_PATTERN) &&
+      normalized.match?(ADDRESS_MUNICIPALITY_PATTERN) &&
+      normalized.match?(ADDRESS_DETAIL_PATTERN)
   end
 
   def display_customer_names
