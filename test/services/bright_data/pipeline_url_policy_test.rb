@@ -45,4 +45,37 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     assert_equal "06-0000-0000", updates[:tel]
     assert_equal "大阪府大阪市北区1-1", updates[:address]
   end
+
+  test "execute_from_db selects most recently reset targets first" do
+    Customer.create!(company: "Old Target", address: "Osaka", updated_at: 2.days.ago)
+    Customer.create!(company: "New Reset Target", address: "Osaka", updated_at: 1.minute.ago)
+
+    captured_queries = []
+    fake_client = Object.new
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1|
+      captured_queries.replace(queries)
+      queries.map { |query| { "query" => query, "result" => {}, "timestamp" => Time.current.iso8601 } }
+    end
+
+    with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
+      with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
+        BrightData::Pipeline.execute_from_db(limit: 1, dry_run: true)
+      end
+    end
+
+    assert_equal 1, captured_queries.size
+    assert_match(/\ANew Reset Target/, captured_queries.first)
+  end
+
+  private
+
+  def with_singleton_method(klass, method_name, replacement)
+    original = klass.method(method_name)
+    klass.define_singleton_method(method_name, &replacement)
+    yield
+  ensure
+    klass.define_singleton_method(method_name) do |*args, **kwargs, &block|
+      original.call(*args, **kwargs, &block)
+    end
+  end
 end

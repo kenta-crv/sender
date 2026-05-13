@@ -74,7 +74,7 @@ module BrightData
       # 業種フィルタ
       scope = scope.where(industry: industry) if industry.present?
 
-      targets = scope.limit(limit).to_a
+      targets = scope.order(updated_at: :desc, id: :asc).limit(limit).to_a
       puts "[Pipeline] 対象レコード: #{targets.size}件 (serp_status=NULL かつ tel/url/contact_url いずれか空)"
 
       if targets.empty?
