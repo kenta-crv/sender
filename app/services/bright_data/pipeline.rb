@@ -2,6 +2,7 @@
 
 require "set"
 require "concurrent"
+require "timeout"
 
 module BrightData
   class Pipeline
@@ -148,6 +149,7 @@ module BrightData
           mutex    = Mutex.new
           with_url = companies.count { |c| c[:url].present? }
           concurrency = ENV.fetch("WEB_ENRICHER_CONCURRENCY", "3").to_i.clamp(1, 10)
+          web_timeout = web_enricher_timeout_seconds
           puts "[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件 / 並列度 #{concurrency}"
 
           # customer_id ごとにグループ化（nil customer は処理対象外）
@@ -194,7 +196,9 @@ module BrightData
                   puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer=#{customer.company} (ID=#{customer.id}) / candidate=#{company[:company]} (#{company[:url]})"
                 end
                 begin
-                  web_data = WebEnricher.enrich_from_url(company[:url], customer)
+                  web_data = Timeout.timeout(web_timeout) do
+                    WebEnricher.enrich_from_url(company[:url], customer)
+                  end
                   updates = build_web_updates(customer, company, web_data)
 
                   if updates.any?
@@ -305,6 +309,10 @@ module BrightData
       Customer.where(id: ids).find_each do |customer|
         customer.update_columns(serp_status: status, updated_at: now)
       end
+    end
+
+    def self.web_enricher_timeout_seconds
+      ENV.fetch("WEB_ENRICHER_TIMEOUT_SECONDS", "30").to_f.clamp(1.0, 120.0)
     end
 
     def self.build_serp_updates(customer, company)
