@@ -64,12 +64,17 @@
         small.ai-subtext （serp_status未設定 かつ tel/url/contact_url いずれか空）
       .ai-dash-stats
         span.ai-label Sidekiq
+        - worker_label = @serp_worker_running ? "起動中" : (@redis_reachable ? "未検出" : "Redis未接続")
         strong class="ai-worker-state #{@serp_worker_running ? 'is-running' : 'is-stopped'}"
-          = @serp_worker_running ? "起動中" : "未検出"
+          = worker_label
         - unless @serp_queue_size.nil?
           small.ai-subtext = "キュー #{@serp_queue_size}件"
-        - unless @serp_worker_running
-          small.ai-subtext 5件以下は同期テスト、それ以上はSidekiq起動後に実行
+        - if @serp_worker_running
+          small.ai-subtext SERP補完はバックグラウンドで実行されます
+        - elsif @redis_reachable
+          small.ai-subtext ボタン押下時にSERP専用Sidekiqを自動起動します
+        - else
+          small.ai-subtext Redis起動後にSERP補完を開始できます
 
       .ai-dash-form-inline
         = form_with url: serp_search_customers_path, method: :post, local: true, id: "serp-search-form" do
@@ -84,7 +89,7 @@
             = number_field_tag :limit, 100, min: 1, max: 500, id: "serp-limit-input", class: "ai-input-number"
           button#start-serp-button.ai-btn.ai-btn-secondary type="button" data-max="#{@serp_target_count}"
             i.fas.fa-search
-            | SERP補完開始
+            | Sidekiq確認後にSERP補完開始
 
   / ── 絞り込みフィルタ ──
   - serp_status_options = [["全て", ""], ["未処理", "null"], ["処理中", "serp_queued"], ["完了", "serp_done"], ["登録済み", "serp_imported"], ["エラー", "serp_error"]]
@@ -194,7 +199,7 @@ javascript:
         const industry = document.getElementById('serp-industry-select').value;
         const limit = document.getElementById('serp-limit-input').value;
         const label = industry ? industry : "全業種";
-        if (!window.confirm("SERP補完を開始します。\n業種: " + label + "\n件数上限: " + limit + "件\n\nよろしいですか？")) return;
+        if (!window.confirm("Sidekiqを確認・自動起動してからSERP補完を開始します。\n業種: " + label + "\n件数上限: " + limit + "件\n\nよろしいですか？")) return;
         btn.disabled = true;
         btn.classList.add('is-loading');
         btn.innerText = "開始中...";

@@ -640,6 +640,7 @@ def draft
                        )
   serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
   @serp_target_count = serp_scope.count
+  @redis_reachable = redis_reachable?
   @serp_worker_running = serp_worker_running?
   @serp_queue_size = serp_queue_size
 
@@ -736,38 +737,25 @@ end
       redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
     end
 
-    # Sidekiq経由で非同期実行。ワーカー未起動時は小件数のみ同期確認を許可する。
+    # Sidekiq経由で非同期実行。UI実行では同期処理へ逃がさず、
+    # Redis/Sidekiq の準備が取れた場合だけジョブを投入する。
     actual_limit = [limit, target_count].min
-    if serp_worker_running?
-      begin
-        SerpPipelineDbWorker.perform_async(industry, actual_limit)
-        redirect_to draft_customers_path,
-          notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
-      rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
-        Rails.logger.warn("[serp_search] Redis接続不可: #{e.message}")
-        run_serp_sync_or_alert(industry, actual_limit)
-      end
-    else
-      run_serp_sync_or_alert(industry, actual_limit)
-    end
-  end
-
-  def run_serp_sync_or_alert(industry, actual_limit)
-    if actual_limit > 5
-      redirect_to draft_customers_path,
-        alert: "Sidekiqワーカーが起動していません。5件以下の同期テストにするか、Sidekiqを起動してから再実行してください。" and return
+    sidekiq = SerpSidekiqManager.ensure_running
+    unless sidekiq.ready?
+      redirect_to draft_customers_path, alert: sidekiq.message and return
     end
 
     begin
-      BrightData::Pipeline.execute_from_db(industry: industry.presence, limit: actual_limit, dry_run: false)
+      SerpPipelineDbWorker.perform_async(industry, actual_limit)
+      prefix = sidekiq.started? ? "SERP専用Sidekiqを起動してから" : ""
       redirect_to draft_customers_path,
-        notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
-    rescue => pipeline_err
-      Rails.logger.error("[serp_search] Pipeline error: #{pipeline_err.message}")
-      redirect_to draft_customers_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
+        notice: "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
+    rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
+      Rails.logger.warn("[serp_search] Redis接続不可: #{e.message}")
+      redirect_to draft_customers_path,
+        alert: "Redisに接続できないため、SERP補完を開始できませんでした。Redisを起動してから再実行してください。"
     end
   end
-  private :run_serp_sync_or_alert
 
   # 進捗取得API（ポーリング用）
   # GET /draft/progress.json?industry=業界名
@@ -1046,34 +1034,15 @@ end
   end
 
   def serp_worker_running?
-    return false unless redis_reachable?
-
-    require 'sidekiq/api'
-    Sidekiq::ProcessSet.new.any? do |process|
-      queues = process["queues"].to_a
-      queues.include?("serp_enrichment") || queues.include?("default")
-    end
-  rescue Redis::CannotConnectError, Errno::ECONNREFUSED, StandardError
-    false
+    SerpSidekiqManager.worker_running?
   end
 
   def serp_queue_size
-    return nil unless redis_reachable?
-
-    require 'sidekiq/api'
-    Sidekiq::Queue.new("serp_enrichment").size
-  rescue Redis::CannotConnectError, Errno::ECONNREFUSED, StandardError
-    nil
+    SerpSidekiqManager.queue_size
   end
 
   def redis_reachable?
-    require 'socket'
-    require 'uri'
-
-    uri = URI.parse(ENV.fetch('REDIS_URL', 'redis://localhost:6379/0'))
-    Socket.tcp(uri.host, uri.port, connect_timeout: 0.2) { true }
-  rescue StandardError
-    false
+    SerpSidekiqManager.redis_reachable?
   end
 
   def filter_detailed_address(scope)
