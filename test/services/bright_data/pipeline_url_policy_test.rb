@@ -67,6 +67,23 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     assert_match(/\ANew Reset Target/, captured_queries.first)
   end
 
+  test "execute_from_db skips legacy contact detector in db mode" do
+    Customer.create!(company: "Contact Skip Target", address: "Osaka")
+
+    fake_client = Object.new
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1|
+      queries.map { |query| { "query" => query, "result" => {}, "timestamp" => Time.current.iso8601 } }
+    end
+
+    with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
+      with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
+        with_singleton_method(BrightData::ContactUrlEnricher, :enrich, ->(_companies) { flunk "DB mode should not run legacy ContactUrlEnricher" }) do
+          BrightData::Pipeline.execute_from_db(limit: 1, detect_contact: true, dry_run: true)
+        end
+      end
+    end
+  end
+
   private
 
   def with_singleton_method(klass, method_name, replacement)

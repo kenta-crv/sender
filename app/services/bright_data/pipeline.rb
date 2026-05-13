@@ -226,7 +226,9 @@ module BrightData
           puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / SERP直接更新 #{counters[:serp_direct]}件 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(URL除外) #{counters[:excluded_url]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
         end
 
-        companies = ContactUrlEnricher.enrich(companies) if detect_contact
+        if detect_contact
+          puts "[Pipeline] DB mode: skipped ContactUrlEnricher (WebEnricher handles persisted contact_url)"
+        end
         normalized = DataNormalizer.normalize_batch(companies)
         ResultExporter.to_csv(normalized)
 
