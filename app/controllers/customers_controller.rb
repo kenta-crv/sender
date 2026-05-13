@@ -7,6 +7,8 @@ class CustomersController < ApplicationController
   SERP_PREF_PATTERN = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/.freeze
   ADDRESS_MUNICIPALITY_PATTERN = /市|区|町|村|郡/.freeze
   ADDRESS_DETAIL_PATTERN = /[0-9０-９]|丁目|番地|番|号|[-－ー]/.freeze
+  ADDRESS_ACCESS_PATTERN = /駅|徒歩|車\s*[0-9０-９]+分|バス|分圏内|アクセス|最寄り/.freeze
+  DISPLAY_TIME_ZONE = "Tokyo".freeze
 
 def index
   @last_call_params = params[:last_call] || {}
@@ -567,16 +569,17 @@ def draft
   when "missing_address"
     @customers = @customers.where("address IS NULL OR TRIM(address) = ''")
   when "missing_url"
-    @customers = @customers.where("url IS NULL OR TRIM(url) = ''")
+    @customers = filter_missing_official_url(@customers)
   when "missing_contact_url"
     @customers = @customers.where("contact_url IS NULL OR TRIM(contact_url) = ''")
   when "partial_address"
     @customers = filter_partial_address(@customers)
   when "fully_enriched"
     @customers = filter_detailed_address(
-      @customers.where.not(tel: [nil, '', ' '])
-                .where.not(url: [nil, '', ' '])
-                .where.not(contact_url: [nil, '', ' '])
+      filter_official_url(
+        @customers.where.not(tel: [nil, '', ' '])
+                  .where.not(contact_url: [nil, '', ' '])
+      )
     )
   when "done_missing_tel"
     @customers = @customers.where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = ''")
@@ -593,14 +596,14 @@ def draft
   updated_to   = (Date.parse(params[:updated_to])   rescue nil) if params[:updated_to].present?
   if updated_from || updated_to
     if updated_from && updated_to
-      @customers = @customers.where(updated_at: updated_from.beginning_of_day..updated_to.end_of_day)
+      @customers = @customers.where(updated_at: zoned_beginning_of_day(updated_from)..zoned_end_of_day(updated_to))
     elsif updated_from
-      @customers = @customers.where("updated_at >= ?", updated_from.beginning_of_day)
+      @customers = @customers.where("updated_at >= ?", zoned_beginning_of_day(updated_from))
     else
-      @customers = @customers.where("updated_at <= ?", updated_to.end_of_day)
+      @customers = @customers.where("updated_at <= ?", zoned_end_of_day(updated_to))
     end
   elsif params[:updated_today] == "1"
-    @customers = @customers.where(updated_at: Time.current.beginning_of_day..Time.current.end_of_day)
+    @customers = @customers.where(updated_at: zoned_today_range)
   end
 
   # 期間でフィルタ（未指定なら全期間）
@@ -622,7 +625,7 @@ def draft
 
   # 残り件数取得
   today_total = ExtractTracking
-                  .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
+                  .where(created_at: zoned_today_range)
                   .sum(:total_count)
 
   daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
@@ -656,12 +659,13 @@ def draft
 
   tel_c     = dash_scope.where.not(tel: [nil, '', ' ']).count
   addr_c    = detailed_address_count(dash_scope)
-  url_c     = dash_scope.where.not(url: [nil, '', ' ']).count
+  url_c     = official_url_count(dash_scope)
   contact_c = dash_scope.where.not(contact_url: [nil, '', ' ']).count
   full_c    = detailed_address_count(
-    dash_scope.where.not(tel: [nil, '', ' '])
-              .where.not(url: [nil, '', ' '])
-              .where.not(contact_url: [nil, '', ' '])
+    filter_official_url(
+      dash_scope.where.not(tel: [nil, '', ' '])
+                .where.not(contact_url: [nil, '', ' '])
+    )
   )
 
   @dashboard_stats = {
@@ -1082,17 +1086,49 @@ end
     scope.where(id: ids)
   end
 
+  def filter_official_url(scope)
+    ids = scope.pluck(:id, :url).select { |_, url| official_url_value?(url) }.map(&:first)
+    scope.where(id: ids)
+  end
+
+  def filter_missing_official_url(scope)
+    ids = scope.pluck(:id, :url).reject { |_, url| official_url_value?(url) }.map(&:first)
+    scope.where(id: ids)
+  end
+
   def detailed_address_count(scope)
     scope.pluck(:address).count { |address| detailed_address_value?(address) }
+  end
+
+  def official_url_count(scope)
+    scope.pluck(:url).count { |url| official_url_value?(url) }
   end
 
   def detailed_address_value?(address)
     normalized = address.to_s.strip
     return false if normalized.blank?
+    return false if normalized.match?(ADDRESS_ACCESS_PATTERN)
 
     normalized.match?(SERP_PREF_PATTERN) &&
       normalized.match?(ADDRESS_MUNICIPALITY_PATTERN) &&
       normalized.match?(ADDRESS_DETAIL_PATTERN)
+  end
+
+  def official_url_value?(url)
+    BrightData::UrlPolicy.official_url?(url)
+  end
+
+  def zoned_today_range
+    today = Time.current.in_time_zone(DISPLAY_TIME_ZONE).to_date
+    zoned_beginning_of_day(today)..zoned_end_of_day(today)
+  end
+
+  def zoned_beginning_of_day(date)
+    Time.find_zone!(DISPLAY_TIME_ZONE).local(date.year, date.month, date.day).beginning_of_day
+  end
+
+  def zoned_end_of_day(date)
+    Time.find_zone!(DISPLAY_TIME_ZONE).local(date.year, date.month, date.day).end_of_day
   end
 
   def display_customer_names
