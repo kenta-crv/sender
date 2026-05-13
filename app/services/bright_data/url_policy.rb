@@ -16,9 +16,12 @@ module BrightData
       en-japan.com
       workport.co.jp
       baitoru.com
+      gaten.info
       saiyo-connect.jp
       jbplt.jp
       job-medley.com
+      job.logiquest.co.jp
+      lacotto.jp
       xn--pckua2a7gp15o89zb.com
     ].freeze
 
@@ -46,6 +49,12 @@ module BrightData
       fc-hikaku.net
       mono.ipros.com
       tryworkneo.net
+      annai-center.com
+      daikonavi.com
+      goo-net.com
+      ldigi.com.tw
+      osaka-fc.jp
+      tsukulink.net
     ].freeze
 
     SOCIAL_DOMAINS = %w[
@@ -60,6 +69,7 @@ module BrightData
     ].freeze
 
     DOCUMENT_PATTERN = /\.(?:pdf|xlsx?|csv|docx?)(?:\?|#|\z)/i
+    JOB_PATH_PATTERN = %r{/(?:jobfind|job[_-]?offers?|jobs?|recruit|career|saiyo)(?:[-_/]|\z)}i
     EXCLUDED_TEXT_PATTERN = /
       転職|求人|採用|バイト|アルバイト|パート|
       本選考|エントリーシート|(?<![A-Za-z])ES(?![A-Za-z])|
@@ -88,6 +98,7 @@ module BrightData
         host = normalized_host(uri.host)
         return true if excluded_domain?(host)
         return true if uri.to_s.match?(DOCUMENT_PATTERN)
+        return true if decoded_path_and_query(uri).match?(JOB_PATH_PATTERN)
 
         text = [title, decoded_path_and_query(uri)].compact.join(" ")
         text.match?(EXCLUDED_TEXT_PATTERN)

@@ -12,7 +12,10 @@ class BrightData::UrlPolicyTest < ActiveSupport::TestCase
       "https://toukibo.ai-con.lawyer/search-service/result/8140001044561",
       "https://www.buffett-code.com/company/6a7n75947k/",
       "https://houjin.jp/c/6120901041117",
-      "https://salesnow.jp/db/companies/jcb8j5xxh0r49u19e"
+      "https://salesnow.jp/db/companies/jcb8j5xxh0r49u19e",
+      "https://job.logiquest.co.jp/jobfind-smartphone/job/4995",
+      "https://gaten.info/job/16924",
+      "https://jp.ldigi.com.tw/detail.php?ban_no=9120101059122"
     ]
 
     rejected.each do |url|
