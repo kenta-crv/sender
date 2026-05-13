@@ -334,7 +334,10 @@ module BrightData
       if address.present? && better_address?(address, customer.address)
         updates[:address] = address
       end
-      updates[:contact_url] = web_data[:contact_url] if customer.contact_url.blank? && web_data[:contact_url].present?
+      if web_data[:contact_url].present? &&
+         (customer.contact_url.blank? || malformed_relative_url?(customer.contact_url))
+        updates[:contact_url] = web_data[:contact_url]
+      end
       updates
     end
 
@@ -358,6 +361,10 @@ module BrightData
       score += 50 if s.match?(/(?:市|区|町|村|郡)/)
       score += 100 if s.match?(/[0-9０-９]|丁目|番地|番|号|[-－ー]/)
       score
+    end
+
+    def self.malformed_relative_url?(url)
+      url.to_s.include?("/../") || url.to_s.include?("/./")
     end
 
     def self.company_matches_customer?(customer_name, candidate_name)

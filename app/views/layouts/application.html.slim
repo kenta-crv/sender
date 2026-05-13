@@ -8,4 +8,4 @@ html lang="ja"
     .hero 
      = render "shared/breadcrumbs" if breadcrumbs.any?
     = yield
-    = javascript_include_tag "application", "data-turbolinks-track": "reload"
+    = javascript_include_tag "application", "data-turbolinks-track": "reload", "data-turbolinks-suppress-warning": true

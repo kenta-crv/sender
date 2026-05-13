@@ -34,4 +34,6 @@ pidfile ENV.fetch("PIDFILE") { "tmp/pids/server.pid" }
 # preload_app!
 
 # Allow puma to be restarted by `rails restart` command.
-plugin :tmp_restart
+# Puma 3.x cannot exec bin/rails reliably on Windows after tmp/restart.txt is
+# touched, so disable this plugin only for local Windows UI checks.
+plugin :tmp_restart unless Gem.win_platform?

@@ -273,39 +273,21 @@ module BrightData
     def self.resolve_contact_url(contact_url, base_url)
       return nil if contact_url.blank?
 
-      # 既に絶対URLなら何もしない
-      return contact_url if contact_url.start_with?("http://", "https://")
-
       base_uri = URI.parse(base_url) rescue nil
       return contact_url if base_uri.nil?
 
-      if contact_url.start_with?("#")
-        # フラグメントのみ → ページ自身のURLにフラグメントを付与
-        "#{base_uri.scheme}://#{base_uri.host}#{base_uri.path}#{contact_url}"
-      elsif contact_url.start_with?("//")
-        "#{base_uri.scheme}:#{contact_url}"
-      elsif contact_url.start_with?("/")
-        "#{base_uri.scheme}://#{base_uri.host}#{contact_url}"
-      else
-        # 相対パス（"./contact.html" や "contact.html"）
-        base_path = base_uri.path.sub(%r{/[^/]*\z}, "/")
-        clean = contact_url.sub(%r{\A\./}, "")
-        "#{base_uri.scheme}://#{base_uri.host}#{base_path}#{clean}"
-      end
+      resolve_url(contact_url, base_uri) || contact_url
     rescue URI::InvalidURIError
       contact_url
     end
 
     def self.resolve_url(href, base_uri)
-      if href.start_with?("http://", "https://")
-        href
-      elsif href.start_with?("//")
-        "#{base_uri.scheme}:#{href}"
-      elsif href.start_with?("/")
-        "#{base_uri.scheme}://#{base_uri.host}#{href}"
-      elsif href.present?
-        "#{base_uri.scheme}://#{base_uri.host}/#{href.sub(/\A\.\//, '')}"
-      end
+      return nil if href.blank?
+      return nil if href.start_with?("javascript:", "mailto:", "tel:")
+
+      URI.join(base_uri.to_s, href).to_s
+    rescue URI::InvalidURIError
+      nil
     end
   end
 end
