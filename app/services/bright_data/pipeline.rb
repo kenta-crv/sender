@@ -182,6 +182,14 @@ module BrightData
                   next
                 end
 
+                if UrlPolicy.excluded_url?(company[:url], title: company[:company])
+                  mutex.synchronize do
+                    counters[:excluded_url] += 1
+                    puts "[WebEnricher] #{idx + 1}/#{companies.size}: excluded url=#{company[:url]} title='#{company[:company]}'"
+                  end
+                  next
+                end
+
                 mutex.synchronize do
                   puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer=#{customer.company} (ID=#{customer.id}) / candidate=#{company[:company]} (#{company[:url]})"
                 end
@@ -211,7 +219,7 @@ module BrightData
           pool.shutdown
           pool.wait_for_termination
 
-          puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / SERP直接更新 #{counters[:serp_direct]}件 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
+          puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / SERP直接更新 #{counters[:serp_direct]}件 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(URL除外) #{counters[:excluded_url]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
         end
 
         companies = ContactUrlEnricher.enrich(companies) if detect_contact
@@ -304,9 +312,9 @@ module BrightData
       return {} unless company_matches_customer?(customer.company, company[:company])
 
       updates = {}
-      url_is_directory = WebEnricher.directory_url?(company[:url])
+      url_is_official = UrlPolicy.official_url?(company[:url], title: company[:company])
 
-      updates[:url] = company[:url] if customer.url.blank? && company[:url].present? && !url_is_directory
+      updates[:url] = company[:url] if customer.url.blank? && company[:url].present? && url_is_official
       updates[:tel] = company[:tel] if customer.tel.blank? && company[:tel].present?
 
       address = clean_address_candidate(company[:address])
@@ -321,12 +329,9 @@ module BrightData
     # （並列実行時もスレッドセーフ — 純粋関数）
     def self.build_web_updates(customer, company, web_data)
       updates = {}
-      url_reliable = web_data[:matched] == true ||
-                     (web_data[:matched].nil? &&
-                      (web_data[:tel].present? || web_data[:contact_url].present? || web_data[:address].present?))
-      url_is_directory = WebEnricher.directory_url?(company[:url])
+      url_is_official = UrlPolicy.official_url?(company[:url], title: company[:company])
 
-      updates[:url]         = company[:url]         if customer.url.blank? && company[:url].present? && url_reliable && !url_is_directory
+      updates[:url]         = company[:url]         if customer.url.blank? && company[:url].present? && web_data[:matched] == true && url_is_official
       updates[:tel]         = web_data[:tel]        if customer.tel.blank? && web_data[:tel].present?
       # address: 都道府県始まり かつ 市区町村を含む正規化住所が取得できた場合のみ採用。
       # 部分住所を完全住所に補完する用途（既存値があっても上書き）。

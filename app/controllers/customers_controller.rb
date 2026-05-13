@@ -532,7 +532,12 @@ def draft
   # 取引先環境で status カラムは別用途に使われているため、
   # 必須条件は serp_status（NULL/serp_queued/serp_done/serp_imported/serp_error）に変更。
   # status="draft" は任意フィルタとしてのみ適用可能。
-  draft_base = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
+  visible_serp_statuses = if params[:serp_status_filter] == "serp_imported"
+                            ["serp_imported"]
+                          else
+                            [nil, '', 'serp_queued', 'serp_done', 'serp_error']
+                          end
+  draft_base = Customer.where(serp_status: visible_serp_statuses)
   draft_base = draft_base.where(status: params[:status_filter]) if params[:status_filter].present?
 
   # serp_status での絞り込み（"null" は NULL/'' を表す）
@@ -637,7 +642,8 @@ def draft
 
   # ── ダッシュボードサマリー ──
   # SERP補完対象になり得る範囲（status カラムを参照しない）を母集団にする。
-  dash_scope = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
+  dash_statuses = params[:serp_status_filter] == "serp_imported" ? ["serp_imported"] : [nil, '', 'serp_queued', 'serp_done', 'serp_error']
+  dash_scope = Customer.where(serp_status: dash_statuses)
   dash_scope = dash_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
 
   total = dash_scope.count

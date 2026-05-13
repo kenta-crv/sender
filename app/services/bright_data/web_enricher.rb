@@ -16,37 +16,6 @@ module BrightData
   #   false … 不一致（呼び出し側でスキップ）
   #   nil   … 検証不能（ページから会社名を取得できず）
   class WebEnricher
-    # ── ディレクトリサイト除外リスト ──
-    # url として保存すべきでない企業ディレクトリ・レビューサイト
-    DIRECTORY_DOMAINS = %w[
-      cnavi.g-search.or.jp
-      en-hyouban.com
-      baseconnect.in
-      houjin.jp
-      houjin-bangou.nta.go.jp
-      alarmbox.jp
-      mapion.co.jp
-      navitime.co.jp
-      itp.ne.jp
-      ekiten.jp
-      tdb.co.jp
-      dun.co.jp
-      nikkei.com
-      job-medley.com
-      openwork.jp
-      vorkers.com
-      bunshun.jp
-      diamond.jp
-      r.gnavi.co.jp
-      tabelog.com
-      hotpepper.jp
-      homes.co.jp
-      suumo.jp
-      minkabu.jp
-      yahoo.co.jp
-      yelp.co.jp
-    ].freeze
-
     PROFILE_LINK_TEXT = /会社概要|企業概要|企業情報|会社案内|会社情報|会社紹介|コーポレート|about\s*us|about\s*company/i
 
     PROFILE_LINK_PATH = /\/company(?:-info|-profile|-about)?(?:\/|\.html?)?$|
@@ -263,10 +232,7 @@ module BrightData
 
     # ディレクトリサイトかどうか判定
     def self.directory_url?(url)
-      uri = URI.parse(url) rescue nil
-      return false if uri.nil? || uri.host.nil?
-      host = uri.host.downcase.sub(/\Awww\./, "")
-      DIRECTORY_DOMAINS.any? { |d| host == d || host.end_with?(".#{d}") }
+      UrlPolicy.excluded_url?(url)
     end
 
     # contact_url を絶対URLに変換する
