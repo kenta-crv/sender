@@ -8,6 +8,7 @@ class SerpPipelineDbWorker
   # @param industry [String|nil] 業種フィルタ
   # @param limit [Integer] 処理件数上限
   def perform(industry = nil, limit = 100)
+    puts "[SerpPipelineDbWorker] DB mode: legacy contact crawl disabled"
     BrightData::Pipeline.execute_from_db(
       industry: industry,
       limit: limit,
