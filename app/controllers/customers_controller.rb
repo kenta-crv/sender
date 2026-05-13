@@ -497,174 +497,185 @@ def destroy
   end
 
 def draft
-  start_time = Time.current
+    start_time = Time.current
 
-  # 期間パラメータの解釈（未指定可）
-  @period_start = nil
-  @period_end   = nil
+    # 期間パラメータの解釈（未指定可）
+    @period_start = nil
+    @period_end   = nil
 
-  if params[:period_start].present?
-    begin
-      @period_start = Date.parse(params[:period_start])
-    rescue ArgumentError
-      @period_start = nil
+    if params[:period_start].present?
+      begin
+        @period_start = Date.parse(params[:period_start])
+      rescue ArgumentError
+        @period_start = nil
+      end
     end
-  end
 
-  if params[:period_end].present?
-    begin
-      @period_end = Date.parse(params[:period_end])
-    rescue ArgumentError
-      @period_end = nil
+    if params[:period_end].present?
+      begin
+        @period_end = Date.parse(params[:period_end])
+      rescue ArgumentError
+        @period_end = nil
+      end
     end
-  end
 
-  # 期間の整合性（逆転していたら入れ替え）
-  if @period_start.present? && @period_end.present? && @period_end < @period_start
-    @period_start, @period_end = @period_end, @period_start
-  end
+    # 期間の整合性（逆転していたら入れ替え）
+    if @period_start.present? && @period_end.present? && @period_end < @period_start
+      @period_start, @period_end = @period_end, @period_start
+    end
 
-  range_start = @period_start&.beginning_of_day
-  range_end   = @period_end&.end_of_day
+    range_start = @period_start&.beginning_of_day
+    range_end   = @period_end&.end_of_day
 
-  # SERP補完対象候補を表示する一覧。
-  # 取引先環境で status カラムは別用途に使われているため、
-  # 必須条件は serp_status（NULL/serp_queued/serp_done/serp_imported/serp_error）に変更。
-  # status="draft" は任意フィルタとしてのみ適用可能。
-  draft_base = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
-  draft_base = draft_base.where(status: params[:status_filter]) if params[:status_filter].present?
+    # --- 基本スコープの定義 ---
+    draft_base = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
 
-  # serp_status での絞り込み（"null" は NULL/'' を表す）
-  case params[:serp_status_filter]
-  when "null"
-    draft_base = draft_base.where(serp_status: [nil, ''])
-  when "serp_queued", "serp_done", "serp_imported", "serp_error"
-    draft_base = draft_base.where(serp_status: params[:serp_status_filter])
-  end
-
-  # Adminを優先した条件分岐（tel_filter は従来通り）
-  @customers = case
-  when admin_signed_in? && params[:tel_filter] == "with_tel"
-    draft_base.where.not(tel: [nil, '', ' '])
-  when admin_signed_in? && params[:tel_filter] == "without_tel"
-    draft_base.where(tel: [nil, '', ' '])
-  when worker_signed_in?
-    draft_base.where(tel: [nil, '', ' '])
-  else
-    draft_base
-  end
-
-  # 充足条件フィルタ: 例 "missing_tel" → tel 未取得のみ
-  case params[:fill_filter]
-  when "missing_tel"
-    @customers = @customers.where("tel IS NULL OR TRIM(tel) = ''")
-  when "missing_address"
-    @customers = @customers.where("address IS NULL OR TRIM(address) = ''")
-  when "missing_url"
-    @customers = @customers.where("url IS NULL OR TRIM(url) = ''")
-  when "missing_contact_url"
-    @customers = @customers.where("contact_url IS NULL OR TRIM(contact_url) = ''")
-  when "fully_enriched"
-    @customers = @customers.where.not(tel: [nil, '', ' '])
-                           .where.not(address: [nil, '', ' '])
-                           .where.not(url: [nil, '', ' '])
-                           .where.not(contact_url: [nil, '', ' '])
-  when "done_missing_tel"
-    @customers = @customers.where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = ''")
-  when "done_missing_address"
-    @customers = @customers.where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = ''")
-  end
-
-  # 最終更新日のフィルタ
-  # 優先順位: updated_from / updated_to が指定されていればそれを使用、
-  # それ以外で updated_today=1 なら本日のみ。
-  updated_from = (Date.parse(params[:updated_from]) rescue nil) if params[:updated_from].present?
-  updated_to   = (Date.parse(params[:updated_to])   rescue nil) if params[:updated_to].present?
-  if updated_from || updated_to
-    if updated_from && updated_to
-      @customers = @customers.where(updated_at: updated_from.beginning_of_day..updated_to.end_of_day)
-    elsif updated_from
-      @customers = @customers.where("updated_at >= ?", updated_from.beginning_of_day)
+    # 【重要修正】ログイン状態によるフィルタリング
+    if admin_signed_in?
+      # Adminは全件表示（追加フィルタなし）
+    elsif client_signed_in?
+      # Clientログイン時は自身の client_id に紐づくもののみ
+      draft_base = draft_base.where(client_id: current_client.id)
     else
-      @customers = @customers.where("updated_at <= ?", updated_to.end_of_day)
+      # どちらでもない場合（Workerなど）は、必要に応じて制限
+      # ここでは未ログイン時などの考慮として空を返すか、特定の仕様があれば記述
+      # draft_base = draft_base.none 
     end
-  elsif params[:updated_today] == "1"
-    @customers = @customers.where(updated_at: Time.current.beginning_of_day..Time.current.end_of_day)
-  end
 
-  # 期間でフィルタ（未指定なら全期間）
-  if range_start && range_end
-    @customers = @customers.where(created_at: range_start..range_end)
-  elsif range_start
-    @customers = @customers.where('created_at >= ?', range_start)
-  elsif range_end
-    @customers = @customers.where('created_at <= ?', range_end)
-  end
+    # status による絞り込み
+    draft_base = draft_base.where(status: params[:status_filter]) if params[:status_filter].present?
 
-  # 業種でフィルタ
-  if params[:industry_name].present?
-    @customers = @customers.where(industry: params[:industry_name])
-  end
+    # serp_status での絞り込み
+    case params[:serp_status_filter]
+    when "null"
+      draft_base = draft_base.where(serp_status: [nil, ''])
+    when "serp_queued", "serp_done", "serp_imported", "serp_error"
+      draft_base = draft_base.where(serp_status: params[:serp_status_filter])
+    end
 
-  # ページネーション（workerをincludesしてN+1を回避）
+    # Adminを優先した条件分岐（tel_filter）
+    @customers = case
+    when admin_signed_in? && params[:tel_filter] == "with_tel"
+      draft_base.where.not(tel: [nil, '', ' '])
+    when admin_signed_in? && params[:tel_filter] == "without_tel"
+      draft_base.where(tel: [nil, '', ' '])
+    when worker_signed_in?
+      draft_base.where(tel: [nil, '', ' '])
+    else
+      draft_base
+    end
 
-  @customers = @customers.order(updated_at: :desc).includes(:worker).page(params[:page]).per(100)
+    # 充足条件フィルタ
+    case params[:fill_filter]
+    when "missing_tel"
+      @customers = @customers.where("tel IS NULL OR TRIM(tel) = ''")
+    when "missing_address"
+      @customers = @customers.where("address IS NULL OR TRIM(address) = ''")
+    when "missing_url"
+      @customers = @customers.where("url IS NULL OR TRIM(url) = ''")
+    when "missing_contact_url"
+      @customers = @customers.where("contact_url IS NULL OR TRIM(contact_url) = ''")
+    when "fully_enriched"
+      @customers = @customers.where.not(tel: [nil, '', ' '])
+                             .where.not(address: [nil, '', ' '])
+                             .where.not(url: [nil, '', ' '])
+                             .where.not(contact_url: [nil, '', ' '])
+    when "done_missing_tel"
+      @customers = @customers.where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = ''")
+    when "done_missing_address"
+      @customers = @customers.where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = ''")
+    end
 
-  # 残り件数取得
-  today_total = ExtractTracking
-                  .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
-                  .sum(:total_count)
+    # 最終更新日のフィルタ
+    updated_from = (Date.parse(params[:updated_from]) rescue nil) if params[:updated_from].present?
+    updated_to   = (Date.parse(params[:updated_to])   rescue nil) if params[:updated_to].present?
+    if updated_from || updated_to
+      if updated_from && updated_to
+        @customers = @customers.where(updated_at: updated_from.beginning_of_day..updated_to.end_of_day)
+      elsif updated_from
+        @customers = @customers.where("updated_at >= ?", updated_from.beginning_of_day)
+      else
+        @customers = @customers.where("updated_at <= ?", updated_to.end_of_day)
+      end
+    elsif params[:updated_today] == "1"
+      @customers = @customers.where(updated_at: Time.current.beginning_of_day..Time.current.end_of_day)
+    end
 
-  daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
-  @remaining_extractable = [daily_limit - today_total, 0].max
+    # 期間でフィルタ
+    if range_start && range_end
+      @customers = @customers.where(created_at: range_start..range_end)
+    elsif range_start
+      @customers = @customers.where('created_at >= ?', range_start)
+    elsif range_end
+      @customers = @customers.where('created_at <= ?', range_end)
+    end
 
-  # SERP補完対象件数（serp_status ベース: NULL かつ tel/url/contact_url いずれか空）
-  serp_scope = Customer.where(serp_status: [nil, ''])
-                       .where(
-                         "(tel IS NULL OR TRIM(tel) = '') OR " \
-                         "(url IS NULL OR TRIM(url) = '') OR " \
-                         "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                       )
-  serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
-  @serp_target_count = serp_scope.count
+    # 業種でフィルタ
+    if params[:industry_name].present?
+      @customers = @customers.where(industry: params[:industry_name])
+    end
 
-  # ── ダッシュボードサマリー ──
-  # SERP補完対象になり得る範囲（status カラムを参照しない）を母集団にする。
-  dash_scope = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
-  dash_scope = dash_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+    # ページネーション（workerをincludesしてN+1を回避）
+    @customers = @customers.order(updated_at: :desc).includes(:worker).page(params[:page]).per(100)
 
-  total = dash_scope.count
-  status_counts = dash_scope.group(:serp_status).count
-  null_c     = (status_counts[nil].to_i + status_counts[""].to_i)
-  queued_c   = status_counts["serp_queued"].to_i
-  done_c     = status_counts["serp_done"].to_i
-  imported_c = status_counts["serp_imported"].to_i
-  error_c    = status_counts["serp_error"].to_i
+    # 残り件数取得
+    today_total = ExtractTracking
+                    .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
+                    .sum(:total_count)
 
-  tel_c     = dash_scope.where.not(tel: [nil, '', ' ']).count
-  addr_c    = dash_scope.where.not(address: [nil, '', ' ']).count
-  url_c     = dash_scope.where.not(url: [nil, '', ' ']).count
-  contact_c = dash_scope.where.not(contact_url: [nil, '', ' ']).count
-  full_c    = dash_scope.where.not(tel: [nil, '', ' '])
-                        .where.not(address: [nil, '', ' '])
-                        .where.not(url: [nil, '', ' '])
-                        .where.not(contact_url: [nil, '', ' '])
-                        .count
+    daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
+    @remaining_extractable = [daily_limit - today_total, 0].max
 
-  @dashboard_stats = {
-    total: total,
-    status: {
-      null: null_c, queued: queued_c, done: done_c, imported: imported_c, error: error_c
-    },
-    fill: {
-      tel: tel_c, address: addr_c, url: url_c, contact_url: contact_c, full: full_c
+    # --- SERP補完対象件数（スコープにclient制限を反映） ---
+    serp_scope = Customer.where(serp_status: [nil, ''])
+                         .where(
+                           "(tel IS NULL OR TRIM(tel) = '') OR " \
+                           "(url IS NULL OR TRIM(url) = '') OR " \
+                           "(contact_url IS NULL OR TRIM(contact_url) = '')"
+                         )
+    # 権限フィルタをここでも適用
+    serp_scope = serp_scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
+    
+    serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+    @serp_target_count = serp_scope.count
+
+    # --- ダッシュボードサマリー（スコープにclient制限を反映） ---
+    dash_scope = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
+    dash_scope = dash_scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
+    dash_scope = dash_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+
+    total = dash_scope.count
+    status_counts = dash_scope.group(:serp_status).count
+    null_c     = (status_counts[nil].to_i + status_counts[""].to_i)
+    queued_c   = status_counts["serp_queued"].to_i
+    done_c     = status_counts["serp_done"].to_i
+    imported_c = status_counts["serp_imported"].to_i
+    error_c    = status_counts["serp_error"].to_i
+
+    tel_c     = dash_scope.where.not(tel: [nil, '', ' ']).count
+    addr_c    = dash_scope.where.not(address: [nil, '', ' ']).count
+    url_c     = dash_scope.where.not(url: [nil, '', ' ']).count
+    contact_c = dash_scope.where.not(contact_url: [nil, '', ' ']).count
+    full_c    = dash_scope.where.not(tel: [nil, '', ' '])
+                          .where.not(address: [nil, '', ' '])
+                          .where.not(url: [nil, '', ' '])
+                          .where.not(contact_url: [nil, '', ' '])
+                          .count
+
+    @dashboard_stats = {
+      total: total,
+      status: {
+        null: null_c, queued: queued_c, done: done_c, imported: imported_c, error: error_c
+      },
+      fill: {
+        tel: tel_c, address: addr_c, url: url_c, contact_url: contact_c, full: full_c
+      }
     }
-  }
 
-  elapsed = ((Time.current - start_time) * 1000).round(2)
-  Rails.logger.info("draft action: completed in #{elapsed}ms")
-end
-
+    elapsed = ((Time.current - start_time) * 1000).round(2)
+    Rails.logger.info("draft action: completed in #{elapsed}ms")
+  end
+  
   def extract_company_info
     start_time = Time.current
     Rails.logger.info("extract_company_info called (SYNC MODE).")

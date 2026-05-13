@@ -166,11 +166,12 @@ def sending
                                   .or(base_scope.where(calls: { status: excluded_statuses }))
                                   .distinct.count
 end
-  def searching_form
+
+def searching_form
     # -------------------------
-    # 自分の顧客のみ
+    # 自分の顧客のみに限定 (client_id を指定)
     # -------------------------
-    base_customers = Customer
+    base_customers = Customer.where(client_id: current_client.id)
                                    .includes(:last_form_call)
                                    .left_joins(:calls)
                                    .distinct
@@ -182,7 +183,7 @@ end
     filtered = @q.result(distinct: true)
 
     # -------------------------
-    # 自動検出対象
+    # 自動検出対象 (自分の顧客かつ未検出のもの)
     # -------------------------
     @detectable_customers = filtered
                               .where(contact_url: [nil, ''])
@@ -191,14 +192,23 @@ end
                               .page(params[:detectable_page]).per(50)
 
     # -------------------------
-    # カウント系
+    # カウント系 (ここも current_client の範囲に限定)
     # -------------------------
-    @not_detected_count = Customer.where(contact_url: 'not_detected').count
+    # フォーム検出を試みたが 'not_detected' だった自分の顧客
+    @not_detected_count = Customer.where(client_id: current_client.id)
+                                  .where(contact_url: 'not_detected')
+                                  .count
 
-    @no_url_customers_count = Customer
+    # HP URLすら設定されていない自分の顧客
+    @no_url_customers_count = Customer.where(client_id: current_client.id)
                                             .where(contact_url: [nil, ''])
                                             .where(url: [nil, ''])
                                             .count
+
+    # -------------------------
+    # Submission（Viewのエラー回避用に追加）
+    # -------------------------
+    @submissions = current_client.submissions.order(created_at: :desc)
   end
 
   def setting

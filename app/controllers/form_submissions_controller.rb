@@ -1,6 +1,7 @@
 class FormSubmissionsController < ApplicationController
+  before_action :authenticate_admin!, except: [:import_customers, :index]
+  before_action :authenticate_admin_or_client!, only: [:import_customers, :inde]  
   before_action :set_batch, only: [:show, :cancel, :resume, :progress, :destroy]
-  before_action :authenticate_admin!
   # GET /form_submissions
 def index
   # -------------------------
@@ -310,48 +311,100 @@ end
     end
   end
 
-  def import_customers
-    file = params[:file]
-    if file.blank?
-      redirect_to form_submissions_path, alert: 'CSVファイルを選択してください。'
-      return
+def import_customers
+  file = params[:file]
+
+  if file.blank?
+    if client_signed_in? && !admin_signed_in?
+      redirect_to client_dashboard_index_path,
+                  alert: 'CSVファイルを選択してください。'
+    else
+      redirect_to form_submissions_path,
+                  alert: 'CSVファイルを選択してください。'
     end
-    import_count = 0
-    error_count = 0
+    return
+  end
 
-    begin
-      # CSVの文字コードは適宜調整（Shift_JISの場合は encoding: 'SJIS:UTF-8'）
-      CSV.foreach(file.path, headers: true) do |row|
-        # 会社名や電話番号をキーにして重複を回避しつつ作成
-        customer = Customer.find_or_initialize_by(company: row['会社名'])
-        
-        customer.attributes = {
-          company:         row['会社名'],
-          tel:         row['電話番号'],
-          address:     row['住所'],
-          url:         row['HP URL'],
-          email:       row['メールアドレス'],
-          business:    row['業種'],
-          genre:       row['職種'],
-          contact_url: row['問い合わせURL'],
-        }
+  import_count = 0
+  error_count = 0
+  error_rows = []
 
-        if customer.save
-          import_count += 1
-        else
-          error_count += 1
-        end
+  begin
+    # headers: true により1行目をヘッダーとして扱う
+    CSV.foreach(file.path, headers: true) do |row|
+      # CSVのヘッダーが「会社名」か「company」のどちらでも動くように考慮
+      company_name = row['会社名'] || row['company']
+      
+      # 会社名が空の場合はスキップまたはエラー
+      if company_name.blank?
+        error_count += 1
+        error_rows << { row: row.to_h, errors: ["会社名(company)が空です"] }
+        next
       end
 
-      redirect_to form_submissions_path, notice: "#{import_count}件の顧客をインポートしました。(失敗: #{error_count}件)"
-    rescue => e
-      redirect_to form_submissions_path, alert: "エラーが発生しました: #{e.message}"
+      customer = Customer.find_or_initialize_by(company: company_name)
+
+      customer.assign_attributes(
+        tel:          row['電話番号'] || row['tel'],
+        address:      row['住所'] || row['address'],
+        url:          row['HP URL'] || row['url'],
+        email:        row['メールアドレス'] || row['email'],
+        business:     row['業種'] || row['business'],
+        genre:        row['職種'] || row['genre'],
+        contact_url:  row['問い合わせURL'] || row['contact_url']
+      )
+
+      # client_id を紐付ける必要がある場合はここでセット
+      customer.client_id = current_client.id if respond_to?(:current_client) && current_client
+
+      if customer.save
+        import_count += 1
+      else
+        error_count += 1
+        error_rows << {
+          row: row.to_h,
+          errors: customer.errors.full_messages
+        }
+        Rails.logger.error("IMPORT ERROR: #{customer.errors.full_messages} | ROW: #{row.to_h}")
+      end
+    end
+
+    message = "#{import_count}件の顧客をインポートしました。(失敗: #{error_count}件)"
+
+    if error_rows.any?
+      # 最初の3件ほどのエラー内容をアラートに表示する
+      detail_errors = error_rows.first(3).map { |e| "[#{e[:row][company_name]}] #{e[:errors].join(', ')}" }.join("\n")
+      flash[:alert] = "一部のインポートに失敗しました:\n#{detail_errors}"
+    end
+
+    if client_signed_in? && !admin_signed_in?
+      redirect_to client_dashboard_index_path, notice: message
+    else
+      redirect_to form_submissions_path, notice: message
+    end
+
+  rescue => e
+    Rails.logger.error("IMPORT FATAL ERROR: #{e.message}\n#{e.backtrace.join("\n")}")
+
+    if client_signed_in? && !admin_signed_in?
+      redirect_to client_dashboard_index_path,
+                  alert: "エラーが発生しました: #{e.message}"
+    else
+      redirect_to form_submissions_path,
+                  alert: "エラーが発生しました: #{e.message}"
     end
   end
+end
 
   private
 
   def set_batch
     @batch = FormSubmissionBatch.find(params[:id])
+  end
+
+  def authenticate_admin_or_client!
+    unless admin_signed_in? || client_signed_in?
+      redirect_to new_admin_session_path, alert: 'ログインしてください'
+    end
   end
 end
