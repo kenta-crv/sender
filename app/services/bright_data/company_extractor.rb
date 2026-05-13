@@ -45,6 +45,7 @@ module BrightData
 
         companies << {
           company: parse_company_name(title),
+          title: title,
           tel: nil, address: nil,
           url: url, contact_url: nil,
           industry: nil, source: "organic", query: query
@@ -58,6 +59,7 @@ module BrightData
         title = item["title"].to_s.strip
         companies << {
           company: parse_company_name(title),
+          title: title,
           tel: item["phone"].to_s.strip.presence,
           address: item["address"].to_s.strip.presence,
           url: UrlPolicy.official_url?(url, title: title) ? url : nil,
@@ -73,6 +75,7 @@ module BrightData
         title = kg["title"].to_s.strip
         companies << {
           company: parse_company_name(title),
+          title: title,
           tel: kg["phone"].to_s.strip.presence,
           address: kg["address"].to_s.strip.presence,
           url: UrlPolicy.official_url?(url, title: title) ? url : nil,
@@ -94,10 +97,10 @@ module BrightData
     def self.parse_company_name(title)
       return nil if title.blank?
 
-      normalized = UrlPolicy.normalize_company_name(title)
-      parts = normalized.to_s.split(%r{\s*[|\-｜—–／/]\s*})
+      parts = title.to_s.split(%r{\s*[|\-｜—–／/]\s*})
+                   .filter_map { |part| UrlPolicy.normalize_company_name(part) }
       corp = parts.find { |p| p.match?(/株式会社|有限会社|合同会社|一般社団法人/) }
-      (corp || parts.first).to_s.strip.presence
+      corp.presence || UrlPolicy.normalize_company_name(title).presence || parts.first.to_s.strip.presence
     end
 
     def self.filter_by_industry(companies)

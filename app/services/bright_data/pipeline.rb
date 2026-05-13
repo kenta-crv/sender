@@ -202,10 +202,10 @@ module BrightData
                     next
                   end
 
-                  if UrlPolicy.excluded_url?(company[:url], title: company[:company])
+                  if UrlPolicy.excluded_url?(company[:url], title: url_policy_title(company))
                     mutex.synchronize do
                       counters[:excluded_url] += 1
-                      puts "[WebEnricher] #{idx + 1}/#{companies.size}: excluded url=#{company[:url]} title='#{company[:company]}'"
+                      puts "[WebEnricher] #{idx + 1}/#{companies.size}: excluded url=#{company[:url]} title='#{url_policy_title(company)}'"
                     end
                     next
                   end
@@ -221,17 +221,38 @@ module BrightData
 
                     if updates.any?
                       customer.update_columns(updates.merge(updated_at: Time.current))
+                      customer.reload
                       mutex.synchronize do
                         counters[:enriched] += 1
                         puts "  -> 更新: #{updates.keys.join(', ')} (customer ID=#{customer.id})"
                       end
                       break  # この customer は決着済み。後続 URL は処理しない
                     else
-                      mutex.synchronize { puts "  -> 更新なし（既存データあり or 取得不可） customer ID=#{customer.id}" }
+                      fallback_updates = build_url_fallback_update(customer, company, web_data: web_data)
+                      if fallback_updates.any?
+                        customer.update_columns(fallback_updates.merge(updated_at: Time.current))
+                        customer.reload
+                        mutex.synchronize do
+                          counters[:url_fallback] += 1
+                          puts "  -> URLのみ保存: #{company[:url]} (customer ID=#{customer.id})"
+                        end
+                      else
+                        mutex.synchronize { puts "  -> 更新なし（既存データあり or 取得不可） customer ID=#{customer.id}" }
+                      end
                     end
                   rescue => e
                     Rails.logger.warn("[Pipeline] WebEnricher error for #{company[:url]}: #{e.message}")
-                    mutex.synchronize { puts "  -> ERROR (skipping): #{e.message}" }
+                    fallback_updates = build_url_fallback_update(customer, company)
+                    if fallback_updates.any?
+                      customer.update_columns(fallback_updates.merge(updated_at: Time.current))
+                      customer.reload
+                      mutex.synchronize do
+                        counters[:url_fallback] += 1
+                        puts "  -> ERROR後にURLのみ保存: #{company[:url]} (customer ID=#{customer.id})"
+                      end
+                    else
+                      mutex.synchronize { puts "  -> ERROR (skipping): #{e.message}" }
+                    end
                   end
                 end
               ensure
@@ -244,7 +265,7 @@ module BrightData
           pool.shutdown
           pool.wait_for_termination
 
-          puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / SERP直接更新 #{counters[:serp_direct]}件 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(URL除外) #{counters[:excluded_url]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
+          puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / URLのみ保存 #{counters[:url_fallback]}件 / SERP直接更新 #{counters[:serp_direct]}件 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(URL除外) #{counters[:excluded_url]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
         end
 
         if detect_contact
@@ -363,7 +384,7 @@ module BrightData
     # （並列実行時もスレッドセーフ — 純粋関数）
     def self.build_web_updates(customer, company, web_data)
       updates = {}
-      url_is_official = UrlPolicy.official_url?(company[:url], title: company[:company])
+      url_is_official = UrlPolicy.official_url?(company[:url], title: url_policy_title(company))
 
       updates[:url]         = company[:url]         if customer.url.blank? && company[:url].present? && web_data[:matched] == true && url_is_official
       updates[:tel]         = web_data[:tel]        if customer.tel.blank? && web_data[:tel].present?
@@ -378,6 +399,16 @@ module BrightData
         updates[:contact_url] = web_data[:contact_url]
       end
       updates
+    end
+
+    def self.build_url_fallback_update(customer, company, web_data: nil)
+      return {} unless customer.url.blank?
+      return {} if company[:url].blank?
+      return {} if web_data && web_data[:matched] == false
+      return {} unless UrlPolicy.official_url?(company[:url], title: url_policy_title(company))
+      return {} unless serp_title_matches_customer?(customer, company)
+
+      { url: company[:url] }
     end
 
     def self.clean_address_candidate(address)
@@ -412,6 +443,15 @@ module BrightData
       norm_customer = WebEnricher.send(:normalize_company, customer_name)
       norm_candidate = WebEnricher.send(:normalize_company, candidate_name)
       WebEnricher.send(:company_match?, norm_customer, norm_candidate)
+    end
+
+    def self.serp_title_matches_customer?(customer, company)
+      company_matches_customer?(customer.company, company[:company]) ||
+        company_matches_customer?(customer.company, company[:title])
+    end
+
+    def self.url_policy_title(company)
+      company[:title].presence || company[:company]
     end
   end
 end

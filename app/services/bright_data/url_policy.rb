@@ -55,6 +55,8 @@ module BrightData
       ldigi.com.tw
       osaka-fc.jp
       tsukulink.net
+      toushiikusei.net
+      shachomeikan.jp
     ].freeze
 
     SOCIAL_DOMAINS = %w[
@@ -71,7 +73,7 @@ module BrightData
     DOCUMENT_PATTERN = /\.(?:pdf|xlsx?|csv|docx?)(?:\?|#|\z)/i
     JOB_PATH_PATTERN = %r{/(?:jobfind|job[_-]?offers?|jobs?|recruit|career|saiyo)(?:[-_/]|\z)}i
     EXCLUDED_TEXT_PATTERN = /
-      転職|求人|採用|バイト|アルバイト|パート|
+      転職|求人|採用|バイト|アルバイト|(?<![ァ-ヶー])パート(?![ァ-ヶー])|
       本選考|エントリーシート|(?<![A-Za-z])ES(?![A-Za-z])|
       評判|口コミ|法人番号|インボイス|会社の評判|企業詳細|企業データ分析
     /ix

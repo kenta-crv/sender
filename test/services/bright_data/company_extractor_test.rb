@@ -27,7 +27,24 @@ class BrightData::CompanyExtractorTest < ActiveSupport::TestCase
 
     assert_equal 1, companies.size
     assert_equal "株式会社ライフプラテック", companies.first[:company]
+    assert_equal "株式会社ライフプラテック | 会社概要", companies.first[:title]
     assert_equal "https://www.lifeplatech.co.jp/company/", companies.first[:url]
+  end
+
+  test "extract keeps company name that appears after title separators" do
+    serp_result = {
+      "organic_results" => [
+        {
+          "title" => "会社概要｜企業情報｜佐藤食品株式会社",
+          "link" => "https://www.satou-shokuhin.co.jp/company/outline/"
+        }
+      ]
+    }
+
+    company = BrightData::CompanyExtractor.extract(serp_result).first
+
+    assert_equal "佐藤食品株式会社", company[:company]
+    assert_equal "会社概要｜企業情報｜佐藤食品株式会社", company[:title]
   end
 
   test "extract keeps local data but does not keep excluded urls" do

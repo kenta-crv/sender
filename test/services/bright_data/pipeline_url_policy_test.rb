@@ -29,6 +29,54 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     refute_includes updates.keys, :url
   end
 
+  test "build_url_fallback_update keeps clear official SERP urls when html verification cannot finish" do
+    customer = Customer.create!(company: "佐藤食品株式会社")
+    company = {
+      company: "佐藤食品株式会社",
+      title: "会社概要｜企業情報｜佐藤食品株式会社",
+      url: "https://www.satou-shokuhin.co.jp/company/outline/",
+      source: "organic"
+    }
+
+    updates = BrightData::Pipeline.send(:build_url_fallback_update, customer, company)
+
+    assert_equal "https://www.satou-shokuhin.co.jp/company/outline/", updates[:url]
+  end
+
+  test "build_url_fallback_update rejects unclear or excluded SERP urls" do
+    customer = Customer.create!(company: "ジャパンパレック株式会社 福岡 久山センター")
+
+    generic = {
+      company: "会社概要",
+      title: "会社概要",
+      url: "https://hoko.co.jp/corporate/outline",
+      source: "organic"
+    }
+    job_site = {
+      company: "ジャパンパレック株式会社",
+      title: "ジャパンパレック株式会社の会社概要",
+      url: "https://tenshoku.mynavi.jp/company/416106/",
+      source: "organic"
+    }
+
+    assert_empty BrightData::Pipeline.send(:build_url_fallback_update, customer, generic)
+    assert_empty BrightData::Pipeline.send(:build_url_fallback_update, customer, job_site)
+  end
+
+  test "build_url_fallback_update does not reject official titles containing expert" do
+    customer = Customer.create!(company: "株式会社シーエル")
+    company = {
+      company: "株式会社シーエル",
+      title: "株式会社シーエル | 3PLのエキスパート企業",
+      url: "https://www.cl-gp.co.jp/",
+      source: "organic"
+    }
+
+    updates = BrightData::Pipeline.send(:build_url_fallback_update, customer, company)
+
+    assert_equal "https://www.cl-gp.co.jp/", updates[:url]
+  end
+
   test "build_serp_updates keeps direct tel and address but rejects directory urls" do
     customer = Customer.create!(company: "株式会社第一プラテック", address: "大阪府")
     company = {
