@@ -82,15 +82,16 @@ module BrightData
       end
 
       # 検索キーワード生成: company + address の組み合わせ
-      # query → customer の逆引きマップも同時に構築
-      query_customer_map = {}
-      queries = targets.map do |c|
+      # query 文字列ではなく customer_id を持ち回り、同一クエリでも対象レコードを崩さない。
+      query_jobs = targets.filter_map do |c|
         keyword = [c.company.to_s.strip, c.address.to_s.strip].reject(&:empty?).join(" ")
         keyword += " 会社概要" if keyword.present?
         q = keyword.presence || c.company.to_s.strip
-        query_customer_map[q] = c if q.present?
-        q
-      end.compact.uniq
+        next if q.blank?
+
+        { customer_id: c.id, company: c.company.to_s.strip, query: q }
+      end
+      queries = query_jobs.map { |job| job[:query] }
 
       if queries.empty?
         puts "[Pipeline] 有効なクエリが生成できませんでした。処理を中断します。"
@@ -103,19 +104,37 @@ module BrightData
 
       companies = []
       batch = []
+      target_ids = targets.map(&:id)
+      serp_error_customer_ids = []
+      completion_status_applied = false
       begin
         # SERP API 実行
         client = SerpClient.new
         batch = client.batch_search(queries, delay_between: 1)
+        batch.each_with_index do |item, idx|
+          job = query_jobs[idx]
+          next if job.blank?
+
+          item["customer_id"] = job[:customer_id]
+          item["customer_company"] = job[:company]
+        end
         ResultStore.save_batch(batch)
         serp_error_customer_ids = batch.filter_map do |item|
           next if item.dig("result", "error").blank?
-          query_customer_map[item["query"]]&.id
+
+          item["customer_id"]
         end.uniq
         puts "[Pipeline] SERP APIエラー: #{serp_error_customer_ids.size}件（対象はserp_errorにします）" if serp_error_customer_ids.any?
 
         # 抽出
-        companies = CompanyExtractor.extract_batch(batch)
+        companies = batch.flat_map do |item|
+          CompanyExtractor.extract(item["result"], query: item["query"]).map do |company|
+            company.merge(
+              customer_id: item["customer_id"],
+              customer_company: item["customer_company"]
+            )
+          end
+        end
 
         # Web補完: SERP で取得した URL から tel/address/contact_url を抽出して既存レコードを更新
         # 並列化方針:
@@ -132,7 +151,7 @@ module BrightData
           puts "[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件 / 並列度 #{concurrency}"
 
           # customer_id ごとにグループ化（nil customer は処理対象外）
-          groups = companies.each_with_index.group_by { |c, _| query_customer_map[c[:query]]&.id }
+          groups = companies.each_with_index.group_by { |c, _| c[:customer_id] }
           counters[:no_customer] = (groups[nil] || []).size
           (groups[nil] || []).each do |c, idx|
             puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer未マッチ query='#{c[:query]}' url=#{c[:url]} → SKIP"
@@ -163,7 +182,9 @@ module BrightData
                   next
                 end
 
-                mutex.synchronize { puts "[WebEnricher] #{idx + 1}/#{companies.size}: #{company[:company]} (#{company[:url]})" }
+                mutex.synchronize do
+                  puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer=#{customer.company} (ID=#{customer.id}) / candidate=#{company[:company]} (#{company[:url]})"
+                end
                 begin
                   web_data = WebEnricher.enrich_from_url(company[:url], customer)
                   updates = build_web_updates(customer, company, web_data)
@@ -209,9 +230,10 @@ module BrightData
 
         # 実行済みステータスに更新。SERP API自体が失敗した対象は完了扱いにしない。
         unless dry_run
-          done_ids = targets.map(&:id) - serp_error_customer_ids
+          done_ids = target_ids - serp_error_customer_ids
           mark_serp_status(done_ids, "serp_done")
           mark_serp_status(serp_error_customer_ids, "serp_error")
+          completion_status_applied = true
         end
 
         # 抽出率記録（SERP 生データの抽出率）
@@ -227,7 +249,7 @@ module BrightData
         # ExtractionStats は SERP 生配列の集計なので WebEnricher 更新分が反映されない。
         # 取引先向けに「実際に DB に入った最終状態」を別セクションで表示する。
         unless dry_run
-          final = Customer.where(id: targets.map(&:id))
+          final = Customer.where(id: target_ids)
           n = final.count
           tel_c     = final.where.not(tel: [nil, '']).count
           addr_c    = final.where.not(address: [nil, '']).count
@@ -251,16 +273,19 @@ module BrightData
         puts "[Pipeline] 完了: #{targets.size}件対象 / #{companies.size}件抽出"
         { targets: targets.size, queries: queries.size, extracted: companies.size, registered: reg_stats }
       rescue Interrupt => e
-        mark_serp_status(targets, "serp_error") unless dry_run
         Rails.logger.warn("[Pipeline] execute_from_db interrupted: #{e.class} #{e.message}")
         puts "[Pipeline] INTERRUPTED: #{e.message}"
         raise
       rescue => e
         # Keep failures visible and out of the automatic target scope.
-        mark_serp_status(targets, "serp_error") unless dry_run
         Rails.logger.error("[Pipeline] execute_from_db 例外: #{e.class} #{e.message}\n#{e.backtrace.first(5).join("\n")}")
         puts "[Pipeline] ERROR: #{e.message}"
         raise
+      ensure
+        unless dry_run || completion_status_applied
+          queued_ids = Customer.where(id: target_ids, serp_status: "serp_queued").pluck(:id)
+          mark_serp_status(queued_ids, "serp_error")
+        end
       end
     end
 
@@ -268,7 +293,10 @@ module BrightData
       ids = Array(targets).map { |target| target.respond_to?(:id) ? target.id : target }.compact
       return if ids.empty?
 
-      Customer.where(id: ids).update_all(serp_status: status, updated_at: Time.current)
+      now = Time.current
+      Customer.where(id: ids).find_each do |customer|
+        customer.update_columns(serp_status: status, updated_at: now)
+      end
     end
 
     def self.build_serp_updates(customer, company)
