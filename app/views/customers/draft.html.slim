@@ -166,9 +166,9 @@
                   small = customer&.genre
                 td.ai-col-links
                   - if customer&.url.present?
-                    a href="#{customer.url}" target="_blank" title="HP": i.fas.fa-link
+                    a.ai-link-pill href="#{customer.url}" target="_blank" rel="noopener" title="#{customer.url}" HP
                   - if customer&.contact_url.present?
-                    a href="#{customer.contact_url}" target="_blank" title="Contact": i.fas.fa-paper-plane
+                    a.ai-link-pill href="#{customer.contact_url}" target="_blank" rel="noopener" title="#{customer.contact_url}" Contact
                 td.ai-col-date = customer&.updated_at&.strftime("%m/%d %H:%M")
                 td.ai-col-date = customer&.created_at&.strftime("%m/%d %H:%M")
           - else

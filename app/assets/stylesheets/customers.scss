@@ -158,7 +158,24 @@
   word-break: break-word;
 }
 .ai-col-industry small { display: block; color: #888; }
-.ai-col-links a { margin-right: 8px; color: #666; }
+.ai-col-links {
+  min-width: 96px;
+  white-space: nowrap;
+}
+
+.ai-link-pill {
+  color: #1f6f8b;
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-right: 8px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ai-link-pill:hover {
+  color: #155267;
+}
 
 .ai-list-header {
   align-items: center;
