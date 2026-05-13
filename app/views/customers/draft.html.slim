@@ -158,7 +158,8 @@
                   span class="ai-badge #{serp_status_badge_class(customer&.serp_status)}"
                     = serp_status_label(customer&.serp_status)
                 td.ai-col-tel = customer&.tel
-                td.ai-col-address title="#{customer&.address}" = customer&.address
+                - visible_address = display_address(customer&.address)
+                td.ai-col-address title="#{visible_address}" = visible_address
                 td.ai-col-fill = address_quality_icon(customer&.address)
                 td.ai-col-fill = fill_icon(customer&.tel)
                 td.ai-col-fill = url_quality_icon(customer&.url)

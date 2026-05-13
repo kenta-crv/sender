@@ -62,6 +62,13 @@ module CustomersHelper
       normalized.match?(ADDRESS_DETAIL_PATTERN)
   end
 
+  def display_address(address)
+    normalized = address.to_s.strip
+    return nil unless detailed_address?(normalized)
+
+    normalized
+  end
+
   def address_quality_icon(address)
     normalized = address.to_s.strip
 

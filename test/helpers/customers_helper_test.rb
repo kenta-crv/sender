@@ -20,6 +20,15 @@ class CustomersHelperTest < ActionView::TestCase
     assert_includes address_quality_icon("大阪府貝塚市二色中町4-1"), "番地相当まで取得済み"
   end
 
+  test "display_address hides partial or access-style addresses" do
+    assert_nil display_address(nil)
+    assert_nil display_address("大阪府 大阪市 西淀川区")
+    assert_nil display_address("大阪府 大東市 住道駅")
+    assert_nil display_address("大阪府 大阪市 ユニバーサルシティ駅 車10分")
+
+    assert_equal "大阪府貝塚市二色中町4-1", display_address("大阪府貝塚市二色中町4-1")
+  end
+
   test "url_quality_icon distinguishes official urls from excluded database urls" do
     assert_includes url_quality_icon(nil), "公式URL未取得"
     assert_includes url_quality_icon("https://www.lifeplatech.co.jp/"), "公式URL取得済み"
