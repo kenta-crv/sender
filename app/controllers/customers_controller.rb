@@ -1,3 +1,5 @@
+require "securerandom"
+
 class CustomersController < ApplicationController
   before_action :set_customers, only: [:update_all_status]
   protect_from_forgery with: :exception, prepend: true
@@ -643,6 +645,7 @@ def draft
   @redis_reachable = redis_reachable?
   @serp_worker_running = serp_worker_running?
   @serp_queue_size = serp_queue_size
+  @serp_progress = current_serp_progress_payload
 
   # ── ダッシュボードサマリー ──
   # SERP補完対象になり得る範囲（status カラムを参照しない）を母集団にする。
@@ -721,7 +724,7 @@ end
   # SERP APIによる情報補完実行（UIから起動）
   def serp_search
     industry  = params[:industry].presence
-    limit     = (params[:limit] || 100).to_i
+    limit     = [(params[:limit] || 100).to_i, 1].max
 
     # 対象件数を事前確認（serp_status NULL かつ tel/url/contact_url いずれか空）
     scope = Customer.where(serp_status: [nil, ''])
@@ -740,21 +743,44 @@ end
     # Sidekiq経由で非同期実行。UI実行では同期処理へ逃がさず、
     # Redis/Sidekiq の準備が取れた場合だけジョブを投入する。
     actual_limit = [limit, target_count].min
+    target_ids = scope.order(updated_at: :desc, id: :asc).limit(actual_limit).pluck(:id)
+    actual_limit = target_ids.size
+
+    if actual_limit == 0
+      redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
+    end
+
     sidekiq = SerpSidekiqManager.ensure_running
     unless sidekiq.ready?
       redirect_to draft_customers_path, alert: sidekiq.message and return
     end
 
     begin
-      SerpPipelineDbWorker.perform_async(industry, actual_limit)
+      progress_run_id = SecureRandom.hex(12)
+      SerpProgressTracker.start(
+        run_id: progress_run_id,
+        total: actual_limit,
+        industry: industry,
+        target_ids: target_ids
+      )
+      session[:serp_progress_run_id] = progress_run_id
+      SerpPipelineDbWorker.perform_async(industry, actual_limit, target_ids, progress_run_id)
       prefix = sidekiq.started? ? "SERP専用Sidekiqを起動してから" : ""
       redirect_to draft_customers_path,
-        notice: "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
+        notice: "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）。進捗バーで確認できます。"
     rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
       Rails.logger.warn("[serp_search] Redis接続不可: #{e.message}")
       redirect_to draft_customers_path,
         alert: "Redisに接続できないため、SERP補完を開始できませんでした。Redisを起動してから再実行してください。"
     end
+  end
+
+  def serp_progress
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+
+    render json: current_serp_progress_payload
   end
 
   # 進捗取得API（ポーリング用）
@@ -1043,6 +1069,10 @@ end
 
   def redis_reachable?
     SerpSidekiqManager.redis_reachable?
+  end
+
+  def current_serp_progress_payload
+    SerpProgressTracker.payload(session[:serp_progress_run_id])
   end
 
   def filter_detailed_address(scope)

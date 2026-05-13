@@ -76,6 +76,19 @@
         - else
           small.ai-subtext Redis起動後にSERP補完を開始できます
 
+      - progress = @serp_progress || {}
+      .ai-serp-progress#serp-progress-panel data-progress-url=serp_progress_customers_path data-active=progress[:active].to_s
+        .ai-progress-topline
+          span.ai-label 現在のSERP補完
+          strong#serp-progress-phase = progress[:phase_label]
+          span#serp-progress-percent.ai-progress-percent = "#{progress[:percent]}%"
+        .ai-progress-track role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="#{progress[:percent]}"
+          #serp-progress-bar.ai-progress-fill style="width: #{progress[:percent]}%"
+        .ai-progress-meta
+          span#serp-progress-message = progress[:message]
+          span#serp-progress-counts = "SERP #{progress[:serp_completed]}/#{progress[:serp_total]} / Web #{progress[:web_completed]}/#{progress[:web_total]}"
+          span#serp-progress-eta = "経過 #{progress[:elapsed_label]} / 残り目安 #{progress[:eta_label]}"
+
       .ai-dash-form-inline
         = form_with url: serp_search_customers_path, method: :post, local: true, id: "serp-search-form" do
           .ai-field-group
@@ -208,7 +221,59 @@ javascript:
       };
     };
 
+    const setupSerpProgress = function() {
+      const panel = document.getElementById('serp-progress-panel');
+      if (!panel || panel.dataset.pollingStarted === 'true') return;
+
+      panel.dataset.pollingStarted = 'true';
+      const url = panel.dataset.progressUrl;
+      const bar = document.getElementById('serp-progress-bar');
+      const track = panel.querySelector('.ai-progress-track');
+      const phase = document.getElementById('serp-progress-phase');
+      const percent = document.getElementById('serp-progress-percent');
+      const message = document.getElementById('serp-progress-message');
+      const counts = document.getElementById('serp-progress-counts');
+      const eta = document.getElementById('serp-progress-eta');
+
+      const setText = function(el, text) {
+        if (el) el.textContent = text || '';
+      };
+
+      const render = function(data) {
+        if (!data || data.present === false) return;
+
+        const value = Number(data.percent || 0).toFixed(1);
+        if (bar) bar.style.width = value + '%';
+        if (track) track.setAttribute('aria-valuenow', value);
+        setText(phase, data.phase_label);
+        setText(percent, value + '%');
+        setText(message, data.message);
+        setText(counts, 'SERP ' + (data.serp_completed || 0) + '/' + (data.serp_total || 0) + ' / Web ' + (data.web_completed || 0) + '/' + (data.web_total || 0));
+        setText(eta, '経過 ' + (data.elapsed_label || '0秒') + ' / 残り目安 ' + (data.eta_label || '計測中'));
+
+        if (!data.active && panel.dataset.pollingTimer) {
+          window.clearInterval(Number(panel.dataset.pollingTimer));
+          panel.dataset.pollingTimer = '';
+        }
+      };
+
+      const poll = function() {
+        fetch(url, { headers: { 'Accept': 'application/json' } })
+          .then(function(response) { return response.json(); })
+          .then(render)
+          .catch(function() {});
+      };
+
+      poll();
+      if (panel.dataset.active === 'true') {
+        panel.dataset.pollingTimer = window.setInterval(poll, 5000);
+      }
+    };
+
     document.addEventListener('turbo:load', setupSerpButton);
+    document.addEventListener('turbo:load', setupSerpProgress);
     document.addEventListener('DOMContentLoaded', setupSerpButton);
+    document.addEventListener('DOMContentLoaded', setupSerpProgress);
     setupSerpButton();
+    setupSerpProgress();
   })();

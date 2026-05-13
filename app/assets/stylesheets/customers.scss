@@ -127,6 +127,57 @@
   color: #856404;
 }
 
+.ai-serp-progress {
+  background: #f6fbfd;
+  border: 1px solid #d8edf3;
+  border-radius: 8px;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+}
+
+.ai-progress-topline {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ai-progress-topline .ai-label {
+  margin-right: 0;
+}
+
+.ai-progress-percent {
+  color: #1f6f8b;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+.ai-progress-track {
+  background: #e7eef3;
+  border-radius: 999px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.ai-progress-fill {
+  background: linear-gradient(90deg, #2193b0, #4bbf73);
+  border-radius: inherit;
+  height: 100%;
+  transition: width 0.35s ease;
+  width: 0;
+}
+
+.ai-progress-meta {
+  color: #667085;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  gap: 10px 16px;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
 /* テーブル（専用） */
 .ai-table-wrapper {
   background: #fff;

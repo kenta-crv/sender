@@ -78,11 +78,13 @@ module BrightData
       queries.each_with_index do |query, idx|
         log(:info, "Processing #{idx + 1}/#{total}: #{query}")
         result = search(query: query)
-        results << {
+        item = {
           "query" => query,
           "result" => result,
           "timestamp" => Time.current.iso8601
         }
+        results << item
+        yield(item.merge("index" => idx, "total" => total)) if block_given?
         sleep(delay_between) unless idx == total - 1
       end
 

@@ -54,28 +54,36 @@ module BrightData
     #
     # @param industry [String] 業種でフィルタ（nil の場合は全件）
     # @param limit [Integer] 処理件数上限
+    # @param customer_ids [Array<Integer>, nil] UIで選んだ今回実行分のID
+    # @param progress_run_id [String, nil] UI進捗表示用のrun_id
     # @param detect_contact [Boolean]
     # @param dry_run [Boolean]
-    def self.execute_from_db(industry: nil, limit: 100, detect_contact: false, dry_run: false)
+    def self.execute_from_db(industry: nil, limit: 100, customer_ids: nil, progress_run_id: nil, detect_contact: false, dry_run: false)
       puts "=" * 60
       puts "SERP Pipeline (DB mode) 開始: #{Time.current}"
       puts "=" * 60
+      progress_tracker = progress_run_id.present? ? SerpProgressTracker.new(progress_run_id) : nil
 
       # 対象レコード取得
       #   - serp_status IS NULL / '' （未実行）
       #   - かつ tel / url / contact_url のいずれかが空
       # status カラムは取引先環境で別用途に使われているため参照しない。
-      scope = Customer.where(serp_status: [nil, ''])
-                      .where(
-                        "(tel IS NULL OR TRIM(tel) = '') OR " \
-                        "(url IS NULL OR TRIM(url) = '') OR " \
-                        "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                      )
+      incomplete_scope = Customer.where(
+        "(tel IS NULL OR TRIM(tel) = '') OR " \
+        "(url IS NULL OR TRIM(url) = '') OR " \
+        "(contact_url IS NULL OR TRIM(contact_url) = '')"
+      )
 
-      # 業種フィルタ
-      scope = scope.where(industry: industry) if industry.present?
+      selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
+      if selected_ids.any?
+        records_by_id = incomplete_scope.where(id: selected_ids).index_by(&:id)
+        targets = selected_ids.filter_map { |id| records_by_id[id] }.first(limit)
+      else
+        scope = incomplete_scope.where(serp_status: [nil, ''])
+        scope = scope.where(industry: industry) if industry.present?
 
-      targets = scope.order(updated_at: :desc, id: :asc).limit(limit).to_a
+        targets = scope.order(updated_at: :desc, id: :asc).limit(limit).to_a
+      end
       puts "[Pipeline] 対象レコード: #{targets.size}件 (serp_status=NULL かつ tel/url/contact_url いずれか空)"
 
       if targets.empty?
@@ -98,6 +106,7 @@ module BrightData
         puts "[Pipeline] 有効なクエリが生成できませんでした。処理を中断します。"
         return { targets: targets.size, queries: 0, extracted: 0, registered: { skipped_blank: 0 } }
       end
+      progress_tracker&.start_processing(total: queries.size)
 
       # Mark targets before network work so concurrent/manual runs do not pick
       # the same rows. mark_serp_status also touches updated_at for UI filters.
@@ -111,7 +120,12 @@ module BrightData
       begin
         # SERP API 実行
         client = SerpClient.new
-        batch = client.batch_search(queries, delay_between: 1)
+        batch = client.batch_search(queries, delay_between: 1) do |event|
+          progress_tracker&.serp_progress(
+            completed: event["index"].to_i + 1,
+            total: event["total"].to_i
+          )
+        end
         batch.each_with_index do |item, idx|
           job = query_jobs[idx]
           next if job.blank?
@@ -160,62 +174,68 @@ module BrightData
             puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer未マッチ query='#{c[:query]}' url=#{c[:url]} → SKIP"
           end
           groups.delete(nil)
+          progress_tracker&.web_started(total: groups.size)
 
           pool = Concurrent::FixedThreadPool.new(concurrency)
           futures = groups.map do |customer_id, group|
             Concurrent::Promises.future_on(pool) do
               customer = Customer.find_by(id: customer_id)
-              next if customer.nil?
 
-              # group は [[company_hash, idx], ...] の配列。
-              # SERP の上位順を保ったまま走査し、最初に updates が成立した時点で打ち切る。
-              group.sort_by { |_, idx| idx }.each do |company, idx|
-                direct_updates = build_serp_updates(customer, company)
-                if direct_updates.any?
-                  customer.update_columns(direct_updates.merge(updated_at: Time.current))
-                  customer.reload
-                  mutex.synchronize do
-                    counters[:serp_direct] += 1
-                    puts "  -> SERP直接更新: #{direct_updates.keys.join(', ')} (customer ID=#{customer.id})"
-                  end
-                end
+              begin
+                next if customer.nil?
 
-                if company[:url].blank?
-                  mutex.synchronize { counters[:no_url] += 1 }
-                  next
-                end
-
-                if UrlPolicy.excluded_url?(company[:url], title: company[:company])
-                  mutex.synchronize do
-                    counters[:excluded_url] += 1
-                    puts "[WebEnricher] #{idx + 1}/#{companies.size}: excluded url=#{company[:url]} title='#{company[:company]}'"
-                  end
-                  next
-                end
-
-                mutex.synchronize do
-                  puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer=#{customer.company} (ID=#{customer.id}) / candidate=#{company[:company]} (#{company[:url]})"
-                end
-                begin
-                  web_data = Timeout.timeout(web_timeout) do
-                    web_enricher.enrich_from_url(company[:url], customer)
-                  end
-                  updates = build_web_updates(customer, company, web_data)
-
-                  if updates.any?
-                    customer.update_columns(updates.merge(updated_at: Time.current))
+                # group は [[company_hash, idx], ...] の配列。
+                # SERP の上位順を保ったまま走査し、最初に updates が成立した時点で打ち切る。
+                group.sort_by { |_, idx| idx }.each do |company, idx|
+                  direct_updates = build_serp_updates(customer, company)
+                  if direct_updates.any?
+                    customer.update_columns(direct_updates.merge(updated_at: Time.current))
+                    customer.reload
                     mutex.synchronize do
-                      counters[:enriched] += 1
-                      puts "  -> 更新: #{updates.keys.join(', ')} (customer ID=#{customer.id})"
+                      counters[:serp_direct] += 1
+                      puts "  -> SERP直接更新: #{direct_updates.keys.join(', ')} (customer ID=#{customer.id})"
                     end
-                    break  # この customer は決着済み。後続 URL は処理しない
-                  else
-                    mutex.synchronize { puts "  -> 更新なし（既存データあり or 取得不可） customer ID=#{customer.id}" }
                   end
-                rescue => e
-                  Rails.logger.warn("[Pipeline] WebEnricher error for #{company[:url]}: #{e.message}")
-                  mutex.synchronize { puts "  -> ERROR (skipping): #{e.message}" }
+
+                  if company[:url].blank?
+                    mutex.synchronize { counters[:no_url] += 1 }
+                    next
+                  end
+
+                  if UrlPolicy.excluded_url?(company[:url], title: company[:company])
+                    mutex.synchronize do
+                      counters[:excluded_url] += 1
+                      puts "[WebEnricher] #{idx + 1}/#{companies.size}: excluded url=#{company[:url]} title='#{company[:company]}'"
+                    end
+                    next
+                  end
+
+                  mutex.synchronize do
+                    puts "[WebEnricher] #{idx + 1}/#{companies.size}: customer=#{customer.company} (ID=#{customer.id}) / candidate=#{company[:company]} (#{company[:url]})"
+                  end
+                  begin
+                    web_data = Timeout.timeout(web_timeout) do
+                      web_enricher.enrich_from_url(company[:url], customer)
+                    end
+                    updates = build_web_updates(customer, company, web_data)
+
+                    if updates.any?
+                      customer.update_columns(updates.merge(updated_at: Time.current))
+                      mutex.synchronize do
+                        counters[:enriched] += 1
+                        puts "  -> 更新: #{updates.keys.join(', ')} (customer ID=#{customer.id})"
+                      end
+                      break  # この customer は決着済み。後続 URL は処理しない
+                    else
+                      mutex.synchronize { puts "  -> 更新なし（既存データあり or 取得不可） customer ID=#{customer.id}" }
+                    end
+                  rescue => e
+                    Rails.logger.warn("[Pipeline] WebEnricher error for #{company[:url]}: #{e.message}")
+                    mutex.synchronize { puts "  -> ERROR (skipping): #{e.message}" }
+                  end
                 end
+              ensure
+                progress_tracker&.increment_web(message: customer ? "Web補完: #{customer.company}" : "Web補完: 対象なし")
               end
             end
           end
@@ -249,6 +269,7 @@ module BrightData
           mark_serp_status(done_ids, "serp_done")
           mark_serp_status(serp_error_customer_ids, "serp_error")
           completion_status_applied = true
+          progress_tracker&.finish(done_count: done_ids.size, error_count: serp_error_customer_ids.size)
         end
 
         # 抽出率記録（SERP 生データの抽出率）
@@ -290,11 +311,13 @@ module BrightData
       rescue Interrupt => e
         Rails.logger.warn("[Pipeline] execute_from_db interrupted: #{e.class} #{e.message}")
         puts "[Pipeline] INTERRUPTED: #{e.message}"
+        progress_tracker&.fail(message: e.message)
         raise
       rescue => e
         # Keep failures visible and out of the automatic target scope.
         Rails.logger.error("[Pipeline] execute_from_db 例外: #{e.class} #{e.message}\n#{e.backtrace.first(5).join("\n")}")
         puts "[Pipeline] ERROR: #{e.message}"
+        progress_tracker&.fail(message: e.message)
         raise
       ensure
         unless dry_run || completion_status_applied

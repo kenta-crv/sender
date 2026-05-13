@@ -114,6 +114,7 @@ end
     collection do
       post :cleanup_duplicates
       post :serp_search
+      get  :serp_progress
       get  :draft
       post :extract_company_info
       get  :extract_progress

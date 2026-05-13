@@ -10,6 +10,8 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
 
     assert_equal "Logistics", captured[:industry]
     assert_equal 10, captured[:limit]
+    assert_nil captured[:customer_ids]
+    assert_nil captured[:progress_run_id]
     assert_equal false, captured[:detect_contact]
     assert_equal false, captured[:dry_run]
   end
