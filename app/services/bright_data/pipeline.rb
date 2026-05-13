@@ -150,6 +150,7 @@ module BrightData
           with_url = companies.count { |c| c[:url].present? }
           concurrency = ENV.fetch("WEB_ENRICHER_CONCURRENCY", "3").to_i.clamp(1, 10)
           web_timeout = web_enricher_timeout_seconds
+          web_enricher = WebEnricher
           puts "[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件 / 並列度 #{concurrency}"
 
           # customer_id ごとにグループ化（nil customer は処理対象外）
@@ -197,7 +198,7 @@ module BrightData
                 end
                 begin
                   web_data = Timeout.timeout(web_timeout) do
-                    WebEnricher.enrich_from_url(company[:url], customer)
+                    web_enricher.enrich_from_url(company[:url], customer)
                   end
                   updates = build_web_updates(customer, company, web_data)
 
