@@ -11,7 +11,7 @@ class SerpPipelineDbWorker
     BrightData::Pipeline.execute_from_db(
       industry: industry,
       limit: limit,
-      detect_contact: true,
+      detect_contact: false,
       dry_run: false
     )
   end
