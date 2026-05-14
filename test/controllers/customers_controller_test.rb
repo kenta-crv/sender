@@ -1,6 +1,17 @@
 require "test_helper"
 
 class CustomersControllerTest < ActionDispatch::IntegrationTest
+  test "draft filters customers by company query" do
+    target = Customer.create!(company: "Draft Company Query Target", status: "draft")
+    other = Customer.create!(company: "Draft Company Query Other", status: "draft")
+
+    get draft_customers_path, params: { company_query: "Query Target" }
+
+    assert_response :success
+    assert_includes @response.body, target.company
+    refute_includes @response.body, other.company
+  end
+
   test "serp_search does not fall back to synchronous pipeline when sidekiq is unavailable" do
     Customer.create!(company: "SERP Sidekiq Guard Test", status: "draft")
 
@@ -52,6 +63,33 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, progress_args[:total]
     assert_equal [newer.id, older.id], progress_args[:target_ids]
     assert_includes flash[:notice], "進捗バー"
+  end
+
+  test "serp_search limits queued ids by company query" do
+    target = Customer.create!(company: "SERP Company Query Target", status: "draft")
+    Customer.create!(company: "SERP Company Query Other", status: "draft")
+
+    ready = SerpSidekiqManager::Result.new(
+      ready: true,
+      started: false,
+      message: "SERP専用Sidekiqは起動済みです。"
+    )
+    enqueued_args = nil
+    progress_args = nil
+
+    with_singleton_method(SerpSidekiqManager, :ensure_running, ->(*_args, **_kwargs) { ready }) do
+      with_singleton_method(SerpProgressTracker, :start, ->(**kwargs) { progress_args = kwargs }) do
+        with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued_args = args }) do
+          post serp_search_customers_path, params: { limit: 10, company_query: "Query Target" }
+        end
+      end
+    end
+
+    assert_redirected_to draft_customers_path
+    assert_equal 1, enqueued_args[1]
+    assert_equal [target.id], enqueued_args[2]
+    assert_equal 1, progress_args[:total]
+    assert_equal [target.id], progress_args[:target_ids]
   end
 
   private

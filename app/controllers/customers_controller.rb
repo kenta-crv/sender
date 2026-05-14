@@ -9,7 +9,7 @@ class CustomersController < ApplicationController
   SERP_PREF_PATTERN = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/.freeze
   ADDRESS_MUNICIPALITY_PATTERN = /市|区|町|村|郡/.freeze
   ADDRESS_DETAIL_PATTERN = /[0-9０-９]|丁目|番地|番|号|[-－ー]/.freeze
-  ADDRESS_ACCESS_PATTERN = /駅|徒歩|車\s*[0-9０-９]+分|バス|分圏内|アクセス|最寄り/.freeze
+  ADDRESS_ACCESS_PATTERN = /駅(?:\s|$|車|徒歩|バス|から|より|[0-9０-９]+分)|徒歩|車\s*[0-9０-９]+分|バス\s*[0-9０-９]+分|バス停|バス利用|バスで|バス約|分圏内|アクセス|最寄り/.freeze
   DISPLAY_TIME_ZONE = "Tokyo".freeze
 
 def index
@@ -564,6 +564,9 @@ def draft
     draft_base
   end
 
+  @company_query = params[:company_query].to_s.strip
+  @customers = filter_company_query(@customers, @company_query)
+
   # 充足条件フィルタ: 例 "missing_tel" → tel 未取得のみ
   case params[:fill_filter]
   when "missing_tel"
@@ -641,8 +644,10 @@ def draft
                          "(contact_url IS NULL OR TRIM(contact_url) = '')"
                        )
   serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+  serp_scope = filter_company_query(serp_scope, @company_query)
   @serp_target_count = serp_scope.count
   @redis_reachable = redis_reachable?
+  @redis_auto_start_possible = redis_auto_start_possible?
   @serp_worker_running = serp_worker_running?
   @serp_queue_size = serp_queue_size
   @serp_progress = current_serp_progress_payload
@@ -652,6 +657,7 @@ def draft
   dash_statuses = params[:serp_status_filter] == "serp_imported" ? ["serp_imported"] : [nil, '', 'serp_queued', 'serp_done', 'serp_error']
   dash_scope = Customer.where(serp_status: dash_statuses)
   dash_scope = dash_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+  dash_scope = filter_company_query(dash_scope, @company_query)
 
   total = dash_scope.count
   status_counts = dash_scope.group(:serp_status).count
@@ -724,6 +730,7 @@ end
   # SERP APIによる情報補完実行（UIから起動）
   def serp_search
     industry  = params[:industry].presence
+    company_query = params[:company_query].to_s.strip
     limit     = [(params[:limit] || 100).to_i, 1].max
 
     # 対象件数を事前確認（serp_status NULL かつ tel/url/contact_url いずれか空）
@@ -734,6 +741,7 @@ end
                       "(contact_url IS NULL OR TRIM(contact_url) = '')"
                     )
     scope = scope.where(industry: industry) if industry.present?
+    scope = filter_company_query(scope, company_query)
     target_count = scope.count
 
     if target_count == 0
@@ -765,7 +773,13 @@ end
       )
       session[:serp_progress_run_id] = progress_run_id
       SerpPipelineDbWorker.perform_async(industry, actual_limit, target_ids, progress_run_id)
-      prefix = sidekiq.started? ? "SERP専用Sidekiqを起動してから" : ""
+      prefix = if sidekiq.started? && sidekiq.redis_started?
+        "RedisとSERP専用Sidekiqを起動してから"
+      elsif sidekiq.started?
+        "SERP専用Sidekiqを起動してから"
+      else
+        ""
+      end
       redirect_to draft_customers_path,
         notice: "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）。進捗バーで確認できます。"
     rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
@@ -1071,8 +1085,20 @@ end
     SerpSidekiqManager.redis_reachable?
   end
 
+  def redis_auto_start_possible?
+    SerpSidekiqManager.redis_auto_start_possible?
+  end
+
   def current_serp_progress_payload
     SerpProgressTracker.payload(session[:serp_progress_run_id])
+  end
+
+  def filter_company_query(scope, query)
+    terms = query.to_s.strip.split(/[[:space:]　]+/).reject(&:blank?)
+    terms.reduce(scope) do |relation, term|
+      escaped = ActiveRecord::Base.sanitize_sql_like(term)
+      relation.where("company LIKE ?", "%#{escaped}%")
+    end
   end
 
   def filter_detailed_address(scope)
@@ -1107,6 +1133,7 @@ end
     normalized = address.to_s.strip
     return false if normalized.blank?
     return false if normalized.match?(ADDRESS_ACCESS_PATTERN)
+    return false if BrightData::Pipeline.send(:address_score, normalized).zero?
 
     normalized.match?(SERP_PREF_PATTERN) &&
       normalized.match?(ADDRESS_MUNICIPALITY_PATTERN) &&

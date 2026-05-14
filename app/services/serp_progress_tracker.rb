@@ -4,6 +4,8 @@ class SerpProgressTracker
   TTL_SECONDS = 24.hours.to_i
   SERP_WEIGHT = 0.45
   WEB_WEIGHT = 0.55
+  ETA_SAFETY_MULTIPLIER = ENV.fetch("SERP_ETA_SAFETY_MULTIPLIER", "1.35").to_f
+  ETA_MIN_SECONDS_PER_TARGET = ENV.fetch("SERP_ETA_MIN_SECONDS_PER_TARGET", "48").to_f
 
   PHASE_LABELS = {
     "queued" => "開始待ち",
@@ -14,7 +16,11 @@ class SerpProgressTracker
   }.freeze
 
   def self.start(run_id:, total:, industry:, target_ids:)
-    new(run_id).write(
+    new(run_id).start(total: total, industry: industry, target_ids: target_ids)
+  end
+
+  def start(total:, industry:, target_ids:)
+    write(
       run_id: run_id,
       phase: "queued",
       total: total.to_i,
@@ -42,6 +48,8 @@ class SerpProgressTracker
   def initialize(run_id)
     @run_id = run_id.to_s
   end
+
+  attr_reader :run_id
 
   def start_processing(total:)
     write(
@@ -136,7 +144,7 @@ class SerpProgressTracker
       error_count: numbers[:error_count],
       message: raw["message"].to_s,
       elapsed_label: self.class.format_duration(elapsed_seconds),
-      eta_label: estimate_label(elapsed_seconds, percent, active),
+      eta_label: estimate_label(elapsed_seconds, percent, active, numbers: numbers, phase: phase),
       updated_at: raw["updated_at"].to_s
     }
   rescue => e
@@ -164,11 +172,11 @@ class SerpProgressTracker
     }
   end
 
-  def self.format_duration(seconds)
+  def self.format_duration(seconds, round_up: false)
     seconds = seconds.to_i
     return "1分未満" if seconds < 60
 
-    minutes = seconds / 60
+    minutes = round_up ? (seconds / 60.0).ceil : seconds / 60
     hours = minutes / 60
     remain_minutes = minutes % 60
 
@@ -240,12 +248,23 @@ class SerpProgressTracker
     ((serp_fraction * SERP_WEIGHT + web_fraction * WEB_WEIGHT) * 100).round(1)
   end
 
-  def estimate_label(elapsed_seconds, percent, active)
+  def estimate_label(elapsed_seconds, percent, active, numbers:, phase:)
     return "完了" unless active
     return "計測中" if percent.to_f <= 0.0
 
-    remaining = (elapsed_seconds * ((100.0 - percent) / percent)).round
-    self.class.format_duration(remaining)
+    estimates = []
+    estimates << elapsed_seconds * ((100.0 - percent) / percent) * ETA_SAFETY_MULTIPLIER
+
+    min_total_seconds = numbers[:total].to_i * ETA_MIN_SECONDS_PER_TARGET
+    estimates << (min_total_seconds - elapsed_seconds)
+
+    if phase == "web" && numbers[:web_total].positive? && numbers[:web_completed].positive?
+      remaining_web = [numbers[:web_total] - numbers[:web_completed], 0].max
+      estimates << (elapsed_seconds.to_f / numbers[:web_completed]) * remaining_web * ETA_SAFETY_MULTIPLIER
+    end
+
+    remaining = [estimates.compact.max.to_f.ceil, 0].max
+    self.class.format_duration(remaining, round_up: true)
   end
 
   def parse_time(value)

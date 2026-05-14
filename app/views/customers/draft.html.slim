@@ -73,6 +73,8 @@
           small.ai-subtext SERP補完はバックグラウンドで実行されます
         - elsif @redis_reachable
           small.ai-subtext ボタン押下時にSERP専用Sidekiqを自動起動します
+        - elsif @redis_auto_start_possible
+          small.ai-subtext ボタン押下時にRedisとSERP専用Sidekiqを自動起動します
         - else
           small.ai-subtext Redis起動後にSERP補完を開始できます
 
@@ -91,6 +93,7 @@
 
       .ai-dash-form-inline
         = form_with url: serp_search_customers_path, method: :post, local: true, id: "serp-search-form" do
+          = hidden_field_tag :company_query, @company_query
           .ai-field-group
             label 業種フィルタ
             = select_tag :industry,
@@ -102,7 +105,7 @@
             = number_field_tag :limit, 100, min: 1, max: 500, id: "serp-limit-input", class: "ai-input-number"
           button#start-serp-button.ai-btn.ai-btn-secondary type="button" data-max="#{@serp_target_count}"
             i.fas.fa-search
-            | Sidekiq確認後にSERP補完開始
+            | Redis/Sidekiq確認後にSERP補完開始
 
   / ── 絞り込みフィルタ ──
   - serp_status_options = [["全て", ""], ["未処理", "null"], ["処理中", "serp_queued"], ["完了", "serp_done"], ["登録済み", "serp_imported"], ["エラー", "serp_error"]]
@@ -113,6 +116,9 @@
       h2.ai-dash-headline 絞り込み
     .ai-dash-body
       = form_with url: draft_customers_path, method: :get, local: true, class: "ai-dash-filter-form" do
+        .ai-field-group
+          label 社名
+          = text_field_tag :company_query, @company_query, class: "ai-input-text", placeholder: "会社名で検索"
         .ai-field-group
           label SERPステータス
           = select_tag :serp_status_filter, options_for_select(serp_status_options, params[:serp_status_filter]), class: "ai-select"
@@ -166,7 +172,8 @@
           - if @customers.any?
             - @customers.each do |customer|
               tr
-                td.ai-col-company = link_to customer&.company || "名称未設定", edit_customer_path(customer)
+                - company_label = display_company_name(customer)
+                td.ai-col-company = link_to company_label, edit_customer_path(customer), title: customer&.company
                 td.ai-col-serp-status
                   span class="ai-badge #{serp_status_badge_class(customer&.serp_status)}"
                     = serp_status_label(customer&.serp_status)
@@ -174,9 +181,9 @@
                 - visible_address = display_address(customer&.address)
                 td.ai-col-address title="#{visible_address}" = visible_address
                 td.ai-col-fill = address_quality_icon(customer&.address)
-                td.ai-col-fill = fill_icon(customer&.tel)
+                td.ai-col-fill = tel_quality_icon(customer)
                 td.ai-col-fill = url_quality_icon(customer&.url)
-                td.ai-col-fill = fill_icon(customer&.contact_url)
+                td.ai-col-fill = url_quality_icon(customer&.contact_url)
                 / 業種 ○×: industry / business / genre のいずれかが入っていれば ○
                 - industry_filled = [customer&.industry, customer&.business, customer&.genre].any? { |v| v.to_s.strip.present? }
                 td.ai-col-fill = fill_icon(industry_filled ? "1" : nil)
@@ -186,7 +193,7 @@
                 td.ai-col-links
                   - if customer&.url.present? && official_url?(customer.url)
                     a.ai-link-pill href="#{customer.url}" target="_blank" rel="noopener" title="#{customer.url}" HP
-                  - if customer&.contact_url.present?
+                  - if customer&.contact_url.present? && official_url?(customer.contact_url)
                     a.ai-link-pill href="#{customer.contact_url}" target="_blank" rel="noopener" title="#{customer.contact_url}" Contact
                 td.ai-col-date = display_datetime(customer&.updated_at)
                 td.ai-col-date = display_datetime(customer&.created_at)
@@ -239,6 +246,41 @@ javascript:
         if (el) el.textContent = text || '';
       };
 
+      const stopPolling = function() {
+        if (!panel.dataset.pollingTimer) return;
+
+        window.clearInterval(Number(panel.dataset.pollingTimer));
+        panel.dataset.pollingTimer = '';
+      };
+
+      const poll = function() {
+        fetch(url, { headers: { 'Accept': 'application/json' } })
+          .then(function(response) { return response.json(); })
+          .then(render)
+          .catch(function() {});
+      };
+
+      const startPolling = function() {
+        if (panel.dataset.pollingTimer) return;
+
+        panel.dataset.pollingTimer = window.setInterval(poll, 5000);
+      };
+
+      const refreshListAfterCompletion = function(data) {
+        const finished = panel.dataset.wasActive === 'true' &&
+          data &&
+          data.active === false &&
+          (data.phase === 'done' || data.phase === 'error');
+
+        if (!finished || panel.dataset.reloadScheduled === 'true') return;
+
+        panel.dataset.reloadScheduled = 'true';
+        setText(message, 'SERP補完が完了しました。一覧を更新しています...');
+        window.setTimeout(function() {
+          window.location.reload();
+        }, 800);
+      };
+
       const render = function(data) {
         if (!data || data.present === false) return;
 
@@ -251,22 +293,21 @@ javascript:
         setText(counts, 'SERP ' + (data.serp_completed || 0) + '/' + (data.serp_total || 0) + ' / Web ' + (data.web_completed || 0) + '/' + (data.web_total || 0));
         setText(eta, '経過 ' + (data.elapsed_label || '0秒') + ' / 残り目安 ' + (data.eta_label || '計測中'));
 
-        if (!data.active && panel.dataset.pollingTimer) {
-          window.clearInterval(Number(panel.dataset.pollingTimer));
-          panel.dataset.pollingTimer = '';
+        if (data.active) {
+          panel.dataset.wasActive = 'true';
+          startPolling();
+        } else {
+          stopPolling();
+          refreshListAfterCompletion(data);
         }
       };
 
-      const poll = function() {
-        fetch(url, { headers: { 'Accept': 'application/json' } })
-          .then(function(response) { return response.json(); })
-          .then(render)
-          .catch(function() {});
-      };
-
+      if (panel.dataset.active === 'true') {
+        panel.dataset.wasActive = 'true';
+      }
       poll();
       if (panel.dataset.active === 'true') {
-        panel.dataset.pollingTimer = window.setInterval(poll, 5000);
+        startPolling();
       }
     };
 

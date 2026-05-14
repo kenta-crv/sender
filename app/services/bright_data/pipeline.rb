@@ -3,6 +3,7 @@
 require "set"
 require "concurrent"
 require "timeout"
+require "uri"
 
 module BrightData
   class Pipeline
@@ -93,9 +94,10 @@ module BrightData
       # 検索キーワード生成: company + address の組み合わせ
       # query 文字列ではなく customer_id を持ち回り、同一クエリでも対象レコードを崩さない。
       query_jobs = targets.filter_map do |c|
-        keyword = [c.company.to_s.strip, c.address.to_s.strip].reject(&:empty?).join(" ")
+        company_for_query = UrlPolicy.normalize_company_name(c.company).presence || c.company.to_s.strip
+        keyword = [company_for_query, c.address.to_s.strip].reject(&:empty?).join(" ")
         keyword += " 会社概要" if keyword.present?
-        q = keyword.presence || c.company.to_s.strip
+        q = keyword.presence || company_for_query
         next if q.blank?
 
         { customer_id: c.id, company: c.company.to_s.strip, query: q }
@@ -186,7 +188,7 @@ module BrightData
 
                 # group は [[company_hash, idx], ...] の配列。
                 # SERP の上位順を保ったまま走査し、最初に updates が成立した時点で打ち切る。
-                group.sort_by { |_, idx| idx }.each do |company, idx|
+                group.sort_by { |company, idx| candidate_priority(customer, company, idx) }.each do |company, idx|
                   direct_updates = build_serp_updates(customer, company)
                   if direct_updates.any?
                     customer.update_columns(direct_updates.merge(updated_at: Time.current))
@@ -367,7 +369,7 @@ module BrightData
       return {} unless company_matches_customer?(customer.company, company[:company])
 
       updates = {}
-      url_is_official = UrlPolicy.official_url?(company[:url], title: company[:company])
+      url_is_official = primary_company_url?(company[:url], title: company[:company])
 
       updates[:url] = company[:url] if customer.url.blank? && company[:url].present? && url_is_official
       updates[:tel] = company[:tel] if customer.tel.blank? && company[:tel].present?
@@ -384,19 +386,44 @@ module BrightData
     # （並列実行時もスレッドセーフ — 純粋関数）
     def self.build_web_updates(customer, company, web_data)
       updates = {}
-      url_is_official = UrlPolicy.official_url?(company[:url], title: url_policy_title(company))
+      source_url = web_data[:source_url].presence || company[:url]
+      url_is_official = primary_company_url?(source_url, title: url_policy_title(company))
+      verified_match = web_data[:matched] == true ||
+                       (web_data[:matched] != false && serp_title_matches_customer?(customer, company))
 
-      updates[:url]         = company[:url]         if customer.url.blank? && company[:url].present? && web_data[:matched] == true && url_is_official
-      updates[:tel]         = web_data[:tel]        if customer.tel.blank? && web_data[:tel].present?
+      if source_url.present? &&
+         verified_match &&
+         url_is_official &&
+         (customer.url.blank? || contact_like_url?(customer.url))
+        updates[:url] = source_url
+      end
+      updates[:tel] = web_data[:tel] if verified_match && customer.tel.blank? && web_data[:tel].present?
       # address: 都道府県始まり かつ 市区町村を含む正規化住所が取得できた場合のみ採用。
       # 部分住所を完全住所に補完する用途（既存値があっても上書き）。
       address = clean_address_candidate(web_data[:address])
-      if address.present? && better_address?(address, customer.address)
+      if verified_match && address.present? && better_address?(address, customer.address)
         updates[:address] = address
       end
-      if web_data[:contact_url].present? &&
+      contact_url = web_data[:contact_url].presence
+      contact_base_url = source_url.presence || customer.url.presence || company[:url]
+      contact_url = nil unless contact_url.present? &&
+                               UrlPolicy.official_url?(contact_url) &&
+                               same_site_url?(contact_url, contact_base_url)
+      if verified_match &&
+         contact_url.present? &&
          (customer.contact_url.blank? || malformed_relative_url?(customer.contact_url))
-        updates[:contact_url] = web_data[:contact_url]
+        updates[:contact_url] = contact_url
+      elsif verified_match &&
+            customer.contact_url.present? &&
+            malformed_relative_url?(customer.contact_url) &&
+            customer.url.present? &&
+            UrlPolicy.official_url?(customer.url)
+        resolved_contact = WebEnricher.send(:resolve_contact_url, customer.contact_url, customer.url)
+        if resolved_contact.present? &&
+           UrlPolicy.official_url?(resolved_contact) &&
+           same_site_url?(resolved_contact, customer.url)
+          updates[:contact_url] = resolved_contact
+        end
       end
       updates
     end
@@ -405,7 +432,7 @@ module BrightData
       return {} unless customer.url.blank?
       return {} if company[:url].blank?
       return {} if web_data && web_data[:matched] == false
-      return {} unless UrlPolicy.official_url?(company[:url], title: url_policy_title(company))
+      return {} unless primary_company_url?(company[:url], title: url_policy_title(company))
       return {} unless serp_title_matches_customer?(customer, company)
 
       { url: company[:url] }
@@ -418,6 +445,7 @@ module BrightData
 
     def self.better_address?(candidate, current)
       return false if candidate.blank?
+      return false if address_score(candidate).zero?
       return true if current.blank?
 
       address_score(candidate) > address_score(current)
@@ -426,6 +454,20 @@ module BrightData
     def self.address_score(address)
       s = address.to_s.strip
       return 0 if s.blank?
+      return 0 if access_address?(s)
+      return 0 if s.match?(/potentialAction|urlTemplate|@type|["{}\\]/)
+      return 0 if s.match?(/有料職業紹介事業|WEB広告事業|デジタルサイネージ事業|©/)
+      return 0 if s.match?(/荷物積み込み場|稼働期間|現場風景|週休|役員|取締役|営業本部|店[\s　]*舗|店舗|info@/)
+      return 0 if s.match?(/Google\s*Map|GOOGLE\s*Map|\bMAP\b|サイトマップ|個人情報保護|購入ページ|事業一覧/)
+      return 0 if s.match?(/_at_|自治体|行政区/)
+      return 0 if s.match?(/[［\[]\s*(?:本社代表|代表|TEL|Tel|tel|電話)/)
+      return 0 if s.match?(/[ 　](?:建[ 　]*築|土木|内装|配送|運送業?|軽貨物.*|物流.*)\z/)
+      return 0 if s.match?(/\A#{CompanyInfoExtractor::PREF_PATTERN}\s*〒/)
+      return 0 if s.scan(CompanyInfoExtractor::PREF_PATTERN).size > 1
+      complete_score = complete_address_score(s)
+      return complete_score if complete_score.positive?
+
+      return 0 unless s.match?(/[0-9０-９]|丁目|番地|番|号|[-－ー]/)
 
       score = s.length
       score += 50 if s.match?(/(?:市|区|町|村|郡)/)
@@ -433,8 +475,58 @@ module BrightData
       score
     end
 
+    def self.complete_address_score(address)
+      s = address.to_s.strip
+      return 0 if s.scan(CompanyInfoExtractor::PREF_PATTERN).size != 1
+      return 0 if s.match?(/駅|徒歩|車|分|Google\s*Map|GOOGLE\s*Map|\bMAP\b|サイトマップ|個人情報保護|店[\s　]*舗|店舗|info@|_at_/)
+      return 0 unless s.match?(/(?:市|区|町|村|郡)/)
+      return 0 unless s.match?(/[0-9０-９]|丁目|番地|番|号|[-－ー]/)
+
+      s.length + 150
+    end
+
+    def self.access_address?(address)
+      s = address.to_s
+      s.match?(/駅/) && s.match?(/徒歩|車|バス|分/)
+    end
+
+    def self.primary_company_url?(url, title: nil)
+      UrlPolicy.official_url?(url, title: title) && !contact_like_url?(url)
+    end
+
+    def self.contact_like_url?(url)
+      uri = URI.parse(url.to_s)
+      [uri.path, uri.query].compact.join(" ").match?(/contact|inquiry|toiawase|otoiawase|form|mail/i)
+    rescue URI::InvalidURIError
+      false
+    end
+
     def self.malformed_relative_url?(url)
-      url.to_s.include?("/../") || url.to_s.include?("/./")
+      value = url.to_s.strip
+      return false if value.blank?
+
+      !value.match?(%r{\Ahttps?://}i) || value.include?("/../") || value.include?("/./")
+    end
+
+    def self.same_site_url?(url, base_url)
+      uri = URI.parse(url.to_s)
+      base_uri = URI.parse(base_url.to_s)
+      url_root = registrable_host_root(uri.host)
+      base_root = registrable_host_root(base_uri.host)
+      url_root.present? && base_root.present? && url_root == base_root
+    rescue URI::InvalidURIError
+      false
+    end
+
+    def self.registrable_host_root(host)
+      parts = host.to_s.downcase.sub(/\Awww\./, "").split(".").reject(&:blank?)
+      return nil if parts.size < 2
+
+      if parts.last == "jp" && %w[co ne or ac go ed gr lg].include?(parts[-2]) && parts.size >= 3
+        parts.last(3).join(".")
+      else
+        parts.last(2).join(".")
+      end
     end
 
     def self.company_matches_customer?(customer_name, candidate_name)
@@ -452,6 +544,23 @@ module BrightData
 
     def self.url_policy_title(company)
       company[:title].presence || company[:company]
+    end
+
+    def self.candidate_priority(customer, company, index)
+      url = company[:url].to_s
+      path = URI.parse(url).path.to_s.downcase rescue ""
+
+      score = index.to_i
+      score -= 100 if path.match?(%r{/(?:company|corporate|about|profile)(?:/|[-_a-z]*\.html?|$)})
+      score -= 90 if path.match?(%r{/(?:kaishagaiyo|gaiyo|gaiyou)(?:/|\.html?|$)})
+      score -= 80 if path.match?(%r{/(?:outline|gaiyou)(?:/|\.html?|$)})
+      score += 60 if path.match?(%r{/(?:branch|office|network|list|jigyosyoannai)(?:/|\.|$)})
+
+      if customer&.company.to_s.match?(/センター|支店|営業所|出張所|オフィス|事業所|本店|本社|支社|工場|店/)
+        score -= 70 if path.match?(%r{/(?:branch|office|network|list|introduction|jigyosyoannai)(?:/|\.|$)})
+      end
+
+      [score, index.to_i]
     end
   end
 end
