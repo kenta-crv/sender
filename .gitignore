@@ -37,3 +37,6 @@
 
 # Call/verification logs (may contain sensitive call data)
 /verification/results/
+sender_clean/
+*.json
+*.json
