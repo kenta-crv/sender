@@ -215,55 +215,58 @@ if (typeof gsap !== "undefined") {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('Initializing Swiper sliders...');
-  
-  const caseStudiesSwiper = new Swiper('.case-studies-swiper', {
-    slidesPerView: 1,
-    spaceBetween: 20,
-    loop: true,
-    autoplay: false,
-    navigation: {
-      nextEl: '.case-studies-next',
-      prevEl: '.case-studies-prev',
-    },
-    pagination: {
-      el: '.case-studies-pagination',
-      clickable: true,
-    },
-    breakpoints: {
-      768: {
-        slidesPerView: 1,
-        spaceBetween: 20,
+  if (typeof Swiper === 'undefined') return;
+
+  if (document.querySelector('.case-studies-swiper')) {
+    new Swiper('.case-studies-swiper', {
+      slidesPerView: 1,
+      spaceBetween: 20,
+      loop: true,
+      autoplay: false,
+      navigation: {
+        nextEl: '.case-studies-next',
+        prevEl: '.case-studies-prev',
+      },
+      pagination: {
+        el: '.case-studies-pagination',
+        clickable: true,
+      },
+      breakpoints: {
+        768: {
+          slidesPerView: 1,
+          spaceBetween: 20,
+        }
       }
-    }
-  });
-  
-  const pricingSwiper = new Swiper('.pricing-swiper', {
-    slidesPerView: 1,
-    spaceBetween: 20,
-    loop: true,
-    autoplay: false,
-    navigation: {
-      nextEl: '.pricing-next',
-      prevEl: '.pricing-prev',
-    },
-    pagination: {
-      el: '.pricing-pagination',
-      clickable: true,
-    },
-    breakpoints: {
-      768: {
-        slidesPerView: 1,
-        spaceBetween: 20,
+    });
+  }
+
+  if (document.querySelector('.pricing-swiper')) {
+    new Swiper('.pricing-swiper', {
+      slidesPerView: 1,
+      spaceBetween: 20,
+      loop: true,
+      autoplay: false,
+      navigation: {
+        nextEl: '.pricing-next',
+        prevEl: '.pricing-prev',
+      },
+      pagination: {
+        el: '.pricing-pagination',
+        clickable: true,
+      },
+      breakpoints: {
+        768: {
+          slidesPerView: 1,
+          spaceBetween: 20,
+        }
       }
-    }
-  });
-  
-  console.log('Swiper sliders initialized successfully!');
+    });
+  }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
   const section = document.querySelector('.japan-notyo-section');
+  if (!section || !('IntersectionObserver' in window)) return;
 
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
@@ -278,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
+  if (!('IntersectionObserver' in window)) return;
   
   const observerOptions = {
     root: null,

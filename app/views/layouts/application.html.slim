@@ -7,13 +7,14 @@ html lang="ja"
     .hero 
       = render "shared/breadcrumbs" if breadcrumbs.any?
 
-    - if notice.present?
-      .flash-notice
-        = notice
-
-    - if alert.present?
-      .flash-alert
-        = alert
+    - if notice.present? || alert.present?
+      .app-flash-container
+        - if notice.present?
+          .app-flash.app-flash-notice
+            = notice
+        - if alert.present?
+          .app-flash.app-flash-alert
+            = alert
 
     = yield
 

@@ -6,7 +6,12 @@ require "uri"
 require "openssl"
 
 class CompanyInfoExtractor
-  TEL_REGEX = /0\d{1,4}-\d{1,4}-\d{3,4}/
+  TEL_REGEX = /(?<!\d)(?:0120-\d{3}-\d{3}|0800-\d{3}-\d{4}|0(?:50|70|80|90)-\d{4}-\d{4}|0[36]-\d{4}-\d{4}|0\d{1,4}-\d{1,4}-\d{4})(?!\d)/
+  CONTACT_LINK_TEXT = /お問い合わせ|お問合せ|問合せ|contact|inquiry/i
+  CONTACT_LINK_PATH = /contact|inquiry|toiawase|otoiawase/i
+  NON_CONTACT_LINK_TEXT = /お問い合わせ番号|問合せ番号|送り状|追跡|照会|tracking|trace/i
+  NON_CONTACT_LINK_PATH = /webtrace|tracking|trace/i
+  BRANCH_TOKEN_REGEX = /\S{1,20}(?:センター|支店|営業所|出張所|オフィス|事業所|本店|本社|支社|工場|店)/
 
   PREF_PATTERN = /(?:北海道|青森県|岩手県|宮城県|秋田県|山形県|福島県|茨城県|栃木県|群馬県|
                     埼玉県|千葉県|東京都|神奈川県|新潟県|富山県|石川県|福井県|山梨県|長野県|
@@ -14,7 +19,7 @@ class CompanyInfoExtractor
                     鳥取県|島根県|岡山県|広島県|山口県|徳島県|香川県|愛媛県|高知県|福岡県|
                     佐賀県|長崎県|熊本県|大分県|宮崎県|鹿児島県|沖縄県)/x
 
-  ADDRESS_REGEX = /(?:北海道|青森県|岩手県|宮城県|秋田県|山形県|福島県|茨城県|栃木県|群馬県|埼玉県|千葉県|東京都|神奈川県|新潟県|富山県|石川県|福井県|山梨県|長野県|岐阜県|静岡県|愛知県|三重県|滋賀県|京都府|大阪府|兵庫県|奈良県|和歌山県|鳥取県|島根県|岡山県|広島県|山口県|徳島県|香川県|愛媛県|高知県|福岡県|佐賀県|長崎県|熊本県|大分県|宮崎県|鹿児島県|沖縄県)[^\n\r<>「」【】]{5,80}/
+  ADDRESS_REGEX = /(?:北海道|青森県|岩手県|宮城県|秋田県|山形県|福島県|茨城県|栃木県|群馬県|埼玉県|千葉県|東京都|神奈川県|新潟県|富山県|石川県|福井県|山梨県|長野県|岐阜県|静岡県|愛知県|三重県|滋賀県|京都府|大阪府|兵庫県|奈良県|和歌山県|鳥取県|島根県|岡山県|広島県|山口県|徳島県|香川県|愛媛県|高知県|福岡県|佐賀県|長崎県|熊本県|大分県|宮崎県|鹿児島県|沖縄県)[^\n\r<>「」【】]{5,120}/
 
   USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
@@ -35,6 +40,15 @@ class CompanyInfoExtractor
     new(html, customer: customer)
   rescue => e
     Rails.logger.warn("[CompanyInfoExtractor] fetch_and_parse error for #{url}: #{e.message}")
+    nil
+  end
+
+  def self.fetch_and_parse_rendered(url, customer: nil)
+    html = fetch_rendered_html(url)
+    return nil if html.nil?
+    new(html, customer: customer)
+  rescue => e
+    Rails.logger.warn("[CompanyInfoExtractor] fetch_and_parse_rendered error for #{url}: #{e.message}")
     nil
   end
 
@@ -144,6 +158,48 @@ class CompanyInfoExtractor
     end
   end
 
+  def self.fetch_rendered_html(url, timeout: 12)
+    require "selenium-webdriver"
+
+    options = Selenium::WebDriver::Chrome::Options.new
+    options.add_argument("--headless=new")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1280,1000")
+    options.add_argument("--ignore-certificate-errors")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--user-agent=#{USER_AGENT}")
+
+    driver = Selenium::WebDriver.for(:chrome, options: options)
+    driver.manage.timeouts.implicit_wait = 0
+    driver.manage.timeouts.page_load = timeout
+    driver.navigate.to(url)
+
+    wait = Selenium::WebDriver::Wait.new(timeout: timeout)
+    begin
+      wait.until { driver.execute_script("return document.readyState") == "complete" }
+    rescue Selenium::WebDriver::Error::TimeoutError
+      nil
+    end
+    begin
+      wait.until do
+        driver.find_element(tag_name: "body").text.to_s.strip.length >= 50
+      rescue Selenium::WebDriver::Error::NoSuchElementError
+        false
+      end
+    rescue Selenium::WebDriver::Error::TimeoutError
+      nil
+    end
+
+    driver.page_source
+  rescue => e
+    Rails.logger.warn("[CompanyInfoExtractor] rendered fetch error for #{url}: #{e.message}")
+    nil
+  ensure
+    driver&.quit rescue nil
+  end
+
   # --- 以下、抽出メソッド ---
 
   def extract_company
@@ -165,26 +221,32 @@ class CompanyInfoExtractor
   end
 
   def extract_tel
-    # 優先1: <a href="tel:"> リンク（最も信頼性が高い）
-    # href に複数番号が連結されている場合があるため match で最初の1件のみ採用
-    @doc.css("a[href^='tel:']").each do |a|
-      raw = a["href"].sub(/^tel:/, "").gsub(/[^\d\-+]/, "")
-      m = raw.match(TEL_REGEX)
-      return m[0] if m
-    end
+    branch_tel = extract_tel_from_branch_context
+    return branch_tel if branch_tel
 
-    # 優先2: 会社概要テーブル / DL 内の TEL・電話ラベル
+    # 優先1: 会社概要テーブル / DL 内の TEL・電話ラベル
     tel = from_table_label_tel(%w[TEL Tel tel 電話 電話番号])
     return tel if tel
 
+    # 優先2: <a href="tel:"> リンク
+    # href に複数番号が連結されている場合があるため match で最初の1件のみ採用
+    @doc.css("a[href^='tel:']").each do |a|
+      raw = a["href"].sub(/^tel:/, "").gsub(/[^\d\-+]/, "")
+      m = normalize_tel_text(raw).match(TEL_REGEX)
+      return m[0] if m
+
+      formatted = format_plain_tel(raw)
+      return formatted if formatted
+    end
+
     # 優先3: footer のテキスト（match で最初の1件のみ）
     if (footer = @doc.at("footer"))
-      m = footer.text.match(TEL_REGEX)
+      m = normalize_tel_text(footer.text).match(TEL_REGEX)
       return m[0] if m
     end
 
     # フォールバック: 全文検索（match で最初の1件のみ）
-    m = @doc.text.match(TEL_REGEX)
+    m = normalize_tel_text(@doc.text).match(TEL_REGEX)
     m ? m[0] : nil
   end
 
@@ -198,17 +260,53 @@ class CompanyInfoExtractor
         next_cell = cells[i + 1]
         next unless next_cell
         # scan で全候補を取得し、最初の1件だけ返す（連結防止）
-        matches = next_cell.text.scan(TEL_REGEX)
+        matches = normalize_tel_text(next_cell.text).scan(TEL_REGEX)
         return matches.first if matches.any?
       end
     end
     nil
   end
 
+  def normalize_tel_text(text)
+    text.to_s.tr("０-９", "0-9")
+        .gsub(/[‐‑‒–—―−－ーｰ₋]/, "-")
+        .gsub(/[（(]\s*(0\d{1,4})\s*[）)]\s*/, '\1-')
+  end
+
+  def format_plain_tel(text)
+    digits = text.to_s.gsub(/\D/, "")
+    return nil if digits.blank?
+
+    case digits.length
+    when 11
+      if (match = digits.match(/\A(0800)(\d{3})(\d{4})\z/))
+        return "#{match[1]}-#{match[2]}-#{match[3]}"
+      end
+      if (match = digits.match(/\A(050|070|080|090)(\d{4})(\d{4})\z/))
+        return "#{match[1]}-#{match[2]}-#{match[3]}"
+      end
+    when 10
+      if (match = digits.match(/\A(0120|0800)(\d{3})(\d{3})\z/))
+        return "#{match[1]}-#{match[2]}-#{match[3]}"
+      end
+      if (match = digits.match(/\A(03|06)(\d{4})(\d{4})\z/))
+        return "#{match[1]}-#{match[2]}-#{match[3]}"
+      end
+      if (match = digits.match(/\A(0\d{2})(\d{3})(\d{4})\z/))
+        return "#{match[1]}-#{match[2]}-#{match[3]}"
+      end
+    end
+
+    nil
+  end
+
   def extract_address
+    branch_address = extract_address_from_branch_context
+    return branch_address if branch_address
+
     # 優先1: <address> タグ
     if (addr_tag = @doc.at("address"))
-      m = addr_tag.text.match(ADDRESS_REGEX)
+      m = addr_tag.text.gsub(/\s+/, " ").match(ADDRESS_REGEX)
       return clean_address(m[0]) if m
     end
 
@@ -216,14 +314,17 @@ class CompanyInfoExtractor
     addr = from_table_label_address(%w[住所 所在地 本社住所 本社所在地])
     return addr if addr
 
+    addr = from_labeled_text_address
+    return addr if addr
+
     # 優先3: footer のテキスト
     if (footer = @doc.at("footer"))
-      m = footer.text.match(ADDRESS_REGEX)
+      m = footer.text.gsub(/\s+/, " ").match(ADDRESS_REGEX)
       return clean_address(m[0]) if m
     end
 
     # フォールバック: 全文検索
-    m = @doc.text.match(ADDRESS_REGEX)
+    m = @doc.text.gsub(/\s+/, " ").match(ADDRESS_REGEX)
     m ? clean_address(m[0]) : nil
   end
 
@@ -235,11 +336,50 @@ class CompanyInfoExtractor
         next unless labels.any? { |l| cell.text.strip.start_with?(l) }
         next_cell = cells[i + 1]
         next unless next_cell
-        m = next_cell.text.match(ADDRESS_REGEX)
-        return clean_address(m[0]) if m
+        text = next_cell.text.gsub(/\s+/, " ")
+        m = text.match(ADDRESS_REGEX)
+        address = clean_address(m[0]) if m
+        return address if address
+
+        inferred = with_customer_prefecture(text)
+        m = inferred.match(ADDRESS_REGEX)
+        address = clean_address(m[0]) if m
+        return address if address
       end
     end
     nil
+  end
+
+  def from_labeled_text_address
+    text = @doc.text.gsub(/\s+/, " ")
+    patterns = [
+      /(?:本社所在地|本社住所|所在地|住所|本社)\s*[：:]?\s*(?:〒?\s*\d{3}[-－ー]?\d{4}\s*)?([^。|｜\n\r]{0,20}#{PREF_PATTERN}[^\n\r<>]{5,180})/,
+      /(?:本社所在地|本社住所|所在地|住所|本社)[\s\S]{0,40}(#{PREF_PATTERN}[^\n\r<>]{5,180})/
+    ]
+
+    patterns.each do |pattern|
+      match = text.match(pattern)
+      next unless match
+
+      address = clean_address(match[1])
+      return address if address
+    end
+
+    inferred = text.match(/(?:本社所在地|本社住所|所在地|住所|本社)\s*[：:]?\s*〒?\s*\d{3}[-－ー]?\d{4}\s*([^。|｜\n\r]{5,120})/)
+    if inferred
+      address = clean_address(with_customer_prefecture(inferred[1]))
+      return address if address
+    end
+
+    nil
+  end
+
+  def with_customer_prefecture(text)
+    value = text.to_s.strip.sub(/\A〒?\s*\d{3}-?\d{4}\s*/, "")
+    return value if value.match?(PREF_PATTERN)
+
+    pref = @customer&.address.to_s[PREF_PATTERN]
+    pref.present? ? "#{pref}#{value}" : value
   end
 
   # 住所文字列から TEL/FAX/営業時間 等の後続テキストを除去する
@@ -247,6 +387,9 @@ class CompanyInfoExtractor
   def clean_address(text)
     return nil if text.blank?
     s = text.dup
+    s = s.tr("\u00A0", " ")
+         .gsub(/[\u200B\u200C\u200D\uFEFF]/, "")
+    s = s.split(/Google\s*Map|GOOGLE\s*Map|Google\s*map|GOOGLE\s*MAP|\bMAP\b/i, 2).first.to_s
 
     # 以下のキーワードより後ろは切り捨てる（先頭側が住所本体）
     stop_pattern = /
@@ -254,15 +397,47 @@ class CompanyInfoExtractor
          営業時間|営業日|定休日?|受付時間|受付|
          E[-\s]?mail|Email|e-?mail|メール(?:アドレス)?|Mail|
          URL|ＵＲＬ|ホームページ|HP|
-         アクセス|最寄り?駅|地図|
-         代表者|設立|資本金|従業員|業務内容)
+         アクセス|最寄り?駅|地図|Google\s*(?:MAP|Map|map)|GoogleMapで見る|Googleマップ|MAPを見る|MAP|map|
+         代表者|(?<!本社)代表|設立|資本金|従業員|業務内容|事業内容|事業案内|施工計画|会社情報|
+         代表挨拶|経営理念|行動指針|拠点一覧|地域社会への貢献|沿革|
+         役員|取締役|営業本部|店[\s　]*舗|店舗|
+         サイトマップ|個人情報保護方針|購入ページ|TOP|Go\s*to\s*top|keyboard_arrow_right|事業一覧|
+         荷物積み込み場|稼働期間|現場風景|週休|勤務時間|時間\s*[0-9０-９]|
+         ※\s*本社所在地|
+         昭和\s*\d+\s*年|平成\s*\d+\s*年|令和\s*\d+\s*年|
+         求人|採用|お問い合わせ|お問合せ|問合せ|CONTACT|Contact|contact)
+         |Copyright|All\s+Rights\s+Reserved
     /x
     s = s.split(stop_pattern, 2).first.to_s
+    s = s.split(/(?:有料職業紹介事業|WEB広告事業|デジタルサイネージ事業|©)/, 2).first.to_s
+    s = s.split(/(?:potentialAction|urlTemplate|@type|","|"\s*[:,])/, 2).first.to_s
+    s = s.split(/[【［\[]\s*(?:本社代表|代表|TEL|Tel|tel|電話)/, 2).first.to_s
+    s = s.split(/[A-Za-z0-9._%+\-]+_at_[A-Za-z0-9._%+\-]+/, 2).first.to_s
+    s = s.split(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/, 2).first.to_s
+    s = s.split(/0[0-9０-９]{1,4}[‐‑‒–—―−－ーｰ₋-][0-9０-９]{1,4}[‐‑‒–—―−－ーｰ₋-][0-9０-９]{3,4}/, 2).first.to_s
+    s = s.split(/[・、,]\s*(?:本社|本店|法人営業部|[一-龥ァ-ヶA-Za-z]{1,12}(?:本社|本店|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター))\s*〒\s*\d{3}-?\d{4}/, 2).first.to_s
+    s = s.split(/(?<=[0-9０-９号番地])\s*(?:本社|本店|法人営業部|[一-龥ァ-ヶA-Za-z]{1,12}(?:本社|本店|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター))\s*〒\s*\d{3}-?\d{4}/, 2).first.to_s
+    s = s.split(/\s+(?:事業所|支店|営業所|出張所|オフィス|工場|倉庫|センター)[：:][\s　]*〒\s*\d{3}-?\d{4}/, 2).first.to_s
+    s = s.split(/\s+[一-龥ァ-ヶA-Za-z]{1,12}(?:支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)[：:][\s　]*〒\s*\d{3}-?\d{4}/, 2).first.to_s
+    s = s.split(/\s+(?:本社|第二工場|支店|営業所|工場|倉庫|センター)?\s*〒\s*\d{3}-?\d{4}/, 2).first.to_s
+    s = s.split(/[［\[]\s*[一-龥ァ-ヶA-Za-z]{1,12}(?:支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\s*[］\]]\s*(?=#{PREF_PATTERN})/, 2).first.to_s
+    s = s.split(/[／\/][\s　]*(?:工場|支店|営業所|出張所|オフィス|事業所|倉庫|センター)[\s　]*(?=#{PREF_PATTERN})/, 2).first.to_s
+    s = s.split(/\s+[一-龥ァ-ヶA-Za-z]{1,12}(?:本社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)[：:][\s　]*(?=#{PREF_PATTERN})/, 2).first.to_s
+    s = s.split(/\s+\S{1,12}(?:支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\s*(?=#{PREF_PATTERN})/, 2).first.to_s
 
     # 連続する空白・全角空白・特殊記号を1つに圧縮
     s = s.gsub(/[\t\r\n]+/, " ").gsub(/[ 　]{2,}/, " ")
+    s = s.sub(/\A(#{PREF_PATTERN})\s*〒?\s*\d{3}[-－ー]?\d{4}\s*/, "\\1")
+    s = s.sub(/\A(#{PREF_PATTERN})[ 　]+/, "\\1")
+    s = s.sub(/[（(]\s*→?\s*MAPを見る\s*[）)]?\z/i, "")
+    s = s.sub(/[（(]\s*→?\s*\z/, "")
     # 末尾の区切り記号・空白を除去
-    s = s.sub(/[\s　、。,.:：;；\-－ー｜|／\/]+\z/, "")
+    s = s.sub(/[\s　、。,.:：;；\-－ー｜|／\/■□◆◇●○◎※＊*]+\z/, "")
+    s = s.sub(/[（(]\z/, "")
+    s = s.sub(/[【［\[]\z/, "")
+    s = s.sub(/[ 　]*(?:建[ 　]*築|土木|内装|配送|運送業?|軽貨物.*|物流.*)\z/, "")
+    s = s.sub(/\s+(?:本社|支社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\z/, "")
+    s = s.sub(/\s+\S{1,12}(?:支社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\z/, "")
     s = s.strip.presence
     return nil if s.nil?
 
@@ -288,19 +463,79 @@ class CompanyInfoExtractor
     after_pref = text[pref_match.end(0)..]
 
     # 2. 都道府県名の直後に助詞・読点が続く場合は文章の一部 → 除外
-    return false if after_pref.match?(/\A(?:の|や|や、|において|では|から|へ|を|が|は|も|と|、|，|・|及び|および)/)
+    return false if after_pref.match?(/\A(?:の|や|や、|において|では|から|へ|を|が|は|も|と|下|、|，|・|及び|および)/)
 
     # 3. 市区町村（市/区/町/村/郡）が含まれていること
     return false unless after_pref.match?(/(?:市|区|町|村|郡)/)
+    return false unless text.match?(/[0-9０-９]|丁目|番地|番|号|[-－ー]/)
+    return false if text.scan(PREF_PATTERN).size > 1
 
     true
   end
 
+  def extract_tel_from_branch_context
+    branch_contexts.each do |context|
+      m = normalize_tel_text(context).match(TEL_REGEX)
+      return m[0] if m
+    end
+    nil
+  end
+
+  def extract_address_from_branch_context
+    branch_contexts.each do |context|
+      m = context.match(ADDRESS_REGEX)
+      address = clean_address(m[0]) if m
+      return address if address
+    end
+    nil
+  end
+
+  def branch_contexts
+    token_sources = branch_context_tokens
+    return [] if token_sources.empty?
+
+    text = @doc.text.to_s.gsub(/\s+/, " ")
+    compact_text = text.gsub(/\s+/, "")
+    pref = @customer&.address.to_s[PREF_PATTERN]
+
+    token_sources.filter_map do |token, source|
+      compact_index = compact_text.index(token)
+      next if compact_index.nil?
+
+      start_index = compact_index
+      if source == :address && pref.present?
+        pref_index = compact_text.rindex(pref, compact_index)
+        start_index = pref_index if pref_index && compact_index - pref_index <= 30
+      end
+
+      compact_text[start_index, 700]
+    end.uniq
+  end
+
+  def branch_context_tokens
+    branch_tokens = @customer&.company.to_s.scan(BRANCH_TOKEN_REGEX).map { |token| token.gsub(/\s+/, "") }
+    @customer&.company.to_s.split(/[\s　／\/・,、()（）\[\]「」【】]+/).each do |part|
+      normalized = part.gsub(/\s+/, "")
+      next if normalized.length < 3
+      next unless normalized.match?(/センター|キッチン|オフィス|本社|営業所|支店|倉庫|工場|事業所|配送|カーゴ|施設|店舗|会館|支部|出張所/)
+      next if normalized.match?(/\A(?:ドライバ|ドライバー|求人|採用|募集|スタッフ|アルバイト|パート|正社員)\z/)
+
+      branch_tokens << normalized
+    end
+    branch_tokens.uniq!
+    return [] if branch_tokens.empty?
+
+    address_tokens = @customer&.address.to_s.scan(/[^\s　,、。〒]{1,12}(?:市|区|町|村)/).map { |token| token.gsub(/\s+/, "") }
+    (branch_tokens.map { |token| [token, :company] } + address_tokens.map { |token| [token, :address] }).uniq
+  end
+
   def extract_contact_url
     @doc.css("a").each do |a|
-      href = a["href"]
+      href = a["href"].to_s.strip
+      text = a.text.to_s.strip
       next if href.blank?
-      return href if href.match?(/contact|お問い合わせ|問合せ/)
+      next if href.match?(NON_CONTACT_LINK_PATH) || text.match?(NON_CONTACT_LINK_TEXT)
+      return href if href.match?(CONTACT_LINK_PATH) || text.match?(CONTACT_LINK_TEXT)
     end
     nil
   end

@@ -1,11 +1,17 @@
+require "securerandom"
+
 class CustomersController < ApplicationController
   before_action :set_customers, only: [:update_all_status]
-  protect_from_forgery with: :exception, prepend: true
   before_action :authenticate_admin_or_client!, only: [:draft]
+  protect_from_forgery with: :exception, prepend: true
 
   # SERP補完対象判定用正規表現（SQLite REGEXP非対応のためRubyで判定）
   SERP_CORP_PATTERN = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/.freeze
   SERP_PREF_PATTERN = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/.freeze
+  ADDRESS_MUNICIPALITY_PATTERN = /市|区|町|村|郡/.freeze
+  ADDRESS_DETAIL_PATTERN = /[0-9０-９]|丁目|番地|番|号|[-－ー]/.freeze
+  ADDRESS_ACCESS_PATTERN = /駅(?:\s|$|車|徒歩|バス|から|より|[0-9０-９]+分)|徒歩|車\s*[0-9０-９]+分|バス\s*[0-9０-９]+分|バス停|バス利用|バスで|バス約|分圏内|アクセス|最寄り/.freeze
+  DISPLAY_TIME_ZONE = "Tokyo".freeze
 
 def index
   @last_call_params = params[:last_call] || {}
@@ -14,7 +20,7 @@ def index
   @q = Customer.ransack(params[:q])
   @customers = @q.result.includes(:last_call)
 
-  # fobbiden=true を除外（fobbiden is STRING型、NULLの場合も表示する）
+  # fobbiden=true を除外
   @customers = @customers.where("fobbiden IS NULL OR fobbiden != 'true'")
 
   # 電話番号がある顧客に絞る
@@ -497,185 +503,205 @@ def destroy
   end
 
 def draft
-    start_time = Time.current
+  start_time = Time.current
 
-    # 期間パラメータの解釈（未指定可）
-    @period_start = nil
-    @period_end   = nil
+  # 期間パラメータの解釈（未指定可）
+  @period_start = nil
+  @period_end   = nil
 
-    if params[:period_start].present?
-      begin
-        @period_start = Date.parse(params[:period_start])
-      rescue ArgumentError
-        @period_start = nil
-      end
+  if params[:period_start].present?
+    begin
+      @period_start = Date.parse(params[:period_start])
+    rescue ArgumentError
+      @period_start = nil
     end
-
-    if params[:period_end].present?
-      begin
-        @period_end = Date.parse(params[:period_end])
-      rescue ArgumentError
-        @period_end = nil
-      end
-    end
-
-    # 期間の整合性（逆転していたら入れ替え）
-    if @period_start.present? && @period_end.present? && @period_end < @period_start
-      @period_start, @period_end = @period_end, @period_start
-    end
-
-    range_start = @period_start&.beginning_of_day
-    range_end   = @period_end&.end_of_day
-
-    # --- 基本スコープの定義 ---
-    draft_base = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
-
-    # 【重要修正】ログイン状態によるフィルタリング
-    if admin_signed_in?
-      # Adminは全件表示（追加フィルタなし）
-    elsif client_signed_in?
-      # Clientログイン時は自身の client_id に紐づくもののみ
-      draft_base = draft_base.where(client_id: current_client.id)
-    else
-      # どちらでもない場合（Workerなど）は、必要に応じて制限
-      # ここでは未ログイン時などの考慮として空を返すか、特定の仕様があれば記述
-      # draft_base = draft_base.none 
-    end
-
-    # status による絞り込み
-    draft_base = draft_base.where(status: params[:status_filter]) if params[:status_filter].present?
-
-    # serp_status での絞り込み
-    case params[:serp_status_filter]
-    when "null"
-      draft_base = draft_base.where(serp_status: [nil, ''])
-    when "serp_queued", "serp_done", "serp_imported", "serp_error"
-      draft_base = draft_base.where(serp_status: params[:serp_status_filter])
-    end
-
-    # Adminを優先した条件分岐（tel_filter）
-    @customers = case
-    when admin_signed_in? && params[:tel_filter] == "with_tel"
-      draft_base.where.not(tel: [nil, '', ' '])
-    when admin_signed_in? && params[:tel_filter] == "without_tel"
-      draft_base.where(tel: [nil, '', ' '])
-    when worker_signed_in?
-      draft_base.where(tel: [nil, '', ' '])
-    else
-      draft_base
-    end
-
-    # 充足条件フィルタ
-    case params[:fill_filter]
-    when "missing_tel"
-      @customers = @customers.where("tel IS NULL OR TRIM(tel) = ''")
-    when "missing_address"
-      @customers = @customers.where("address IS NULL OR TRIM(address) = ''")
-    when "missing_url"
-      @customers = @customers.where("url IS NULL OR TRIM(url) = ''")
-    when "missing_contact_url"
-      @customers = @customers.where("contact_url IS NULL OR TRIM(contact_url) = ''")
-    when "fully_enriched"
-      @customers = @customers.where.not(tel: [nil, '', ' '])
-                             .where.not(address: [nil, '', ' '])
-                             .where.not(url: [nil, '', ' '])
-                             .where.not(contact_url: [nil, '', ' '])
-    when "done_missing_tel"
-      @customers = @customers.where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = ''")
-    when "done_missing_address"
-      @customers = @customers.where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = ''")
-    end
-
-    # 最終更新日のフィルタ
-    updated_from = (Date.parse(params[:updated_from]) rescue nil) if params[:updated_from].present?
-    updated_to   = (Date.parse(params[:updated_to])   rescue nil) if params[:updated_to].present?
-    if updated_from || updated_to
-      if updated_from && updated_to
-        @customers = @customers.where(updated_at: updated_from.beginning_of_day..updated_to.end_of_day)
-      elsif updated_from
-        @customers = @customers.where("updated_at >= ?", updated_from.beginning_of_day)
-      else
-        @customers = @customers.where("updated_at <= ?", updated_to.end_of_day)
-      end
-    elsif params[:updated_today] == "1"
-      @customers = @customers.where(updated_at: Time.current.beginning_of_day..Time.current.end_of_day)
-    end
-
-    # 期間でフィルタ
-    if range_start && range_end
-      @customers = @customers.where(created_at: range_start..range_end)
-    elsif range_start
-      @customers = @customers.where('created_at >= ?', range_start)
-    elsif range_end
-      @customers = @customers.where('created_at <= ?', range_end)
-    end
-
-    # 業種でフィルタ
-    if params[:industry_name].present?
-      @customers = @customers.where(industry: params[:industry_name])
-    end
-
-    # ページネーション（workerをincludesしてN+1を回避）
-    @customers = @customers.order(updated_at: :desc).includes(:worker).page(params[:page]).per(100)
-
-    # 残り件数取得
-    today_total = ExtractTracking
-                    .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
-                    .sum(:total_count)
-
-    daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
-    @remaining_extractable = [daily_limit - today_total, 0].max
-
-    # --- SERP補完対象件数（スコープにclient制限を反映） ---
-    serp_scope = Customer.where(serp_status: [nil, ''])
-                         .where(
-                           "(tel IS NULL OR TRIM(tel) = '') OR " \
-                           "(url IS NULL OR TRIM(url) = '') OR " \
-                           "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                         )
-    # 権限フィルタをここでも適用
-    serp_scope = serp_scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
-    
-    serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
-    @serp_target_count = serp_scope.count
-
-    # --- ダッシュボードサマリー（スコープにclient制限を反映） ---
-    dash_scope = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
-    dash_scope = dash_scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
-    dash_scope = dash_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
-
-    total = dash_scope.count
-    status_counts = dash_scope.group(:serp_status).count
-    null_c     = (status_counts[nil].to_i + status_counts[""].to_i)
-    queued_c   = status_counts["serp_queued"].to_i
-    done_c     = status_counts["serp_done"].to_i
-    imported_c = status_counts["serp_imported"].to_i
-    error_c    = status_counts["serp_error"].to_i
-
-    tel_c     = dash_scope.where.not(tel: [nil, '', ' ']).count
-    addr_c    = dash_scope.where.not(address: [nil, '', ' ']).count
-    url_c     = dash_scope.where.not(url: [nil, '', ' ']).count
-    contact_c = dash_scope.where.not(contact_url: [nil, '', ' ']).count
-    full_c    = dash_scope.where.not(tel: [nil, '', ' '])
-                          .where.not(address: [nil, '', ' '])
-                          .where.not(url: [nil, '', ' '])
-                          .where.not(contact_url: [nil, '', ' '])
-                          .count
-
-    @dashboard_stats = {
-      total: total,
-      status: {
-        null: null_c, queued: queued_c, done: done_c, imported: imported_c, error: error_c
-      },
-      fill: {
-        tel: tel_c, address: addr_c, url: url_c, contact_url: contact_c, full: full_c
-      }
-    }
-
-    elapsed = ((Time.current - start_time) * 1000).round(2)
-    Rails.logger.info("draft action: completed in #{elapsed}ms")
   end
-  
+
+  if params[:period_end].present?
+    begin
+      @period_end = Date.parse(params[:period_end])
+    rescue ArgumentError
+      @period_end = nil
+    end
+  end
+
+  # 期間の整合性（逆転していたら入れ替え）
+  if @period_start.present? && @period_end.present? && @period_end < @period_start
+    @period_start, @period_end = @period_end, @period_start
+  end
+
+  range_start = @period_start&.beginning_of_day
+  range_end   = @period_end&.end_of_day
+
+  # SERP補完対象候補を表示する一覧。
+  # 取引先環境で status カラムは別用途に使われているため、
+  # 必須条件は serp_status（NULL/serp_queued/serp_done/serp_imported/serp_error）に変更。
+  # status="draft" は任意フィルタとしてのみ適用可能。
+  visible_serp_statuses = if params[:serp_status_filter] == "serp_imported"
+                            ["serp_imported"]
+                          else
+                            [nil, '', 'serp_queued', 'serp_done', 'serp_error']
+                          end
+  draft_base = Customer.where(serp_status: visible_serp_statuses)
+
+  if admin_signed_in?
+    # Adminは全件表示
+  elsif client_signed_in?
+    draft_base = draft_base.where(client_id: current_client.id)
+  end
+
+  draft_base = draft_base.where(status: params[:status_filter]) if params[:status_filter].present?
+
+  # serp_status での絞り込み（"null" は NULL/'' を表す）
+  case params[:serp_status_filter]
+  when "null"
+    draft_base = draft_base.where(serp_status: [nil, ''])
+  when "serp_queued", "serp_done", "serp_imported", "serp_error"
+    draft_base = draft_base.where(serp_status: params[:serp_status_filter])
+  end
+
+  # Adminを優先した条件分岐（tel_filter は従来通り）
+  @customers = case
+  when admin_signed_in? && params[:tel_filter] == "with_tel"
+    draft_base.where.not(tel: [nil, '', ' '])
+  when admin_signed_in? && params[:tel_filter] == "without_tel"
+    draft_base.where(tel: [nil, '', ' '])
+  when worker_signed_in?
+    draft_base.where(tel: [nil, '', ' '])
+  else
+    draft_base
+  end
+
+  @company_query = params[:company_query].to_s.strip
+  @customers = filter_company_query(@customers, @company_query)
+
+  # 充足条件フィルタ: 例 "missing_tel" → tel 未取得のみ
+  case params[:fill_filter]
+  when "missing_tel"
+    @customers = @customers.where("tel IS NULL OR TRIM(tel) = ''")
+  when "missing_address"
+    @customers = @customers.where("address IS NULL OR TRIM(address) = ''")
+  when "missing_url"
+    @customers = filter_missing_official_url(@customers)
+  when "missing_contact_url"
+    @customers = @customers.where("contact_url IS NULL OR TRIM(contact_url) = ''")
+  when "partial_address"
+    @customers = filter_partial_address(@customers)
+  when "fully_enriched"
+    @customers = filter_detailed_address(
+      filter_official_url(
+        @customers.where.not(tel: [nil, '', ' '])
+                  .where.not(contact_url: [nil, '', ' '])
+      )
+    )
+  when "done_missing_tel"
+    @customers = @customers.where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = ''")
+  when "done_missing_address"
+    @customers = @customers.where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = ''")
+  when "done_partial_address"
+    @customers = filter_partial_address(@customers.where(serp_status: "serp_done"))
+  end
+
+  # 最終更新日のフィルタ
+  # 優先順位: updated_from / updated_to が指定されていればそれを使用、
+  # それ以外で updated_today=1 なら本日のみ。
+  updated_from = (Date.parse(params[:updated_from]) rescue nil) if params[:updated_from].present?
+  updated_to   = (Date.parse(params[:updated_to])   rescue nil) if params[:updated_to].present?
+  if updated_from || updated_to
+    if updated_from && updated_to
+      @customers = @customers.where(updated_at: zoned_beginning_of_day(updated_from)..zoned_end_of_day(updated_to))
+    elsif updated_from
+      @customers = @customers.where("updated_at >= ?", zoned_beginning_of_day(updated_from))
+    else
+      @customers = @customers.where("updated_at <= ?", zoned_end_of_day(updated_to))
+    end
+  elsif params[:updated_today] == "1"
+    @customers = @customers.where(updated_at: zoned_today_range)
+  end
+
+  # 期間でフィルタ（未指定なら全期間）
+  if range_start && range_end
+    @customers = @customers.where(created_at: range_start..range_end)
+  elsif range_start
+    @customers = @customers.where('created_at >= ?', range_start)
+  elsif range_end
+    @customers = @customers.where('created_at <= ?', range_end)
+  end
+
+  # 業種でフィルタ
+  if params[:industry_name].present?
+    @customers = @customers.where(industry: params[:industry_name])
+  end
+
+  @filtered_count = @customers.count
+  @customers = @customers.order(updated_at: :desc).page(params[:page]).per(100)
+
+  # 残り件数取得
+  today_total = ExtractTracking
+                  .where(created_at: zoned_today_range)
+                  .sum(:total_count)
+
+  daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
+  @remaining_extractable = [daily_limit - today_total, 0].max
+
+  # SERP補完対象件数（serp_status ベース: NULL かつ tel/url/contact_url いずれか空）
+  serp_scope = Customer.where(serp_status: [nil, ''])
+                       .where(
+                         "(tel IS NULL OR TRIM(tel) = '') OR " \
+                         "(url IS NULL OR TRIM(url) = '') OR " \
+                         "(contact_url IS NULL OR TRIM(contact_url) = '')"
+                       )
+  serp_scope = serp_scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
+  serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+  serp_scope = filter_company_query(serp_scope, @company_query)
+  @serp_target_count = serp_scope.count
+  @redis_reachable = redis_reachable?
+  @redis_auto_start_possible = redis_auto_start_possible?
+  @serp_worker_running = serp_worker_running?
+  @serp_queue_size = serp_queue_size
+  @serp_progress = current_serp_progress_payload
+
+  # ── ダッシュボードサマリー ──
+  # SERP補完対象になり得る範囲（status カラムを参照しない）を母集団にする。
+  dash_statuses = params[:serp_status_filter] == "serp_imported" ? ["serp_imported"] : [nil, '', 'serp_queued', 'serp_done', 'serp_error']
+  dash_scope = Customer.where(serp_status: dash_statuses)
+  dash_scope = dash_scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
+  dash_scope = dash_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+  dash_scope = filter_company_query(dash_scope, @company_query)
+
+  total = dash_scope.count
+  status_counts = dash_scope.group(:serp_status).count
+  null_c     = (status_counts[nil].to_i + status_counts[""].to_i)
+  queued_c   = status_counts["serp_queued"].to_i
+  done_c     = status_counts["serp_done"].to_i
+  imported_c = status_counts["serp_imported"].to_i
+  error_c    = status_counts["serp_error"].to_i
+
+  tel_c     = dash_scope.where.not(tel: [nil, '', ' ']).count
+  addr_c    = detailed_address_count(dash_scope)
+  url_c     = official_url_count(dash_scope)
+  contact_c = dash_scope.where.not(contact_url: [nil, '', ' ']).count
+  full_c    = detailed_address_count(
+    filter_official_url(
+      dash_scope.where.not(tel: [nil, '', ' '])
+                .where.not(contact_url: [nil, '', ' '])
+    )
+  )
+
+  @dashboard_stats = {
+    total: total,
+    status: {
+      null: null_c, queued: queued_c, done: done_c, imported: imported_c, error: error_c
+    },
+    fill: {
+      tel: tel_c, address: addr_c, url: url_c, contact_url: contact_c, full: full_c
+    }
+  }
+
+  elapsed = ((Time.current - start_time) * 1000).round(2)
+  Rails.logger.info("draft action: completed in #{elapsed}ms")
+end
+
   def extract_company_info
     start_time = Time.current
     Rails.logger.info("extract_company_info called (SYNC MODE).")
@@ -714,7 +740,8 @@ def draft
   # SERP APIによる情報補完実行（UIから起動）
   def serp_search
     industry  = params[:industry].presence
-    limit     = (params[:limit] || 100).to_i
+    company_query = params[:company_query].to_s.strip
+    limit     = [(params[:limit] || 100).to_i, 1].max
 
     # 対象件数を事前確認（serp_status NULL かつ tel/url/contact_url いずれか空）
     scope = Customer.where(serp_status: [nil, ''])
@@ -724,29 +751,65 @@ def draft
                       "(contact_url IS NULL OR TRIM(contact_url) = '')"
                     )
     scope = scope.where(industry: industry) if industry.present?
+    scope = filter_company_query(scope, company_query)
     target_count = scope.count
 
     if target_count == 0
       redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
     end
 
-    # Sidekiq経由で非同期実行。Redisが未起動の場合は同期フォールバック
-    actual_limit = [limit, target_count].min
-    begin
-      SerpPipelineDbWorker.perform_async(industry, actual_limit)
+    # Sidekiq経由で非同期実行。UI実行では同期処理へ逃がさず、
+    # Redis/Sidekiq の準備が取れた場合だけジョブを投入する。
+    if ENV["BRIGHT_DATA_API_KEY"].to_s.strip.blank?
       redirect_to draft_customers_path,
-        notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
-    rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
-      Rails.logger.warn("[serp_search] Redis未起動のため同期実行にフォールバック: #{e.message}")
-      begin
-        BrightData::Pipeline.execute_from_db(industry: industry.presence, limit: actual_limit, dry_run: false)
-        redirect_to draft_customers_path,
-          notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
-      rescue => pipeline_err
-        Rails.logger.error("[serp_search] Pipeline error: #{pipeline_err.message}")
-        redirect_to draft_customers_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
-      end
+        alert: "BRIGHT_DATA_API_KEY が未設定です。.env を確認し、Rails/Sidekiqを再起動してから再実行してください。" and return
     end
+
+    actual_limit = [limit, target_count].min
+    target_ids = scope.order(updated_at: :desc, id: :asc).limit(actual_limit).pluck(:id)
+    actual_limit = target_ids.size
+
+    if actual_limit == 0
+      redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
+    end
+
+    sidekiq = SerpSidekiqManager.ensure_running
+    unless sidekiq.ready?
+      redirect_to draft_customers_path, alert: sidekiq.message and return
+    end
+
+    begin
+      progress_run_id = SecureRandom.hex(12)
+      SerpProgressTracker.start(
+        run_id: progress_run_id,
+        total: actual_limit,
+        industry: industry,
+        target_ids: target_ids
+      )
+      session[:serp_progress_run_id] = progress_run_id
+      SerpPipelineDbWorker.perform_async(industry, actual_limit, target_ids, progress_run_id)
+      prefix = if sidekiq.started? && sidekiq.redis_started?
+        "RedisとSERP専用Sidekiqを起動してから"
+      elsif sidekiq.started?
+        "SERP専用Sidekiqを起動してから"
+      else
+        ""
+      end
+      redirect_to draft_customers_path,
+        notice: "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）。進捗バーで確認できます。"
+    rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
+      Rails.logger.warn("[serp_search] Redis接続不可: #{e.message}")
+      redirect_to draft_customers_path,
+        alert: "Redisに接続できないため、SERP補完を開始できませんでした。Redisを起動してから再実行してください。"
+    end
+  end
+
+  def serp_progress
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+
+    render json: current_serp_progress_payload
   end
 
   # 進捗取得API（ポーリング用）
@@ -1030,6 +1093,90 @@ end
     else
       @customers = Customer.none
     end
+  end
+
+  def serp_worker_running?
+    SerpSidekiqManager.worker_running?
+  end
+
+  def serp_queue_size
+    SerpSidekiqManager.queue_size
+  end
+
+  def redis_reachable?
+    SerpSidekiqManager.redis_reachable?
+  end
+
+  def redis_auto_start_possible?
+    SerpSidekiqManager.redis_auto_start_possible?
+  end
+
+  def current_serp_progress_payload
+    SerpProgressTracker.payload(session[:serp_progress_run_id])
+  end
+
+  def filter_company_query(scope, query)
+    terms = query.to_s.strip.split(/[[:space:]　]+/).reject(&:blank?)
+    terms.reduce(scope) do |relation, term|
+      escaped = ActiveRecord::Base.sanitize_sql_like(term)
+      relation.where("company LIKE ?", "%#{escaped}%")
+    end
+  end
+
+  def filter_detailed_address(scope)
+    ids = scope.pluck(:id, :address).select { |_, address| detailed_address_value?(address) }.map(&:first)
+    scope.where(id: ids)
+  end
+
+  def filter_partial_address(scope)
+    ids = scope.pluck(:id, :address).reject { |_, address| detailed_address_value?(address) }.map(&:first)
+    scope.where(id: ids)
+  end
+
+  def filter_official_url(scope)
+    ids = scope.pluck(:id, :url).select { |_, url| official_url_value?(url) }.map(&:first)
+    scope.where(id: ids)
+  end
+
+  def filter_missing_official_url(scope)
+    ids = scope.pluck(:id, :url).reject { |_, url| official_url_value?(url) }.map(&:first)
+    scope.where(id: ids)
+  end
+
+  def detailed_address_count(scope)
+    scope.pluck(:address).count { |address| detailed_address_value?(address) }
+  end
+
+  def official_url_count(scope)
+    scope.pluck(:url).count { |url| official_url_value?(url) }
+  end
+
+  def detailed_address_value?(address)
+    normalized = address.to_s.strip
+    return false if normalized.blank?
+    return false if normalized.match?(ADDRESS_ACCESS_PATTERN)
+    return false if BrightData::Pipeline.send(:address_score, normalized).zero?
+
+    normalized.match?(SERP_PREF_PATTERN) &&
+      normalized.match?(ADDRESS_MUNICIPALITY_PATTERN) &&
+      normalized.match?(ADDRESS_DETAIL_PATTERN)
+  end
+
+  def official_url_value?(url)
+    BrightData::UrlPolicy.official_url?(url)
+  end
+
+  def zoned_today_range
+    today = Time.current.in_time_zone(DISPLAY_TIME_ZONE).to_date
+    zoned_beginning_of_day(today)..zoned_end_of_day(today)
+  end
+
+  def zoned_beginning_of_day(date)
+    Time.find_zone!(DISPLAY_TIME_ZONE).local(date.year, date.month, date.day).beginning_of_day
+  end
+
+  def zoned_end_of_day(date)
+    Time.find_zone!(DISPLAY_TIME_ZONE).local(date.year, date.month, date.day).end_of_day
   end
 
   def display_customer_names

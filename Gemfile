@@ -93,7 +93,7 @@ end
 
 group :test do
   gem 'capybara', '>= 2.15'
-  gem 'chromedriver-helper'
+  gem 'chromedriver-helper', require: false
 end
 
 # Selenium (for form automation)
