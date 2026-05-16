@@ -280,32 +280,31 @@ section.admin-preview-section
 
 
 section.pricing-cards-section
- .sp-company
-  .sp-company-inner
-    .sp-section-header
-      span.en-sub 料金のご案内
-      h2 Service Price
-      p.desc フォーム送信特化型から営業代行パッケージプランまでご用意
-    .row.justify-content-center.g-4
-      - plans.each do |plan|
-        .col-lg-4.col-md-6
-          .pricing-cards-card
-            h3.pricing-cards-plan-title = plan[:title]
-            p.pricing-cards-plan-sub = plan[:sub]
-            button.pricing-cards-btn class=plan[:btn_class] = plan[:btn]
-            p = plan[:desc]
+  .sp-company
+    .sp-company-inner
+      .sp-section-header
+        span.en-sub 料金のご案内
+        h2 Service Price
+        p.desc フォーム送信特化型から営業代行パッケージプランまでご用意
+      .row.justify-content-center.g-4
+        - plans.each do |plan|
+          .col-lg-4.col-md-6
+            .pricing-cards-card
+              h3.pricing-cards-plan-title = plan[:title]
+              p.pricing-cards-plan-sub = plan[:sub]
+              button.pricing-cards-btn class=plan[:btn_class] = plan[:btn]
+              p = plan[:desc]
 
-            .pricing-cards-features
-              - plan[:features].each do |label, value|
-                .pricing-cards-feature
-                  span = label
-                  span = value
-                hr
+              .pricing-cards-features
+                - plan[:features].each do |label, value|
+                  .pricing-cards-feature
+                    span = label
+                    span = value
+                  hr
 
-            br
-            a.pricing-cards-main-btn class=plan[:btn_class] href="javascript:void(0)" data-target="inquiry"
-              = plan[:cta]
-
+              br
+              a.pricing-cards-main-btn class=plan[:btn_class] href="/clients/sign_up" target="_blank" rel="noopener"
+                = plan[:cta]
 
 
 
@@ -572,65 +571,45 @@ section.cards-moos-section.py-5
             |  業種を絞ったターゲティング送信により、役員・決裁者からの直接返信が増加。アポ獲得率が従来のテレアポと比較して約2.5倍に改善されました。
 
             
-section
- .sp-company
-  .sp-company-inner
-    .sp-section-header
-      span.en-sub CONTACT FORM
-      h2 トライアル・お問い合わせ
-      p.desc サービスに関するご相談や、トライアルのご依頼はこちらから承ります。
-  .container
-    .col-lg-12
-      .hero-main-right.p-4.rounded-3
-        h3.hero-main-trial.text-center
-          |
-        = form_with model: @contract, url: contracts_path, local: true, html: { id: "hero-main-top", class: "hero-main-form mt-3 p-4 rounded-3" } do |f|
-            = f.hidden_field :origin, value: request.path
-            .row.g-3
-              .col-12
-                label.form-label.hero-main-label
-                  | 会社名 
-                  span.required-badge
-                    | 必須
-                = f.text_field :company, class: "form-control hero-main-input", placeholder: "株式会社〇〇〇〇", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | ご担当者様名
-                  span.required-badge
-                    | 必須
-                = f.text_field :name, class: "form-control hero-main-input", placeholder: "山田太郎", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | 電話番号 
-                  span.required-badge
-                    | 必須
-                = f.telephone_field :tel, class: "form-control hero-main-input", placeholder: "050-1234-5678", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | 住所
-                  span.required-badge
-                    | 必須
-                = f.text_field :address, class: "form-control hero-main-input", placeholder: "東京都東京市東京町1-1-1東京ビル111", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | URL
-                  span.required-badge
-                    | 必須
-                = f.url_field :url, class: "form-control hero-main-input", placeholder: "https://ri-plus.jp/", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | メールアドレス 
-                  span.required-badge
-                    | 必須
-                = f.email_field :email, class: "form-control hero-main-input", placeholder: "test@example.com", required: true
-              .col-12
-                label.form-label.hero-main-label
-                  | 備考・要望 
-                  span.required-badge
-                    | 任意
-                = f.text_area :message, class: "form-control hero-main-input", placeholder:"（例）お問い合わせ内容"
-              .col-12
-                = f.submit "問い合わせ送信", class: "btn hero-main-submit w-100"
+.section-trial-cta
+  .trial-cta-glow
+
+  .trial-cta-container
+    .trial-cta-badge
+      span 導入企業100社突破
+      .pulse-dot
+    h2.trial-cta-title
+      | まずは
+      br.sp-only
+      span 10日間無料で体験
+
+    p.trial-cta-description
+      | 問い合わせフォーム営業を最短5分で開始できます。
+
+    .trial-cta-points
+      .trial-cta-point
+        i.fas.fa-check-circle
+        span 上限1000件送信
+
+      .trial-cta-point
+        i.fas.fa-check-circle
+        span 即日利用開始可能
+
+      .trial-cta-point
+        i.fas.fa-check-circle
+        span リスト準備不要
+
+    = link_to '/clients/sign_up',
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      class: 'ok-btn-primary' do
+
+      span 10日間無料で試してみる
+      i.fas.fa-chevron-right
+
+    p.trial-cta-note
+      | 登録は約30秒。面倒な設定はありません。
+
 
 .sp-content-container
  .sp-company

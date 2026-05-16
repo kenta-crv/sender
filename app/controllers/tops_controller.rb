@@ -4,6 +4,9 @@ class TopsController < ApplicationController
   def index
     @contract = Contract.new
   end
+  def okurite
+    @client = Client.new
+  end
   def cargo
     @contract = Contract.new
   end

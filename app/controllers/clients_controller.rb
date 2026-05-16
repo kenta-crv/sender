@@ -51,7 +51,18 @@ class ClientsController < ApplicationController
     redirect_to root_path, alert: "権限がありません。"
   end
 
-  def client_params
-    params.require(:client).permit(:name, :email, :company, :domain, :api_key, :password, :password_confirmation)
-  end
+def client_params
+  params.require(:client).permit(
+    :name,
+    :email,
+    :company,
+    :tel,
+    :address,
+    :url,
+    :domain,
+    :api_key,
+    :password,
+    :password_confirmation
+  )
+end
 end

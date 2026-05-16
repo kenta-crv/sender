@@ -3,8 +3,9 @@
     / Sign Up Form
     .auth-card
       h2 Sign up
+
       = form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f|
-        = render "admins/shared/error_messages", resource: resource
+        = render "clients/shared/error_messages", resource: resource
 
         .field
           = f.label :email
@@ -19,6 +20,28 @@
         .field
           = f.label :password_confirmation
           = f.password_field :password_confirmation, autocomplete: "new-password", class: "input-field"
+
+        / 追加：会社情報（別枠）
+        .extra-fields
+          .field
+            = f.label :company
+            = f.text_field :company, class: "input-field"
+
+          .field
+            = f.label :name
+            = f.text_field :name, class: "input-field"
+
+          .field
+            = f.label :tel
+            = f.text_field :tel, class: "input-field"
+
+          .field
+            = f.label :address
+            = f.text_field :address, class: "input-field"
+
+          .field
+            = f.label :url
+            = f.text_field :url, class: "input-field"
 
         .actions
           = f.submit "Sign up", class: "btn btn-primary"

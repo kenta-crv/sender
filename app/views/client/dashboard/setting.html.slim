@@ -12,6 +12,7 @@
             h5 Account Settings
 
           .card-body
+
             / ===== メール変更 =====
             h6.mt-3 Email Address
             = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
@@ -20,13 +21,6 @@
               .mt-2
                 = f.submit 'Update Email', class: 'btn-electric-outline'
 
-            hr
-
-            / ===== プラン変更 =====
-            h6.mt-4 Subscription
-            p 現在のプランを変更・管理できます
-            = link_to 'Manage Plan', client_subscription_path, class: 'btn-electric-outline'
-            
             hr
 
             / ===== パスワード変更 =====
@@ -43,6 +37,38 @@
 
             hr
 
+            / ===== 会社情報 =====
+            h6.mt-4 Company Information
+            = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
+              .form-group
+                = f.text_field :company, placeholder: 'Company', class: 'form-control'
+
+              .form-group.mt-2
+                = f.text_field :name, placeholder: 'Name', class: 'form-control'
+
+              .form-group.mt-2
+                = f.text_field :tel, placeholder: 'Tel', class: 'form-control'
+
+              .form-group.mt-2
+                = f.text_field :address, placeholder: 'Address', class: 'form-control'
+
+              .form-group.mt-2
+                = f.text_field :url, placeholder: 'URL', class: 'form-control'
+
+              .form-group.mt-2
+                = f.password_field :current_password, placeholder: 'Current Password (Required to update)', class: 'form-control'
+
+              .mt-2
+                = f.submit 'Update Company Info', class: 'btn-electric-outline'
+
+            hr
+
+            / ===== プラン変更 =====
+            h6.mt-4 Subscription
+            p 現在のプランを変更・管理できます
+            = link_to 'Manage Plan', client_subscription_path, class: 'btn-electric-outline'
+
+            hr
 
             / ===== ログアウト =====
             h6.mt-4 Logout

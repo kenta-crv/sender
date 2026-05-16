@@ -3583,3 +3583,406 @@ h2::after {
     padding: 0 15px;
   }
 }
+
+
+
+
+/* =========================================
+   CTA SECTION
+========================================= */
+
+.section-trial-cta {
+  position: relative;
+  overflow: hidden;
+
+  padding: 120px 20px;
+
+  background:
+    radial-gradient(circle at top, rgba(0, 162, 255, 0.12), transparent 45%),
+    linear-gradient(180deg, #071018 0%, #0a1622 100%);
+
+  @media (max-width: 768px) {
+    padding: 90px 16px;
+  }
+}
+
+/* =========================================
+   BACKGROUND GLOW
+========================================= */
+
+.trial-cta-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  &::before,
+  &::after {
+    content: '';
+
+    position: absolute;
+    border-radius: 50%;
+
+    filter: blur(90px);
+  }
+
+  &::before {
+    width: 420px;
+    height: 420px;
+
+    background: rgba(0, 183, 255, 0.20);
+
+    top: 10%;
+    left: 50%;
+
+    transform: translateX(-50%);
+  }
+
+  &::after {
+    width: 280px;
+    height: 280px;
+
+    background: rgba(0, 114, 255, 0.18);
+
+    bottom: 0;
+    right: 10%;
+  }
+}
+
+/* =========================================
+   INNER
+========================================= */
+
+.trial-cta-container {
+  position: relative;
+  z-index: 2;
+
+  max-width: 860px;
+  margin: 0 auto;
+
+  padding: 72px 48px;
+
+  border-radius: 36px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,0.08) 0%,
+      rgba(255,255,255,0.03) 100%
+    );
+
+  border: 1px solid rgba(255,255,255,0.08);
+
+  backdrop-filter: blur(18px);
+
+  box-shadow:
+    0 24px 80px rgba(0,0,0,0.35),
+    0 0 50px rgba(0,162,255,0.10);
+
+  text-align: center;
+
+  @media (max-width: 768px) {
+    padding: 48px 22px;
+    border-radius: 28px;
+  }
+}
+
+/* =========================================
+   BADGE
+========================================= */
+
+.trial-cta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 18px;
+
+  border-radius: 999px;
+
+  background: rgba(0, 162, 255, 0.12);
+
+  border: 1px solid rgba(0, 162, 255, 0.28);
+
+  color: #7fd5ff;
+
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* =========================================
+   PULSE
+========================================= */
+
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+
+  border-radius: 50%;
+
+  background: #33d17a;
+
+  box-shadow: 0 0 0 rgba(51, 209, 122, 0.7);
+
+  animation: pulseAnimation 2s infinite;
+}
+
+@keyframes pulseAnimation {
+  0% {
+    box-shadow: 0 0 0 0 rgba(51, 209, 122, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 14px rgba(51, 209, 122, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(51, 209, 122, 0);
+  }
+}
+
+/* =========================================
+   TITLE
+========================================= */
+
+.trial-cta-title {
+  margin-top: 28px;
+
+  color: #ffffff;
+
+  font-size: clamp(2.3rem, 5vw, 4.2rem);
+  line-height: 1.18;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+
+  span {
+    background: linear-gradient(
+      135deg,
+      #ffffff 0%,
+      #8ed8ff 35%,
+      #2ea8ff 100%
+    );
+
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* =========================================
+   DESCRIPTION
+========================================= */
+
+.trial-cta-description {
+  margin-top: 28px;
+
+  color: rgba(255,255,255,0.72);
+
+  font-size: 1.12rem;
+  line-height: 2;
+  font-weight: 500;
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    line-height: 1.9;
+  }
+}
+
+/* =========================================
+   POINTS
+========================================= */
+
+.trial-cta-points {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+
+  margin-top: 34px;
+}
+
+.trial-cta-point {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 12px 18px;
+
+  border-radius: 999px;
+
+  background: rgba(255,255,255,0.05);
+
+  border: 1px solid rgba(255,255,255,0.08);
+
+  color: rgba(255,255,255,0.88);
+
+  font-size: 0.95rem;
+  font-weight: 700;
+
+  i {
+    color: #4bd68b;
+  }
+}
+
+/* =========================================
+   BUTTON
+========================================= */
+
+.ok-btn-primary {
+  position: relative;
+  overflow: hidden;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  width: min(100%, 620px);
+
+  min-height: 76px;
+
+  margin-top: 42px;
+  padding: 20px 42px;
+
+  border-radius: 999px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #00c2ff 0%,
+      #0084ff 45%,
+      #005dff 100%
+    );
+
+  color: #ffffff !important;
+  text-decoration: none !important;
+
+  border: 1px solid rgba(255,255,255,0.14);
+
+  font-size: 1.16rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+
+  box-shadow:
+    0 20px 40px rgba(0, 132, 255, 0.38),
+    0 0 50px rgba(0, 194, 255, 0.30);
+
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    filter 0.3s ease;
+
+  animation: floatingButton 3.8s ease-in-out infinite;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 68px;
+
+    font-size: 1rem;
+  }
+}
+
+/* 光 */
+.ok-btn-primary::before {
+  content: '';
+
+  position: absolute;
+  top: -140%;
+  left: -30%;
+
+  width: 36%;
+  height: 380%;
+
+  background: linear-gradient(
+    to right,
+    rgba(255,255,255,0),
+    rgba(255,255,255,0.48),
+    rgba(255,255,255,0)
+  );
+
+  transform: rotate(24deg);
+
+  animation: shineMove 3.8s linear infinite;
+}
+
+.ok-btn-primary span,
+.ok-btn-primary i {
+  position: relative;
+  z-index: 2;
+}
+
+.ok-btn-primary i {
+  transition: transform 0.28s ease;
+}
+
+.ok-btn-primary:hover {
+  transform: translateY(-4px) scale(1.02);
+
+  box-shadow:
+    0 28px 60px rgba(0, 132, 255, 0.48),
+    0 0 70px rgba(0, 194, 255, 0.42);
+
+  filter: brightness(1.06);
+}
+
+.ok-btn-primary:hover i {
+  transform: translateX(6px);
+}
+
+.ok-btn-primary:active {
+  transform: translateY(1px);
+}
+
+/* =========================================
+   NOTE
+========================================= */
+
+.trial-cta-note {
+  margin-top: 18px;
+
+  color: rgba(255,255,255,0.48);
+
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+/* =========================================
+   ANIMATION
+========================================= */
+
+@keyframes shineMove {
+  0% {
+    left: -40%;
+  }
+
+  100% {
+    left: 140%;
+  }
+}
+
+@keyframes floatingButton {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+.sp-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sp-only {
+    display: inline;
+  }
+}
