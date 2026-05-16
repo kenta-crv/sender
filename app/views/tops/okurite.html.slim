@@ -15,9 +15,9 @@ section.hero-main
       p.hero-sub-copy 圧倒的送信数、営業工数を削減、営業の新たな時代へ。
     / ボタンを右側に配置
     .hero-action-area
-      button.btn.btn-glow-blue
-        span.btn-text トライアルを実施してみる
-        span.btn-subtext かんたん30秒で入力完了
+      = link_to '/clients/sign_up',target: '_blank',rel: 'noopener noreferrer',class: 'btn btn-glow-blue' do
+       span.btn-text トライアルを実施してみる
+       span.btn-subtext かんたん30秒で入力完了
 
   .hero-bottom-sparkle
   
