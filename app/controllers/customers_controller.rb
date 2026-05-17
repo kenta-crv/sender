@@ -645,12 +645,16 @@ def draft
   @remaining_extractable = [daily_limit - today_total, 0].max
 
   # SERP補完対象件数（serp_status ベース: NULL かつ tel/url/contact_url いずれか空）
-  serp_scope = Customer.where(serp_status: [nil, ''])
-                       .where(
-                         "(tel IS NULL OR TRIM(tel) = '') OR " \
-                         "(url IS NULL OR TRIM(url) = '') OR " \
-                         "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                       )
+  serp_scope = if @company_query.present?
+                 Customer.where(serp_status: [nil, '', 'serp_done', 'serp_error'])
+               else
+                 Customer.where(serp_status: [nil, ''])
+                         .where(
+                           "(tel IS NULL OR TRIM(tel) = '') OR " \
+                           "(url IS NULL OR TRIM(url) = '') OR " \
+                           "(contact_url IS NULL OR TRIM(contact_url) = '')"
+                         )
+               end
   serp_scope = serp_scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
   serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
   serp_scope = filter_company_query(serp_scope, @company_query)
@@ -744,12 +748,16 @@ end
     limit     = [(params[:limit] || 100).to_i, 1].max
 
     # 対象件数を事前確認（serp_status NULL かつ tel/url/contact_url いずれか空）
-    scope = Customer.where(serp_status: [nil, ''])
-                    .where(
-                      "(tel IS NULL OR TRIM(tel) = '') OR " \
-                      "(url IS NULL OR TRIM(url) = '') OR " \
-                      "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                    )
+    scope = if company_query.present?
+              Customer.where(serp_status: [nil, '', 'serp_done', 'serp_error'])
+            else
+              Customer.where(serp_status: [nil, ''])
+                      .where(
+                        "(tel IS NULL OR TRIM(tel) = '') OR " \
+                        "(url IS NULL OR TRIM(url) = '') OR " \
+                        "(contact_url IS NULL OR TRIM(contact_url) = '')"
+                      )
+            end
     scope = scope.where(industry: industry) if industry.present?
     scope = filter_company_query(scope, company_query)
     target_count = scope.count

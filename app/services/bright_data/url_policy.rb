@@ -51,10 +51,14 @@ module BrightData
       gourmetcaree.jp
       massmedian.co.jp
       jobcatalog.yahoo.co.jp
+      doraever-match.jp
       daijob.com
       ecareer.ne.jp
+      employment.en-japan.com
+      r-agent.com
       sftworks.jp
       shikaku-job.biz
+      type.jp
       x-work.jp
     ].freeze
 
@@ -62,8 +66,11 @@ module BrightData
       houjin.jp
       houjin-bangou.nta.go.jp
       toukibo.ai-con.lawyer
+      bebee.com
+      b-mall.ne.jp
       buffett-code.com
       cnavi.g-search.or.jp
+      g-search.or.jp
       alarmbox.jp
       baseconnect.in
       biz-maps.com
@@ -76,6 +83,7 @@ module BrightData
       itp.ne.jp
       ekiten.jp
       en-hyouban.com
+      e-sogi.com
       tdb.co.jp
       dun.co.jp
       nikkei.com
@@ -93,6 +101,7 @@ module BrightData
       goo-help.my.site.com
       ldigi.com.tw
       osaka-fc.jp
+      grip.website
       tsukulink.net
       toushiikusei.net
       shachomeikan.jp
@@ -123,6 +132,9 @@ module BrightData
       toiku-shukatsu.net
       sue-sho.com
       zehitomo.com
+      yourmystar.jp
+      jgoodtech.smrj.go.jp
+      shinkin.co.jp
       kabutan.jp
       kabushiki.jp
       sbisec.co.jp

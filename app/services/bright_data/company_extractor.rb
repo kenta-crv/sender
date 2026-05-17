@@ -22,6 +22,9 @@ module BrightData
   class CompanyExtractor
     # organic_results から採用する上位件数（BrightData コスト削減と精度向上のため）
     MAX_ORGANIC_RESULTS = 5
+    LEGAL_ENTITY_PATTERN = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/.freeze
+    GENERIC_TITLE_PATTERN = /\A(?:会社概要|会社情報|企業情報|企業概要|About(?: us)?|Overview|Company|トップページ|ホーム)\z/i.freeze
+    PREFECTURE_PATTERN = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/.freeze
 
     # ★ クライアント提供の業種リストに差し替えること
     TARGET_INDUSTRIES = %w[
@@ -37,14 +40,23 @@ module BrightData
 
       # 1. organic_results（メインのGoogle検索結果）
       organics = serp_result["organic_results"] || serp_result["organic"] || []
-      organics.first(MAX_ORGANIC_RESULTS).each do |item|
+      generic_fallback_used = false
+      organics.first(MAX_ORGANIC_RESULTS).each_with_index do |item, idx|
         url = item["link"].to_s
         title = item["title"].to_s
         next if url.blank?
         next if UrlPolicy.excluded_url?(url, title: title)
 
+        company_name = parse_company_name(title, query: query, allow_generic_fallback: idx < 2, allow_title_fallback: false)
+        generic_fallback = company_name.present? &&
+                           generic_title_only?(title) &&
+                           company_name == query_company_name(query)
+        next if generic_fallback && generic_fallback_used
+        generic_fallback_used ||= generic_fallback
+        next if company_name.blank?
+
         companies << {
-          company: parse_company_name(title),
+          company: company_name,
           title: title,
           tel: nil, address: nil,
           url: url, contact_url: nil,
@@ -85,7 +97,7 @@ module BrightData
         }
       end
 
-      companies.uniq { |c| c[:url].presence || [c[:company], c[:source], c[:address]] }.then { |cs| filter_by_industry(cs) }
+      companies.uniq { |c| c[:url].presence || [c[:company], c[:source], c[:address]] }.then { |cs| filter_by_industry(cs, query: query) }
     end
 
     def self.extract_batch(batch_results)
@@ -94,19 +106,82 @@ module BrightData
 
     private
 
-    def self.parse_company_name(title)
+    def self.parse_company_name(title, query: nil, allow_generic_fallback: true, allow_title_fallback: true)
       return nil if title.blank?
 
       parts = title.to_s.split(%r{\s*[|\-｜—–／/]\s*})
                    .filter_map { |part| UrlPolicy.normalize_company_name(part) }
-      corp = parts.find { |p| p.match?(/株式会社|有限会社|合同会社|一般社団法人/) }
-      corp.presence || UrlPolicy.normalize_company_name(title).presence || parts.first.to_s.strip.presence
+      corp = parts.find { |p| p.match?(LEGAL_ENTITY_PATTERN) }
+      return sanitize_company_name(corp).presence if corp.present?
+
+      query_name = query_company_name(query)
+      return query_name if query_name.present? && title_matches_query_company?(title, query_name)
+      return query_name if allow_generic_fallback && generic_title_only?(title) && query_name.to_s.match?(LEGAL_ENTITY_PATTERN)
+
+      return nil unless allow_title_fallback
+
+      UrlPolicy.normalize_company_name(title).presence || parts.first.to_s.strip.presence
     end
 
-    def self.filter_by_industry(companies)
+    def self.filter_by_industry(companies, query: nil)
       companies.select do |c|
+        if query.present? && c[:company].present? && c[:source] == "organic"
+          next false unless matches_query_company?(c[:company], query)
+        end
+
         c[:industry].nil? || TARGET_INDUSTRIES.any? { |t| c[:industry].include?(t) }
       end
+    end
+
+    def self.query_company_name(query)
+      return nil if query.blank?
+
+      query.to_s
+           .sub(/\s+#{PREFECTURE_PATTERN}.*\z/, "")
+           .sub(/\s+会社概要\z/, "")
+           .strip
+           .presence
+    end
+
+    def self.generic_title_only?(title)
+      return false if title.blank?
+
+      parts = title.to_s.split(%r{\s*[|\-｜—–／/]\s*})
+      parts.first.to_s.strip.match?(GENERIC_TITLE_PATTERN) && parts.none? { |part| part.match?(LEGAL_ENTITY_PATTERN) }
+    end
+
+    def self.normalize_company_core(value)
+      value.to_s.gsub(LEGAL_ENTITY_PATTERN, "").gsub(/\s+/, " ").strip
+    end
+
+    def self.title_matches_query_company?(title, query_name)
+      title_core = normalize_company_core(title).downcase
+      query_core = normalize_company_core(query_name).downcase
+      return false if title_core.blank? || query_core.blank?
+
+      title_core.delete(" 　").include?(query_core.delete(" 　"))
+    end
+
+    def self.matches_query_company?(company, query)
+      query_core = normalize_company_core(query_company_name(query) || query)
+      company_core = normalize_company_core(company)
+      return false if query_core.blank? || company_core.blank?
+
+      if query_core.match?(/\A[A-Za-z0-9&.\s]{1,4}\z/)
+        company_core.casecmp?(query_core)
+      else
+        company_core.include?(query_core) || query_core.include?(company_core)
+      end
+    end
+
+    def self.sanitize_company_name(name)
+      legal = LEGAL_ENTITY_PATTERN.source
+      text = name.to_s.strip
+      text = text.sub(/\A.*の((?:#{legal}).*)\z/, "\\1")
+      text.sub(/[（(].*\z/, "")
+          .sub(/の(?:会社概要|企業情報|採用情報|求人情報|評判|口コミ|転職).*\z/, "")
+          .sub(/【.*\z/, "")
+          .strip
     end
   end
 end

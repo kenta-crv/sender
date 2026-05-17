@@ -456,6 +456,58 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     end
   end
 
+  test "execute_from_db honors explicit customer ids even when already complete" do
+    customer = Customer.create!(
+      company: "Complete Explicit Target",
+      tel: "090-0000-0000",
+      address: "Tokyo",
+      url: "https://example.com",
+      contact_url: "https://example.com/contact",
+      serp_status: "serp_done"
+    )
+
+    captured_queries = []
+    fake_client = Object.new
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1|
+      captured_queries.replace(queries)
+      queries.map { |query| { "query" => query, "result" => {}, "timestamp" => Time.current.iso8601 } }
+    end
+
+    with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
+      with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
+        BrightData::Pipeline.execute_from_db(limit: 1, customer_ids: [customer.id], dry_run: true)
+      end
+    end
+
+    assert_equal 1, captured_queries.size
+    assert_match(/\AComplete Explicit Target/, captured_queries.first)
+  end
+
+  test "execute_from_db marks all selected rows as error when SERP client returns fatal error" do
+    first = Customer.create!(company: "Fatal First Target", address: "Tokyo")
+    second = Customer.create!(company: "Fatal Second Target", address: "Osaka")
+
+    fake_client = Object.new
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1|
+      [
+        {
+          "query" => queries.first,
+          "result" => { "error" => "HTTP 401: Bright Data authentication failed", "fatal" => true },
+          "timestamp" => Time.current.iso8601
+        }
+      ]
+    end
+
+    with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
+      with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
+        BrightData::Pipeline.execute_from_db(limit: 2, customer_ids: [first.id, second.id], dry_run: false)
+      end
+    end
+
+    assert_equal "serp_error", first.reload.serp_status
+    assert_equal "serp_error", second.reload.serp_status
+  end
+
   private
 
   def with_singleton_method(klass, method_name, replacement)

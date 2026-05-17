@@ -126,6 +126,41 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal [target.id], progress_args[:target_ids]
   end
 
+  test "serp_search can requeue done customer when company query is explicit" do
+    target = Customer.create!(
+      company: "SERP Explicit Done Target",
+      status: "draft",
+      serp_status: "serp_done",
+      tel: "090-0000-0000",
+      address: "Tokyo",
+      url: "https://example.com",
+      contact_url: "https://example.com/contact"
+    )
+    Customer.create!(company: "SERP Explicit Done Other", status: "draft", serp_status: "serp_done")
+
+    ready = SerpSidekiqManager::Result.new(
+      ready: true,
+      started: false,
+      message: "SERP Sidekiq is ready"
+    )
+    enqueued_args = nil
+    progress_args = nil
+
+    with_singleton_method(SerpSidekiqManager, :ensure_running, ->(*_args, **_kwargs) { ready }) do
+      with_singleton_method(SerpProgressTracker, :start, ->(**kwargs) { progress_args = kwargs }) do
+        with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued_args = args }) do
+          post serp_search_customers_path, params: { limit: 10, company_query: "Explicit Done Target" }
+        end
+      end
+    end
+
+    assert_redirected_to draft_customers_path
+    assert_equal 1, enqueued_args[1]
+    assert_equal [target.id], enqueued_args[2]
+    assert_equal 1, progress_args[:total]
+    assert_equal [target.id], progress_args[:target_ids]
+  end
+
   private
 
   def with_env(key, value)

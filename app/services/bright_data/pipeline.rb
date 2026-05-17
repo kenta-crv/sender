@@ -77,7 +77,7 @@ module BrightData
 
       selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
       if selected_ids.any?
-        records_by_id = incomplete_scope.where(id: selected_ids).index_by(&:id)
+        records_by_id = Customer.where(id: selected_ids).index_by(&:id)
         targets = selected_ids.filter_map { |id| records_by_id[id] }.first(limit)
       else
         scope = incomplete_scope.where(serp_status: [nil, ''])
@@ -136,11 +136,16 @@ module BrightData
           item["customer_company"] = job[:company]
         end
         ResultStore.save_batch(batch)
-        serp_error_customer_ids = batch.filter_map do |item|
-          next if item.dig("result", "error").blank?
+        fatal_error = batch.find { |item| item.dig("result", "fatal") }
+        serp_error_customer_ids = if fatal_error
+          target_ids
+        else
+          batch.filter_map do |item|
+            next if item.dig("result", "error").blank?
 
-          item["customer_id"]
-        end.uniq
+            item["customer_id"]
+          end.uniq
+        end
         puts "[Pipeline] SERP APIエラー: #{serp_error_customer_ids.size}件（対象はserp_errorにします）" if serp_error_customer_ids.any?
 
         # 抽出
