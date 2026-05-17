@@ -143,6 +143,124 @@ class BrightData::CompanyExtractorTest < ActiveSupport::TestCase
     assert_equal ["https://palzcargo.hp.peraichi.com/top/"], companies.map { |company| company[:url] }
   end
 
+  test "uses non-corporate query name for top generic company profile pages" do
+    serp_result = {
+      "organic_results" => [
+        { "title" => "会社概要", "link" => "https://www.machida-line.com/company" }
+      ]
+    }
+
+    companies = BrightData::CompanyExtractor.extract(
+      serp_result,
+      query: "町田ライン 神奈川県 横浜市 綱島駅 会社概要"
+    )
+
+    assert_equal ["町田ライン"], companies.map { |company| company[:company] }
+    assert_equal ["https://www.machida-line.com/company"], companies.map { |company| company[:url] }
+  end
+
+  test "uses corporate query name for company guide pages" do
+    serp_result = {
+      "organic_results" => [
+        { "title" => "会社案内", "link" => "https://progiment.co.jp/company/" }
+      ]
+    }
+
+    companies = BrightData::CompanyExtractor.extract(
+      serp_result,
+      query: "プロジメント株式会社 神奈川県 川崎市 宮前区 会社概要"
+    )
+
+    assert_equal ["プロジメント株式会社"], companies.map { |company| company[:company] }
+    assert_equal ["https://progiment.co.jp/company/"], companies.map { |company| company[:url] }
+  end
+
+  test "uses corporate query name for top official profile url even when title is business copy" do
+    serp_result = {
+      "organic_results" => [
+        {
+          "title" => "土木工事、2t・4t残土受け入れ、各種砕石 - 羽生市",
+          "link" => "https://www.shimada-kenzai.com/company.html"
+        },
+        {
+          "title" => "株式会社島田建材 ｜ 埋立、造成、一般建設、土木工事",
+          "link" => "https://www.shimada-kenzai.com/"
+        }
+      ]
+    }
+
+    companies = BrightData::CompanyExtractor.extract(
+      serp_result,
+      query: "株式会社島田建材 埼玉県 羽生市 西羽生駅 徒歩11分 会社概要"
+    )
+
+    assert_includes companies.map { |company| company[:url] }, "https://www.shimada-kenzai.com/company.html"
+    assert_equal ["株式会社島田建材"], companies.map { |company| company[:company] }.uniq
+  end
+
+  test "matches company names with sharyo character variants" do
+    serp_result = {
+      "organic_results" => [
+        { "title" => "会社概要 東京車輌 Tokyo Vehicle", "link" => "https://www.tokyo-sharyo.jp/company/" }
+      ]
+    }
+
+    companies = BrightData::CompanyExtractor.extract(
+      serp_result,
+      query: "株式会社東京車輛 埼玉県 入間市 会社概要"
+    )
+
+    assert_equal ["株式会社東京車輛"], companies.map { |company| company[:company] }
+  end
+
+  test "strips appended locality from corporate query names and handles horizontal title separators" do
+    serp_result = {
+      "organic_results" => [
+        { "title" => "神奈川県の軽貨物配送 ― 株式会社CARAVEL", "link" => "https://caravel-ltd.com/" },
+        { "title" => "株式会社CARAVEL", "link" => "https://caravel-driver.com/" }
+      ]
+    }
+
+    companies = BrightData::CompanyExtractor.extract(
+      serp_result,
+      query: "株式会社CARAVEL 横浜市戸塚区 神奈川県 横浜市 戸塚区 会社概要"
+    )
+
+    assert_equal ["https://caravel-ltd.com/", "https://caravel-driver.com/"], companies.map { |company| company[:url] }
+    assert_equal ["株式会社CARAVEL"], companies.map { |company| company[:company] }.uniq
+  end
+
+  test "matches roman company names when serp title inserts spaces" do
+    serp_result = {
+      "organic_results" => [
+        { "title" => "株式会社Good Smile", "link" => "https://good-smile-yokohama.example/" }
+      ]
+    }
+
+    companies = BrightData::CompanyExtractor.extract(
+      serp_result,
+      query: "株式会社GoodSmile 神奈川県 横浜市 会社概要"
+    )
+
+    assert_equal ["株式会社Good Smile"], companies.map { |company| company[:company] }
+  end
+
+  test "keeps official root pages when the title includes recruit wording" do
+    serp_result = {
+      "organic_results" => [
+        { "title" => "軽貨物運送事業: 【株式会社SA】配達/配送の求人情報", "link" => "https://www.sa-kanagawa.com/" }
+      ]
+    }
+
+    companies = BrightData::CompanyExtractor.extract(
+      serp_result,
+      query: "株式会社SA 神奈川県 横浜市 鶴見区 会社概要"
+    )
+
+    assert_equal ["https://www.sa-kanagawa.com/"], companies.map { |company| company[:url] }
+    assert_equal ["株式会社SA"], companies.map { |company| company[:company] }
+  end
+
   test "sanitizes prefixed corporate titles" do
     serp_result = {
       "organic_results" => [

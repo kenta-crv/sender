@@ -93,7 +93,38 @@ class BrightData::UrlPolicyTest < ActiveSupport::TestCase
       "https://www.homemate-research-discount-shop.com/dtl/00000000000000213885/",
       "https://shougai.rakuraku.or.jp/result/detail.html?djgno=1450900087",
       "https://x-work.jp/driver/media_90529",
-      "https://www.nisshinfire.co.jp/agency/shop/kanagawa.html"
+      "https://www.nisshinfire.co.jp/agency/shop/kanagawa.html",
+      "https://compalyze.co.jp/company/example",
+      "https://k-logistics.jp/member_introduction/742/",
+      "https://www.baitorupro.com/company/223421/",
+      "https://curama.jp/572269000/",
+      "https://buildone-b1.com/company/1450",
+      "https://myfarmer.jp/farms/229/",
+      "https://www.city.yokohama.lg.jp/kurashi/sumai-kurashi/jutaku/sien/sodan/sumai20220824.html",
+      "http://unilife.co.jp/view/609",
+      "https://www.tacthome.co.jp/grafaresearch/ikkodate/kanto/kanagawa/4318001-2/",
+      "https://yourroot.co.jp/room/news/neo-leap%E7%A4%BE%E3%81%AE%E7%B5%84%E7%B9%94%E5%A4%89%E6%9B%B4/",
+      "https://dinafy1821.com/blog/detail/20250605201757/",
+      "https://www.kawagoe.or.jp/ks_member/%E6%A0%AA%E5%BC%8F%E4%BC%9A%E7%A4%BE%E3%83%87%E3%83%AA%E3%82%AB%E3%82%B7%E3%83%BC/",
+      "https://www.homes.co.jp/hikkoshi/freemember/101040/1000002/",
+      "https://jobtalk.jp/companies/9722666",
+      "https://helloboss.com/corp/4040002038873",
+      "https://www.job-j.net/company/detail/3233103/",
+      "https://next-working.net/example",
+      "https://www.towanewsis.net/corporate/example/",
+      "https://www.catering-food.com/111saitama/10488538093.html",
+      "https://hoto-recruit.com/company/",
+      "https://careecon.jp/company/co2817666403",
+      "https://kei.or.jp/company/hoto/",
+      "https://tgnr.jp/saitama/company/crs-saitama/",
+      "https://www.ngp.gr.jp/k314/",
+      "http://www.mrj.jp/company/400.html",
+      "https://www.ageocci.or.jp/membership-info/?p=1128",
+      "https://www2.infomart.co.jp/oroshi/profile.pagex?oroshi_smcd=S3h9RgK4",
+      "https://www.pref.saitama.lg.jp/a1002/kensanhin-hirosima-kenzaiten.html",
+      "https://www.saihoku-namacon.jp/factories/block01/hiroshima-kenzai/",
+      "https://namacon.or.jp/member/example/",
+      "https://job-gear.net/tokyosharyo2/AE0514176808/MDkyujin_d.htm"
     ]
 
     rejected.each do |url|
@@ -104,6 +135,13 @@ class BrightData::UrlPolicyTest < ActiveSupport::TestCase
   test "official_url? rejects noisy titles and paths" do
     assert BrightData::UrlPolicy.excluded_url?("https://example.com/company", title: "株式会社ABCの転職・企業概要")
     assert BrightData::UrlPolicy.excluded_url?("https://example.com/recruit/", title: "株式会社ABC 採用情報")
+  end
+
+  test "official_url? allows company home page even when title mentions jobs" do
+    refute BrightData::UrlPolicy.excluded_url?(
+      "https://www.sa-kanagawa.com/",
+      title: "軽貨物運送事業: 【株式会社SA】配達/配送の求人情報"
+    )
   end
 
   test "official_url? rejects relative paths" do

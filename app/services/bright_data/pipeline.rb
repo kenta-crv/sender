@@ -224,6 +224,12 @@ module BrightData
                     web_data = Timeout.timeout(web_timeout) do
                       web_enricher.enrich_from_url(company[:url], customer)
                     end
+                    if web_enrichment_retry_needed?(web_data)
+                      retry_web_data = Timeout.timeout(web_timeout) do
+                        web_enricher.enrich_from_url(company[:url], customer)
+                      end
+                      web_data = retry_web_data if web_enrichment_result_better?(retry_web_data, web_data)
+                    end
                     updates = build_web_updates(customer, company, web_data)
 
                     if updates.any?
@@ -375,11 +381,12 @@ module BrightData
 
       updates = {}
       url_is_official = primary_company_url?(company[:url], title: company[:company])
+      address = clean_address_candidate(company[:address])
+      return {} if address.present? && address_prefecture_conflict?(address, customer.address)
 
       updates[:url] = company[:url] if customer.url.blank? && company[:url].present? && url_is_official
       updates[:tel] = company[:tel] if customer.tel.blank? && company[:tel].present?
 
-      address = clean_address_candidate(company[:address])
       if address.present? && better_address?(address, customer.address)
         updates[:address] = address
       end
@@ -395,11 +402,15 @@ module BrightData
       url_is_official = primary_company_url?(source_url, title: url_policy_title(company))
       verified_match = web_data[:matched] == true ||
                        (web_data[:matched] != false && serp_title_matches_customer?(customer, company))
+      address = clean_address_candidate(web_data[:address])
 
       if source_url.present? &&
          verified_match &&
          url_is_official &&
-         (customer.url.blank? || contact_like_url?(customer.url))
+         (customer.url.blank? ||
+          contact_like_url?(customer.url) ||
+          UrlPolicy.excluded_url?(customer.url) ||
+          better_source_url?(customer, source_url, web_data))
         updates[:url] = source_url
       end
       tel = web_data[:tel].presence
@@ -410,8 +421,9 @@ module BrightData
       end
       # address: 都道府県始まり かつ 市区町村を含む正規化住所が取得できた場合のみ採用。
       # 部分住所を完全住所に補完する用途（既存値があっても上書き）。
-      address = clean_address_candidate(web_data[:address])
-      if verified_match && address.present? && better_address?(address, customer.address)
+      if verified_match &&
+         address.present? &&
+         better_address?(address, customer.address, allow_location_conflict: true, prefer_candidate_on_tie: url_is_official)
         updates[:address] = address
       end
       contact_url = web_data[:contact_url].presence
@@ -421,7 +433,10 @@ module BrightData
                                same_site_url?(contact_url, contact_base_url)
       if verified_match &&
          contact_url.present? &&
-         (customer.contact_url.blank? || malformed_relative_url?(customer.contact_url))
+         (customer.contact_url.blank? ||
+          malformed_relative_url?(customer.contact_url) ||
+          UrlPolicy.excluded_url?(customer.contact_url) ||
+          updates[:url].present?)
         updates[:contact_url] = contact_url
       elsif verified_match &&
             customer.contact_url.present? &&
@@ -434,6 +449,10 @@ module BrightData
            same_site_url?(resolved_contact, customer.url)
           updates[:contact_url] = resolved_contact
         end
+      elsif verified_match &&
+            customer.contact_url.present? &&
+            UrlPolicy.excluded_url?(customer.contact_url)
+        updates[:contact_url] = nil
       end
       updates
     end
@@ -456,12 +475,33 @@ module BrightData
       CompanyInfoExtractor.new("").send(:clean_address, address)
     end
 
-    def self.better_address?(candidate, current)
+    def self.better_address?(candidate, current, allow_location_conflict: false, prefer_candidate_on_tie: false)
       return false if candidate.blank?
-      return false if address_score(candidate).zero?
+      candidate_score = address_score(candidate)
+      return false if candidate_score.zero?
       return true if current.blank?
+      return false if candidate.to_s.strip == current.to_s.strip
+      return false if !allow_location_conflict && address_prefecture_conflict?(candidate, current)
 
-      address_score(candidate) > address_score(current)
+      cleaned_current = clean_address_candidate(current)
+      current_score = address_score(cleaned_current.presence || current)
+      return true if cleaned_current.present? &&
+                     cleaned_current != current.to_s.strip &&
+                     candidate_score >= current_score
+      return true if prefer_candidate_on_tie && candidate_score >= (current_score - 10)
+
+      candidate_score > address_score(current)
+    end
+
+    def self.address_prefecture_conflict?(candidate, current)
+      candidate_pref = extract_prefecture(candidate)
+      current_pref = extract_prefecture(current)
+
+      candidate_pref.present? && current_pref.present? && candidate_pref != current_pref
+    end
+
+    def self.extract_prefecture(address)
+      address.to_s[CompanyInfoExtractor::PREF_PATTERN]
     end
 
     def self.address_score(address)
@@ -472,6 +512,7 @@ module BrightData
       return 0 if s.match?(/有料職業紹介事業|WEB広告事業|デジタルサイネージ事業|©/)
       return 0 if s.match?(/荷物積み込み場|稼働期間|現場風景|週休|役員|取締役|代表[一-龥A-Za-z]|営業本部|店[\s　]*舗|店舗|info@/)
       return 0 if s.match?(/Google\s*Map|GOOGLE\s*Map|\bMAP\b|サイトマップ|個人情報保護|購入ページ|Go\s*to\s*top|keyboard_arrow_right|事業一覧/)
+      return 0 if s.match?(/READ\s*MORE/i)
       return 0 if s.match?(/_at_|自治体|行政区/)
       return 0 if s.match?(/[【［\[]\s*(?:本社代表|代表|TEL|Tel|tel|電話)/)
       return 0 if s.match?(/[【［\[]\z/)
@@ -493,7 +534,7 @@ module BrightData
     def self.complete_address_score(address)
       s = address.to_s.strip
       return 0 if s.scan(CompanyInfoExtractor::PREF_PATTERN).size != 1
-      return 0 if s.match?(/駅|徒歩|車|分|〒|Google\s*Map|GOOGLE\s*Map|\bMAP\b|サイトマップ|個人情報保護|Go\s*to\s*top|keyboard_arrow_right|代表[一-龥A-Za-z]|店[\s　]*舗|店舗|info@|_at_|[【［\[]\s*(?:本社代表|代表|TEL|Tel|tel|電話)|[【［\[]\z/)
+      return 0 if s.match?(/駅|徒歩|車|分|〒|Google\s*Map|GOOGLE\s*Map|\bMAP\b|サイトマップ|個人情報保護|Go\s*to\s*top|keyboard_arrow_right|READ\s*MORE|代表[一-龥A-Za-z]|店[\s　]*舗|店舗|info@|_at_|[【［\[]\s*(?:本社代表|代表|TEL|Tel|tel|電話)|[【［\[]\z/i)
       return 0 unless s.match?(/(?:市|区|町|村|郡)/)
       return 0 unless s.match?(/[0-9０-９]|丁目|番地|番|号|[-－ー]/)
 
@@ -517,7 +558,8 @@ module BrightData
 
     def self.contact_like_url?(url)
       uri = URI.parse(url.to_s)
-      [uri.path, uri.query].compact.join(" ").match?(/contact|inquiry|toiawase|otoiawase|form|mail/i)
+      text = [uri.path, uri.query].compact.join(" ")
+      text.match?(/contact|inquiry|toiawase|otoiawase|(?:\A|[\/_\-.?=&])form(?:\z|[\/_\-.?=&])|mail/i)
     rescue URI::InvalidURIError
       false
     end
@@ -527,6 +569,40 @@ module BrightData
       return false if value.blank?
 
       !value.match?(%r{\Ahttps?://}i) || value.include?("/../") || value.include?("/./")
+    end
+
+    def self.better_source_url?(customer, source_url, web_data)
+      return false if customer.url.blank?
+      return false if source_url.blank? || source_url == customer.url
+      return false unless profile_result_has_primary_data?(web_data)
+
+      source_root = registrable_host_root(URI.parse(source_url).host)
+      current_root = registrable_host_root(URI.parse(customer.url).host)
+      return false if source_root.blank? || current_root.blank? || source_root == current_root
+
+      customer.tel.blank? || address_score(customer.address) < address_score(web_data[:address])
+    rescue URI::InvalidURIError
+      false
+    end
+
+    def self.profile_result_has_primary_data?(web_data)
+      web_data && (web_data[:tel].present? || web_data[:address].present?)
+    end
+
+    def self.web_enrichment_retry_needed?(web_data)
+      return true if web_data.blank?
+      return true if web_data[:matched] == false
+
+      web_data[:tel].blank? && web_data[:address].blank? && web_data[:contact_url].blank?
+    end
+
+    def self.web_enrichment_result_better?(candidate, current)
+      return false if candidate.blank?
+      return true if current.blank?
+      return true if candidate[:matched] == true && current[:matched] != true
+      return true if profile_result_has_primary_data?(candidate) && !profile_result_has_primary_data?(current)
+
+      candidate[:contact_url].present? && current[:contact_url].blank?
     end
 
     def self.same_site_url?(url, base_url)

@@ -59,6 +59,25 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     assert_equal "https://ud-group.site/about/", updates[:url]
   end
 
+  test "build_url_fallback_update keeps matched headquarters even when current address is a work location" do
+    customer = Customer.create!(company: "合同会社アイズ", address: "神奈川県 相模原市 中央区")
+    company = {
+      company: "合同会社アイズ",
+      title: "会社概要 - 合同会社アイズ",
+      url: "https://www.aizu-hp.com/company",
+      source: "organic"
+    }
+    web_data = {
+      matched: true,
+      source_url: "https://www.aizu-hp.com/company",
+      address: "東京都八王子市上柚木3-16-4-210"
+    }
+
+    updates = BrightData::Pipeline.send(:build_url_fallback_update, customer, company, web_data: web_data)
+
+    assert_equal "https://www.aizu-hp.com/company", updates[:url]
+  end
+
   test "build_url_fallback_update does not store contact pages as company url" do
     customer = Customer.create!(company: "トーヨークリエイツ株式会社")
     company = {
@@ -69,6 +88,32 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     }
 
     assert_empty BrightData::Pipeline.send(:build_url_fallback_update, customer, company)
+  end
+
+  test "contact-like URL detection does not reject information pages" do
+    customer = Customer.create!(company: "株式会社雅架設")
+    company = {
+      company: "株式会社雅架設",
+      title: "会社概要",
+      url: "https://miyabi-kasetsu.yokohama/information",
+      source: "organic"
+    }
+
+    updates = BrightData::Pipeline.send(
+      :build_web_updates,
+      customer,
+      company,
+      {
+        matched: true,
+        source_url: "https://miyabi-kasetsu.yokohama/information",
+        tel: "080-9987-1380"
+      }
+    )
+
+    assert_equal "https://miyabi-kasetsu.yokohama/information", updates[:url]
+    assert_equal "080-9987-1380", updates[:tel]
+    assert BrightData::Pipeline.send(:contact_like_url?, "https://example.com/contact/form")
+    refute BrightData::Pipeline.send(:contact_like_url?, "https://example.com/information")
   end
 
   test "build_url_fallback_update rejects unclear or excluded SERP urls" do
@@ -185,6 +230,61 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
 
     assert_equal "https://ty-create.co.jp/company.html", updates[:url]
     assert_equal "https://ty-create.co.jp/contact.html", updates[:contact_url]
+  end
+
+  test "build_web_updates replaces previously stored directory urls" do
+    customer = Customer.create!(
+      company: "G・Mライン株式会社",
+      url: "https://www.job-j.net/company/detail/3233103/",
+      tel: "049-270-6284",
+      address: "埼玉県入間郡毛呂山町目白台1-20-8"
+    )
+    company = {
+      company: "G・Mライン株式会社",
+      title: "会社概要",
+      url: "https://gm-line-kk.net/about/",
+      source: "organic"
+    }
+
+    updates = BrightData::Pipeline.send(
+      :build_web_updates,
+      customer,
+      company,
+      {
+        matched: true,
+        source_url: "https://gm-line-kk.net/about/",
+        tel: "049-270-6284",
+        address: "埼玉県入間郡毛呂山町目白台1-20-8",
+        contact_url: "https://gm-line-kk.net/contact/"
+      }
+    )
+
+    assert_equal "https://gm-line-kk.net/about/", updates[:url]
+    assert_equal "https://gm-line-kk.net/contact/", updates[:contact_url]
+  end
+
+  test "build_web_updates clears excluded existing contact url when no valid replacement exists" do
+    customer = Customer.create!(
+      company: "株式会社ホートー",
+      url: "http://www.hoto.co.jp/",
+      contact_url: "https://hoto-recruit.com/contact/"
+    )
+    company = {
+      company: "株式会社ホートー",
+      title: "株式会社ホートー",
+      url: "http://www.hoto.co.jp/",
+      source: "organic"
+    }
+
+    updates = BrightData::Pipeline.send(
+      :build_web_updates,
+      customer,
+      company,
+      { matched: true, source_url: "http://www.hoto.co.jp/", tel: "049-245-9161" }
+    )
+
+    assert_includes updates.keys, :contact_url
+    assert_nil updates[:contact_url]
   end
 
   test "build_web_updates ignores primary data when page match is unverified" do
@@ -358,6 +458,14 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     )
   end
 
+  test "better_address replaces existing address that cleans to the same candidate" do
+    assert BrightData::Pipeline.send(
+      :better_address?,
+      "埼玉県川越市 下赤坂1800-3",
+      "埼玉県川越市 下赤坂1800-3芳野台工場 川越市芳野台1-103-17"
+    )
+  end
+
   test "address_score rejects noisy address tails used by the UI" do
     noisy = [
       "神奈川県相模原市南区若松 荷物積み込み場 神奈川県相模原市南区若松 時間 8時から20時",
@@ -386,6 +494,146 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
       :address_score,
       "山口県下関市形山みどり町2-11-4"
     ), :>, 0
+  end
+
+  test "better_address rejects candidates from a different prefecture" do
+    refute BrightData::Pipeline.send(
+      :better_address?,
+      "東京都八王子市上柚木3-16-4-210",
+      "神奈川県 相模原市 中央区"
+    )
+  end
+
+  test "build_web_updates accepts verified headquarters when candidate address differs from current location" do
+    customer = Customer.create!(
+      company: "合同会社アイズ",
+      address: "神奈川県 相模原市 中央区"
+    )
+    company = {
+      company: "合同会社アイズ",
+      title: "合同会社アイズ 会社概要",
+      url: "https://www.aizu-hp.com/company",
+      source: "organic"
+    }
+
+    updates = BrightData::Pipeline.send(
+      :build_web_updates,
+      customer,
+      company,
+      {
+        matched: true,
+        source_url: "https://www.aizu-hp.com/company",
+        tel: "080-5484-1683",
+        address: "東京都八王子市上柚木3-16-4-210",
+        contact_url: "https://www.aizu-hp.com/contact"
+      }
+    )
+
+    assert_equal "https://www.aizu-hp.com/company", updates[:url]
+    assert_equal "080-5484-1683", updates[:tel]
+    assert_equal "東京都八王子市上柚木3-16-4-210", updates[:address]
+    assert_equal "https://www.aizu-hp.com/contact", updates[:contact_url]
+  end
+
+  test "build_web_updates accepts headquarters tel and address when branch-specific office is not found" do
+    customer = Customer.create!(
+      company: "株式会社CARAVEL 横浜市戸塚区",
+      address: "神奈川県 横浜市 戸塚区"
+    )
+    company = {
+      company: "株式会社CARAVEL",
+      title: "株式会社CARAVEL",
+      url: "https://caravel-driver.com/",
+      source: "organic"
+    }
+
+    updates = BrightData::Pipeline.send(
+      :build_web_updates,
+      customer,
+      company,
+      {
+        matched: true,
+        source_url: "https://caravel-driver.com/",
+        tel: "080-2015-5571",
+        address: "神奈川県小田原市浜町2-5-5",
+        contact_url: "https://caravel-driver.com/contact/"
+      }
+    )
+
+    assert_equal "https://caravel-driver.com/", updates[:url]
+    assert_equal "080-2015-5571", updates[:tel]
+    assert_equal "神奈川県小田原市浜町2-5-5", updates[:address]
+    assert_equal "https://caravel-driver.com/contact/", updates[:contact_url]
+  end
+
+  test "build_web_updates prefers verified official profile address on close scores" do
+    customer = Customer.create!(
+      company: "株式会社ホートー",
+      address: "埼玉県川越市芳野台1-103-17",
+      url: "http://www.hoto.co.jp/"
+    )
+    company = {
+      company: "株式会社ホートー",
+      title: "株式会社ホートー",
+      url: "http://www.hoto.co.jp/",
+      source: "organic"
+    }
+
+    updates = BrightData::Pipeline.send(
+      :build_web_updates,
+      customer,
+      company,
+      {
+        matched: true,
+        source_url: "http://hoto.co.jp/Cinfo.html",
+        tel: "049-245-9161",
+        address: "埼玉県 川越市 下赤坂1800-3"
+      }
+    )
+
+    assert_equal "埼玉県川越市 下赤坂1800-3", updates[:address]
+  end
+
+  test "build_web_updates replaces secondary existing url when source has primary data" do
+    customer = Customer.create!(
+      company: "株式会社CARAVEL 横浜市戸塚区",
+      address: "神奈川県 横浜市 戸塚区",
+      url: "https://caravel-driver.com/",
+      contact_url: "https://caravel-driver.com/contact/"
+    )
+    company = {
+      company: "株式会社CARAVEL",
+      title: "神奈川県の軽貨物配送 ― 株式会社CARAVEL",
+      url: "https://caravel-ltd.com/",
+      source: "organic"
+    }
+
+    updates = BrightData::Pipeline.send(
+      :build_web_updates,
+      customer,
+      company,
+      {
+        matched: true,
+        source_url: "https://caravel-ltd.com/",
+        tel: "0465-43-7046",
+        address: "神奈川県小田原市浜町2丁目5-5",
+        contact_url: "https://caravel-ltd.com/contact/"
+      }
+    )
+
+    assert_equal "https://caravel-ltd.com/", updates[:url]
+    assert_equal "0465-43-7046", updates[:tel]
+    assert_equal "神奈川県小田原市浜町2丁目5-5", updates[:address]
+    assert_equal "https://caravel-ltd.com/contact/", updates[:contact_url]
+  end
+
+  test "web enrichment retry prefers a later matched primary result" do
+    assert BrightData::Pipeline.send(:web_enrichment_retry_needed?, { matched: false })
+    assert BrightData::Pipeline.send(
+      :web_enrichment_result_better?,
+      { matched: true, tel: "048-720-8437", address: "埼玉県川口市鳩ヶ谷本町2-14-6" },
+      { matched: false }
+    )
   end
 
   test "candidate_priority prefers company overview over office listing for non branch warehouse noise" do

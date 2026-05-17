@@ -158,6 +158,34 @@ class CompanyInfoExtractorTest < ActiveSupport::TestCase
     assert_equal "/contact/", extractor.extract[:contact_url]
   end
 
+  test "extract_company keeps full corporate name from title" do
+    extractor = CompanyInfoExtractor.new(<<~HTML)
+      <html>
+        <head>
+          <title>株式会社島田建材 ｜ 埋立、造成、一般建設、土木工事</title>
+        </head>
+        <body></body>
+      </html>
+    HTML
+
+    assert_equal "株式会社島田建材", extractor.extract[:company]
+  end
+
+  test "extract_company prefers labeled profile company" do
+    extractor = CompanyInfoExtractor.new(<<~HTML)
+      <html>
+        <head><title>会社概要 ｜ 株式会社サンプル物流</title></head>
+        <body>
+          <table>
+            <tr><th>社名</th><td>株式会社サンプル物流</td></tr>
+          </table>
+        </body>
+      </html>
+    HTML
+
+    assert_equal "株式会社サンプル物流", extractor.extract[:company]
+  end
+
   test "extract_address infers omitted prefecture from customer address" do
     customer = Customer.new(company: "株式会社シーエル", address: "福岡県 福岡市 雑餉隈駅 車10分")
     extractor = CompanyInfoExtractor.new(<<~HTML, customer: customer)
@@ -240,6 +268,47 @@ class CompanyInfoExtractorTest < ActiveSupport::TestCase
       "福岡県粕屋郡新宮町大字立花口2308-2",
       extractor.send(:clean_address, "福岡県粕屋郡新宮町大字立花口2308-2 八女営業所福岡県八女市稲富6-1")
     )
+  end
+
+  test "clean_address keeps head office before bracketed office postal address" do
+    extractor = CompanyInfoExtractor.new("")
+
+    assert_equal(
+      "神奈川県川崎市宮前区東有馬1-17-18",
+      extractor.send(:clean_address, "神奈川県川崎市宮前区東有馬1-17-18 ［本社営業所］ 〒224-0043 神奈川県横浜市都筑区折本町1186番地")
+    )
+  end
+
+  test "clean_address removes trailing angle bracket office label" do
+    extractor = CompanyInfoExtractor.new("")
+
+    assert_equal(
+      "神奈川県藤沢市辻堂新町2-12-27",
+      extractor.send(:clean_address, "神奈川県藤沢市辻堂新町2-12-27 ＜営業所＞ ・")
+    )
+  end
+
+  test "clean_address keeps first address when multiple prefectures are concatenated" do
+    extractor = CompanyInfoExtractor.new("")
+
+    assert_equal(
+      "神奈川県横浜市都筑区大棚町445-1",
+      extractor.send(:clean_address, "神奈川県横浜市都筑区大棚町445-1神奈川県川崎市宮前区宮前平小台1-18-1")
+    )
+  end
+
+  test "extract_address keeps first delivery base from concatenated office text" do
+    customer = Customer.new(company: "志村運送株式会社", address: "神奈川県 横浜市 都筑区")
+    extractor = CompanyInfoExtractor.new(<<~HTML, customer: customer)
+      <html>
+        <body>
+          <p>当社は神奈川県を中心に軽貨物運送事業を展開しています。</p>
+          <p>配達拠点 神奈川県横浜市都筑区大棚町445-1神奈川県川崎市宮前区宮前平小台1-18-1</p>
+        </body>
+      </html>
+    HTML
+
+    assert_equal "神奈川県横浜市都筑区大棚町445-1", extractor.extract[:address]
   end
 
   test "clean_address rejects history fragments after city level text" do
@@ -449,6 +518,22 @@ class CompanyInfoExtractorTest < ActiveSupport::TestCase
     assert_equal(
       "東京都町田市鶴間3-4-1グランベリーパークセントラルコート3FL302",
       extractor.send(:clean_address, "東京都町田市鶴間3-4-1グランベリーパークセントラルコート3FL302代表小林大輝HOMEkeyboard_arrow_rightCOMPANY")
+    )
+    assert_equal(
+      "埼玉県川口市鳩ヶ谷本町2-14-6",
+      extractor.send(:clean_address, "埼玉県川口市鳩ヶ谷本町2-14-6 ホーム 会社紹介")
+    )
+    assert_equal(
+      "埼玉県川口市鳩ヶ谷本町2-14-6",
+      extractor.send(:clean_address, "埼玉県川口市鳩ヶ谷本町2-14-6 事務所")
+    )
+    assert_equal(
+      "埼玉県入間郡毛呂山町目白台1-20-8",
+      extractor.send(:clean_address, "埼玉県入間郡毛呂山町目白台1-20-8 READ MORE")
+    )
+    assert_equal(
+      "埼玉県川越市 下赤坂1800-3",
+      extractor.send(:clean_address, "埼玉県川越市 下赤坂1800-3芳野台工場 川越市芳野台1-103-17")
     )
   end
 

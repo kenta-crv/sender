@@ -16,6 +16,8 @@ module BrightData
       en-japan.com
       workport.co.jp
       baitoru.com
+      baitorupro.com
+      job-j.net
       gaten.info
       saiyo-connect.jp
       jbplt.jp
@@ -54,12 +56,15 @@ module BrightData
       doraever-match.jp
       daijob.com
       ecareer.ne.jp
+      froma.com
       employment.en-japan.com
+      job-gear.net
       r-agent.com
       sftworks.jp
       shikaku-job.biz
       type.jp
       x-work.jp
+      hoto-recruit.com
     ].freeze
 
     DIRECTORY_DOMAINS = %w[
@@ -108,7 +113,15 @@ module BrightData
       24u.jp
       driver-navi.com
       booking.com
+      homes.co.jp
       hakopro.jp
+      helloboss.com
+      jobtalk.jp
+      next-working.net
+      towanewsis.net
+      catering-food.com
+      careecon.jp
+      pref.saitama.lg.jp
       mlit.go.jp
       kyotobank.co.jp
       untendaikou.co.jp
@@ -149,6 +162,22 @@ module BrightData
       suumo.jp
       homemate-research-discount-shop.com
       shougai.rakuraku.or.jp
+      compalyze.co.jp
+      curama.jp
+      buildone-b1.com
+      myfarmer.jp
+      city.yokohama.lg.jp
+      unilife.co.jp
+      tacthome.co.jp
+      kawagoe.or.jp
+      ageocci.or.jp
+      infomart.co.jp
+      kei.or.jp
+      saihoku-namacon.jp
+      namacon.or.jp
+      tgnr.jp
+      ngp.gr.jp
+      mrj.jp
     ].freeze
 
     SOCIAL_DOMAINS = %w[
@@ -164,12 +193,14 @@ module BrightData
 
     DOCUMENT_PATTERN = /\.(?:pdf|xlsx?|csv|docx?)(?:\?|#|\z)/i
     JOB_PATH_PATTERN = %r{/(?:jobfind|job[_-]?offers?|jobs?|recruit|career|saiyo)(?:[-_/]|\z)}i
-    DIRECTORY_PATH_PATTERN = %r{/agency/shop(?:/|\?|$)|/driver/media_[0-9]+}i
+    DIRECTORY_PATH_PATTERN = %r{/agency/shop(?:/|\?|$)|/driver/media_[0-9]+|/member[_-]?introduction(?:/|\?|$)}i
+    CONTENT_PATH_PATTERN = %r{/(?:blog|news|column|topics)(?:/|$)|/room/news(?:/|$)}i
     EXCLUDED_TEXT_PATTERN = /
       転職|求人|採用|バイト|アルバイト|(?<![ァ-ヶー])パート(?![ァ-ヶー])|
       本選考|エントリーシート|(?<![A-Za-z])ES(?![A-Za-z])|
       評判|口コミ|法人番号|インボイス|会社の評判|企業詳細|企業データ分析
     /ix
+    BUSINESS_HOME_TITLE_PATTERN = /事業|会社|公式|サービス|運送|配送|物流|軽貨物|企業/i
 
     COMPANY_NOISE_PATTERNS = [
       /\A(?:業務委託|正社員|契約社員|派遣社員|アルバイト|パート)\s+/,
@@ -200,14 +231,27 @@ module BrightData
         return true if uri.to_s.match?(DOCUMENT_PATTERN)
         return true if decoded_path_and_query(uri).match?(JOB_PATH_PATTERN)
         return true if decoded_path_and_query(uri).match?(DIRECTORY_PATH_PATTERN)
+        return true if decoded_path_and_query(uri).match?(CONTENT_PATH_PATTERN)
 
         text = [title, decoded_path_and_query(uri)].compact.join(" ")
+        return false if likely_official_company_homepage?(uri, title)
+
         text.match?(EXCLUDED_TEXT_PATTERN)
       end
 
       def excluded_domain?(host)
         normalized = normalized_host(host)
         all_excluded_domains.any? { |domain| normalized == domain || normalized.end_with?(".#{domain}") }
+      end
+
+      def likely_official_company_homepage?(uri, title)
+        return false if title.blank?
+
+        path = uri.path.to_s
+        return false unless path.blank? || path == "/" || path.match?(%r{\A/index\.html?\z}i)
+        return false unless title.match?(/株式会社|有限会社|合同会社/)
+
+        title.match?(BUSINESS_HOME_TITLE_PATTERN)
       end
 
       def normalize_company_name(name)

@@ -12,6 +12,7 @@ class CompanyInfoExtractor
   NON_CONTACT_LINK_TEXT = /お問い合わせ番号|問合せ番号|送り状|追跡|照会|tracking|trace/i
   NON_CONTACT_LINK_PATH = /webtrace|tracking|trace/i
   BRANCH_TOKEN_REGEX = /\S{1,20}(?:センター|支店|営業所|出張所|オフィス|事業所|本店|本社|支社|工場|店)/
+  LEGAL_ENTITY_NAME_REGEX = /(?:株式会社|有限会社|合同会社|一般社団法人|一般財団法人)\s*[A-Za-z0-9一-龥ァ-ヶー&.・\s]{1,60}|[A-Za-z0-9一-龥ァ-ヶー&.・\s]{1,60}(?:株式会社|有限会社|合同会社)/
 
   PREF_PATTERN = /(?:北海道|青森県|岩手県|宮城県|秋田県|山形県|福島県|茨城県|栃木県|群馬県|
                     埼玉県|千葉県|東京都|神奈川県|新潟県|富山県|石川県|福井県|山梨県|長野県|
@@ -207,17 +208,68 @@ class CompanyInfoExtractor
   end
 
   def from_profile
-    @doc.text[/会社名[:：]?\s*(.+)/, 1]&.strip
+    @doc.css("table tr, dl").each do |row|
+      cells = row.css("td, th, dt, dd")
+      cells.each_with_index do |cell, i|
+        label = cell.text.to_s.gsub(/\s+/, "")
+        next unless label.match?(/\A(?:会社名|社名|商号)\z/)
+
+        company = clean_company_name(cells[i + 1]&.text)
+        return company if company
+      end
+    end
+
+    match = @doc.text.to_s.gsub(/\s+/, " ").match(/(?:会社名|社名|商号)\s*[:：]?\s*([^。|｜\n\r]{1,80})/)
+    clean_company_name(match[1]) if match
   end
 
   def from_footer
     footer = @doc.at("footer")
     return if footer.nil?
-    footer.text[/会社名[:：]?\s*(.+)/, 1]&.strip
+
+    clean_company_name(footer.text[/会社名[:：]?\s*([^。|｜\n\r]{1,80})/, 1])
   end
 
   def from_regex
-    @doc.text[/(株式会社|有限会社|合同会社).+?/]
+    sources = [
+      @doc.at("title")&.text,
+      *@doc.css("h1, h2").first(5).map(&:text),
+      @doc.text
+    ]
+
+    sources.each do |source|
+      company = extract_company_name_from_text(source)
+      return company if company
+    end
+
+    nil
+  end
+
+  def extract_company_name_from_text(text)
+    text.to_s.split(/[|｜\n\r\t]/).each do |part|
+      match = part.match(LEGAL_ENTITY_NAME_REGEX)
+      company = clean_company_name(match[0]) if match
+      return company if company
+    end
+
+    match = text.to_s.match(LEGAL_ENTITY_NAME_REGEX)
+    clean_company_name(match[0]) if match
+  end
+
+  def clean_company_name(text)
+    value = text.to_s.tr("　", " ").gsub(/\s+/, " ").strip
+    return nil if value.blank?
+
+    value = value.sub(/\A.*の((?:株式会社|有限会社|合同会社|一般社団法人|一般財団法人).*)\z/, "\\1")
+                 .sub(/[（(].*\z/, "")
+                 .sub(/[【\[].*\z/, "")
+                 .sub(/[】\]].*\z/, "")
+                 .sub(/[|｜:：／\/].*\z/, "")
+                 .sub(/(?:求人|採用|配達|配送|転職|企業情報|会社概要).*\z/, "")
+                 .sub(/\s+(?:埋立|造成|一般建設|土木工事|工事|販売|サービス|未経験|歓迎).*\z/, "")
+                 .strip
+
+    value.match?(/株式会社|有限会社|合同会社|一般社団法人|一般財団法人/) ? value : nil
   end
 
   def extract_tel
@@ -306,12 +358,12 @@ class CompanyInfoExtractor
 
     # 優先1: <address> タグ
     if (addr_tag = @doc.at("address"))
-      m = addr_tag.text.gsub(/\s+/, " ").match(ADDRESS_REGEX)
-      return clean_address(m[0]) if m
+      addr = first_valid_address_match(addr_tag.text)
+      return addr if addr
     end
 
     # 優先2: 会社概要テーブル / DL 内の住所ラベル
-    addr = from_table_label_address(%w[住所 所在地 本社住所 本社所在地])
+    addr = from_table_label_address(%w[住所 所在地 本社住所 本社所在地 配達拠点 配送拠点 営業拠点 拠点])
     return addr if addr
 
     addr = from_labeled_text_address
@@ -319,13 +371,12 @@ class CompanyInfoExtractor
 
     # 優先3: footer のテキスト
     if (footer = @doc.at("footer"))
-      m = footer.text.gsub(/\s+/, " ").match(ADDRESS_REGEX)
-      return clean_address(m[0]) if m
+      addr = first_valid_address_match(footer.text)
+      return addr if addr
     end
 
     # フォールバック: 全文検索
-    m = @doc.text.gsub(/\s+/, " ").match(ADDRESS_REGEX)
-    m ? clean_address(m[0]) : nil
+    first_valid_address_match(@doc.text)
   end
 
   # テーブル・DL 内でラベル横のセルから住所を探す
@@ -352,9 +403,10 @@ class CompanyInfoExtractor
 
   def from_labeled_text_address
     text = @doc.text.gsub(/\s+/, " ")
+    label_pattern = /(?:本社所在地|本社住所|所在地|住所|本社|配達拠点|配送拠点|営業拠点|拠点)/
     patterns = [
-      /(?:本社所在地|本社住所|所在地|住所|本社)\s*[：:]?\s*(?:〒?\s*\d{3}[-－ー]?\d{4}\s*)?([^。|｜\n\r]{0,20}#{PREF_PATTERN}[^\n\r<>]{5,180})/,
-      /(?:本社所在地|本社住所|所在地|住所|本社)[\s\S]{0,40}(#{PREF_PATTERN}[^\n\r<>]{5,180})/
+      /#{label_pattern}\s*[：:]?\s*(?:〒?\s*\d{3}[-－ー]?\d{4}\s*)?([^。|｜\n\r]{0,20}#{PREF_PATTERN}[^\n\r<>]{5,180})/,
+      /#{label_pattern}[\s\S]{0,40}(#{PREF_PATTERN}[^\n\r<>]{5,180})/
     ]
 
     patterns.each do |pattern|
@@ -365,9 +417,18 @@ class CompanyInfoExtractor
       return address if address
     end
 
-    inferred = text.match(/(?:本社所在地|本社住所|所在地|住所|本社)\s*[：:]?\s*〒?\s*\d{3}[-－ー]?\d{4}\s*([^。|｜\n\r]{5,120})/)
+    inferred = text.match(/#{label_pattern}\s*[：:]?\s*〒?\s*\d{3}[-－ー]?\d{4}\s*([^。|｜\n\r]{5,120})/)
     if inferred
       address = clean_address(with_customer_prefecture(inferred[1]))
+      return address if address
+    end
+
+    nil
+  end
+
+  def first_valid_address_match(text)
+    text.to_s.gsub(/\s+/, " ").scan(ADDRESS_REGEX).each do |candidate|
+      address = clean_address(candidate)
       return address if address
     end
 
@@ -399,13 +460,13 @@ class CompanyInfoExtractor
          URL|ＵＲＬ|ホームページ|HP|
          アクセス|最寄り?駅|地図|Google\s*(?:MAP|Map|map)|GoogleMapで見る|Googleマップ|MAPを見る|MAP|map|
          代表者|(?<!本社)代表|設立|資本金|従業員|業務内容|事業内容|事業案内|施工計画|会社情報|
-         代表挨拶|経営理念|行動指針|拠点一覧|地域社会への貢献|沿革|
+         代表挨拶|経営理念|行動指針|拠点一覧|地域社会への貢献|沿革|ホーム|会社紹介|
          役員|取締役|営業本部|店[\s　]*舗|店舗|
          サイトマップ|個人情報保護方針|購入ページ|TOP|Go\s*to\s*top|keyboard_arrow_right|事業一覧|
          荷物積み込み場|稼働期間|現場風景|週休|勤務時間|時間\s*[0-9０-９]|
          ※\s*本社所在地|
          昭和\s*\d+\s*年|平成\s*\d+\s*年|令和\s*\d+\s*年|
-         求人|採用|お問い合わせ|お問合せ|問合せ|CONTACT|Contact|contact)
+         求人|採用|お問い合わせ|お問合せ|問合せ|CONTACT|Contact|contact|READ\s*MORE)
          |Copyright|All\s+Rights\s+Reserved
     /x
     s = s.split(stop_pattern, 2).first.to_s
@@ -420,24 +481,32 @@ class CompanyInfoExtractor
     s = s.split(/\s+(?:事業所|支店|営業所|出張所|オフィス|工場|倉庫|センター)[：:][\s　]*〒\s*\d{3}-?\d{4}/, 2).first.to_s
     s = s.split(/\s+[一-龥ァ-ヶA-Za-z]{1,12}(?:支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)[：:][\s　]*〒\s*\d{3}-?\d{4}/, 2).first.to_s
     s = s.split(/\s+(?:本社|第二工場|支店|営業所|工場|倉庫|センター)?\s*〒\s*\d{3}-?\d{4}/, 2).first.to_s
+    s = s.split(/[\s　]*[［\[][\s　]*[一-龥ァ-ヶA-Za-z]{0,12}(?:本社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター|車庫)[\s　]*[］\]][\s　]*〒?[\s　]*\d{3}[-－ー]?\d{4}/, 2).first.to_s
     s = s.split(/[［\[]\s*[一-龥ァ-ヶA-Za-z]{1,12}(?:支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\s*[］\]]\s*(?=#{PREF_PATTERN})/, 2).first.to_s
     s = s.split(/[／\/][\s　]*(?:工場|支店|営業所|出張所|オフィス|事業所|倉庫|センター)[\s　]*(?=#{PREF_PATTERN})/, 2).first.to_s
     s = s.split(/\s+[一-龥ァ-ヶA-Za-z]{1,12}(?:本社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)[：:][\s　]*(?=#{PREF_PATTERN})/, 2).first.to_s
     s = s.split(/\s+\S{1,12}(?:支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\s*(?=#{PREF_PATTERN})/, 2).first.to_s
+    s = s.split(/(?<=[0-9０-９号番地])\s*[一-龥ァ-ヶA-Za-z]{1,12}(?:本社|支社|支店|営業所|出張所|オフィス|事務所|事業所|工場|倉庫|センター)\s+[一-龥ァ-ヶ]{1,12}(?:市|区|町|村)/, 2).first.to_s
 
     # 連続する空白・全角空白・特殊記号を1つに圧縮
     s = s.gsub(/[\t\r\n]+/, " ").gsub(/[ 　]{2,}/, " ")
+    if s.scan(PREF_PATTERN).size > 1
+      first_address = s.match(/\A(#{PREF_PATTERN}.+?)(?=#{PREF_PATTERN})/)
+      s = first_address[1] if first_address
+    end
     s = s.sub(/\A(#{PREF_PATTERN})\s*〒?\s*\d{3}[-－ー]?\d{4}\s*/, "\\1")
     s = s.sub(/\A(#{PREF_PATTERN})[ 　]+/, "\\1")
+    s = s.sub(/[\s　]*[［\[][\s　]*[一-龥ァ-ヶA-Za-z]{0,12}(?:本社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター|車庫)[\s　]*[］\]](?:[\s　]*〒?[\s　]*\d{3}[-－ー]?\d{4})?\z/, "")
     s = s.sub(/[（(]\s*→?\s*MAPを見る\s*[）)]?\z/i, "")
     s = s.sub(/[（(]\s*→?\s*\z/, "")
     # 末尾の区切り記号・空白を除去
     s = s.sub(/[\s　、。,.:：;；\-－ー｜|／\/■□◆◇●○◎※＊*]+\z/, "")
     s = s.sub(/[（(]\z/, "")
     s = s.sub(/[【［\[]\z/, "")
+    s = s.sub(/[ 　]*[＜<]\s*[一-龥ァ-ヶA-Za-z]{0,12}(?:本社|支社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\s*[＞>]\s*[・、,]*\z/, "")
     s = s.sub(/[ 　]*(?:建[ 　]*築|土木|内装|配送|運送業?|軽貨物.*|物流.*)\z/, "")
-    s = s.sub(/\s+(?:本社|支社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\z/, "")
-    s = s.sub(/\s+\S{1,12}(?:支社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\z/, "")
+    s = s.sub(/\s+(?:本社|支社|支店|営業所|出張所|オフィス|事務所|事業所|工場|倉庫|センター)\z/, "")
+    s = s.sub(/\s+\S{1,12}(?:支社|支店|営業所|出張所|オフィス|事務所|事業所|工場|倉庫|センター)\z/, "")
     s = s.strip.presence
     return nil if s.nil?
 

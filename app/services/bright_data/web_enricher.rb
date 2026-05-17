@@ -66,7 +66,7 @@ module BrightData
       "/company/",
       "/company"
     ].freeze
-    FETCH_TIMEOUT_SECONDS = ENV.fetch("WEB_ENRICHER_FETCH_TIMEOUT_SECONDS", "8").to_f.clamp(2.0, 30.0)
+    FETCH_TIMEOUT_SECONDS = ENV.fetch("WEB_ENRICHER_FETCH_TIMEOUT_SECONDS", "15").to_f.clamp(2.0, 30.0)
     RENDER_TIMEOUT_SECONDS = ENV.fetch("WEB_ENRICHER_RENDER_TIMEOUT_SECONDS", "10").to_f.clamp(4.0, 30.0)
     MAX_PROFILE_CANDIDATES = ENV.fetch("WEB_ENRICHER_PROFILE_CANDIDATES", "8").to_i.clamp(1, 20)
     MAX_RENDERED_PROFILE_CANDIDATES = 1
@@ -84,7 +84,7 @@ module BrightData
 
     # 支店・営業所等（末尾に出現するもの）
     LEADING_JOB_TITLE_REGEX = /\A(?:業務委託|正社員|契約社員|派遣社員|アルバイト|パート)\s+/
-    BRANCH_REGEX = /(?:\S{1,10}(?:支店|営業所|出張所|オフィス|事業所|本店|本社|支社|事務所|店))\z/
+    BRANCH_REGEX = /(?:\S{1,10}(?:支店|営業所|出張所|オフィス|事業所|本店|本社|支社|事務所))\z/
     BRANCH_DEPARTMENT_SUFFIX_REGEX = %r{[\/／]\s*[^\/／]*(?:支店|営業所|出張所|オフィス|事業所|本店|本社|支社|事務所)?[^\/／]*(?:宅配課|配送課|配達課|営業課|総務課|事務課|管理課|採用課|人事課|物流課|運送課|営業部|総務部|人事部|管理部|物流部|運送部|センター).*\z}
     DEPARTMENT_REGEX = /(?:宅配課|配送課|配達課|営業課|総務課|事務課|管理課|採用課|人事課|物流課|運送課|\S{1,12}(?:営業部|総務部|人事部|管理部|物流部|運送部))\z/
     BUSINESS_SUFFIX_REGEX = /(?:倉庫|運送|配送|作業|ドライバー)\z/
@@ -102,6 +102,7 @@ module BrightData
 
       # 2. 会社名マッチング検証
       matched_flag = nil
+      matched_via_page_company_mismatch = false
       if customer&.company.present?
         norm_customer = normalize_company(customer.company)
         norm_customer_candidates = normalized_customer_candidates(customer.company)
@@ -119,8 +120,12 @@ module BrightData
               customer_name_in_page?(top_extractor.doc, candidate)
             end
 
-            if prominent_name_found
+            full_text_name_found = noisy_page_company?(norm_page) &&
+                                   customer_name_present_in_doc?(top_extractor.doc, norm_customer_candidates)
+
+            if prominent_name_found || full_text_name_found
               matched_flag = true
+              matched_via_page_company_mismatch = true
               puts "  [WebEnricher] page company mismatch but customer name found: '#{norm_customer}' vs '#{norm_page}' → MATCH"
             elsif confident_page_company_mismatch?(norm_page)
               puts "  [WebEnricher] mismatch: '#{norm_customer}' vs '#{norm_page}' → SKIP"
@@ -129,6 +134,7 @@ module BrightData
               name_found = customer_name_present_in_doc?(top_extractor.doc, norm_customer_candidates)
               if name_found
                 matched_flag = true
+                matched_via_page_company_mismatch = true
                 puts "  [WebEnricher] page company mismatch but customer name found: '#{norm_customer}' vs '#{norm_page}' → MATCH"
               else
                 puts "  [WebEnricher] mismatch: '#{norm_customer}' vs '#{norm_page}' → SKIP"
@@ -155,11 +161,9 @@ module BrightData
       # SERPが会社概要ページを直接返す場合がある。
       # そのページでtel/addressが取れているなら、別の概要リンクへ移動せず採用する。
       top_result = top_extractor.extract
-      branch_specific = branch_tokens(customer&.company).any?
       if top_result[:tel].present? &&
          top_result[:address].present? &&
-         branch_match_safe?(top_extractor.doc, customer, address: top_result[:address]) &&
-         (!profile_listing_url?(url) || branch_specific)
+         primary_data_usable?(top_extractor.doc, customer, address: top_result[:address], source_url: url)
         result = top_result.merge(matched: matched_flag, source_url: url)
         if result[:contact_url].present?
           result[:contact_url] = resolve_contact_url(result[:contact_url], url)
@@ -169,6 +173,10 @@ module BrightData
 
       # 3. 会社概要ページのリンクを探す
       profile_url = find_profile_link(top_extractor.doc, url)
+      if matched_via_page_company_mismatch && profile_url.present? && profile_url != url
+        puts "  [WebEnricher] skipping profile_url from mismatched page company: #{profile_url}"
+        profile_url = nil
+      end
       puts "  [WebEnricher] profile_url: #{profile_url || '(not found, using top page)'}"
 
       # 4. 会社概要ページを取得
@@ -180,16 +188,16 @@ module BrightData
       end
 
       # 5. 情報を抽出して :matched を付加して返す
-      result = sanitized_result(target_extractor, matched_flag, customer)
+      result = sanitized_result(target_extractor, matched_flag, customer, source_url: target_url)
       if profile_result_has_primary_data?(top_result) &&
-         branch_match_safe?(top_extractor.doc, customer, address: top_result[:address])
+         primary_data_usable?(top_extractor.doc, customer, address: top_result[:address], source_url: url)
         result = merge_profile_results(top_result.merge(matched: matched_flag), result)
       end
 
       if profile_result_needs_primary_completion?(result)
         rendered_extractor = fetch_rendered_extractor(target_url, customer)
         if rendered_extractor
-          rendered_result = sanitized_result(rendered_extractor, matched_flag, customer)
+          rendered_result = sanitized_result(rendered_extractor, matched_flag, customer, source_url: target_url)
           if profile_result_improves_primary_data?(rendered_result, result)
             target_extractor = rendered_extractor
             result = merge_profile_results(result, rendered_result)
@@ -197,7 +205,7 @@ module BrightData
         end
       end
 
-      if profile_result_needs_primary_completion?(result)
+      if profile_result_needs_primary_completion?(result) && !matched_via_page_company_mismatch
         candidate = fetch_candidate_profile(url, customer, matched_flag, result)
         if candidate
           target_url, target_extractor, candidate_result = candidate
@@ -226,6 +234,7 @@ module BrightData
 
       # 全角英数 → 半角
       s = s.tr("Ａ-Ｚａ-ｚ０-９", "A-Za-z0-9")
+      s = s.gsub(/[輛輌]/, "両")
 
       # 求人タイトル由来の雇用形態・部署名を除去
       s.gsub!(LEADING_JOB_TITLE_REGEX, "")
@@ -294,6 +303,7 @@ module BrightData
     def self.extract_page_company(doc)
       candidates = []
 
+      candidates << extract_labeled_company_name(doc)
       candidates << extract_corp_name(doc.at("title")&.text.to_s.strip)
 
       doc.css("h1").first(3).each { |h| candidates << extract_corp_name(h.text.strip) }
@@ -315,18 +325,48 @@ module BrightData
       candidates.compact.reject(&:empty?).first
     end
 
+    def self.extract_labeled_company_name(doc)
+      doc.css("tr, dl").each do |row|
+        cells = row.css("th, td, dt, dd")
+        cells.each_with_index do |cell, index|
+          label = cell.text.to_s.gsub(/\s+/, "")
+          next unless label.match?(/\A(?:社名|会社名|商号)\z/)
+
+          value = cells[index + 1]&.text.to_s.gsub(/\s+/, " ").strip
+          company = extract_corp_name(value)
+          return company if company.present?
+        end
+      end
+
+      text = doc.text.to_s.gsub(/\s+/, " ")
+      match = text.match(/(?:社名|会社名|商号)\s*[:：]?\s*((?:株式会社|有限会社|合同会社|一般社団法人|一般財団法人)\s*[^\s　。｜|]{1,40})/)
+      match && extract_corp_name(match[1])
+    end
+
     # テキストから最初の法人格付き会社名を抽出する
     def self.extract_corp_name(text)
       return nil if text.blank?
 
+      bracketed = text.match(/[【\[]\s*((?:株式会社|有限会社|合同会社|一般社団法人|一般財団法人)[^】\]]{1,40})[】\]]/)
+      return clean_extracted_corp_name(bracketed[1]) if bracketed
+
       m = text.match(/(?:株式会社|有限会社|合同会社|一般社団法人|一般財団法人)\s*\S+/)
-      return m[0].gsub(/[[:space:]]/, "") if m
+      return clean_extracted_corp_name(m[0]) if m
 
       m2 = text.match(/\S+(?:株式会社|有限会社|合同会社)/)
-      return m2[0].strip if m2
+      return clean_extracted_corp_name(m2[0]) if m2
 
       m3 = text.match(/[A-Z][A-Za-z0-9\s&'\-]{1,25}(?:,?\s*(?:Inc|Corp|LLC|Co|Ltd)\.?)+/i)
       m3 ? m3[0].strip : nil
+    end
+
+    def self.clean_extracted_corp_name(name)
+      name.to_s
+          .gsub(/[[:space:]]/, "")
+          .sub(/[】\]].*\z/, "")
+          .sub(/(?:求人|採用|配達|配送|転職|企業情報|会社概要).*\z/, "")
+          .sub(/[|｜:：].*\z/, "")
+          .strip
     end
 
     def self.confident_page_company_mismatch?(norm_page)
@@ -335,6 +375,10 @@ module BrightData
       return false if norm_page.match?(/\A(?:会社概要|企業情報|会社案内|概要|overview|aboutus|代表取締役|トップ|ホーム|採用|お問い合わせ)\z/i)
 
       true
+    end
+
+    def self.noisy_page_company?(norm_page)
+      norm_page.to_s.match?(/width.*co|loadcss|cookie|navigator|htmlbody|stylesheet|javascript|jimdo|creatorwebsite/i)
     end
 
     # 顧客の正規化名がページの title/h1/h2 に含まれるか確認
@@ -360,7 +404,9 @@ module BrightData
       return nil if candidates.empty?
       return true if candidates.any? { |candidate| customer_name_in_page?(doc, candidate) }
 
-      text = doc.text.to_s.gsub(/\s+/, " ")[0, 5000]
+      searchable_doc = doc.dup
+      searchable_doc.css("script, style, noscript").remove
+      text = searchable_doc.text.to_s.gsub(/\s+/, " ")[0, 15000]
       normalized_text = normalize_company(text)
       candidates.any? { |candidate| company_match?(candidate, normalized_text) }
     end
@@ -374,7 +420,7 @@ module BrightData
 
       doc.css("a[href]").each do |a|
         href = a["href"].to_s.strip
-        text = a.text.strip
+        text = [a.text, *a.css("img[alt]").map { |img| img["alt"] }].join(" ").strip
 
         next if href.blank?
         next if href.start_with?("javascript:", "mailto:", "tel:", "#")
@@ -402,7 +448,7 @@ module BrightData
         extractor = fetch_extractor(candidate_url, customer)
         next if extractor.nil?
 
-        result = sanitized_result(extractor, matched_flag, customer)
+        result = sanitized_result(extractor, matched_flag, customer, source_url: candidate_url)
         return [candidate_url, extractor, result] if profile_result_improves_primary_data?(result, current_result)
 
         next unless rendered_attempts < MAX_RENDERED_PROFILE_CANDIDATES
@@ -412,7 +458,7 @@ module BrightData
         rendered_extractor = fetch_rendered_extractor(candidate_url, customer)
         next if rendered_extractor.nil?
 
-        rendered_result = sanitized_result(rendered_extractor, matched_flag, customer)
+        rendered_result = sanitized_result(rendered_extractor, matched_flag, customer, source_url: candidate_url)
         return [candidate_url, rendered_extractor, rendered_result] if profile_result_improves_primary_data?(rendered_result, current_result)
       end
 
@@ -458,9 +504,9 @@ module BrightData
       customer_name_present_in_doc?(doc, norm_customer) != false
     end
 
-    def self.sanitized_result(extractor, matched_flag, customer)
+    def self.sanitized_result(extractor, matched_flag, customer, source_url: nil)
       result = extractor.extract.merge(matched: matched_flag)
-      unless branch_match_safe?(extractor.doc, customer, address: result[:address])
+      unless primary_data_usable?(extractor.doc, customer, address: result[:address], source_url: source_url)
         result[:tel] = nil
         result[:address] = nil
       end
@@ -563,15 +609,23 @@ module BrightData
       locality_tokens = address_locality_tokens(customer&.address)
       if address.present? && locality_tokens.any?
         normalized_address = address.to_s.gsub(/\s+/, "")
-        return locality_tokens.any? { |token| normalized_address.include?(token.gsub(/\s+/, "")) }
+        required_token = locality_tokens.last
+        return normalized_address.include?(required_token.gsub(/\s+/, ""))
       end
 
       text = doc.text.to_s.gsub(/\s+/, "")
       (company_tokens + locality_tokens).any? { |token| text.include?(token.gsub(/\s+/, "")) }
     end
 
+    def self.primary_data_usable?(doc, customer, address: nil, source_url: nil)
+      return true if branch_tokens(customer&.company).empty?
+      return true unless source_url.present? && profile_listing_url?(source_url)
+
+      branch_match_safe?(doc, customer, address: address)
+    end
+
     def self.branch_tokens(company)
-      company.to_s.scan(/\S{1,20}(?:センター|支店|営業所|出張所|オフィス|事業所|本店|本社|支社|工場|店)/)
+      company.to_s.scan(/\S{1,20}(?:センター|ステーション|ステーシ|支店|営業所|出張所|オフィス|事業所|本店|本社|支社|工場|店)/)
     end
 
     def self.address_locality_tokens(address)

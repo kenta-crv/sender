@@ -63,6 +63,21 @@ class BrightData::WebEnricherTest < ActiveSupport::TestCase
     assert_equal "https://example.com/corporate/overview", url
   end
 
+  test "find_profile_link uses image alt text on navigation buttons" do
+    html = <<~HTML
+      <html>
+        <body>
+          <a href="/Cinfo.html"><img src="/image/headIcon5.jpg" alt="会社情報"></a>
+        </body>
+      </html>
+    HTML
+    doc = Nokogiri::HTML(html)
+
+    url = BrightData::WebEnricher.send(:find_profile_link, doc, "https://example.com/")
+
+    assert_equal "https://example.com/Cinfo.html", url
+  end
+
   test "resolve_contact_url ignores plain top page links" do
     assert_nil BrightData::WebEnricher.send(:resolve_contact_url, "https://example.com/", "https://example.com/")
     assert_equal "https://example.com/#contact", BrightData::WebEnricher.send(:resolve_contact_url, "https://example.com/#contact", "https://example.com/")
@@ -87,6 +102,14 @@ class BrightData::WebEnricherTest < ActiveSupport::TestCase
     )
   end
 
+  test "normalize_company keeps company names ending in store and normalizes sharyo variants" do
+    assert_equal "廣嶋建材店", BrightData::WebEnricher.send(:normalize_company, "有限会社廣嶋建材店")
+    assert_equal(
+      BrightData::WebEnricher.send(:normalize_company, "株式会社東京車輛"),
+      BrightData::WebEnricher.send(:normalize_company, "東京車輌株式会社")
+    )
+  end
+
   test "normalized_customer_candidates keeps romanized silent e variants" do
     candidates = BrightData::WebEnricher.send(:normalized_customer_candidates, "合同会社NO Limite")
 
@@ -98,6 +121,52 @@ class BrightData::WebEnricherTest < ActiveSupport::TestCase
     assert BrightData::WebEnricher.send(:company_match?, "シエル志免センタ", "シエル")
     assert BrightData::WebEnricher.send(:company_match?, "会社概要企業情報佐藤食品", "佐藤食品")
     refute BrightData::WebEnricher.send(:company_match?, "ブックスペス", "スペス")
+  end
+
+  test "extract_page_company prefers labeled company name before footer noise" do
+    doc = Nokogiri::HTML(<<~HTML)
+      <html>
+        <head><title>会社概要 - 食品原料用ミルクパウダーの製造販売元</title></head>
+        <body>
+          <table>
+            <tr><th>社名</th><td>東神商事株式会社</td></tr>
+          </table>
+          <footer>Copyright©TOSHIN CO.,LTD All Rights Reserved.</footer>
+        </body>
+      </html>
+    HTML
+
+    assert_equal "東神商事株式会社", BrightData::WebEnricher.send(:extract_page_company, doc)
+  end
+
+  test "extract_corp_name keeps bracketed company name before recruit wording" do
+    assert_equal(
+      "株式会社SA",
+      BrightData::WebEnricher.send(:extract_corp_name, "【株式会社SA】配達/配送の求人情報 | 軽貨物運送事業")
+    )
+  end
+
+  test "enrich_from_url accepts customer name in body when page company is css noise" do
+    customer = Customer.new(company: "東神商事株式会社")
+    extractor = CompanyInfoExtractor.new(<<~HTML, customer: customer)
+      <html>
+        <head><title>widthEqualsCo</title></head>
+        <body>
+          <script>#{"var css = 'widthEqualsCo';" * 500}</script>
+          <p>社名 東神商事株式会社</p>
+          <p>所在地 本社 〒103-0026 東京都中央区日本橋兜町17-1 日本橋ロイヤルプラザ621</p>
+          <p>TEL:03-3664-3031</p>
+        </body>
+      </html>
+    HTML
+
+    with_singleton_method(CompanyInfoExtractor, :fetch_and_parse, ->(_url, customer: nil) { extractor }) do
+      result = BrightData::WebEnricher.enrich_from_url("https://www.mil-knack.co.jp/company/", customer)
+
+      assert_equal true, result[:matched]
+      assert_equal "03-3664-3031", result[:tel]
+      assert_equal "東京都中央区日本橋兜町17-1 日本橋ロイヤルプラザ621", result[:address]
+    end
   end
 
   test "enrich_from_url accepts page company mismatch when title contains romanized customer alias" do
@@ -119,6 +188,43 @@ class BrightData::WebEnricherTest < ActiveSupport::TestCase
       assert_equal true, result[:matched]
       assert_equal "080-4031-1797", result[:tel]
       assert_equal "東京都江東区亀戸7-32-6 亀戸ハウス4号室", result[:address]
+    end
+  end
+
+  test "enrich_from_url does not follow host profile when mismatch match comes from article title" do
+    customer = Customer.new(company: "NEO LEAP")
+    top_extractor = Struct.new(:doc, :extract).new(
+      Nokogiri::HTML(<<~HTML),
+        <html>
+          <head><title>NEO LEAP customer story</title></head>
+          <body>
+            <h1>NEO LEAP interview</h1>
+            <a href="/company/">Company profile</a>
+            <footer>Copyright YourRoot Inc.</footer>
+          </body>
+        </html>
+      HTML
+      { tel: nil, address: nil, contact_url: nil, company: nil }
+    )
+    host_profile = Struct.new(:doc, :extract).new(
+      Nokogiri::HTML("<html><body><h1>YourRoot Inc.</h1></body></html>"),
+      { tel: "045-565-9020", address: "Kanagawa Yokohama", contact_url: nil, company: "YourRoot Inc." }
+    )
+    calls = []
+
+    with_singleton_method(CompanyInfoExtractor, :fetch_and_parse, ->(url, customer: nil) do
+      calls << url
+      url.end_with?("/company/") ? host_profile : top_extractor
+    end) do
+      with_singleton_method(CompanyInfoExtractor, :fetch_and_parse_rendered, ->(_url, customer: nil) { nil }) do
+        result = BrightData::WebEnricher.enrich_from_url("https://yourroot.example/news/neo-leap", customer)
+
+        assert_equal true, result[:matched]
+        assert_nil result[:tel]
+        assert_nil result[:address]
+        assert_equal "https://yourroot.example/news/neo-leap", result[:source_url]
+        assert_equal ["https://yourroot.example/news/neo-leap"], calls
+      end
     end
   end
 
@@ -185,7 +291,7 @@ class BrightData::WebEnricherTest < ActiveSupport::TestCase
     end
   end
 
-  test "enrich_from_url does not use head office data for unmatched branch rows" do
+  test "enrich_from_url uses head office data when a branch-specific page is not found" do
     customer = Customer.new(company: "株式会社シーエル 宇美東センター")
     top_extractor = CompanyInfoExtractor.new(<<~HTML, customer: customer)
       <html>
@@ -202,10 +308,25 @@ class BrightData::WebEnricherTest < ActiveSupport::TestCase
       with_singleton_method(CompanyInfoExtractor, :fetch_and_parse_rendered, ->(_url, customer: nil) { nil }) do
       result = BrightData::WebEnricher.enrich_from_url("https://www.cl-gp.co.jp/introduction/", customer)
 
-      assert_nil result[:tel]
-      assert_nil result[:address]
+      assert_equal "092-504-1708", result[:tel]
+      assert_equal "福岡県福岡市博多区金の隈3丁目14番3号CL会館", result[:address]
       end
     end
+  end
+
+  test "branch match requires the most specific locality when current address has a ward" do
+    customer = Customer.new(
+      company: "株式会社マリンブルー 横浜戸塚デリバリーステーション",
+      address: "神奈川県 横浜市 戸塚区"
+    )
+    doc = Nokogiri::HTML("<html><body>株式会社マリンブルー 横浜市港北区新横浜1-3-1</body></html>")
+
+    refute BrightData::WebEnricher.send(
+      :branch_match_safe?,
+      doc,
+      customer,
+      address: "神奈川県横浜市港北区新横浜1-3-1"
+    )
   end
 
   test "enrich_from_url accepts branch locality data on introduction pages" do
