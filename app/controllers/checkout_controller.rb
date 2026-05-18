@@ -1,93 +1,93 @@
 class CheckoutController < ApplicationController
   before_action :authenticate_client!
 
-def confirmation
-  response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-  response.headers['Pragma'] = 'no-cache'
-  response.headers['Expires'] = '0'
-  
-  @plan_type = params[:plan_type]
-  @campaign_id = params[:campaign_id]
-  
-  if @plan_type.blank? && @campaign_id.blank?
-    redirect_to plans_path, alert: "プランを選択してください。"
-    return
-  end
-  
-  # 既存のカード情報（顧客ID）を保持しているか確認
-  @has_saved_card = current_client.payjp_customer_id.present?
-  
-  if @campaign_id.present?
-    @campaign = current_client.campaigns.find(@campaign_id)
-    recipient_count = current_client.push_subscriptions.where(status: "active").count
-    @amount = skip_delivery_payment? ? 0 : recipient_count * Subscription::DELIVERY_COST
-    @description = "Campaign delivery: #{@campaign.title}"
+  def confirmation
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
     
-    unless current_client.can_send_campaign?(recipient_count)
-      redirect_to client_campaigns_path(current_client),
-                  alert: "配信数の上限に達しています。プランをアップグレードしてください。"
-      return
-    end
-  else
-    unless Subscription::PLAN_PRICES.key?(@plan_type.to_sym)
-      redirect_to plans_path, alert: "無効なプランです。"
+    @plan_type = params[:plan_type]
+    @campaign_id = params[:campaign_id]
+    
+    if @plan_type.blank? && @campaign_id.blank?
+      redirect_to plans_path, alert: "プランを選択してください。"
       return
     end
     
-    @amount = Subscription::PLAN_PRICES[@plan_type.to_sym]
+    # 既存のカード情報（顧客ID）を保持しているか確認
+    @has_saved_card = current_client.payjp_customer_id.present?
     
-    if @plan_type == 'trial'
-      @description = "無料トライアル (15日間)"
-      @amount = 0
-      unless current_client.created_at > 15.days.ago
-        redirect_to plans_path, alert: "無料トライアルは新規アカウントのみ利用できます。"
+    if @campaign_id.present?
+      @campaign = current_client.campaigns.find(@campaign_id)
+      recipient_count = current_client.push_subscriptions.where(status: "active").count
+      @amount = skip_delivery_payment? ? 0 : recipient_count * Subscription::DELIVERY_COST
+      @description = "Campaign delivery: #{@campaign.title}"
+      
+      unless current_client.can_send_campaign?(recipient_count)
+        redirect_to client_campaigns_path(current_client),
+                    alert: "配信数の上限に達しています。プランをアップグレードしてください。"
         return
       end
     else
-      @description = "#{@plan_type.capitalize} Plan"
+      unless Subscription::PLAN_PRICES.key?(@plan_type.to_sym)
+        redirect_to plans_path, alert: "無効なプランです。"
+        return
+      end
+      
+      @amount = Subscription::PLAN_PRICES[@plan_type.to_sym]
+      
+      if @plan_type == 'trial'
+        @description = "無料トライアル (#{Subscription::TRIAL_DAYS}日間)"
+        @amount = 0
+        unless current_client.created_at > Subscription::TRIAL_DAYS.days.ago
+          redirect_to plans_path, alert: "無料トライアルは新規アカウントのみ利用できます。"
+          return
+        end
+      else
+        @description = "#{@plan_type.capitalize} Plan"
+      end
+    end
+
+    @subscription = Subscription.new(plan_type: @plan_type) if @plan_type.present?
+    @payjp_public_key = Rails.application.credentials.dig(:payjp, :public_key) || ENV['PAYJP_PUBLIC_KEY']
+  end
+
+  def create
+    plan_type = params[:plan_type]
+    campaign_id = params[:campaign_id]
+    payjp_token = params[:payjp_token]
+
+    Rails.logger.info "Checkout create - plan_type: #{plan_type}, campaign_id: #{campaign_id}, token present: #{payjp_token.present?}"
+
+    # トークンがなく、かつDBに顧客ID（カード情報）も保存されていない場合のみリダイレクトする
+    if payjp_token.blank? && current_client.payjp_customer_id.blank?
+      redirect_to checkout_confirmation_path(plan_type: plan_type, campaign_id: campaign_id), 
+                  alert: "カード情報が正しく入力されていません。"
+      return
+    end
+
+    begin
+      if campaign_id.present?
+        process_delivery_payment(campaign_id, payjp_token)
+      elsif plan_type.present?
+        process_subscription_payment(plan_type, payjp_token)
+      else
+        redirect_to plans_path, alert: "プランまたはキャンペーンを選択してください。"
+      end
+    rescue Payjp::CardError => e
+      Rails.logger.error "Pay.jp Card Error: #{e.class} - #{e.message}"
+      redirect_to checkout_confirmation_path(plan_type: plan_type, campaign_id: campaign_id),
+                  alert: "カード決済に失敗しました: #{e.message}"
+    rescue Payjp::PayjpError => e
+      Rails.logger.error "Pay.jp API Error: #{e.class} - #{e.message}"
+      redirect_to checkout_confirmation_path(plan_type: plan_type, campaign_id: campaign_id),
+                  alert: "決済処理に失敗しました: #{e.message}"
+    rescue => e
+      Rails.logger.error "Payment error: #{e.class} - #{e.message}"
+      redirect_to checkout_confirmation_path(plan_type: plan_type, campaign_id: campaign_id),
+                  alert: "決済処理中にエラーが発生しました: #{e.message}"
     end
   end
-
-  @subscription = Subscription.new(plan_type: @plan_type) if @plan_type.present?
-  @payjp_public_key = Rails.application.credentials.dig(:payjp, :public_key) || ENV['PAYJP_PUBLIC_KEY']
-end
-
-def create
-  plan_type = params[:plan_type]
-  campaign_id = params[:campaign_id]
-  payjp_token = params[:payjp_token]
-
-  Rails.logger.info "Checkout create - plan_type: #{plan_type}, campaign_id: #{campaign_id}, token present: #{payjp_token.present?}"
-
-  # 修正箇所: トークンがなく、かつDBに顧客ID（カード情報）も保存されていない場合のみリダイレクトする
-  if payjp_token.blank? && current_client.payjp_customer_id.blank?
-    redirect_to checkout_confirmation_path(plan_type: plan_type, campaign_id: campaign_id), 
-                alert: "カード情報が正しく入力されていません。"
-    return
-  end
-
-  begin
-    if campaign_id.present?
-      process_delivery_payment(campaign_id, payjp_token)
-    elsif plan_type.present?
-      process_subscription_payment(plan_type, payjp_token)
-    else
-      redirect_to plans_path, alert: "プランまたはキャンペーンを選択してください。"
-    end
-  rescue Payjp::CardError => e
-    Rails.logger.error "Pay.jp Card Error: #{e.class} - #{e.message}"
-    redirect_to checkout_confirmation_path(plan_type: plan_type, campaign_id: campaign_id),
-                alert: "カード決済に失敗しました: #{e.message}"
-  rescue Payjp::PayjpError => e
-    Rails.logger.error "Pay.jp API Error: #{e.class} - #{e.message}"
-    redirect_to checkout_confirmation_path(plan_type: plan_type, campaign_id: campaign_id),
-                alert: "決済処理に失敗しました: #{e.message}"
-  rescue => e
-    Rails.logger.error "Payment error: #{e.class} - #{e.message}"
-    redirect_to checkout_confirmation_path(plan_type: plan_type, campaign_id: campaign_id),
-                alert: "決済処理中にエラーが発生しました: #{e.message}"
-  end
-end
 
   def success
     @payment = Payment.find_by(id: params[:payment_id]) if params[:payment_id]
@@ -141,91 +141,91 @@ end
     end
   end
 
-def process_subscription_payment(plan_type, payjp_token = nil)
-  unless plan_type.present? && Subscription::PLAN_PRICES.key?(plan_type.to_sym)
-    redirect_to plans_path, alert: "無効なプランです。"
-    return
-  end
-
-  amount = Subscription::PLAN_PRICES[plan_type.to_sym]
-
-  customer_id = current_client.payjp_customer_id
-
-  # =========================
-  # 初回のみカード登録
-  # =========================
-  if customer_id.blank?
-    unless payjp_token.present?
-      redirect_to checkout_confirmation_path(plan_type: plan_type),
-                  alert: "カード情報が必要です。"
+  def process_subscription_payment(plan_type, payjp_token = nil)
+    unless plan_type.present? && Subscription::PLAN_PRICES.key?(plan_type.to_sym)
+      redirect_to plans_path, alert: "無効なプランです。"
       return
     end
 
-    customer = Payjp::Customer.create(
-      email: current_client.email,
-      description: "User #{current_client.id}",
-      card: payjp_token
+    amount = Subscription::PLAN_PRICES[plan_type.to_sym]
+    customer_id = current_client.payjp_customer_id
+
+    # =========================
+    # 初回のみカード登録
+    # =========================
+    if customer_id.blank?
+      unless payjp_token.present?
+        redirect_to checkout_confirmation_path(plan_type: plan_type),
+                    alert: "カード情報が必要です。"
+        return
+      end
+
+      customer = Payjp::Customer.create(
+        email: current_client.email,
+        description: "User #{current_client.id}",
+        card: payjp_token
+      )
+
+      customer_id = customer.id
+      current_client.update!(payjp_customer_id: customer_id)
+    else
+      customer = Payjp::Customer.retrieve(customer_id)
+    end
+
+    # =========================
+    # TRIAL
+    # =========================
+    if plan_type == 'trial'
+      current_client.subscriptions.where(status: :active).update_all(status: :cancelled)
+
+      subscription = current_client.subscriptions.create!(
+        plan_type: :trial,
+        status: :active,
+        trial_ends_at: Subscription::TRIAL_DAYS.days.from_now
+      )
+
+      current_client.update!(
+        subscription_plan: "trial",
+        subscription_status: "active",
+        trial_ends_at: subscription.trial_ends_at
+      )
+
+      redirect_to checkout_success_path(subscription_id: subscription.id),
+                  notice: "トライアルを開始しました。"
+      return
+    end
+
+    # =========================
+    # PAID PLAN（既存customerで課金）
+    # =========================
+    charge = Payjp::Charge.create(
+      amount: amount,
+      currency: 'jpy',
+      customer: customer_id,
+      description: "#{plan_type} Plan"
     )
 
-    customer_id = customer.id
-    current_client.update!(payjp_customer_id: customer_id)
+    if charge.paid
+      current_client.subscriptions.where(status: :active).update_all(status: :cancelled)
 
-  else
-    # 既存顧客の場合はカード追加しない
-    customer = Payjp::Customer.retrieve(customer_id)
+      subscription = current_client.subscriptions.create!(
+        plan_type: plan_type,
+        status: :active,
+        payjp_subscription_id: charge.id
+      )
+
+      current_client.update!(
+        subscription_plan: plan_type,
+        subscription_status: "active"
+      )
+
+      redirect_to checkout_success_path(subscription_id: subscription.id),
+                  notice: "プラン登録完了"
+    else
+      redirect_to checkout_confirmation_path(plan_type: plan_type),
+                  alert: "決済失敗"
+    end
   end
-
-  # =========================
-  # TRIAL
-  # =========================
-  if plan_type == 'trial'
-    current_client.subscriptions.where(status: :active).update_all(status: :cancelled)
-
-    subscription = current_client.subscriptions.create!(
-      plan_type: :trial,
-      status: :active,
-      trial_ends_at: Subscription::TRIAL_DAYS.days.from_now
-    )
-
-    current_client.update!(
-      subscription_plan: "trial",
-      subscription_status: "active",
-      trial_ends_at: subscription.trial_ends_at
-    )
-
-    redirect_to checkout_success_path(subscription_id: subscription.id),
-                notice: "トライアルを開始しました。"
-    return
-  end
-
-  # =========================
-  # PAID PLAN（既存customerで課金）
-  # =========================
-  charge = Payjp::Charge.create(
-    amount: amount,
-    currency: 'jpy',
-    customer: customer_id,
-    description: "#{plan_type} Plan"
-  )
-
-  if charge.paid
-    current_client.subscriptions.where(status: :active).update_all(status: :cancelled)
-
-    subscription = current_client.subscriptions.create!(
-      plan_type: plan_type,
-      status: :active,
-      payjp_subscription_id: charge.id
-    )
-
-    current_client.update!(subscription_plan: plan_type)
-
-    redirect_to checkout_success_path(subscription_id: subscription.id),
-                notice: "プラン登録完了"
-  else
-    redirect_to checkout_confirmation_path(plan_type: plan_type),
-                alert: "決済失敗"
-  end
-end
 
   def send_campaign(campaign)
     ::PushNotificationSender.deliver(campaign)

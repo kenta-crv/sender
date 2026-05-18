@@ -107,32 +107,7 @@ class Client < ApplicationRecord
       nil
     end
   end
-
-  after_create :initialize_trial_subscription, if: :new_record?
-  before_create :generate_api_key_if_blank
-
-  private
-
-  def generate_api_key_if_blank
-    if api_key.blank?
-      self.api_key = SecureRandom.hex(32)
-    end
-  end
-
-  def initialize_trial_subscription
-    subscriptions.create!(
-      plan_type: :trial,
-      status: :active,
-      trial_ends_at: 15.days.from_now
-    )
-    update(
-      subscription_plan: "trial",
-      subscription_status: "active",
-      trial_ends_at: 15.days.from_now
-    )
-  end
-
-    # =========================
+  # =========================
   # 月キー
   # =========================
   def current_month_key
@@ -176,4 +151,31 @@ class Client < ApplicationRecord
   def increment_monthly_sent!(count)
     monthly_usage_log.increment!(:sent_count, count)
   end
+
+
+  after_create :initialize_trial_subscription, if: :new_record?
+  before_create :generate_api_key_if_blank
+
+  private
+
+  def generate_api_key_if_blank
+    if api_key.blank?
+      self.api_key = SecureRandom.hex(32)
+    end
+  end
+
+  def initialize_trial_subscription
+    trial_end = Subscription::TRIAL_DAYS.days.from_now
+    subscriptions.create!(
+      plan_type: :trial,
+      status: :active,
+      trial_ends_at: trial_end
+    )
+    update(
+      subscription_plan: "trial",
+      subscription_status: "active",
+      trial_ends_at: trial_end
+    )
+  end
+
 end

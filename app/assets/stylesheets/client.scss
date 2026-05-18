@@ -377,3 +377,31 @@
   0%, 100% { transform: translateX(0); }
   50% { transform: translateX(5px); }
 }
+
+
+/* ==========================================
+     追加: 残り送信数表示・KPIカード拡張用のCSS
+     ========================================== */
+  .badge-limit {
+    border: 1px solid var(--electric-blue);
+    color: var(--electric-blue);
+    background: rgba(0, 162, 255, 0.05);
+    box-shadow: var(--glow);
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-left: 10px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .glass-card {
+    .resets-in {
+      margin: 8px 0 0 0;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .mt-2 {
+      margin-top: 0.75rem;
+    }
+  }

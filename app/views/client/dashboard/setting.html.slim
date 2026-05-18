@@ -66,6 +66,9 @@
             / ===== プラン変更 =====
             h6.mt-4 Subscription
             p 現在のプランを変更・管理できます
+            - if current_client.subscription_plan == 'trial' && current_client.trial_ends_at.present?
+              p.text-info.mb-3
+                | 【無料トライアル期間】 #{current_client.trial_ends_at.strftime('%Y/%m/%d %H:%M')} まで
             = link_to 'Manage Plan', client_subscription_path, class: 'btn-electric-outline'
 
             hr

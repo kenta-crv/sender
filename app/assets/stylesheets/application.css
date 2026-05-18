@@ -3587,11 +3587,17 @@ h2::after {
 
 
 
+
+
+
+
+
 /* =========================================
-   CTA SECTION
+   AI TRIAL CTA SECTION
+   完全独立命名
 ========================================= */
 
-.section-trial-cta {
+.ai-trial-cta-section {
   position: relative;
   overflow: hidden;
 
@@ -3610,49 +3616,49 @@ h2::after {
    BACKGROUND GLOW
 ========================================= */
 
-.trial-cta-glow {
+.ai-trial-cta-bg-glow {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
 
-  &::before,
-  &::after {
-    content: '';
+.ai-trial-cta-bg-glow::before,
+.ai-trial-cta-bg-glow::after {
+  content: '';
 
-    position: absolute;
-    border-radius: 50%;
+  position: absolute;
+  border-radius: 50%;
 
-    filter: blur(90px);
-  }
+  filter: blur(100px);
+}
 
-  &::before {
-    width: 420px;
-    height: 420px;
+.ai-trial-cta-bg-glow::before {
+  width: 420px;
+  height: 420px;
 
-    background: rgba(0, 183, 255, 0.20);
+  background: rgba(0, 183, 255, 0.18);
 
-    top: 10%;
-    left: 50%;
+  top: 8%;
+  left: 50%;
 
-    transform: translateX(-50%);
-  }
+  transform: translateX(-50%);
+}
 
-  &::after {
-    width: 280px;
-    height: 280px;
+.ai-trial-cta-bg-glow::after {
+  width: 280px;
+  height: 280px;
 
-    background: rgba(0, 114, 255, 0.18);
+  background: rgba(0, 102, 255, 0.14);
 
-    bottom: 0;
-    right: 10%;
-  }
+  bottom: 0;
+  right: 8%;
 }
 
 /* =========================================
-   INNER
+   BOX
 ========================================= */
 
-.trial-cta-container {
+.ai-trial-cta-box {
   position: relative;
   z-index: 2;
 
@@ -3662,6 +3668,8 @@ h2::after {
   padding: 72px 48px;
 
   border-radius: 36px;
+
+  text-align: center;
 
   background:
     linear-gradient(
@@ -3676,9 +3684,7 @@ h2::after {
 
   box-shadow:
     0 24px 80px rgba(0,0,0,0.35),
-    0 0 50px rgba(0,162,255,0.10);
-
-  text-align: center;
+    0 0 50px rgba(0,162,255,0.08);
 
   @media (max-width: 768px) {
     padding: 48px 22px;
@@ -3690,7 +3696,7 @@ h2::after {
    BADGE
 ========================================= */
 
-.trial-cta-badge {
+.ai-trial-cta-badge {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -3699,11 +3705,11 @@ h2::after {
 
   border-radius: 999px;
 
-  background: rgba(0, 162, 255, 0.12);
+  background: rgba(0, 162, 255, 0.10);
 
-  border: 1px solid rgba(0, 162, 255, 0.28);
+  border: 1px solid rgba(0, 162, 255, 0.24);
 
-  color: #7fd5ff;
+  color: #86d6ff;
 
   font-size: 0.92rem;
   font-weight: 700;
@@ -3714,30 +3720,28 @@ h2::after {
    PULSE
 ========================================= */
 
-.pulse-dot {
+.ai-trial-cta-pulse {
   width: 10px;
   height: 10px;
 
   border-radius: 50%;
 
-  background: #33d17a;
+  background: #35d98a;
 
-  box-shadow: 0 0 0 rgba(51, 209, 122, 0.7);
-
-  animation: pulseAnimation 2s infinite;
+  animation: aiTrialPulse 2s infinite;
 }
 
-@keyframes pulseAnimation {
+@keyframes aiTrialPulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(51, 209, 122, 0.7);
+    box-shadow: 0 0 0 0 rgba(53, 217, 138, 0.8);
   }
 
   70% {
-    box-shadow: 0 0 0 14px rgba(51, 209, 122, 0);
+    box-shadow: 0 0 0 14px rgba(53, 217, 138, 0);
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgba(51, 209, 122, 0);
+    box-shadow: 0 0 0 0 rgba(53, 217, 138, 0);
   }
 }
 
@@ -3745,45 +3749,44 @@ h2::after {
    TITLE
 ========================================= */
 
-.trial-cta-title {
+.ai-trial-cta-title {
   margin-top: 28px;
 
   color: #ffffff;
 
-  font-size: clamp(2.3rem, 5vw, 4.2rem);
-  line-height: 1.18;
+  font-size: clamp(2.4rem, 5vw, 4.4rem);
+  line-height: 1.15;
   font-weight: 900;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
+}
 
-  span {
-    background: linear-gradient(
-      135deg,
-      #ffffff 0%,
-      #8ed8ff 35%,
-      #2ea8ff 100%
-    );
+.ai-trial-cta-title span {
+  background: linear-gradient(
+    135deg,
+    #ffffff 0%,
+    #9dddff 35%,
+    #32a8ff 100%
+  );
 
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* =========================================
    DESCRIPTION
 ========================================= */
 
-.trial-cta-description {
+.ai-trial-cta-description {
   margin-top: 28px;
 
-  color: rgba(255,255,255,0.72);
+  color: rgba(255,255,255,0.74);
 
-  font-size: 1.12rem;
-  line-height: 2;
+  font-size: 1.08rem;
+  line-height: 1.95;
   font-weight: 500;
 
   @media (max-width: 768px) {
     font-size: 1rem;
-    line-height: 1.9;
   }
 }
 
@@ -3791,7 +3794,7 @@ h2::after {
    POINTS
 ========================================= */
 
-.trial-cta-points {
+.ai-trial-cta-points {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
@@ -3800,7 +3803,7 @@ h2::after {
   margin-top: 34px;
 }
 
-.trial-cta-point {
+.ai-trial-cta-point {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -3815,19 +3818,19 @@ h2::after {
 
   color: rgba(255,255,255,0.88);
 
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   font-weight: 700;
+}
 
-  i {
-    color: #4bd68b;
-  }
+.ai-trial-cta-point i {
+  color: #49d88c;
 }
 
 /* =========================================
-   BUTTON
+   CTA BUTTON
 ========================================= */
 
-.ok-btn-primary {
+.ai-trial-cta-button {
   position: relative;
   overflow: hidden;
 
@@ -3836,9 +3839,9 @@ h2::after {
   justify-content: center;
   gap: 12px;
 
-  width: min(100%, 620px);
+  width: min(100%, 640px);
 
-  min-height: 76px;
+  min-height: 78px;
 
   margin-top: 42px;
   padding: 20px 42px;
@@ -3848,30 +3851,30 @@ h2::after {
   background:
     linear-gradient(
       135deg,
-      #00c2ff 0%,
-      #0084ff 45%,
-      #005dff 100%
+      #00c8ff 0%,
+      #008cff 45%,
+      #005eff 100%
     );
+
+  border: 1px solid rgba(255,255,255,0.14);
 
   color: #ffffff !important;
   text-decoration: none !important;
-
-  border: 1px solid rgba(255,255,255,0.14);
 
   font-size: 1.16rem;
   font-weight: 900;
   letter-spacing: 0.04em;
 
   box-shadow:
-    0 20px 40px rgba(0, 132, 255, 0.38),
-    0 0 50px rgba(0, 194, 255, 0.30);
+    0 18px 40px rgba(0, 140, 255, 0.36),
+    0 0 48px rgba(0, 194, 255, 0.24);
 
   transition:
     transform 0.3s ease,
     box-shadow 0.3s ease,
     filter 0.3s ease;
 
-  animation: floatingButton 3.8s ease-in-out infinite;
+  animation: aiTrialFloating 3.8s ease-in-out infinite;
 
   @media (max-width: 768px) {
     width: 100%;
@@ -3882,14 +3885,14 @@ h2::after {
 }
 
 /* 光 */
-.ok-btn-primary::before {
+.ai-trial-cta-button::before {
   content: '';
 
   position: absolute;
   top: -140%;
-  left: -30%;
+  left: -35%;
 
-  width: 36%;
+  width: 34%;
   height: 380%;
 
   background: linear-gradient(
@@ -3901,34 +3904,34 @@ h2::after {
 
   transform: rotate(24deg);
 
-  animation: shineMove 3.8s linear infinite;
+  animation: aiTrialShine 3.8s linear infinite;
 }
 
-.ok-btn-primary span,
-.ok-btn-primary i {
+.ai-trial-cta-button-text,
+.ai-trial-cta-button i {
   position: relative;
   z-index: 2;
 }
 
-.ok-btn-primary i {
+.ai-trial-cta-button i {
   transition: transform 0.28s ease;
 }
 
-.ok-btn-primary:hover {
+.ai-trial-cta-button:hover {
   transform: translateY(-4px) scale(1.02);
 
   box-shadow:
-    0 28px 60px rgba(0, 132, 255, 0.48),
-    0 0 70px rgba(0, 194, 255, 0.42);
+    0 30px 60px rgba(0, 132, 255, 0.46),
+    0 0 70px rgba(0, 194, 255, 0.36);
 
   filter: brightness(1.06);
 }
 
-.ok-btn-primary:hover i {
+.ai-trial-cta-button:hover i {
   transform: translateX(6px);
 }
 
-.ok-btn-primary:active {
+.ai-trial-cta-button:active {
   transform: translateY(1px);
 }
 
@@ -3936,7 +3939,7 @@ h2::after {
    NOTE
 ========================================= */
 
-.trial-cta-note {
+.ai-trial-cta-note {
   margin-top: 18px;
 
   color: rgba(255,255,255,0.48);
@@ -3949,7 +3952,7 @@ h2::after {
    ANIMATION
 ========================================= */
 
-@keyframes shineMove {
+@keyframes aiTrialShine {
   0% {
     left: -40%;
   }
@@ -3959,7 +3962,7 @@ h2::after {
   }
 }
 
-@keyframes floatingButton {
+@keyframes aiTrialFloating {
   0% {
     transform: translateY(0);
   }
@@ -3977,12 +3980,77 @@ h2::after {
    MOBILE
 ========================================= */
 
-.sp-only {
+.ai-trial-sp-only {
   display: none;
 }
 
 @media (max-width: 768px) {
-  .sp-only {
+  .ai-trial-sp-only {
     display: inline;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+/* ===== Okurite Flash Notification System ===== */
+
+.flash-message {
+  position: relative;
+  max-width: 1200px;
+  margin: 20px auto 0 auto;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: flashFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1000;
+}
+
+/* Notice: エレクトリックブルーのネオン発光 */
+.flash-notice {
+  background: rgba(0, 162, 255, 0.08);
+  border: 1px solid rgba(0, 162, 255, 0.4);
+  color: #00a2ff;
+  text-shadow: 0 0 8px rgba(0, 162, 255, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 162, 255, 0.1);
+}
+
+/* Alert: 危険・警告操作用（Logoutや解約等と整合させた赤のネオン発光） */
+.flash-alert {
+  background: rgba(255, 80, 80, 0.08);
+  border: 1px solid rgba(255, 80, 80, 0.4);
+  color: #ff8080;
+  text-shadow: 0 0 8px rgba(255, 80, 80, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 80, 80, 0.1);
+}
+
+@keyframes flashFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* モバイル対応の調整 */
+@media (max-width: 1240px) {
+  .flash-message {
+    margin-left: 20px;
+    margin-right: 20px;
   }
 }

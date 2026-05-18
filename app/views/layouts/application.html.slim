@@ -7,13 +7,14 @@ html lang="ja"
     .hero 
       = render "shared/breadcrumbs" if breadcrumbs.any?
 
-    - if notice.present?
-      .flash-notice
-        = notice
+    / Flash メッセージセクション（デザインの最大幅にジャストフィットする構造）
+    - if flash[:notice]
+      .flash-message.flash-notice
+        = flash[:notice]
 
-    - if alert.present?
-      .flash-alert
-        = alert
+    - if flash[:alert]
+      .flash-message.flash-alert
+        = flash[:alert]
 
     = yield
 
