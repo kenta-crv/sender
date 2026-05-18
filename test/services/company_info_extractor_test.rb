@@ -43,6 +43,20 @@ class CompanyInfoExtractorTest < ActiveSupport::TestCase
     assert_equal "福岡県筑紫野市大字諸田174-2", extractor.extract[:address]
   end
 
+  test "extract uses place prefix from branch-like company name" do
+    customer = Customer.new(company: "川口配送センター／イオンネクストデリバリー株式会社")
+    extractor = CompanyInfoExtractor.new(<<~HTML, customer: customer)
+      <html>
+        <body>
+          <p>本社 〒261-0023 千葉県千葉市美浜区中瀬1丁目6</p>
+          <p>川口営業所 〒334-0056 埼玉県川口市大字峯91-1</p>
+        </body>
+      </html>
+    HTML
+
+    assert_equal "埼玉県川口市大字峯91-1", extractor.extract[:address]
+  end
+
   test "extract_tel ignores uuid fragments" do
     extractor = CompanyInfoExtractor.new(<<~HTML)
       <html>

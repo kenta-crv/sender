@@ -261,6 +261,25 @@ class BrightData::CompanyExtractorTest < ActiveSupport::TestCase
     assert_equal ["株式会社SA"], companies.map { |company| company[:company] }
   end
 
+  test "keeps official facility page when title matches query location name" do
+    serp_result = {
+      "organic_results" => [
+        {
+          "title" => "ふれあい多居夢 蕨",
+          "link" => "https://www.fureai-hiroba.co.jp/facility/fureaitaimu-warabi/"
+        }
+      ]
+    }
+
+    companies = BrightData::CompanyExtractor.extract(
+      serp_result,
+      query: "株式会社ふれあい広場 ふれあい多居夢 蕨 埼玉県 蕨市 会社概要"
+    )
+
+    assert_equal ["株式会社ふれあい広場 ふれあい多居夢 蕨"], companies.map { |company| company[:company] }
+    assert_equal ["https://www.fureai-hiroba.co.jp/facility/fureaitaimu-warabi/"], companies.map { |company| company[:url] }
+  end
+
   test "sanitizes prefixed corporate titles" do
     serp_result = {
       "organic_results" => [

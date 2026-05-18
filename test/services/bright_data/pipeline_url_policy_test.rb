@@ -647,6 +647,28 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     assert_operator overview_score[0], :<, office_score[0]
   end
 
+  test "candidate_priority prefers official facility page for facility-like customer names" do
+    customer = Customer.new(company: "株式会社ふれあい広場 ふれあい多居夢 蕨")
+    facility = { url: "https://www.fureai-hiroba.co.jp/facility/fureaitaimu-warabi/" }
+    overview = { url: "https://www.fureai-hiroba.co.jp/aboutus/" }
+
+    facility_score = BrightData::Pipeline.send(:candidate_priority, customer, facility, 1)
+    overview_score = BrightData::Pipeline.send(:candidate_priority, customer, overview, 0)
+
+    assert_operator facility_score[0], :<, overview_score[0]
+  end
+
+  test "search_address_for_query does not let station access text dominate searches" do
+    assert_equal "埼玉県", BrightData::Pipeline.send(:search_address_for_query, "埼玉県 草加市 新田駅 車12分")
+  end
+
+  test "url policy excludes freejob recruitment pages" do
+    assert BrightData::UrlPolicy.excluded_url?(
+      "https://freejob.work/FJAC33030296284/",
+      title: "株式会社U-platinum 配送ドライバー 求人"
+    )
+  end
+
   test "execute_from_db selects most recently reset targets first" do
     Customer.create!(company: "Old Target", address: "Osaka", updated_at: 2.days.ago)
     Customer.create!(company: "New Reset Target", address: "Osaka", updated_at: 1.minute.ago)
@@ -754,6 +776,111 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
 
     assert_equal "serp_error", first.reload.serp_status
     assert_equal "serp_error", second.reload.serp_status
+  end
+
+  test "execute_from_db logs target companies separately from candidate urls" do
+    customer = Customer.create!(company: "株式会社ログ分離", address: "東京都港区芝1-1-1")
+
+    fake_client = Object.new
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1, &progress|
+      progress&.call("index" => 0, "total" => queries.size)
+      [
+        {
+          "query" => queries.first,
+          "result" => {
+            "organic_results" => [
+              {
+                "title" => "株式会社ログ分離 | 会社概要",
+                "link" => "https://log-separation.example/company/"
+              }
+            ]
+          },
+          "timestamp" => Time.current.iso8601
+        }
+      ]
+    end
+
+    stdout, = capture_io do
+      with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
+        with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
+          with_singleton_method(BrightData::ResultExporter, :to_csv, ->(_companies) {}) do
+            with_singleton_method(BrightData::ExtractionStats, :record, ->(*_args, **_kwargs) {}) do
+              with_singleton_method(BrightData::WebEnricher, :enrich_from_url, ->(url, _customer) { { matched: true, source_url: url } }) do
+                BrightData::Pipeline.execute_from_db(limit: 1, customer_ids: [customer.id], dry_run: false)
+              end
+            end
+          end
+        end
+      end
+    end
+
+    assert_includes stdout, "対象企業: 株式会社ログ分離 (ID=#{customer.id}"
+    assert_match(/候補URL 1\/1 .*candidate=株式会社ログ分離 url=https:\/\/log-separation\.example\/company\//, stdout)
+    refute_includes stdout, "customer=株式会社ログ分離"
+  end
+
+  test "execute_from_db saves audit run target results with run id and jid" do
+    customer = Customer.create!(company: "Audit Target Company", address: "東京都港区芝1-1")
+    run = SerpEnrichmentRun.create_for_targets!(
+      run_id: "audit-run-test",
+      industry: "",
+      limit: 1,
+      targets: [customer]
+    )
+
+    fake_client = Object.new
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1, &progress|
+      progress&.call("index" => 0, "total" => queries.size)
+      [
+        {
+          "query" => queries.first,
+          "result" => {
+            "organic_results" => [
+              {
+                "title" => "Audit Target Company | 会社概要",
+                "link" => "https://audit-target.example/company/"
+              }
+            ]
+          },
+          "timestamp" => Time.current.iso8601
+        }
+      ]
+    end
+
+    stdout, = capture_io do
+      with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
+        with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
+          with_singleton_method(BrightData::ResultExporter, :to_csv, ->(_companies) {}) do
+            with_singleton_method(BrightData::ExtractionStats, :record, ->(*_args, **_kwargs) {}) do
+              with_singleton_method(BrightData::WebEnricher, :enrich_from_url, ->(url, _customer) {
+                { matched: true, source_url: url, tel: "03-1111-2222", address: "東京都港区芝1-1-1" }
+              }) do
+                BrightData::Pipeline.execute_from_db(
+                  limit: 1,
+                  customer_ids: [customer.id],
+                  progress_run_id: run.run_id,
+                  jid: "jid-audit-1",
+                  dry_run: false
+                )
+              end
+            end
+          end
+        end
+      end
+    end
+
+    assert_includes stdout, "[SERP run=audit-run-test jid=jid-audit-1]"
+    assert_equal "done", run.reload.status
+    assert_equal "jid-audit-1", run.jid
+
+    target = run.targets.first.reload
+    assert_equal customer.id, target.customer_id
+    assert_equal "updated", target.result_status
+    assert_equal 1, target.candidate_count
+    assert_equal "https://audit-target.example/company/", target.selected_url
+    assert_includes target.update_keys, "url"
+    assert_equal "serp_done", target.after_serp_status
+    assert_equal "03-1111-2222", target.after_tel
   end
 
   private

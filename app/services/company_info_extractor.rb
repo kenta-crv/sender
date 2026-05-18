@@ -590,6 +590,8 @@ class CompanyInfoExtractor
       next if normalized.match?(/\A(?:ドライバ|ドライバー|求人|採用|募集|スタッフ|アルバイト|パート|正社員)\z/)
 
       branch_tokens << normalized
+      place_prefix = normalized.match(/\A(.{2,8}?)(?:配送センター|デリバリーステーション|センター|営業所|支店|倉庫|工場|事業所|店舗|施設)\z/)
+      branch_tokens << place_prefix[1] if place_prefix && place_prefix[1].length >= 2
     end
     branch_tokens.uniq!
     return [] if branch_tokens.empty?

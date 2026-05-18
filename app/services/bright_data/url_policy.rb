@@ -58,6 +58,7 @@ module BrightData
       ecareer.ne.jp
       froma.com
       employment.en-japan.com
+      freejob.work
       job-gear.net
       r-agent.com
       sftworks.jp

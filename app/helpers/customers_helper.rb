@@ -17,6 +17,19 @@ module CustomersHelper
     SERP_STATUS_LABELS[value] || value.to_s
   end
 
+  def serp_run_result_label(value)
+    case value.to_s
+    when "", "pending"   then "待機中"
+    when "updated"       then "更新あり"
+    when "url_only"      then "URLのみ"
+    when "no_candidate"  then "候補なし"
+    when "excluded"      then "除外URLのみ"
+    when "no_update"     then "更新なし"
+    when "error"         then "エラー"
+    else value.to_s
+    end
+  end
+
   def serp_status_badge_class(value)
     case value
     when nil, ""        then "ai-badge-gray"
@@ -25,6 +38,17 @@ module CustomersHelper
     when "serp_imported" then "ai-badge-blue"
     when "serp_error" then "ai-badge-red"
     else "ai-badge-gray"
+    end
+  end
+
+  def serp_status_sc_badge_class(value)
+    case value
+    when nil, ""         then "sc-detect__badge--info"
+    when "serp_queued"   then "sc-detect__badge--warning"
+    when "serp_done"     then "sc-detect__badge--success"
+    when "serp_imported" then "sc-detect__badge--info"
+    when "serp_error"    then "sc-detect__badge--danger"
+    else "sc-detect__badge--info"
     end
   end
 

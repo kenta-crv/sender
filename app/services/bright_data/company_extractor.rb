@@ -53,6 +53,7 @@ module BrightData
         company_name = parse_company_name(title, query: query, allow_generic_fallback: idx < 2, allow_title_fallback: false)
         company_name ||= generic_profile_company_name(title, url, query, idx)
         company_name ||= query_company_profile_name(title, url, query, idx)
+        company_name ||= query_company_location_page_name(title, url, query, idx)
         generic_fallback = company_name.present? &&
                            generic_title_only?(title) &&
                            company_name == query_company_name(query)
@@ -188,10 +189,38 @@ module BrightData
       company_name
     end
 
+    def self.query_company_location_page_name(title, url, query, index)
+      return nil unless index.to_i < MAX_ORGANIC_RESULTS
+      return nil unless location_page_url?(url)
+      return nil if title.to_s.match?(/求人|採用|転職|バイト|アルバイト|パート/)
+
+      company_name = query_company_name(query)
+      return nil if company_name.blank?
+      return nil unless company_name.match?(LEGAL_ENTITY_PATTERN)
+      return nil if WebEnricher.send(:normalize_company, company_name).length < 4
+
+      title_core = normalize_company_core(title).delete(" 　").downcase
+      query_core = normalize_company_core(company_name).delete(" 　").downcase
+      full_query_core = normalize_company_core(query).delete(" 　").downcase
+      return nil if title_core.length < 4
+      return nil unless query_core.include?(title_core) ||
+                        title_core.include?(query_core) ||
+                        full_query_core.include?(title_core)
+
+      company_name
+    end
+
     def self.profile_like_url?(url)
       path = URI.parse(url.to_s).path.to_s
       path.match?(GENERIC_PROFILE_PATH_PATTERN) ||
         path.match?(%r{/(?:company|about|profile|corporate|outline|gaiyo|gaiyou|kaisha)(?:/|[-_a-z]*\.html?|$)}i)
+    rescue URI::InvalidURIError
+      false
+    end
+
+    def self.location_page_url?(url)
+      path = URI.parse(url.to_s).path.to_s
+      path.match?(%r{/(?:facility|shop|office|branch|store)(?:/|[-_a-z]*\.html?|$)}i)
     rescue URI::InvalidURIError
       false
     end

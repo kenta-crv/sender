@@ -83,7 +83,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     with_singleton_method(SerpSidekiqManager, :ensure_running, ->(*_args, **_kwargs) { ready }) do
       with_singleton_method(SerpProgressTracker, :start, ->(**kwargs) { progress_args = kwargs }) do
-        with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued_args = args }) do
+        with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued_args = args; "jid-controller-1" }) do
           post serp_search_customers_path, params: { limit: 2 }
         end
       end
@@ -96,7 +96,12 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal enqueued_args[3], progress_args[:run_id]
     assert_equal 2, progress_args[:total]
     assert_equal [newer.id, older.id], progress_args[:target_ids]
+    audit_run = SerpEnrichmentRun.find_by_run_id(progress_args[:run_id])
+    assert_equal "jid-controller-1", audit_run.jid
+    assert_equal [newer.id, older.id], audit_run.targets.order(:position).pluck(:customer_id)
+    assert_equal ["SERP Progress Newer", "SERP Progress Older"], audit_run.targets.order(:position).pluck(:company)
     assert_includes flash[:notice], "進捗バー"
+    assert_includes flash[:notice], "SERP Progress Newer(ID:#{newer.id})"
   end
 
   test "serp_search limits queued ids by company query" do
@@ -113,7 +118,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     with_singleton_method(SerpSidekiqManager, :ensure_running, ->(*_args, **_kwargs) { ready }) do
       with_singleton_method(SerpProgressTracker, :start, ->(**kwargs) { progress_args = kwargs }) do
-        with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued_args = args }) do
+        with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued_args = args; "jid-controller-query" }) do
           post serp_search_customers_path, params: { limit: 10, company_query: "Query Target" }
         end
       end
@@ -148,7 +153,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     with_singleton_method(SerpSidekiqManager, :ensure_running, ->(*_args, **_kwargs) { ready }) do
       with_singleton_method(SerpProgressTracker, :start, ->(**kwargs) { progress_args = kwargs }) do
-        with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued_args = args }) do
+        with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued_args = args; "jid-controller-explicit" }) do
           post serp_search_customers_path, params: { limit: 10, company_query: "Explicit Done Target" }
         end
       end

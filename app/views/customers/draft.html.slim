@@ -1,208 +1,293 @@
-/ /customers/draft - SERP補完ダッシュボード
-.ai-dash-container
+.sc-detect.container-fluid.py-4
   - set_meta_tags noindex: true
 
   / ── ダッシュボードサマリー ──
   - stats = @dashboard_stats
   - total = stats[:total]
-  section.ai-dash-card
-    .ai-dash-header
-      i.fas.fa-chart-bar.ai-icon-blue
-      h2.ai-dash-headline 進捗ダッシュボード
-    .ai-dash-body
-      .ai-dash-summary-grid
-        .ai-summary-block
-          h3.ai-summary-title SERPステータス別件数
-          ul.ai-summary-list
-            li
-              span.ai-label SERP未処理
-              strong.ai-count = "#{stats[:status][:null]}件"
-            li
-              span.ai-label SERP処理中
-              strong.ai-count = "#{stats[:status][:queued]}件"
-            li
-              span.ai-label SERP完了
-              strong.ai-count = "#{stats[:status][:done]}件"
-            li
-              span.ai-label 登録済み
-              strong.ai-count = "#{stats[:status][:imported]}件"
-            li
-              span.ai-label エラー
-              strong.ai-count = "#{stats[:status][:error]}件"
-            li.ai-summary-total
-              span.ai-label 全件数
-              strong.ai-count = "#{total}件"
+  .row.mb-4
+    .col-12
+      .sc-detect__card
+        .sc-detect__card-header
+          h5.m-0
+            i.fas.fa-chart-bar.me-2 style="color: #38bdf8;"
+            | 進捗ダッシュボード
+        .sc-detect__card-body
+          .row.g-4
+            .col-lg-6
+              h6.sc-detect__label.mb-3 SERPステータス別件数
+              .sc-detect__table-wrapper style="background: rgba(2, 6, 23, 0.4);"
+                table.sc-detect__table.mb-0
+                  tbody
+                    tr
+                      th SERP未処理
+                      td.text-end.fw-bold = "#{stats[:status][:null]}件"
+                    tr
+                      th SERP処理中
+                      td.text-end.fw-bold style="color: #7dd3fc;" = "#{stats[:status][:queued]}件"
+                    tr
+                      th SERP完了
+                      td.text-end.fw-bold style="color: #10b981;" = "#{stats[:status][:done]}件"
+                    tr
+                      th 登録済み
+                      td.text-end.fw-bold style="color: #38bdf8;" = "#{stats[:status][:imported]}件"
+                    tr
+                      th エラー
+                      td.text-end.fw-bold style="color: #ef4444;" = "#{stats[:status][:error]}件"
+                    tr style="border-top: 1px solid rgba(56, 189, 248, 0.3);"
+                      th 全件数
+                      td.text-end.h5.fw-bold.mb-0 = "#{total}件"
 
-        .ai-summary-block
-          h3.ai-summary-title 取得状況サマリー
-          ul.ai-summary-list
-            li
-              span.ai-label tel取得済み
-              strong.ai-count = "#{stats[:fill][:tel]} / #{total} (#{percentage_of(stats[:fill][:tel], total)}%)"
-            li
-              span.ai-label address詳細取得済み
-              strong.ai-count = "#{stats[:fill][:address]} / #{total} (#{percentage_of(stats[:fill][:address], total)}%)"
-            li
-              span.ai-label 公式URL取得済み
-              strong.ai-count = "#{stats[:fill][:url]} / #{total} (#{percentage_of(stats[:fill][:url], total)}%)"
-            li
-              span.ai-label contact_url取得済み
-              strong.ai-count = "#{stats[:fill][:contact_url]} / #{total} (#{percentage_of(stats[:fill][:contact_url], total)}%)"
-            li.ai-summary-total
-              span.ai-label 全項目充足（住所詳細）
-              strong.ai-count = "#{stats[:fill][:full]} / #{total} (#{percentage_of(stats[:fill][:full], total)}%)"
+            .col-lg-6
+              h6.sc-detect__label.mb-3 取得状況サマリー
+              .sc-detect__table-wrapper style="background: rgba(2, 6, 23, 0.4);"
+                table.sc-detect__table.mb-0
+                  tbody
+                    tr
+                      th tel取得済み
+                      td.text-end
+                        span.fw-bold = stats[:fill][:tel]
+                        span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);" = "/ #{total} (#{percentage_of(stats[:fill][:tel], total)}%)"
+                    tr
+                      th address詳細取得済み
+                      td.text-end
+                        span.fw-bold = stats[:fill][:address]
+                        span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);" = "/ #{total} (#{percentage_of(stats[:fill][:address], total)}%)"
+                    tr
+                      th 公式URL取得済み
+                      td.text-end
+                        span.fw-bold = stats[:fill][:url]
+                        span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);" = "/ #{total} (#{percentage_of(stats[:fill][:url], total)}%)"
+                    tr
+                      th contact_url取得済み
+                      td.text-end
+                        span.fw-bold = stats[:fill][:contact_url]
+                        span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);" = "/ #{total} (#{percentage_of(stats[:fill][:contact_url], total)}%)"
+                    tr style="border-top: 1px solid rgba(56, 189, 248, 0.3);"
+                      th 全項目充足（住所詳細）
+                      td.text-end
+                        span.h5.fw-bold style="color: #38bdf8;" = stats[:fill][:full]
+                        span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);" = "/ #{total} (#{percentage_of(stats[:fill][:full], total)}%)"
 
-  / ── SERP情報補完（実行ボタン）──
-  section.ai-dash-card
-    .ai-dash-header
-      i.fas.fa-search-plus.ai-icon-blue
-      h2.ai-dash-headline SERP情報補完
-    .ai-dash-body
-      .ai-dash-stats
-        span.ai-label 補完対象件数
-        strong.ai-count = "#{@serp_target_count}件"
-        small.ai-subtext （serp_status未設定 かつ tel/url/contact_url いずれか空）
-      .ai-dash-stats
-        span.ai-label Sidekiq
-        - worker_label = @serp_worker_running ? "起動中" : (@redis_reachable ? "未検出" : "Redis未接続")
-        strong class="ai-worker-state #{@serp_worker_running ? 'is-running' : 'is-stopped'}"
-          = worker_label
-        - unless @serp_queue_size.nil?
-          small.ai-subtext = "キュー #{@serp_queue_size}件"
-        - if @serp_worker_running
-          small.ai-subtext SERP補完はバックグラウンドで実行されます
-        - elsif @redis_reachable
-          small.ai-subtext ボタン押下時にSERP専用Sidekiqを自動起動します
-        - elsif @redis_auto_start_possible
-          small.ai-subtext ボタン押下時にRedisとSERP専用Sidekiqを自動起動します
-        - else
-          small.ai-subtext Redis起動後にSERP補完を開始できます
+  .row.mb-4
+    / ── SERP情報補完（実行ボタン）──
+    .col-xl-4.mb-4.mb-xl-0
+      .sc-detect__card.h-100
+        .sc-detect__card-header
+          h5.m-0
+            i.fas.fa-search-plus.me-2 style="color: #38bdf8;"
+            | SERP情報補完
+        .sc-detect__card-body
+          .text-center.py-3.mb-4 style="background: rgba(56, 189, 248, 0.05); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.1);"
+            .sc-detect__label 補完対象件数
+            .h2.fw-bold style="color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);" = "#{@serp_target_count}件"
+            small style="color: rgba(229, 231, 235, 0.4);" （未設定 または 項目欠損）
 
-      - progress = @serp_progress || {}
-      .ai-serp-progress#serp-progress-panel data-progress-url=serp_progress_customers_path data-active=progress[:active].to_s
-        .ai-progress-topline
-          span.ai-label 現在のSERP補完
-          strong#serp-progress-phase = progress[:phase_label]
-          span#serp-progress-percent.ai-progress-percent = "#{progress[:percent]}%"
-        .ai-progress-track role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="#{progress[:percent]}"
-          #serp-progress-bar.ai-progress-fill style="width: #{progress[:percent]}%"
-        .ai-progress-meta
-          span#serp-progress-message = progress[:message]
-          span#serp-progress-counts = "SERP #{progress[:serp_completed]}/#{progress[:serp_total]} / Web #{progress[:web_completed]}/#{progress[:web_total]}"
-          span#serp-progress-eta = "経過 #{progress[:elapsed_label]} / 残り目安 #{progress[:eta_label]}"
+          .mb-3
+            .sc-detect__label Sidekiq
+            - worker_label = @serp_worker_running ? "起動中" : (@redis_reachable ? "未検出" : "Redis未接続")
+            span class="sc-worker-state #{@serp_worker_running ? 'is-running' : 'is-stopped'}"
+              = worker_label
+            - unless @serp_queue_size.nil?
+              small.ms-2 style="color: rgba(229, 231, 235, 0.5);" = "キュー #{@serp_queue_size}件"
+            - if @serp_worker_running
+              p.small.mt-2.mb-0 SERP補完はバックグラウンドで実行されます
+            - elsif @redis_reachable
+              p.small.mt-2.mb-0 ボタン押下時にSERP専用Sidekiqを自動起動します
+            - elsif @redis_auto_start_possible
+              p.small.mt-2.mb-0 ボタン押下時にRedisとSERP専用Sidekiqを自動起動します
+            - else
+              p.small.mt-2.mb-0 Redis起動後にSERP補完を開始できます
 
-      .ai-dash-form-inline
-        = form_with url: serp_search_customers_path, method: :post, local: true, id: "serp-search-form" do
-          = hidden_field_tag :company_query, @company_query
-          .ai-field-group
-            label 業種フィルタ
-            = select_tag :industry,
+          = form_with url: serp_search_customers_path, method: :post, local: true, id: "serp-search-form" do
+            = hidden_field_tag :company_query, @company_query
+            .sc-detect__form-group
+              label.sc-detect__label 業種フィルタ
+              = select_tag :industry,
                 options_for_select([["全業種", ""]] + Customer.where.not(industry: [nil, ""]).distinct.pluck(:industry).sort.map { |i| [i, i] }),
                 id: "serp-industry-select",
-                class: "ai-select"
-          .ai-field-group
-            label 上限
-            = number_field_tag :limit, 100, min: 1, max: 500, id: "serp-limit-input", class: "ai-input-number"
-          button#start-serp-button.ai-btn.ai-btn-secondary type="button" data-max="#{@serp_target_count}"
-            i.fas.fa-search
-            | Redis/Sidekiq確認後にSERP補完開始
+                class: "sc-detect__input"
+            .sc-detect__form-group
+              label.sc-detect__label 上限
+              = number_field_tag :limit, 100, min: 1, max: 500, id: "serp-limit-input", class: "sc-detect__input"
+            button#start-serp-button.sc-detect__btn.sc-detect__btn--warning.w-100.mt-2 type="button" data-max="#{@serp_target_count}"
+              i.fas.fa-magic.me-2
+              | Redis/Sidekiq確認後にSERP補完開始
 
-  / ── 絞り込みフィルタ ──
-  - serp_status_options = [["全て", ""], ["未処理", "null"], ["処理中", "serp_queued"], ["完了", "serp_done"], ["登録済み", "serp_imported"], ["エラー", "serp_error"]]
-  - fill_filter_options = [["全て", ""], ["tel未取得", "missing_tel"], ["address未取得", "missing_address"], ["address不十分", "partial_address"], ["公式URL未取得", "missing_url"], ["contact_url未取得", "missing_contact_url"], ["全項目充足", "fully_enriched"], ["SERP完了かつtel未取得", "done_missing_tel"], ["SERP完了かつaddress未取得", "done_missing_address"], ["SERP完了かつaddress不十分", "done_partial_address"]]
-  section.ai-dash-card
-    .ai-dash-header
-      i.fas.fa-filter.ai-icon-blue
-      h2.ai-dash-headline 絞り込み
-    .ai-dash-body
-      = form_with url: draft_customers_path, method: :get, local: true, class: "ai-dash-filter-form" do
-        .ai-field-group
-          label 社名
-          = text_field_tag :company_query, @company_query, class: "ai-input-text", placeholder: "会社名で検索"
-        .ai-field-group
-          label SERPステータス
-          = select_tag :serp_status_filter, options_for_select(serp_status_options, params[:serp_status_filter]), class: "ai-select"
-        .ai-field-group
-          label 充足条件
-          = select_tag :fill_filter, options_for_select(fill_filter_options, params[:fill_filter]), class: "ai-select"
-        .ai-field-group
-          label 最終更新 From
-          = date_field_tag :updated_from, params[:updated_from], class: "ai-input-text"
-        .ai-field-group
-          label 最終更新 To
-          = date_field_tag :updated_to, params[:updated_to], class: "ai-input-text"
-        .ai-field-group
-          label.ai-checkbox-label
-            = check_box_tag :updated_today, "1", params[:updated_today] == "1"
-            | 今日のみ（From/To 未指定時）
-        .ai-field-group
-          label 業種
-          = text_field_tag :industry_name, params[:industry_name], class: "ai-input-text", placeholder: "業種名"
-        .ai-field-group
-          button.ai-btn.ai-btn-secondary type="submit"
-            i.fas.fa-filter
-            | 絞り込む
-          = link_to draft_customers_path, class: "ai-btn ai-btn-tertiary" do
-            i.fas.fa-undo
-            | クリア
+    / ── 絞り込みフィルタ ──
+    - serp_status_options = [["全て", ""], ["未処理", "null"], ["処理中", "serp_queued"], ["完了", "serp_done"], ["登録済み", "serp_imported"], ["エラー", "serp_error"]]
+    - fill_filter_options = [["全て", ""], ["tel未取得", "missing_tel"], ["address未取得", "missing_address"], ["address不十分", "partial_address"], ["公式URL未取得", "missing_url"], ["contact_url未取得", "missing_contact_url"], ["全項目充足", "fully_enriched"], ["SERP完了かつtel未取得", "done_missing_tel"], ["SERP完了かつaddress未取得", "done_missing_address"], ["SERP完了かつaddress不十分", "done_partial_address"]]
+    .col-xl-8
+      .sc-detect__card.h-100
+        .sc-detect__card-header
+          h5.m-0
+            i.fas.fa-filter.me-2 style="color: #38bdf8;"
+            | 絞り込み
+        .sc-detect__card-body
+          = form_with url: draft_customers_path, method: :get, local: true do
+            .row.g-3
+              .col-md-4
+                .sc-detect__form-group
+                  label.sc-detect__label 社名
+                  = text_field_tag :company_query, @company_query, class: "sc-detect__input", placeholder: "会社名で検索"
+              .col-md-4
+                .sc-detect__form-group
+                  label.sc-detect__label SERPステータス
+                  = select_tag :serp_status_filter, options_for_select(serp_status_options, params[:serp_status_filter]), class: "sc-detect__input"
+              .col-md-4
+                .sc-detect__form-group
+                  label.sc-detect__label 充足条件
+                  = select_tag :fill_filter, options_for_select(fill_filter_options, params[:fill_filter]), class: "sc-detect__input"
+              .col-md-4
+                .sc-detect__form-group
+                  label.sc-detect__label 最終更新 From
+                  = date_field_tag :updated_from, params[:updated_from], class: "sc-detect__input"
+              .col-md-4
+                .sc-detect__form-group
+                  label.sc-detect__label 最終更新 To
+                  = date_field_tag :updated_to, params[:updated_to], class: "sc-detect__input"
+              .col-md-4
+                .sc-detect__form-group
+                  label.sc-detect__label 業種
+                  = text_field_tag :industry_name, params[:industry_name], class: "sc-detect__input", placeholder: "業種名"
+              .col-md-4.d-flex.align-items-center
+                label.d-flex.align-items-center style="cursor: pointer; color: #7dd3fc;"
+                  = check_box_tag :updated_today, "1", params[:updated_today] == "1", class: "me-2"
+                  | 今日のみ（From/To 未指定時）
+
+            .d-flex.gap-2.mt-4
+              button.sc-detect__btn.sc-detect__btn--primary type="submit"
+                i.fas.fa-search.me-1
+                | 絞り込む
+              = link_to draft_customers_path, class: "sc-detect__btn sc-detect__btn--secondary", style: "text-decoration: none;" do
+                i.fas.fa-undo.me-1
+                | クリア
+
+  / ── SERP進捗 ──
+  - progress = @serp_progress || {}
+  - target_preview = Array(progress[:target_preview] || progress["target_preview"])
+  .row.mb-4
+    .col-12
+      .sc-detect__card
+        .sc-detect__card-header
+          h5.m-0
+            i.fas.fa-tasks.me-2 style="color: #38bdf8;"
+            | SERP補完進捗
+        .sc-detect__card-body
+          .sc-serp-progress#serp-progress-panel data-progress-url=serp_progress_customers_path data-active=progress[:active].to_s
+            .sc-serp-progress__topline
+              span.sc-detect__label 現在のSERP補完
+              strong#serp-progress-phase = progress[:phase_label]
+              span#serp-progress-percent.sc-serp-progress__percent = "#{progress[:percent]}%"
+            .sc-serp-progress__track role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="#{progress[:percent]}"
+              #serp-progress-bar.sc-serp-progress__fill style="width: #{progress[:percent]}%"
+            .sc-serp-progress__meta
+              span#serp-progress-message = progress[:message]
+              span#serp-progress-counts = "対象 #{progress[:target_completed] || 0}/#{progress[:target_total] || 0} / SERP #{progress[:serp_completed] || 0}/#{progress[:serp_total] || 0}"
+              span#serp-progress-eta = "経過 #{progress[:elapsed_label]} / 残り目安 #{progress[:eta_label]}"
+
+            .sc-serp-progress__meta.sc-serp-progress__audit
+              span
+                | run_id:
+                code#serp-progress-run = progress[:run_id].presence || "-"
+              span
+                | JID:
+                code#serp-progress-jid = progress[:jid].presence || "-"
+              span
+                | Sidekiq:
+                code#serp-progress-sidekiq = progress[:sidekiq_status].presence || "-"
+              span
+                | Run:
+                code#serp-progress-run-status = progress[:run_status].presence || "-"
+
+          .sc-target-preview#serp-target-preview
+            .d-flex.justify-content-between.align-items-center.mb-2
+              h6.sc-detect__label.mb-0 今回の実行対象一覧
+              span#serp-target-summary.small style="color: rgba(229, 231, 235, 0.55);"
+                - if (progress[:target_total] || 0).to_i.positive?
+                  = "#{progress[:target_total]}件中 先頭#{[target_preview.size, progress[:target_preview_limit].to_i].reject(&:zero?).min || target_preview.size}件を表示"
+                - else
+                  | 実行開始後に表示されます
+            .sc-detect__table-wrapper.sc-target-preview__table
+              table.sc-detect__table.mb-0
+                thead
+                  tr
+                    th 会社名
+                    th SERP状況
+                    th HP URL
+                tbody#serp-target-body
+                  - if target_preview.any?
+                    - target_preview.each do |item|
+                      - target_company = item[:company] || item["company"]
+                      - target_status = item[:serp_status] || item["serp_status"]
+                      - hp_url = item[:hp_url] || item["hp_url"] || item[:selected_url] || item["selected_url"]
+                      tr
+                        td = target_company
+                        td = serp_status_label(target_status)
+                        td
+                          - if hp_url.present?
+                            a href="#{hp_url}" target="_blank" rel="noopener" = hp_url
+                          - else
+                            | -
+                  - else
+                    tr#serp-target-empty
+                      td colspan="3" style="color: rgba(229, 231, 235, 0.5);" 実行対象はまだありません
 
   / ── ドラフトリスト ──
-  section.ai-dash-list-section
-    .ai-list-header
-      h2.ai-dash-headline#draft-list SERP補完リスト
-      span.ai-list-count = "#{@filtered_count || 0}件"
-    .ai-table-wrapper
-      table.ai-custom-table
-        thead
-          tr
-            th 会社名
-            th SERP状況
-            th 電話番号
-            th 住所
-            th 住所精度
-            th TEL有無
-            th 公式URL
-            th Contact有無
-            th 業種有無
-            th 業種/職種
-            th リンク
-            th 最終更新
-            th インポート日
-        tbody
-          - if @customers.any?
-            - @customers.each do |customer|
-              tr
-                - company_label = display_company_name(customer)
-                td.ai-col-company = link_to company_label, edit_customer_path(customer), title: customer&.company
-                td.ai-col-serp-status
-                  span class="ai-badge #{serp_status_badge_class(customer&.serp_status)}"
-                    = serp_status_label(customer&.serp_status)
-                td.ai-col-tel = customer&.tel
-                - visible_address = display_address(customer&.address)
-                td.ai-col-address title="#{visible_address}" = visible_address
-                td.ai-col-fill = address_quality_icon(customer&.address)
-                td.ai-col-fill = tel_quality_icon(customer)
-                td.ai-col-fill = url_quality_icon(customer&.url)
-                td.ai-col-fill = url_quality_icon(customer&.contact_url)
-                / 業種 ○×: industry / business / genre のいずれかが入っていれば ○
-                - industry_filled = [customer&.industry, customer&.business, customer&.genre].any? { |v| v.to_s.strip.present? }
-                td.ai-col-fill = fill_icon(industry_filled ? "1" : nil)
-                td.ai-col-industry
-                  div = customer&.industry.presence || customer&.business
-                  small = customer&.genre
-                td.ai-col-links
-                  - if customer&.url.present? && official_url?(customer.url)
-                    a.ai-link-pill href="#{customer.url}" target="_blank" rel="noopener" title="#{customer.url}" HP
-                  - if customer&.contact_url.present? && official_url?(customer.contact_url)
-                    a.ai-link-pill href="#{customer.contact_url}" target="_blank" rel="noopener" title="#{customer.contact_url}" Contact
-                td.ai-col-date = display_datetime(customer&.updated_at)
-                td.ai-col-date = display_datetime(customer&.created_at)
-          - else
+  .d-flex.justify-content-between.align-items-center.mb-2
+    h2.sc-detect__title.mb-0 style="font-size: 1.25rem;" SERP補完リスト
+    span.sc-list-count = "#{@filtered_count || 0}件"
+  .sc-detect__table-wrapper.sc-detect__draft-table
+    table.sc-detect__table
+      thead
+        tr
+          th 会社名
+          th SERP状況
+          th 電話番号
+          th style="width: 180px;" 住所
+          th 住所精度
+          th TEL有無
+          th 公式URL
+          th Contact有無
+          th 業種有無
+          th 業種/職種
+          th リンク
+          th 最終更新
+          th インポート日
+      tbody
+        - if @customers.any?
+          - @customers.each do |customer|
             tr
-              td.ai-empty-row colspan="13" 条件に一致する顧客はありません
+              - company_label = display_company_name(customer)
+              td = link_to company_label, edit_customer_path(customer), title: customer&.company
+              td
+                span class="sc-detect__badge #{serp_status_sc_badge_class(customer&.serp_status)}"
+                  = serp_status_label(customer&.serp_status)
+              td = customer&.tel
+              - visible_address = display_address(customer&.address)
+              td title="#{visible_address}" = visible_address
+              td.text-center = address_quality_icon(customer&.address)
+              td.text-center = tel_quality_icon(customer)
+              td.text-center = url_quality_icon(customer&.url)
+              td.text-center = url_quality_icon(customer&.contact_url)
+              - industry_filled = [customer&.industry, customer&.business, customer&.genre].any? { |v| v.to_s.strip.present? }
+              td.text-center = fill_icon(industry_filled ? "1" : nil)
+              td
+                div = customer&.industry.presence || customer&.business
+                small style="color: rgba(229, 231, 235, 0.5);" = customer&.genre
+              td
+                .d-flex.gap-2
+                  - if customer&.url.present? && official_url?(customer.url)
+                    a href="#{customer.url}" target="_blank" rel="noopener" title="#{customer.url}" style="color: #38bdf8;" HP
+                  - if customer&.contact_url.present? && official_url?(customer.contact_url)
+                    a href="#{customer.contact_url}" target="_blank" rel="noopener" title="#{customer.contact_url}" style="color: #7dd3fc;" Contact
+              td style="font-size: 0.8rem;" = display_datetime(customer&.updated_at)
+              td style="font-size: 0.8rem;" = display_datetime(customer&.created_at)
+        - else
+          tr
+            td colspan="13" style="color: rgba(229, 231, 235, 0.5); text-align: center;" 条件に一致する顧客はありません
 
-      .ai-pagination-wrapper
-        = paginate @customers
+  .mt-5.pb-5.d-flex.justify-content-center.sc-detect__pagination-zone
+    = paginate @customers
 
 javascript:
   (function() {
@@ -223,7 +308,7 @@ javascript:
         if (!window.confirm("Sidekiqを確認・自動起動してからSERP補完を開始します。\n業種: " + label + "\n件数上限: " + limit + "件\n\nよろしいですか？")) return;
         btn.disabled = true;
         btn.classList.add('is-loading');
-        btn.innerText = "開始中...";
+        btn.textContent = "開始中...";
         document.getElementById('serp-search-form').submit();
       };
     };
@@ -235,15 +320,27 @@ javascript:
       panel.dataset.pollingStarted = 'true';
       const url = panel.dataset.progressUrl;
       const bar = document.getElementById('serp-progress-bar');
-      const track = panel.querySelector('.ai-progress-track');
+      const track = panel.querySelector('.sc-serp-progress__track');
       const phase = document.getElementById('serp-progress-phase');
       const percent = document.getElementById('serp-progress-percent');
       const message = document.getElementById('serp-progress-message');
       const counts = document.getElementById('serp-progress-counts');
       const eta = document.getElementById('serp-progress-eta');
+      const runId = document.getElementById('serp-progress-run');
+      const jid = document.getElementById('serp-progress-jid');
+      const sidekiq = document.getElementById('serp-progress-sidekiq');
+      const runStatus = document.getElementById('serp-progress-run-status');
+      const targetSummary = document.getElementById('serp-target-summary');
+      const targetBody = document.getElementById('serp-target-body');
 
       const setText = function(el, text) {
         if (el) el.textContent = text || '';
+      };
+
+      const escapeHtml = function(value) {
+        return String(value || '').replace(/[&<>"']/g, function(char) {
+          return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
+        });
       };
 
       const stopPolling = function() {
@@ -251,6 +348,64 @@ javascript:
 
         window.clearInterval(Number(panel.dataset.pollingTimer));
         panel.dataset.pollingTimer = '';
+      };
+
+      const renderTargetPreview = function(data) {
+        if (!targetBody || !targetSummary || !data) return;
+
+        const preview = Array.isArray(data.target_preview) ? data.target_preview : [];
+        const total = Number(data.target_total || 0);
+        const limit = Number(data.target_preview_limit || preview.length || 20);
+        if (total > 0) {
+          targetSummary.textContent = total + '件中 先頭' + Math.min(preview.length, limit) + '件を表示';
+        } else {
+          targetSummary.textContent = '実行開始後に表示されます';
+        }
+
+        if (preview.length === 0) {
+          targetBody.innerHTML = '<tr id="serp-target-empty"><td colspan="3" style="color: rgba(229, 231, 235, 0.5);">実行対象はまだありません</td></tr>';
+          return;
+        }
+
+        targetBody.innerHTML = preview.map(function(item) {
+          const hpUrl = item.hp_url || item.url || item.selected_url || '';
+          return '<tr>' +
+            '<td>' + escapeHtml(item.company) + '</td>' +
+            '<td>' + escapeHtml(item.serp_status_label || item.serp_status || '未処理') + '</td>' +
+            '<td>' + (hpUrl ? '<a href="' + escapeHtml(hpUrl) + '" target="_blank" rel="noopener">' + escapeHtml(hpUrl) + '</a>' : '-') + '</td>' +
+            '</tr>';
+        }).join('');
+      };
+
+      const renderAuditTargetPreview = function(data) {
+        if (!targetBody || !targetSummary || !data) return;
+
+        const headRow = targetBody.closest('table') && targetBody.closest('table').querySelector('thead tr');
+        if (headRow && headRow.dataset.auditColumns !== 'true') {
+          headRow.dataset.auditColumns = 'true';
+          headRow.innerHTML = '<th>会社名</th><th>SERP状況</th><th>HP URL</th>';
+        }
+
+        const preview = Array.isArray(data.target_preview) ? data.target_preview : [];
+        const total = Number(data.target_total || 0);
+        const limit = Number(data.target_preview_limit || preview.length || 20);
+        targetSummary.textContent = total > 0 ?
+          total + '件中 先頭' + Math.min(preview.length, limit) + '件を表示' :
+          '実行開始後に表示されます';
+
+        if (preview.length === 0) {
+          targetBody.innerHTML = '<tr id="serp-target-empty"><td colspan="3" style="color: rgba(229, 231, 235, 0.5);">実行対象はまだありません</td></tr>';
+          return;
+        }
+
+        targetBody.innerHTML = preview.map(function(item) {
+          const hpUrl = item.hp_url || item.url || item.selected_url || '';
+          return '<tr>' +
+            '<td>' + escapeHtml(item.company) + '</td>' +
+            '<td>' + escapeHtml(item.serp_status_label || item.serp_status || '未処理') + '</td>' +
+            '<td>' + (hpUrl ? '<a href="' + escapeHtml(hpUrl) + '" target="_blank" rel="noopener">' + escapeHtml(hpUrl) + '</a>' : '-') + '</td>' +
+            '</tr>';
+        }).join('');
       };
 
       const poll = function() {
@@ -263,7 +418,7 @@ javascript:
       const startPolling = function() {
         if (panel.dataset.pollingTimer) return;
 
-        panel.dataset.pollingTimer = window.setInterval(poll, 5000);
+        panel.dataset.pollingTimer = window.setInterval(poll, 1000);
       };
 
       const refreshListAfterCompletion = function(data) {
@@ -275,23 +430,32 @@ javascript:
         if (!finished || panel.dataset.reloadScheduled === 'true') return;
 
         panel.dataset.reloadScheduled = 'true';
-        setText(message, 'SERP補完が完了しました。一覧を更新しています...');
+        if (data.phase === 'done') {
+          setText(message, 'SERP補完が完了しました。一覧を更新しています...');
+        }
         window.setTimeout(function() {
           window.location.reload();
-        }, 800);
+        }, 500);
       };
 
       const render = function(data) {
         if (!data || data.present === false) return;
 
-        const value = Number(data.percent || 0).toFixed(1);
+        let value = Number(data.percent || 0);
+        if (data.phase === 'done' && data.active === false) value = 100;
+        value = value.toFixed(1);
         if (bar) bar.style.width = value + '%';
         if (track) track.setAttribute('aria-valuenow', value);
         setText(phase, data.phase_label);
         setText(percent, value + '%');
         setText(message, data.message);
-        setText(counts, 'SERP ' + (data.serp_completed || 0) + '/' + (data.serp_total || 0) + ' / Web ' + (data.web_completed || 0) + '/' + (data.web_total || 0));
+        setText(counts, '対象 ' + (data.target_completed || 0) + '/' + (data.target_total || 0) + ' / SERP ' + (data.serp_completed || 0) + '/' + (data.serp_total || 0));
         setText(eta, '経過 ' + (data.elapsed_label || '0秒') + ' / 残り目安 ' + (data.eta_label || '計測中'));
+        setText(runId, data.run_id || '-');
+        setText(jid, data.jid || '-');
+        setText(sidekiq, data.sidekiq_status || '-');
+        setText(runStatus, data.run_status || '-');
+        renderAuditTargetPreview(data);
 
         if (data.active) {
           panel.dataset.wasActive = 'true';

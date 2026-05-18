@@ -757,8 +757,9 @@ end
                         "(url IS NULL OR TRIM(url) = '') OR " \
                         "(contact_url IS NULL OR TRIM(contact_url) = '')"
                       )
-            end
+    end
     scope = scope.where(industry: industry) if industry.present?
+    scope = scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
     scope = filter_company_query(scope, company_query)
     target_count = scope.count
 
@@ -774,7 +775,11 @@ end
     end
 
     actual_limit = [limit, target_count].min
-    target_ids = scope.order(updated_at: :desc, id: :asc).limit(actual_limit).pluck(:id)
+    selected_targets = scope.order(updated_at: :desc, id: :asc)
+                            .limit(actual_limit)
+                            .select(:id, :company, :serp_status, :tel, :address, :url, :contact_url)
+                            .to_a
+    target_ids = selected_targets.map(&:id)
     actual_limit = target_ids.size
 
     if actual_limit == 0
@@ -788,6 +793,12 @@ end
 
     begin
       progress_run_id = SecureRandom.hex(12)
+      audit_run = SerpEnrichmentRun.create_for_targets!(
+        run_id: progress_run_id,
+        industry: industry,
+        limit: actual_limit,
+        targets: selected_targets
+      )
       SerpProgressTracker.start(
         run_id: progress_run_id,
         total: actual_limit,
@@ -795,7 +806,8 @@ end
         target_ids: target_ids
       )
       session[:serp_progress_run_id] = progress_run_id
-      SerpPipelineDbWorker.perform_async(industry, actual_limit, target_ids, progress_run_id)
+      jid = SerpPipelineDbWorker.perform_async(industry, actual_limit, target_ids, progress_run_id)
+      audit_run.update!(jid: jid.to_s) if jid.present?
       prefix = if sidekiq.started? && sidekiq.redis_started?
         "RedisとSERP専用Sidekiqを起動してから"
       elsif sidekiq.started?
@@ -803,8 +815,9 @@ end
       else
         ""
       end
+      target_preview = selected_targets.first(5).map { |customer| "#{customer.company}(ID:#{customer.id})" }.join("、")
       redirect_to draft_customers_path,
-        notice: "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）。進捗バーで確認できます。"
+        notice: "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）。run_id: #{progress_run_id} / JID: #{jid}。今回の実行対象例: #{target_preview}。進捗バーで確認できます。"
     rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
       Rails.logger.warn("[serp_search] Redis接続不可: #{e.message}")
       redirect_to draft_customers_path,

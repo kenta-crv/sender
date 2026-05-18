@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_05_06_065631) do
+ActiveRecord::Schema.define(version: 2026_05_18_113000) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -253,6 +253,57 @@ ActiveRecord::Schema.define(version: 2026_05_06_065631) do
     t.index ["status"], name: "index_payments_on_status"
   end
 
+  create_table "serp_enrichment_run_targets", force: :cascade do |t|
+    t.integer "serp_enrichment_run_id", null: false
+    t.integer "customer_id", null: false
+    t.integer "position", default: 0, null: false
+    t.string "company"
+    t.string "before_serp_status"
+    t.string "before_tel"
+    t.text "before_address"
+    t.string "before_url"
+    t.string "before_contact_url"
+    t.string "after_serp_status"
+    t.string "after_tel"
+    t.text "after_address"
+    t.string "after_url"
+    t.string "after_contact_url"
+    t.string "result_status", default: "pending", null: false
+    t.integer "candidate_count", default: 0, null: false
+    t.string "selected_url"
+    t.text "update_keys"
+    t.text "error_message"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["customer_id"], name: "index_serp_enrichment_run_targets_on_customer_id"
+    t.index ["result_status"], name: "index_serp_enrichment_run_targets_on_result_status"
+    t.index ["serp_enrichment_run_id", "customer_id"], name: "index_serp_targets_on_run_and_customer"
+    t.index ["serp_enrichment_run_id"], name: "index_serp_targets_on_run_id"
+  end
+
+  create_table "serp_enrichment_runs", force: :cascade do |t|
+    t.string "run_id", null: false
+    t.string "jid"
+    t.string "status", default: "queued", null: false
+    t.string "industry"
+    t.integer "limit", default: 0, null: false
+    t.integer "target_count", default: 0, null: false
+    t.integer "serp_total", default: 0, null: false
+    t.integer "serp_completed", default: 0, null: false
+    t.integer "web_total", default: 0, null: false
+    t.integer "web_completed", default: 0, null: false
+    t.datetime "started_at"
+    t.datetime "finished_at"
+    t.text "error_message"
+    t.text "summary_json"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["created_at"], name: "index_serp_enrichment_runs_on_created_at"
+    t.index ["jid"], name: "index_serp_enrichment_runs_on_jid"
+    t.index ["run_id"], name: "index_serp_enrichment_runs_on_run_id", unique: true
+    t.index ["status"], name: "index_serp_enrichment_runs_on_status"
+  end
+
   create_table "submissions", force: :cascade do |t|
     t.string "headline"
     t.string "company"
@@ -331,6 +382,7 @@ ActiveRecord::Schema.define(version: 2026_05_06_065631) do
   add_foreign_key "monthly_usage_logs", "clients"
   add_foreign_key "payments", "campaigns"
   add_foreign_key "payments", "clients"
+  add_foreign_key "serp_enrichment_run_targets", "serp_enrichment_runs"
   add_foreign_key "submissions", "clients"
   add_foreign_key "subscriptions", "clients"
 end
