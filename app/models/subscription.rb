@@ -31,12 +31,12 @@ class Subscription < ApplicationRecord
   # 上限
   # =========================
   PLAN_DELIVERY_LIMITS = {
-    trial: 1000,
+    trial: 1,
     standard: 15_000,
     enterprise: 40_000
   }.freeze
 
-  TRIAL_DAYS = 10
+  TRIAL_DAYS = 1
 
   # =========================
   # helper（追加）

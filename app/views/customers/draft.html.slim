@@ -166,10 +166,13 @@
 
 javascript:
   (function() {
+    // 競合・重複を防ぐため、イベントリスナーは1種類(turbo:load)のみに絞る
     const setupSerpButton = function() {
       const btn = document.getElementById('start-serp-button');
       if (!btn) return;
 
+      // 古いイベントハンドラが残らないよう明示的にクリアしてから再設定
+      btn.onclick = null;
       btn.onclick = function(e) {
         e.preventDefault();
         const max = parseInt(btn.getAttribute('data-max'), 10) || 0;
@@ -185,7 +188,6 @@ javascript:
       };
     };
 
+    // ページ遷移が完了したタイミングのみ実行
     document.addEventListener('turbo:load', setupSerpButton);
-    document.addEventListener('DOMContentLoaded', setupSerpButton);
-    setupSerpButton();
   })();

@@ -20,7 +20,7 @@ html lang="ja"
 
     = render "layouts/footer"
 
-    = javascript_include_tag "application", "data-turbolinks-track": "reload"
+    / 【重要】ここにあった javascript_include_tag は重複蓄積バグの原因となるため削除しました。
 
     .floating-btn-wrap.left-side
       .floating-logo
@@ -30,7 +30,7 @@ html lang="ja"
 
     .floating-contact
       - if client_signed_in?
-        = link_to client_dashboard_index_path, class: 'contact-box dashboard-mode' do
+        = link_to client_dashboard_index_path, data: { turbo: false, turbolinks: false }, class: 'contact-box dashboard-mode' do
           .icon-container
             span.dashboard-icon
               i.fas.fa-th-large
