@@ -533,13 +533,24 @@ class CompanyInfoExtractor
 
     # 2. 都道府県名の直後に助詞・読点が続く場合は文章の一部 → 除外
     return false if after_pref.match?(/\A(?:の|や|や、|において|では|から|へ|を|が|は|も|と|下|、|，|・|及び|および)/)
+    return false if prose_address_fragment?(text)
 
     # 3. 市区町村（市/区/町/村/郡）が含まれていること
-    return false unless after_pref.match?(/(?:市|区|町|村|郡)/)
+    locality_match = after_pref.match(/[^\s　,、。〒]{1,16}(?:市|区|町|村|郡)/)
+    return false unless locality_match
+
+    after_locality = after_pref[locality_match.end(0)..].to_s
+    return false if after_locality.match?(/\A(?:の|にある|では|で|を|が|は|も|と|、|，|。)/)
     return false unless text.match?(/[0-9０-９]|丁目|番地|番|号|[-－ー]/)
+    return false unless after_locality.match?(/[0-9０-９]{1,5}|[一二三四五六七八九十]+丁目|丁目|番地|番|号|[-－ー]/)
     return false if text.scan(PREF_PATTERN).size > 1
 
     true
+  end
+
+  def prose_address_fragment?(text)
+    text.match?(/[。！？]/) ||
+      text.match?(/(?:にある|創業|実績|サービスを提供|提供します|提供。|特化|モットー|目指します|努めます|歓迎|募集|求人|採用)/)
   end
 
   def extract_tel_from_branch_context

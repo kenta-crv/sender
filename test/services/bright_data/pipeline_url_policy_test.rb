@@ -209,6 +209,30 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     assert_equal "0800-919-9966", updates[:tel]
   end
 
+  test "build_web_updates rejects metadata prose mistaken for address" do
+    customer = Customer.create!(
+      company: "松下運送",
+      address: "埼玉県 越谷市 越谷レイクタウン駅 徒歩15分"
+    )
+    company = {
+      company: "松下運送株式会社",
+      title: "会社情報｜松下運送株式会社",
+      url: "https://matsushita-unso.com/company",
+      source: "organic"
+    }
+    bad_address = "大阪府寝屋川市にある松下運送は創業60年以上の実績を持ち、安全・確実・信頼の運送サービスを提供。建設現場に特化し、特殊物の運搬も行います"
+
+    updates = BrightData::Pipeline.send(
+      :build_web_updates,
+      customer,
+      company,
+      { matched: true, source_url: company[:url], address: bad_address }
+    )
+
+    refute_includes updates.keys, :address
+    assert_equal 0, BrightData::Pipeline.send(:address_score, bad_address)
+  end
+
   test "build_web_updates stores profile source url instead of contact landing page" do
     customer = Customer.create!(company: "トーヨークリエイツ株式会社", url: "https://ty-create.co.jp/contact")
     company = {

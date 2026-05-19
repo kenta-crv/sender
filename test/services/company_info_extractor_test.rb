@@ -338,6 +338,28 @@ class CompanyInfoExtractorTest < ActiveSupport::TestCase
 
     assert_nil extractor.send(:clean_address, "愛知県知立市の軽貨物運送会社")
     assert_nil extractor.send(:clean_address, "神奈川県下27の自治体・行政区に拡がっています。（2024年4月現在）")
+    assert_nil extractor.send(
+      :clean_address,
+      "大阪府寝屋川市にある松下運送は創業60年以上の実績を持ち、安全・確実・信頼の運送サービスを提供。建設現場に特化し、特殊物の運搬も行います"
+    )
+  end
+
+  test "extract_address ignores metadata prose and keeps headquarters address" do
+    extractor = CompanyInfoExtractor.new(<<~HTML)
+      <html>
+        <head>
+          <meta name="description" content="大阪府寝屋川市にある松下運送は創業60年以上の実績を持ち、安全・確実・信頼の運送サービスを提供。">
+        </head>
+        <body>
+          <dl>
+            <dt>本社所在地</dt>
+            <dd>大阪府寝屋川市仁和寺本町5丁目2番17号</dd>
+          </dl>
+        </body>
+      </html>
+    HTML
+
+    assert_equal "大阪府寝屋川市仁和寺本町5丁目2番17号", extractor.extract[:address]
   end
 
   test "clean_address rejects json ld description fragments" do

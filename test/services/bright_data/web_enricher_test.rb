@@ -257,6 +257,86 @@ class BrightData::WebEnricherTest < ActiveSupport::TestCase
     end
   end
 
+  test "enrich_from_url prioritizes company overview page over top page footer data" do
+    customer = Customer.new(company: "Example Logistics")
+    top_extractor = CompanyInfoExtractor.new(<<~HTML, customer: customer)
+      <html>
+        <head><title>Example Logistics</title></head>
+        <body>
+          <h1>Example Logistics</h1>
+          <a href="/company/">会社概要</a>
+          <footer>
+            <p>〒105-0011 東京都港区芝公園1-1-1</p>
+            <p>TEL：03-1111-1111</p>
+          </footer>
+        </body>
+      </html>
+    HTML
+    profile_extractor = CompanyInfoExtractor.new(<<~HTML, customer: customer)
+      <html>
+        <body>
+          <h1>会社概要</h1>
+          <dl>
+            <dt>社名</dt><dd>Example Logistics</dd>
+            <dt>本社所在地</dt><dd>東京都港区芝5-5-5</dd>
+          </dl>
+          <p>TEL：03-5555-5555</p>
+          <a href="/contact/">お問い合わせ</a>
+        </body>
+      </html>
+    HTML
+    calls = []
+
+    with_singleton_method(CompanyInfoExtractor, :fetch_and_parse, ->(url, customer: nil) do
+      calls << url
+      url.end_with?("/company/") ? profile_extractor : top_extractor
+    end) do
+      result = BrightData::WebEnricher.enrich_from_url("https://example-logistics.test/", customer)
+
+      assert_equal "03-5555-5555", result[:tel]
+      assert_equal "東京都港区芝5-5-5", result[:address]
+      assert_equal "https://example-logistics.test/contact/", result[:contact_url]
+      assert_equal "https://example-logistics.test/company/", result[:source_url]
+      assert_equal ["https://example-logistics.test/", "https://example-logistics.test/company/"], calls
+    end
+  end
+
+  test "enrich_from_url keeps top page company overview section when present" do
+    customer = Customer.new(company: "Example Logistics")
+    top_extractor = CompanyInfoExtractor.new(<<~HTML, customer: customer)
+      <html>
+        <head><title>Example Logistics</title></head>
+        <body>
+          <a href="/company/">会社概要</a>
+          <section>
+            <h2>会社概要</h2>
+            <dl>
+              <dt>社名</dt><dd>Example Logistics</dd>
+              <dt>所在地</dt><dd>東京都港区芝2-2-2</dd>
+              <dt>TEL</dt><dd>03-2222-2222</dd>
+            </dl>
+          </section>
+        </body>
+      </html>
+    HTML
+    other_profile = CompanyInfoExtractor.new(<<~HTML, customer: customer)
+      <html><body>東京都港区芝9-9-9 TEL：03-9999-9999</body></html>
+    HTML
+    calls = []
+
+    with_singleton_method(CompanyInfoExtractor, :fetch_and_parse, ->(url, customer: nil) do
+      calls << url
+      url.end_with?("/company/") ? other_profile : top_extractor
+    end) do
+      result = BrightData::WebEnricher.enrich_from_url("https://example-logistics.test/", customer)
+
+      assert_equal "03-2222-2222", result[:tel]
+      assert_equal "東京都港区芝2-2-2", result[:address]
+      assert_equal "https://example-logistics.test/", result[:source_url]
+      assert_equal ["https://example-logistics.test/"], calls
+    end
+  end
+
   test "enrich_from_url keeps searching when current page only has address" do
     customer = Customer.new(company: "Example Logistics")
     top_extractor = Struct.new(:doc, :extract).new(
@@ -284,7 +364,7 @@ class BrightData::WebEnricherTest < ActiveSupport::TestCase
       result = BrightData::WebEnricher.enrich_from_url("https://example-logistics.test/", customer)
 
       assert_equal "03-1234-5678", result[:tel]
-      assert_equal "東京都港区芝5-1-1", result[:address]
+      assert_equal "東京都港区芝9-9-9", result[:address]
       assert_equal "https://example-logistics.test/contact/", result[:contact_url]
       assert_equal "https://example-logistics.test/company/profile/", result[:source_url]
       assert_equal ["https://example-logistics.test/", "https://example-logistics.test/company/profile/"], calls
@@ -423,6 +503,43 @@ class BrightData::WebEnricherTest < ActiveSupport::TestCase
 
         assert_equal "03-5909-5177", result[:tel]
         assert_equal "東京都新宿区西新宿六丁目5番1号 新宿アイランドタワー42階・43階", result[:address]
+      end
+    end
+  end
+
+  test "enrich_from_url ignores studio metadata prose and uses rendered headquarters address" do
+    customer = Customer.new(company: "松下運送")
+    static_extractor = CompanyInfoExtractor.new(<<~HTML, customer: customer)
+      <html>
+        <head><title>会社情報｜松下運送株式会社</title></head>
+        <body>
+          <script type="application/json">
+            {"description":"大阪府寝屋川市にある松下運送は創業60年以上の実績を持ち、安全・確実・信頼の運送サービスを提供。建設現場に特化し、特殊物の運搬も行います"}
+          </script>
+        </body>
+      </html>
+    HTML
+    rendered_extractor = CompanyInfoExtractor.new(<<~HTML, customer: customer)
+      <html>
+        <body>
+          <h1>会社概要</h1>
+          <dl>
+            <dt>社名</dt><dd>松下運送株式会社</dd>
+            <dt>本社所在地</dt><dd>大阪府寝屋川市仁和寺本町5丁目2番17号</dd>
+          </dl>
+          <p>TEL：072-838-1371</p>
+          <a href="/contact">お問い合わせ</a>
+        </body>
+      </html>
+    HTML
+
+    with_singleton_method(CompanyInfoExtractor, :fetch_and_parse, ->(_url, customer: nil) { static_extractor }) do
+      with_singleton_method(CompanyInfoExtractor, :fetch_and_parse_rendered, ->(_url, customer: nil) { rendered_extractor }) do
+        result = BrightData::WebEnricher.enrich_from_url("https://matsushita-unso.com/company", customer)
+
+        assert_equal "072-838-1371", result[:tel]
+        assert_equal "大阪府寝屋川市仁和寺本町5丁目2番17号", result[:address]
+        assert_equal "https://matsushita-unso.com/contact", result[:contact_url]
       end
     end
   end

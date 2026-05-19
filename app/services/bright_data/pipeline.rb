@@ -636,6 +636,7 @@ module BrightData
       return 0 if s.match?(/Google\s*Map|GOOGLE\s*Map|\bMAP\b|サイトマップ|個人情報保護|購入ページ|Go\s*to\s*top|keyboard_arrow_right|事業一覧/)
       return 0 if s.match?(/READ\s*MORE/i)
       return 0 if s.match?(/_at_|自治体|行政区/)
+      return 0 if prose_address_fragment?(s)
       return 0 if s.match?(/[【［\[]\s*(?:本社代表|代表|TEL|Tel|tel|電話)/)
       return 0 if s.match?(/[【［\[]\z/)
       return 0 if s.include?("〒")
@@ -657,10 +658,17 @@ module BrightData
       s = address.to_s.strip
       return 0 if s.scan(CompanyInfoExtractor::PREF_PATTERN).size != 1
       return 0 if s.match?(/駅|徒歩|車|分|〒|Google\s*Map|GOOGLE\s*Map|\bMAP\b|サイトマップ|個人情報保護|Go\s*to\s*top|keyboard_arrow_right|READ\s*MORE|代表[一-龥A-Za-z]|店[\s　]*舗|店舗|info@|_at_|[【［\[]\s*(?:本社代表|代表|TEL|Tel|tel|電話)|[【［\[]\z/i)
+      return 0 if prose_address_fragment?(s)
       return 0 unless s.match?(/(?:市|区|町|村|郡)/)
       return 0 unless s.match?(/[0-9０-９]|丁目|番地|番|号|[-－ー]/)
 
       s.length + 150
+    end
+
+    def self.prose_address_fragment?(address)
+      s = address.to_s
+      s.match?(/[。！？]/) ||
+        s.match?(/(?:にある|創業|実績|サービスを提供|提供します|提供。|特化|モットー|目指します|努めます|歓迎|募集|求人|採用)/)
     end
 
     def self.access_address?(address)

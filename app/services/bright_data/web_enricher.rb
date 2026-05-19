@@ -18,6 +18,10 @@ module BrightData
   #   nil   … 検証不能（ページから会社名を取得できず）
   class WebEnricher
     PROFILE_LINK_TEXT = /会社概要|企業概要|企業情報|会社案内|会社情報|会社紹介|コーポレート|about\s*us|about\s*company/i
+    PROFILE_SECTION_TEXT = /会社概要|企業概要|企業情報|会社案内|会社情報|会社紹介|company\s*(?:profile|overview|info)|about\s*us|about\s*company/i
+    PROFILE_DATA_LABEL = /\A(?:会社名|社名|商号|本社所在地|本社住所|所在地|住所|TEL|Tel|tel|電話|電話番号)\z/
+    PROFILE_ADDRESS_LABEL = /\A(?:本社所在地|本社住所|所在地|住所)\z/
+    PROFILE_COMPANY_OR_TEL_LABEL = /\A(?:会社名|社名|商号|TEL|Tel|tel|電話|電話番号)\z/
 
     PROFILE_LINK_PATH = /\/company(?:-info|-profile|-about)?(?:\/|\.html?)?$|
                           \/company\/(?:outline|profile|about|gaiyou|info|index)(?:\/|\.html?)?$|
@@ -158,18 +162,7 @@ module BrightData
         end
       end
 
-      # SERPが会社概要ページを直接返す場合がある。
-      # そのページでtel/addressが取れているなら、別の概要リンクへ移動せず採用する。
       top_result = top_extractor.extract
-      if top_result[:tel].present? &&
-         top_result[:address].present? &&
-         primary_data_usable?(top_extractor.doc, customer, address: top_result[:address], source_url: url)
-        result = top_result.merge(matched: matched_flag, source_url: url)
-        if result[:contact_url].present?
-          result[:contact_url] = resolve_contact_url(result[:contact_url], url)
-        end
-        return result
-      end
 
       # 3. 会社概要ページのリンクを探す
       profile_url = find_profile_link(top_extractor.doc, url)
@@ -178,6 +171,23 @@ module BrightData
         profile_url = nil
       end
       puts "  [WebEnricher] profile_url: #{profile_url || '(not found, using top page)'}"
+
+      # SERPが会社概要ページを直接返す場合はそのページを採用する。
+      # トップページ等に会社概要リンクがある場合は、フッターより概要ページを優先する。
+      if top_result[:tel].present? &&
+         top_result[:address].present? &&
+         (profile_url.blank? ||
+          same_normalized_url?(profile_url, url) ||
+          profile_page_url?(url) ||
+          top_page_profile_data?(top_extractor.doc, address: top_result[:address]) ||
+          branch_profile_listing_data?(top_extractor.doc, customer, address: top_result[:address], source_url: url)) &&
+         primary_data_usable?(top_extractor.doc, customer, address: top_result[:address], source_url: url)
+        result = top_result.merge(matched: matched_flag, source_url: url)
+        if result[:contact_url].present?
+          result[:contact_url] = resolve_contact_url(result[:contact_url], url)
+        end
+        return result
+      end
 
       # 4. 会社概要ページを取得
       target_url = profile_url.presence || url
@@ -540,12 +550,92 @@ module BrightData
       base.merge(preferred) do |key, old_value, new_value|
         if key == :matched
           new_value
-        elsif %i[address contact_url].include?(key) && old_value.present?
+        elsif key == :address
+          preferred_address?(new_value, old_value) ? new_value : (old_value.presence || new_value)
+        elsif key == :contact_url && old_value.present?
           old_value
         else
           new_value.presence || old_value
         end
       end
+    end
+
+    def self.preferred_address?(candidate, current)
+      return false if candidate.blank?
+      return true if current.blank?
+
+      cleaner = CompanyInfoExtractor.new("")
+      cleaned_candidate = cleaner.send(:clean_address, candidate)
+      cleaned_current = cleaner.send(:clean_address, current)
+      return false if cleaned_candidate.blank?
+      return true if cleaned_current.blank?
+      return false if cleaned_candidate == cleaned_current
+
+      true
+    end
+
+    def self.same_normalized_url?(left, right)
+      left_uri = URI.parse(left.to_s)
+      right_uri = URI.parse(right.to_s)
+      left_uri.scheme.to_s.downcase == right_uri.scheme.to_s.downcase &&
+        left_uri.host.to_s.downcase.sub(/\Awww\./, "") == right_uri.host.to_s.downcase.sub(/\Awww\./, "") &&
+        left_uri.path.to_s.chomp("/") == right_uri.path.to_s.chomp("/")
+    rescue URI::InvalidURIError
+      false
+    end
+
+    def self.profile_page_url?(url)
+      uri = URI.parse(url.to_s)
+      path = uri.path.to_s
+      path.match?(PROFILE_LINK_PATH)
+    rescue URI::InvalidURIError
+      false
+    end
+
+    def self.branch_profile_listing_data?(doc, customer, address: nil, source_url: nil)
+      branch_tokens(customer&.company).present? &&
+        source_url.present? &&
+        profile_listing_url?(source_url) &&
+        branch_match_safe?(doc, customer, address: address)
+    end
+
+    def self.top_page_profile_data?(doc, address: nil)
+      return false if doc.blank? || address.blank?
+
+      body_doc = doc.dup
+      body_doc.css("a, nav, header, footer, script, style, noscript").remove
+      return true if labeled_profile_data?(body_doc, address: address)
+
+      has_profile_heading = body_doc.css("h1, h2, h3, h4, h5, h6, caption").any? do |node|
+        node.text.to_s.gsub(/\s+/, "").match?(PROFILE_SECTION_TEXT)
+      end
+      return false unless has_profile_heading
+
+      text = body_doc.text.to_s.gsub(/\s+/, " ")
+      text.match?(CompanyInfoExtractor::PREF_PATTERN) &&
+        text.match?(/(?:TEL|Tel|tel|電話|所在地|住所|会社名|社名|商号)/)
+    end
+
+    def self.labeled_profile_data?(doc, address: nil)
+      doc.css("table, dl").any? do |group|
+        labels = group.css("th, dt").map { |cell| cell.text.to_s.gsub(/\s+/, "") }
+        group_text = group.text.to_s.gsub(/\s+/, "")
+
+        labels.any? { |label| label.match?(PROFILE_ADDRESS_LABEL) } &&
+          labels.any? { |label| label.match?(PROFILE_COMPANY_OR_TEL_LABEL) } &&
+          (address.present? && group_text.include?(address.to_s.gsub(/\s+/, "")) ||
+           group_text.match?(CompanyInfoExtractor::PREF_PATTERN))
+      end
+    end
+
+    def self.address_quality_score(address)
+      s = address.to_s.strip
+      return 0 if s.blank?
+
+      score = s.length
+      score += 50 if s.match?(/(?:市|区|町|村|郡)/)
+      score += 100 if s.match?(/[0-9０-９]|丁目|番地|番|号|[-－ー]/)
+      score
     end
 
     # ディレクトリサイトかどうか判定
