@@ -30,6 +30,26 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     refute_includes @response.body, other.company
   end
 
+  test "draft treats blank serp status with tel or url as done" do
+    with_tel = Customer.create!(company: "Effective Done Has Tel", status: "draft", tel: "03-1111-1111")
+    with_url = Customer.create!(company: "Effective Done Has Url", status: "draft", url: "https://effective.example/")
+    blank = Customer.create!(company: "Effective Still Unprocessed", status: "draft")
+
+    get draft_customers_path, params: { serp_status_filter: "null" }
+
+    assert_response :success
+    assert_includes @response.body, blank.company
+    refute_includes @response.body, with_tel.company
+    refute_includes @response.body, with_url.company
+
+    get draft_customers_path, params: { serp_status_filter: "serp_done" }
+
+    assert_response :success
+    assert_includes @response.body, with_tel.company
+    assert_includes @response.body, with_url.company
+    refute_includes @response.body, blank.company
+  end
+
   test "serp_search does not fall back to synchronous pipeline when sidekiq is unavailable" do
     Customer.create!(company: "SERP Sidekiq Guard Test", status: "draft")
 
@@ -70,6 +90,8 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
   test "serp_search starts progress tracking and enqueues selected customer ids" do
     older = Customer.create!(company: "SERP Progress Older", status: "draft")
     newer = Customer.create!(company: "SERP Progress Newer", status: "draft")
+    Customer.create!(company: "SERP Progress Has Tel", status: "draft", tel: "03-1111-1111")
+    Customer.create!(company: "SERP Progress Has Url", status: "draft", url: "https://has-url.example/")
     older.update_columns(updated_at: 2.hours.ago)
     newer.update_columns(updated_at: 1.hour.ago)
 
@@ -100,8 +122,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "jid-controller-1", audit_run.jid
     assert_equal [newer.id, older.id], audit_run.targets.order(:position).pluck(:customer_id)
     assert_equal ["SERP Progress Newer", "SERP Progress Older"], audit_run.targets.order(:position).pluck(:company)
-    assert_includes flash[:notice], "進捗バー"
-    assert_includes flash[:notice], "SERP Progress Newer(ID:#{newer.id})"
+    assert_nil flash[:notice]
   end
 
   test "serp_search limits queued ids by company query" do
@@ -131,14 +152,12 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal [target.id], progress_args[:target_ids]
   end
 
-  test "serp_search can requeue done customer when company query is explicit" do
+  test "serp_search can requeue done customer with missing url and tel when company query is explicit" do
     target = Customer.create!(
       company: "SERP Explicit Done Target",
       status: "draft",
       serp_status: "serp_done",
-      tel: "090-0000-0000",
       address: "Tokyo",
-      url: "https://example.com",
       contact_url: "https://example.com/contact"
     )
     Customer.create!(company: "SERP Explicit Done Other", status: "draft", serp_status: "serp_done")
@@ -164,6 +183,30 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_equal [target.id], enqueued_args[2]
     assert_equal 1, progress_args[:total]
     assert_equal [target.id], progress_args[:target_ids]
+  end
+
+  test "serp_search skips company query matches that already have url or tel" do
+    Customer.create!(
+      company: "SERP Explicit Has Tel",
+      status: "draft",
+      serp_status: "serp_done",
+      tel: "090-0000-0000"
+    )
+    Customer.create!(
+      company: "SERP Explicit Has Url",
+      status: "draft",
+      serp_status: "serp_done",
+      url: "https://example.com"
+    )
+
+    with_singleton_method(SerpSidekiqManager, :ensure_running, ->(*_args, **_kwargs) { flunk "Sidekiq should not start when URL or TEL already exists" }) do
+      with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*_args) { flunk "Job should not be enqueued when URL or TEL already exists" }) do
+        post serp_search_customers_path, params: { limit: 10, company_query: "SERP Explicit Has" }
+      end
+    end
+
+    assert_redirected_to draft_customers_path
+    assert_includes flash[:alert], "対象データが存在しません"
   end
 
   private

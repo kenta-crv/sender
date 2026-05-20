@@ -14,7 +14,7 @@ module BrightData
       filepath = STORE_DIR.join(filename)
 
       File.write(filepath, JSON.pretty_generate(batch_results))
-      puts "[ResultStore] Saved #{batch_results.size} results to #{filepath}"
+      LogContext.puts "[ResultStore] Saved #{batch_results.size} results to #{filepath}"
       filepath.to_s
     end
 

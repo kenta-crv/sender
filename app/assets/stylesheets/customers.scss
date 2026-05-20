@@ -395,6 +395,30 @@
   margin-left: auto;
 }
 
+.sc-serp-progress__log-btn {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 6px;
+  color: rgba(229, 231, 235, 0.72);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  justify-content: center;
+  min-height: 26px;
+  padding: 3px 12px;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+
+  &:hover,
+  &:focus {
+    background: rgba(30, 41, 59, 0.9);
+    border-color: rgba(56, 189, 248, 0.45);
+    color: #7dd3fc;
+    outline: none;
+  }
+}
+  
 .sc-serp-progress__track {
   background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(148, 163, 184, 0.24);
@@ -424,6 +448,20 @@
   .sc-serp-progress__audit {
     justify-content: flex-start;
 
+    &[hidden] {
+      display: none !important;
+    }
+
+    .sc-target-preview {
+      flex-basis: 100%;
+      margin-top: 4px;
+      width: 100%;
+    }
+
+    .sc-serp-progress__log {
+      flex-basis: 100%;
+    }
+
     code {
       color: #7dd3fc;
       font-size: 0.75rem;
@@ -433,12 +471,42 @@
   }
 
 .sc-target-preview__table {
-  max-height: 260px;
+  margin: 8px 0 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.sc-detect .sc-serp-progress .sc-target-preview__table {
+  max-height: 220px !important;
+  overflow-y: auto;
 }
 
 .sc-detect__draft-table {
   max-height: none;
   overflow-x: auto;
+}
+
+.sc-target-preview__table,
+.sc-detect__draft-table {
+  .sc-serp-status-col,
+  .sc-serp-status-cell {
+    min-width: 74px;
+    white-space: nowrap;
+    width: 74px;
+  }
+
+  .sc-serp-status-cell {
+    word-break: keep-all;
+  }
+
+  .sc-detect__badge {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    line-height: 1;
+    min-width: 52px;
+    white-space: nowrap;
+  }
 }
 
 .sc-list-count {

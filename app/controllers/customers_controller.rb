@@ -555,9 +555,9 @@ def draft
   # serp_status での絞り込み（"null" は NULL/'' を表す）
   case params[:serp_status_filter]
   when "null"
-    draft_base = draft_base.where(serp_status: [nil, ''])
+    draft_base = filter_effective_serp_unprocessed(draft_base)
   when "serp_queued", "serp_done", "serp_imported", "serp_error"
-    draft_base = draft_base.where(serp_status: params[:serp_status_filter])
+    draft_base = params[:serp_status_filter] == "serp_done" ? filter_effective_serp_done(draft_base) : draft_base.where(serp_status: params[:serp_status_filter])
   end
 
   # Adminを優先した条件分岐（tel_filter は従来通り）
@@ -595,11 +595,11 @@ def draft
       )
     )
   when "done_missing_tel"
-    @customers = @customers.where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = ''")
+    @customers = filter_effective_serp_done(@customers).where("tel IS NULL OR TRIM(tel) = ''")
   when "done_missing_address"
-    @customers = @customers.where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = ''")
+    @customers = filter_effective_serp_done(@customers).where("address IS NULL OR TRIM(address) = ''")
   when "done_partial_address"
-    @customers = filter_partial_address(@customers.where(serp_status: "serp_done"))
+    @customers = filter_partial_address(filter_effective_serp_done(@customers))
   end
 
   # 最終更新日のフィルタ
@@ -644,16 +644,11 @@ def draft
   daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
   @remaining_extractable = [daily_limit - today_total, 0].max
 
-  # SERP補完対象件数（serp_status ベース: NULL かつ tel/url/contact_url いずれか空）
+  # SERP補完対象件数（serp_status ベース: URL/TELがどちらも空の会社のみ）
   serp_scope = if @company_query.present?
-                 Customer.where(serp_status: [nil, '', 'serp_done', 'serp_error'])
+                 BrightData::Pipeline.serp_target_scope.where(serp_status: [nil, '', 'serp_done', 'serp_error'])
                else
-                 Customer.where(serp_status: [nil, ''])
-                         .where(
-                           "(tel IS NULL OR TRIM(tel) = '') OR " \
-                           "(url IS NULL OR TRIM(url) = '') OR " \
-                           "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                         )
+                 BrightData::Pipeline.serp_target_scope.where(serp_status: [nil, ''])
                end
   serp_scope = serp_scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
   serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
@@ -675,9 +670,9 @@ def draft
 
   total = dash_scope.count
   status_counts = dash_scope.group(:serp_status).count
-  null_c     = (status_counts[nil].to_i + status_counts[""].to_i)
+  null_c     = filter_effective_serp_unprocessed(dash_scope).count
   queued_c   = status_counts["serp_queued"].to_i
-  done_c     = status_counts["serp_done"].to_i
+  done_c     = filter_effective_serp_done(dash_scope).count
   imported_c = status_counts["serp_imported"].to_i
   error_c    = status_counts["serp_error"].to_i
 
@@ -747,16 +742,11 @@ end
     company_query = params[:company_query].to_s.strip
     limit     = [(params[:limit] || 100).to_i, 1].max
 
-    # 対象件数を事前確認（serp_status NULL かつ tel/url/contact_url いずれか空）
+    # 対象件数を事前確認（URL/TELがどちらも空の会社のみ）
     scope = if company_query.present?
-              Customer.where(serp_status: [nil, '', 'serp_done', 'serp_error'])
+              BrightData::Pipeline.serp_target_scope.where(serp_status: [nil, '', 'serp_done', 'serp_error'])
             else
-              Customer.where(serp_status: [nil, ''])
-                      .where(
-                        "(tel IS NULL OR TRIM(tel) = '') OR " \
-                        "(url IS NULL OR TRIM(url) = '') OR " \
-                        "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                      )
+              BrightData::Pipeline.serp_target_scope.where(serp_status: [nil, ''])
     end
     scope = scope.where(industry: industry) if industry.present?
     scope = scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
@@ -808,16 +798,7 @@ end
       session[:serp_progress_run_id] = progress_run_id
       jid = SerpPipelineDbWorker.perform_async(industry, actual_limit, target_ids, progress_run_id)
       audit_run.update!(jid: jid.to_s) if jid.present?
-      prefix = if sidekiq.started? && sidekiq.redis_started?
-        "RedisとSERP専用Sidekiqを起動してから"
-      elsif sidekiq.started?
-        "SERP専用Sidekiqを起動してから"
-      else
-        ""
-      end
-      target_preview = selected_targets.first(5).map { |customer| "#{customer.company}(ID:#{customer.id})" }.join("、")
-      redirect_to draft_customers_path,
-        notice: "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）。run_id: #{progress_run_id} / JID: #{jid}。今回の実行対象例: #{target_preview}。進捗バーで確認できます。"
+      redirect_to draft_customers_path
     rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
       Rails.logger.warn("[serp_search] Redis接続不可: #{e.message}")
       redirect_to draft_customers_path,
@@ -1162,6 +1143,17 @@ end
   def filter_missing_official_url(scope)
     ids = scope.pluck(:id, :url).reject { |_, url| official_url_value?(url) }.map(&:first)
     scope.where(id: ids)
+  end
+
+  def filter_effective_serp_done(scope)
+    scope.where(
+      "serp_status = ? OR ((serp_status IS NULL OR serp_status = '') AND (#{Customer::TEL_OR_URL_PRESENT_SQL}))",
+      "serp_done"
+    )
+  end
+
+  def filter_effective_serp_unprocessed(scope)
+    scope.where(serp_status: [nil, ""]).merge(Customer.without_tel_and_url)
   end
 
   def detailed_address_count(scope)

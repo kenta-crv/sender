@@ -118,7 +118,7 @@ module BrightData
           matched_flag = norm_customer_candidates.any? { |candidate| company_match?(candidate, norm_page) }
 
           if matched_flag
-            puts "  [WebEnricher] match check: '#{norm_customer}' ⊆ '#{norm_page}' → MATCH"
+            LogContext.puts "  [WebEnricher] match check: '#{norm_customer}' ⊆ '#{norm_page}' → MATCH"
           else
             prominent_name_found = norm_customer_candidates.any? do |candidate|
               customer_name_in_page?(top_extractor.doc, candidate)
@@ -130,18 +130,18 @@ module BrightData
             if prominent_name_found || full_text_name_found
               matched_flag = true
               matched_via_page_company_mismatch = true
-              puts "  [WebEnricher] page company mismatch but customer name found: '#{norm_customer}' vs '#{norm_page}' → MATCH"
+              LogContext.puts "  [WebEnricher] page company mismatch but customer name found: '#{norm_customer}' vs '#{norm_page}' → MATCH"
             elsif confident_page_company_mismatch?(norm_page)
-              puts "  [WebEnricher] mismatch: '#{norm_customer}' vs '#{norm_page}' → SKIP"
+              LogContext.puts "  [WebEnricher] mismatch: '#{norm_customer}' vs '#{norm_page}' → SKIP"
               return { matched: false }
             else
               name_found = customer_name_present_in_doc?(top_extractor.doc, norm_customer_candidates)
               if name_found
                 matched_flag = true
                 matched_via_page_company_mismatch = true
-                puts "  [WebEnricher] page company mismatch but customer name found: '#{norm_customer}' vs '#{norm_page}' → MATCH"
+                LogContext.puts "  [WebEnricher] page company mismatch but customer name found: '#{norm_customer}' vs '#{norm_page}' → MATCH"
               else
-                puts "  [WebEnricher] mismatch: '#{norm_customer}' vs '#{norm_page}' → SKIP"
+                LogContext.puts "  [WebEnricher] mismatch: '#{norm_customer}' vs '#{norm_page}' → SKIP"
                 return { matched: false }
               end
             end
@@ -150,14 +150,14 @@ module BrightData
           # ページから法人名を抽出できなかった場合: title/h1 で確認
           name_found = customer_name_present_in_doc?(top_extractor.doc, norm_customer_candidates)
           if name_found == false
-            puts "  [WebEnricher] mismatch: '#{norm_customer}' not found in page → SKIP"
+            LogContext.puts "  [WebEnricher] mismatch: '#{norm_customer}' not found in page → SKIP"
             return { matched: false }
           elsif name_found
             matched_flag = true
-            puts "  [WebEnricher] company not detected on page, name found in text"
+            LogContext.puts "  [WebEnricher] company not detected on page, name found in text"
           else
             matched_flag = nil
-            puts "  [WebEnricher] company not detected on page, proceeding"
+            LogContext.puts "  [WebEnricher] company not detected on page, proceeding"
           end
         end
       end
@@ -167,10 +167,10 @@ module BrightData
       # 3. 会社概要ページのリンクを探す
       profile_url = find_profile_link(top_extractor.doc, url)
       if matched_via_page_company_mismatch && profile_url.present? && profile_url != url
-        puts "  [WebEnricher] skipping profile_url from mismatched page company: #{profile_url}"
+        LogContext.puts "  [WebEnricher] skipping profile_url from mismatched page company: #{profile_url}"
         profile_url = nil
       end
-      puts "  [WebEnricher] profile_url: #{profile_url || '(not found, using top page)'}"
+      LogContext.puts "  [WebEnricher] profile_url: #{profile_url || '(not found, using top page)'}"
 
       # SERPが会社概要ページを直接返す場合はそのページを採用する。
       # トップページ等に会社概要リンクがある場合は、フッターより概要ページを優先する。

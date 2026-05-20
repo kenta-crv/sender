@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "fileutils"
+
 class SerpPipelineDbWorker
   include Sidekiq::Worker
   sidekiq_options queue: :serp_enrichment, retry: 1
@@ -10,7 +12,16 @@ class SerpPipelineDbWorker
     audit_run&.update!(jid: worker_jid.to_s) if worker_jid.present? && audit_run&.jid.blank?
     audit_run&.mark_status!("running")
 
-    puts "[SERP run=#{progress_run_id} jid=#{worker_jid}] [SerpPipelineDbWorker] DB mode: legacy contact crawl disabled"
+    prefix = "[SERP run=#{progress_run_id} jid=#{worker_jid}]"
+    log_path = progress_run_id.present? ? SerpEnrichmentRun.log_path_for(progress_run_id) : nil
+    reset_shared_log(progress_run_id, worker_jid) if progress_run_id.present?
+    if log_path.present?
+      BrightData::LogContext.reset_file(log_path)
+      BrightData::LogContext.file_puts(log_path, "SERP run_id=#{progress_run_id} / JID=#{worker_jid}")
+    end
+    BrightData::LogContext.with_context(prefix: prefix, file_path: log_path) do
+      BrightData::LogContext.puts "[SerpPipelineDbWorker] DB mode: legacy contact crawl disabled"
+    end
     BrightData::Pipeline.execute_from_db(
       industry: industry,
       limit: limit,
@@ -23,5 +34,21 @@ class SerpPipelineDbWorker
   rescue => e
     audit_run&.fail!(e.message)
     raise
+  end
+
+  private
+
+  def reset_shared_log(progress_run_id, worker_jid)
+    path = SerpSidekiqManager::LOG_PATH
+    FileUtils.mkdir_p(path.dirname)
+    File.write(
+      path,
+      [
+        "=== 最新SERP実行ログ ===",
+        "run_id=#{progress_run_id} / JID=#{worker_jid}",
+        "開始=#{BrightData::Pipeline.japan_time_label}",
+        ""
+      ].join("\n")
+    )
   end
 end

@@ -44,7 +44,7 @@ class SerpProgressTracker
       started_at: Time.current.iso8601,
       updated_at: Time.current.iso8601,
       finished_at: "",
-      message: "Sidekiqの処理開始待ち"
+      message: "開始待ち"
     )
   end
 
@@ -147,7 +147,9 @@ class SerpProgressTracker
     percent = progress_percent(numbers, phase)
     active = !%w[done error].include?(phase)
     started_at = audit_run&.started_at || parse_time(raw["started_at"])
-    elapsed_seconds = started_at ? (Time.current - started_at).to_i : 0
+    finished_at = audit_run&.finished_at || parse_time(raw["finished_at"])
+    elapsed_until = active ? Time.current : (finished_at || parse_time(raw["updated_at"]) || Time.current)
+    elapsed_seconds = started_at ? [(elapsed_until - started_at).to_i, 0].max : 0
 
     target_ids = parse_target_ids(raw["target_ids"])
     target_preview = current_target_preview(parse_target_preview(raw["target_preview"]), target_ids)
@@ -178,7 +180,7 @@ class SerpProgressTracker
       elapsed_label: self.class.format_duration(elapsed_seconds),
       eta_label: estimate_label(elapsed_seconds, percent, active, numbers: numbers, phase: phase),
       started_at: started_at&.iso8601.to_s,
-      finished_at: audit_run&.finished_at&.iso8601.to_s,
+      finished_at: finished_at&.iso8601.to_s,
       updated_at: raw["updated_at"].to_s
     }
   rescue => e
@@ -333,16 +335,17 @@ class SerpProgressTracker
     customer_model = customer_model_class
     return [] if ids.empty? || customer_model.blank?
 
-    records = customer_model.where(id: ids).select(:id, :company, :serp_status, :url).index_by(&:id)
+    records = customer_model.where(id: ids).select(:id, :company, :serp_status, :tel, :url).index_by(&:id)
     ids.filter_map do |id|
       customer = records[id]
       next if customer.blank?
+      status = effective_serp_status_for(customer)
 
       {
         id: customer.id,
         company: customer.company.to_s,
-        serp_status: customer.serp_status.to_s,
-        serp_status_label: serp_status_label_for(customer.serp_status),
+        serp_status: status.to_s,
+        serp_status_label: serp_status_label_for(status),
         hp_url: customer.url.to_s
       }
     end
@@ -350,11 +353,12 @@ class SerpProgressTracker
 
   def parse_target_preview(value)
     JSON.parse(value.to_s).map do |item|
+      status = effective_serp_status_from_values(item["serp_status"], nil, item["hp_url"].presence || item["url"])
       {
         id: item["id"].to_i,
         company: item["company"].to_s,
-        serp_status: item["serp_status"].to_s,
-        serp_status_label: item["serp_status_label"].to_s.presence || serp_status_label_for(item["serp_status"]),
+        serp_status: status.to_s,
+        serp_status_label: item["serp_status_label"].to_s.presence || serp_status_label_for(status),
         hp_url: item["hp_url"].to_s.presence || item["url"].to_s
       }
     end
@@ -372,17 +376,18 @@ class SerpProgressTracker
     return stored_preview if ids.empty? || customer_model.blank?
 
     records = customer_model.where(id: ids.first(TARGET_PREVIEW_LIMIT))
-                            .select(:id, :company, :serp_status, :url)
+                            .select(:id, :company, :serp_status, :tel, :url)
                             .index_by(&:id)
     ids.first(TARGET_PREVIEW_LIMIT).filter_map do |id|
       stored = stored_preview.find { |item| item[:id].to_i == id } || {}
       customer = records[id]
       if customer
+        status = effective_serp_status_for(customer)
         {
           id: customer.id,
           company: customer.company.to_s,
-          serp_status: customer.serp_status.to_s,
-          serp_status_label: serp_status_label_for(customer.serp_status),
+          serp_status: status.to_s,
+          serp_status_label: serp_status_label_for(status),
           hp_url: customer.url.to_s
         }
       elsif stored.present?
@@ -411,7 +416,7 @@ class SerpProgressTracker
     customer_model = customer_model_class
     customers = if customer_model
       customer_model.where(id: targets.map(&:customer_id))
-                    .select(:id, :company, :serp_status, :url)
+                    .select(:id, :company, :serp_status, :tel, :url)
                     .index_by(&:id)
     else
       {}
@@ -419,9 +424,12 @@ class SerpProgressTracker
 
     targets.map do |target|
       customer = customers[target.customer_id]
-      current_status = customer&.serp_status.presence ||
-                       target.after_serp_status.presence ||
-                       target.before_serp_status
+      current_status = effective_serp_status_for(
+        customer,
+        target.after_serp_status.presence || target.before_serp_status,
+        fallback_tel: target.after_tel.presence || target.before_tel,
+        fallback_url: target.after_url.presence || target.before_url
+      )
       update_keys = Array(target.update_keys).reject(&:blank?)
 
       {
@@ -447,6 +455,23 @@ class SerpProgressTracker
 
   def customer_model_class
     "Customer".safe_constantize
+  end
+
+  def effective_serp_status_for(customer, fallback = nil, fallback_tel: nil, fallback_url: nil)
+    return customer.effective_serp_status if customer&.respond_to?(:effective_serp_status)
+
+    effective_serp_status_from_values(
+      customer&.serp_status.presence || fallback,
+      customer&.tel.presence || fallback_tel,
+      customer&.url.presence || fallback_url
+    )
+  end
+
+  def effective_serp_status_from_values(status, tel, url)
+    value = status.to_s
+    return "serp_done" if value.blank? && (tel.to_s.strip.present? || url.to_s.strip.present?)
+
+    value
   end
 
   def serp_status_label_for(value)

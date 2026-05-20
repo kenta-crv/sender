@@ -38,6 +38,31 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
     assert_equal "jid-worker-1", captured[:jid]
   end
 
+  test "perform resets shared sidekiq log for the latest run" do
+    customer = Customer.create!(company: "Shared Log Target")
+    run = SerpEnrichmentRun.create_for_targets!(
+      run_id: "worker-shared-log-run",
+      industry: "",
+      limit: 1,
+      targets: [customer]
+    )
+    FileUtils.mkdir_p(SerpSidekiqManager::LOG_PATH.dirname)
+    File.write(SerpSidekiqManager::LOG_PATH, "old run should disappear\n")
+
+    worker = SerpPipelineDbWorker.new
+    worker.define_singleton_method(:jid) { "jid-shared-log-1" }
+
+    with_singleton_method(BrightData::Pipeline, :execute_from_db, ->(**_kwargs) {}) do
+      worker.perform("", 1, [customer.id], run.run_id)
+    end
+
+    log = File.read(SerpSidekiqManager::LOG_PATH, encoding: "UTF-8")
+    assert_includes log, "=== 最新SERP実行ログ ==="
+    assert_includes log, "run_id=worker-shared-log-run / JID=jid-shared-log-1"
+    assert_includes log, "JST"
+    refute_includes log, "old run should disappear"
+  end
+
   private
 
   def with_singleton_method(klass, method_name, replacement)

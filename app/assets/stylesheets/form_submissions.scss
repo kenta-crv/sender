@@ -406,6 +406,16 @@
     }
   }
 
+  input[type="date"].sc-detect__input {
+    color-scheme: dark;
+
+    &::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      filter: invert(1);
+      opacity: 0.85;
+    }
+  }
+
   /* テキストエリア専用：最小高さを設定 */
   .sc-detect__textarea {
     min-height: 240px;

@@ -163,10 +163,11 @@ module BrightData
 
     def log(level, message)
       msg = normalize_text("[BrightData::SerpClient] #{message}")
+      prefixed_msg = LogContext.format(msg)
       if defined?(Rails)
-        Rails.logger.send(level, msg)
+        Rails.logger.send(level, prefixed_msg)
       end
-      puts msg
+      LogContext.puts msg
     end
   end
 end

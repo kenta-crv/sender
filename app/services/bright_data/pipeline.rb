@@ -10,7 +10,7 @@ module BrightData
     def self.execute(csv_path:, keyword_column: "company", delay_between: 1,
                      detect_contact: false, dry_run: false)
       puts "=" * 60
-      puts "SERP Pipeline 開始: #{Time.current}"
+      puts "SERP Pipeline 開始: #{japan_time_label}"
       puts "=" * 60
 
       # 1. CSV読込
@@ -50,7 +50,7 @@ module BrightData
     # UI経由でDB上の不完全顧客データを対象にSERP検索を実行する
     # 対象条件（取引先運用で status カラムは別用途のため serp_status ベースで判定）:
     #   - serp_status が NULL（未実行）
-    #   - かつ tel / url / contact_url のいずれかが空
+    #   - かつ tel / url がどちらも空
     # status カラムの値は問わない。
     #
     # @param industry [String] 業種でフィルタ（nil の場合は全件）
@@ -60,25 +60,23 @@ module BrightData
     # @param detect_contact [Boolean]
     # @param dry_run [Boolean]
     def self.execute_from_db(industry: nil, limit: 100, customer_ids: nil, progress_run_id: nil, jid: nil, detect_contact: false, dry_run: false)
-      puts "=" * 60
-      puts "SERP Pipeline (DB mode) 開始: #{Time.current}"
-      puts "=" * 60
       progress_tracker = progress_run_id.present? ? SerpProgressTracker.new(progress_run_id) : nil
       audit_run = progress_run_id.present? ? SerpEnrichmentRun.find_by_run_id(progress_run_id) : nil
       audit_run&.update!(jid: jid.to_s) if jid.present? && audit_run.jid.blank?
       audit_prefix = "[SERP run=#{progress_run_id.presence || '-'} jid=#{jid.presence || audit_run&.jid || '-'}]"
-      log = ->(message) { puts "#{audit_prefix} #{message}" }
+      audit_log_path = progress_run_id.present? ? SerpEnrichmentRun.log_path_for(progress_run_id) : nil
+      LogContext.reset_file(audit_log_path) if audit_log_path.present? && !File.exist?(audit_log_path)
+      log = ->(message = "") { LogContext.with_context(prefix: audit_prefix, file_path: audit_log_path) { LogContext.puts(message) } }
+      log.call("=" * 60)
+      log.call("SERP Pipeline (DB mode) 開始: #{japan_time_label}")
+      log.call("=" * 60)
       log.call("[Pipeline] audit context attached") if audit_run
 
       # 対象レコード取得
       #   - serp_status IS NULL / '' （未実行）
-      #   - かつ tel / url / contact_url のいずれかが空
+      #   - かつ tel / url がどちらも空
       # status カラムは取引先環境で別用途に使われているため参照しない。
-      incomplete_scope = Customer.where(
-        "(tel IS NULL OR TRIM(tel) = '') OR " \
-        "(url IS NULL OR TRIM(url) = '') OR " \
-        "(contact_url IS NULL OR TRIM(contact_url) = '')"
-      )
+      incomplete_scope = serp_target_scope
 
       selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
       if selected_ids.any?
@@ -90,17 +88,17 @@ module BrightData
 
         targets = scope.order(updated_at: :desc, id: :asc).limit(limit).to_a
       end
-      puts "[Pipeline] 対象レコード: #{targets.size}件 (serp_status=NULL かつ tel/url/contact_url いずれか空)"
+      log.call("[Pipeline] 対象レコード: #{targets.size}件 (serp_status=NULL かつ tel/url がどちらも空)")
 
       if targets.empty?
         audit_run&.complete!(done_count: 0, error_count: 0, summary: { targets: 0, extracted: 0 })
         return { targets: 0, extracted: 0, registered: { skipped_blank: 0 } }
       end
 
-      puts "[Pipeline] 今回の実行対象一覧:"
+      log.call("[Pipeline] 今回の実行対象一覧:")
       targets.each do |target|
         status_label = target.serp_status.presence || "未処理"
-        puts "  対象企業: #{target.company} (ID=#{target.id}, SERPステータス=#{status_label})"
+        log.call("  対象企業: #{target.company} (ID=#{target.id}, SERPステータス=#{status_label})")
       end
 
       # 検索キーワード生成: company + address の組み合わせ
@@ -117,7 +115,7 @@ module BrightData
       queries = query_jobs.map { |job| job[:query] }
 
       if queries.empty?
-        puts "[Pipeline] 有効なクエリが生成できませんでした。処理を中断します。"
+        log.call("[Pipeline] 有効なクエリが生成できませんでした。処理を中断します。")
         audit_run&.fail!("no valid query")
         return { targets: targets.size, queries: 0, extracted: 0, registered: { skipped_blank: 0 } }
       end
@@ -136,16 +134,18 @@ module BrightData
       begin
         # SERP API 実行
         client = SerpClient.new
-        batch = client.batch_search(queries, delay_between: 1) do |event|
-          progress_tracker&.serp_progress(
-            completed: event["index"].to_i + 1,
-            total: event["total"].to_i
-          )
-          audit_run&.update_columns(
-            serp_completed: event["index"].to_i + 1,
-            serp_total: event["total"].to_i,
-            updated_at: Time.current
-          )
+        batch = LogContext.with_context(prefix: audit_prefix, file_path: audit_log_path) do
+          client.batch_search(queries, delay_between: 1) do |event|
+            progress_tracker&.serp_progress(
+              completed: event["index"].to_i + 1,
+              total: event["total"].to_i
+            )
+            audit_run&.update_columns(
+              serp_completed: event["index"].to_i + 1,
+              serp_total: event["total"].to_i,
+              updated_at: Time.current
+            )
+          end
         end
         batch.each_with_index do |item, idx|
           job = query_jobs[idx]
@@ -154,7 +154,7 @@ module BrightData
           item["customer_id"] = job[:customer_id]
           item["customer_company"] = job[:company]
         end
-        ResultStore.save_batch(batch)
+        LogContext.with_context(prefix: audit_prefix, file_path: audit_log_path) { ResultStore.save_batch(batch) }
         fatal_error = batch.find { |item| item.dig("result", "fatal") }
         serp_error_customer_ids = if fatal_error
           target_ids
@@ -165,7 +165,7 @@ module BrightData
             item["customer_id"]
           end.uniq
         end
-        puts "[Pipeline] SERP APIエラー: #{serp_error_customer_ids.size}件（対象はserp_errorにします）" if serp_error_customer_ids.any?
+        log.call("[Pipeline] SERP APIエラー: #{serp_error_customer_ids.size}件（対象はserp_errorにします）") if serp_error_customer_ids.any?
 
         # 抽出
         companies = batch.flat_map do |item|
@@ -191,14 +191,14 @@ module BrightData
           concurrency = ENV.fetch("WEB_ENRICHER_CONCURRENCY", "3").to_i.clamp(1, 10)
           web_timeout = web_enricher_timeout_seconds
           web_enricher = WebEnricher
-          puts "[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件 / 並列度 #{concurrency}"
+          log.call("[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件 / 並列度 #{concurrency}")
 
           # customer_id ごとにグループ化（nil customer は処理対象外）。
           # 進捗は候補URL数ではなく、UIで選択された対象企業数を母数にする。
           groups = companies.each_with_index.group_by { |c, _| c[:customer_id] }
           counters[:no_customer] = (groups[nil] || []).size
           (groups[nil] || []).each do |c, idx|
-            puts "[WebEnricher] SERP候補 #{idx + 1}/#{companies.size}: customer未マッチ query='#{c[:query]}' url=#{c[:url]} → SKIP"
+            log.call("[WebEnricher] SERP候補 #{idx + 1}/#{companies.size}: customer未マッチ query='#{c[:query]}' url=#{c[:url]} → SKIP")
           end
           groups.delete(nil)
           audit_run&.mark_status!("web", web_total: target_ids.size, web_completed: 0)
@@ -208,89 +208,108 @@ module BrightData
           audit_targets = audit_run ? audit_run.targets.index_by(&:customer_id) : {}
           futures = target_ids.map do |customer_id|
             Concurrent::Promises.future_on(pool) do
-              customer = Customer.find_by(id: customer_id)
-              group = groups[customer_id] || []
-              audit_target = audit_targets[customer_id]
-              candidate_count = group.size
-              result_status = nil
-              selected_url = nil
-              update_keys = []
-              error_message = nil
-              excluded_seen = false
+              LogContext.with_context(prefix: audit_prefix, file_path: audit_log_path) do
+                customer = Customer.find_by(id: customer_id)
+                group = groups[customer_id] || []
+                audit_target = audit_targets[customer_id]
+                candidate_count = group.size
+                result_status = nil
+                selected_url = nil
+                update_keys = []
+                error_message = nil
+                excluded_seen = false
 
-              begin
-                next if customer.nil?
+                begin
+                  next if customer.nil?
 
-                mutex.synchronize do
-                  puts "[WebEnricher] 対象企業: #{customer.company} (ID=#{customer.id}) / 候補URL #{group.size}件"
-                end
-
-                if group.empty?
-                  result_status = "no_candidate"
                   mutex.synchronize do
-                    counters[:no_candidate] += 1
-                    puts "  -> 候補URLなし（SERP抽出結果なし） customer ID=#{customer.id}"
+                    LogContext.puts "[WebEnricher] 対象企業: #{customer.company} (ID=#{customer.id}) / 候補URL #{group.size}件"
                   end
-                  next
-                end
 
-                # group は [[company_hash, idx], ...] の配列。
-                # SERP の上位順を保ったまま走査し、最初に updates が成立した時点で打ち切る。
-                sorted_group = group.sort_by { |company, idx| candidate_priority(customer, company, idx) }
-                sorted_group.each_with_index do |(company, idx), local_idx|
-                  direct_updates = build_serp_updates(customer, company)
-                  if direct_updates.any?
-                    customer.update_columns(direct_updates.merge(updated_at: Time.current))
-                    customer.reload
-                    update_keys |= direct_updates.keys.map(&:to_s)
+                  if group.empty?
+                    result_status = "no_candidate"
                     mutex.synchronize do
-                      counters[:serp_direct] += 1
-                      puts "  -> SERP直接更新: #{direct_updates.keys.join(', ')} (customer ID=#{customer.id})"
-                    end
-                  end
-
-                  if company[:url].blank?
-                    mutex.synchronize { counters[:no_url] += 1 }
-                    next
-                  end
-
-                  if UrlPolicy.excluded_url?(company[:url], title: url_policy_title(company))
-                    excluded_seen = true
-                    mutex.synchronize do
-                      counters[:excluded_url] += 1
-                      puts "[WebEnricher] 候補URL #{local_idx + 1}/#{sorted_group.size} (SERP #{idx + 1}/#{companies.size}): excluded url=#{company[:url]} title='#{url_policy_title(company)}'"
+                      counters[:no_candidate] += 1
+                      LogContext.puts "  -> 候補URLなし（SERP抽出結果なし） customer ID=#{customer.id}"
                     end
                     next
                   end
 
-                  mutex.synchronize do
-                    puts "[WebEnricher] 候補URL #{local_idx + 1}/#{sorted_group.size} (SERP #{idx + 1}/#{companies.size}): candidate=#{company[:company]} url=#{company[:url]}"
-                  end
-                  begin
-                    web_data = Timeout.timeout(web_timeout) do
-                      web_enricher.enrich_from_url(company[:url], customer)
+                  # group は [[company_hash, idx], ...] の配列。
+                  # SERP の上位順を保ったまま走査し、最初に updates が成立した時点で打ち切る。
+                  sorted_group = group.sort_by { |company, idx| candidate_priority(customer, company, idx) }
+                  sorted_group.each_with_index do |(company, idx), local_idx|
+                    direct_updates = build_serp_updates(customer, company)
+                    if direct_updates.any?
+                      customer.update_columns(direct_updates.merge(updated_at: Time.current))
+                      customer.reload
+                      update_keys |= direct_updates.keys.map(&:to_s)
+                      mutex.synchronize do
+                        counters[:serp_direct] += 1
+                        LogContext.puts "  -> SERP直接更新: #{direct_updates.keys.join(', ')} (customer ID=#{customer.id})"
+                      end
                     end
-                    if web_enrichment_retry_needed?(web_data)
-                      retry_web_data = Timeout.timeout(web_timeout) do
+
+                    if company[:url].blank?
+                      mutex.synchronize { counters[:no_url] += 1 }
+                      next
+                    end
+
+                    if UrlPolicy.excluded_url?(company[:url], title: url_policy_title(company))
+                      excluded_seen = true
+                      mutex.synchronize do
+                        counters[:excluded_url] += 1
+                        LogContext.puts "[WebEnricher] 候補URL #{local_idx + 1}/#{sorted_group.size} (SERP #{idx + 1}/#{companies.size}): excluded url=#{company[:url]} title='#{url_policy_title(company)}'"
+                      end
+                      next
+                    end
+
+                    mutex.synchronize do
+                      LogContext.puts "[WebEnricher] 候補URL #{local_idx + 1}/#{sorted_group.size} (SERP #{idx + 1}/#{companies.size}): candidate=#{company[:company]} url=#{company[:url]}"
+                    end
+                    begin
+                      web_data = Timeout.timeout(web_timeout) do
                         web_enricher.enrich_from_url(company[:url], customer)
                       end
-                      web_data = retry_web_data if web_enrichment_result_better?(retry_web_data, web_data)
-                    end
-                    updates = build_web_updates(customer, company, web_data)
-
-                    if updates.any?
-                      customer.update_columns(updates.merge(updated_at: Time.current))
-                      customer.reload
-                      result_status = "updated"
-                      selected_url = web_data[:source_url].presence || company[:url]
-                      update_keys |= updates.keys.map(&:to_s)
-                      mutex.synchronize do
-                        counters[:enriched] += 1
-                        puts "  -> 更新: #{updates.keys.join(', ')} (customer ID=#{customer.id})"
+                      if web_enrichment_retry_needed?(web_data)
+                        retry_web_data = Timeout.timeout(web_timeout) do
+                          web_enricher.enrich_from_url(company[:url], customer)
+                        end
+                        web_data = retry_web_data if web_enrichment_result_better?(retry_web_data, web_data)
                       end
-                      break  # この customer は決着済み。後続 URL は処理しない
-                    else
-                      fallback_updates = build_url_fallback_update(customer, company, web_data: web_data)
+                      updates = build_web_updates(customer, company, web_data)
+
+                      if updates.any?
+                        customer.update_columns(updates.merge(updated_at: Time.current))
+                        customer.reload
+                        result_status = "updated"
+                        selected_url = web_data[:source_url].presence || company[:url]
+                        update_keys |= updates.keys.map(&:to_s)
+                        mutex.synchronize do
+                          counters[:enriched] += 1
+                          LogContext.puts "  -> 更新: #{updates.keys.join(', ')} (customer ID=#{customer.id})"
+                        end
+                        break  # この customer は決着済み。後続 URL は処理しない
+                      else
+                        fallback_updates = build_url_fallback_update(customer, company, web_data: web_data)
+                        if fallback_updates.any?
+                          customer.update_columns(fallback_updates.merge(updated_at: Time.current))
+                          customer.reload
+                          result_status = "url_only"
+                          selected_url = company[:url]
+                          update_keys |= fallback_updates.keys.map(&:to_s)
+                          mutex.synchronize do
+                            counters[:url_fallback] += 1
+                            LogContext.puts "  -> URLのみ保存: #{company[:url]} (customer ID=#{customer.id})"
+                          end
+                        else
+                          mutex.synchronize { LogContext.puts "  -> 更新なし（既存データあり or 取得不可） customer ID=#{customer.id}" }
+                        end
+                      end
+                    rescue => e
+                      Rails.logger.warn("#{audit_prefix} [Pipeline] WebEnricher error for #{company[:url]}: #{e.message}")
+                      error_message = e.message
+                      fallback_updates = build_url_fallback_update(customer, company)
                       if fallback_updates.any?
                         customer.update_columns(fallback_updates.merge(updated_at: Time.current))
                         customer.reload
@@ -299,50 +318,33 @@ module BrightData
                         update_keys |= fallback_updates.keys.map(&:to_s)
                         mutex.synchronize do
                           counters[:url_fallback] += 1
-                          puts "  -> URLのみ保存: #{company[:url]} (customer ID=#{customer.id})"
+                          LogContext.puts "  -> ERROR後にURLのみ保存: #{company[:url]} (customer ID=#{customer.id})"
                         end
                       else
-                        mutex.synchronize { puts "  -> 更新なし（既存データあり or 取得不可） customer ID=#{customer.id}" }
+                        result_status ||= "error"
+                        mutex.synchronize { LogContext.puts "  -> ERROR (skipping): #{e.message}" }
                       end
-                    end
-                  rescue => e
-                    Rails.logger.warn("[Pipeline] WebEnricher error for #{company[:url]}: #{e.message}")
-                    error_message = e.message
-                    fallback_updates = build_url_fallback_update(customer, company)
-                    if fallback_updates.any?
-                      customer.update_columns(fallback_updates.merge(updated_at: Time.current))
-                      customer.reload
-                      result_status = "url_only"
-                      selected_url = company[:url]
-                      update_keys |= fallback_updates.keys.map(&:to_s)
-                      mutex.synchronize do
-                        counters[:url_fallback] += 1
-                        puts "  -> ERROR後にURLのみ保存: #{company[:url]} (customer ID=#{customer.id})"
-                      end
-                    else
-                      result_status ||= "error"
-                      mutex.synchronize { puts "  -> ERROR (skipping): #{e.message}" }
                     end
                   end
-                end
-              ensure
-                if audit_target && customer
-                  final_status = result_status ||
-                                 (candidate_count.zero? ? "no_candidate" : nil) ||
-                                 (error_message.present? ? "error" : nil) ||
-                                 (excluded_seen ? "excluded" : "no_update")
+                ensure
+                  if audit_target && customer
+                    final_status = result_status ||
+                                   (candidate_count.zero? ? "no_candidate" : nil) ||
+                                   (error_message.present? ? "error" : nil) ||
+                                   (excluded_seen ? "excluded" : "no_update")
 
-                  audit_target.refresh_after!(
-                    customer: customer.reload,
-                    result_status: final_status,
-                    candidate_count: candidate_count,
-                    selected_url: selected_url,
-                    update_keys: update_keys,
-                    error_message: error_message
-                  )
+                    audit_target.refresh_after!(
+                      customer: customer.reload,
+                      result_status: final_status,
+                      candidate_count: candidate_count,
+                      selected_url: selected_url,
+                      update_keys: update_keys,
+                      error_message: error_message
+                    )
+                  end
+                  audit_run&.increment!(:web_completed) if audit_run
+                  progress_tracker&.increment_web(message: customer ? "対象完了: #{customer.company}" : "対象完了: 対象なし")
                 end
-                audit_run&.increment!(:web_completed) if audit_run
-                progress_tracker&.increment_web(message: customer ? "対象完了: #{customer.company}" : "対象完了: 対象なし")
               end
             end
           end
@@ -351,14 +353,14 @@ module BrightData
           pool.shutdown
           pool.wait_for_termination
 
-          puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / URLのみ保存 #{counters[:url_fallback]}件 / SERP直接更新 #{counters[:serp_direct]}件 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(URL除外) #{counters[:excluded_url]}件 / スキップ(候補URLなし) #{counters[:no_candidate]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
+          log.call("[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / URLのみ保存 #{counters[:url_fallback]}件 / SERP直接更新 #{counters[:serp_direct]}件 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(URL除外) #{counters[:excluded_url]}件 / スキップ(候補URLなし) #{counters[:no_candidate]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件")
         end
 
         if detect_contact
-          puts "[Pipeline] DB mode: skipped ContactUrlEnricher (WebEnricher handles persisted contact_url)"
+          log.call("[Pipeline] DB mode: skipped ContactUrlEnricher (WebEnricher handles persisted contact_url)")
         end
         normalized = DataNormalizer.normalize_batch(companies)
-        ResultExporter.to_csv(normalized)
+        LogContext.with_context(prefix: audit_prefix, file_path: audit_log_path) { ResultExporter.to_csv(normalized) }
 
         # DB mode enriches existing Customer rows only. The legacy registrar is
         # intentionally skipped here because importing SERP candidates can create
@@ -366,7 +368,7 @@ module BrightData
         reg_stats = if dry_run
           { dry_run: true }
         else
-          puts "[Pipeline] DB mode: skipped CustomerRegistrar import (existing customers were enriched above)"
+          log.call("[Pipeline] DB mode: skipped CustomerRegistrar import (existing customers were enriched above)")
           { skipped_import: normalized.size, reason: "db_mode_updates_existing_customers_only" }
         end
 
@@ -391,12 +393,14 @@ module BrightData
 
         # 抽出率記録（SERP 生データの抽出率）
         label = industry.present? ? "serp_db_#{industry}_#{Time.current.strftime('%Y%m%d')}" : "serp_db_#{Time.current.strftime('%Y%m%d')}"
-        ExtractionStats.record(
-          companies,
-          industry_label: label,
-          total_queries: queries.size,
-          serp_errors: batch.count { |b| b["result"]["error"] }
-        )
+        LogContext.with_context(prefix: audit_prefix, file_path: audit_log_path) do
+          ExtractionStats.record(
+            companies,
+            industry_label: label,
+            total_queries: queries.size,
+            serp_errors: batch.count { |b| b["result"]["error"] }
+          )
+        end
 
         # WebEnricher 補完後の最終取得率（DB 実データの充足状況）
         # ExtractionStats は SERP 生配列の集計なので WebEnricher 更新分が反映されない。
@@ -414,27 +418,27 @@ module BrightData
                            .where.not(contact_url: [nil, ''])
                            .count
           pct = ->(v) { n.zero? ? 0.0 : (v.to_f / n * 100).round(1) }
-          puts "\n=== 最終取得率（WebEnricher補完後）==="
-          puts "対象: #{n}件（今回SERPで検索した企業数）"
-          puts "  tel取得:         #{tel_c}/#{n} (#{pct.call(tel_c)}%)"
-          puts "  address取得:     #{addr_c}/#{n} (#{pct.call(addr_c)}%)"
-          puts "  url取得:         #{url_c}/#{n} (#{pct.call(url_c)}%)"
-          puts "  contact_url取得: #{contact_c}/#{n} (#{pct.call(contact_c)}%)"
-          puts "  fully_enriched:  #{full_c}/#{n} (#{pct.call(full_c)}%)"
+          log.call("\n=== 最終取得率（WebEnricher補完後）===")
+          log.call("対象: #{n}件（今回SERPで検索した企業数）")
+          log.call("  tel取得:         #{tel_c}/#{n} (#{pct.call(tel_c)}%)")
+          log.call("  address取得:     #{addr_c}/#{n} (#{pct.call(addr_c)}%)")
+          log.call("  url取得:         #{url_c}/#{n} (#{pct.call(url_c)}%)")
+          log.call("  contact_url取得: #{contact_c}/#{n} (#{pct.call(contact_c)}%)")
+          log.call("  fully_enriched:  #{full_c}/#{n} (#{pct.call(full_c)}%)")
         end
 
-        puts "[Pipeline] 完了: #{targets.size}件対象 / #{companies.size}件抽出"
+        log.call("[Pipeline] 完了: #{targets.size}件対象 / #{companies.size}件抽出")
         { targets: targets.size, queries: queries.size, extracted: companies.size, registered: reg_stats }
       rescue Interrupt => e
         Rails.logger.warn("[Pipeline] execute_from_db interrupted: #{e.class} #{e.message}")
-        puts "[Pipeline] INTERRUPTED: #{e.message}"
+        log.call("[Pipeline] INTERRUPTED: #{e.message}")
         audit_run&.fail!(e.message)
         progress_tracker&.fail(message: e.message)
         raise
       rescue => e
         # Keep failures visible and out of the automatic target scope.
-        Rails.logger.error("[Pipeline] execute_from_db 例外: #{e.class} #{e.message}\n#{e.backtrace.first(5).join("\n")}")
-        puts "[Pipeline] ERROR: #{e.message}"
+        Rails.logger.error("#{audit_prefix} [Pipeline] execute_from_db 例外: #{e.class} #{e.message}\n#{e.backtrace.first(5).join("\n")}")
+        log.call("[Pipeline] ERROR: #{e.message}")
         audit_run&.fail!(e.message)
         progress_tracker&.fail(message: e.message)
         raise
@@ -445,6 +449,17 @@ module BrightData
           refresh_audit_targets!(audit_run, target_ids)
         end
       end
+    end
+
+    def self.serp_target_scope
+      Customer.where(
+        "(tel IS NULL OR TRIM(tel) = '') AND " \
+        "(url IS NULL OR TRIM(url) = '')"
+      )
+    end
+
+    def self.japan_time_label(time = Time.current)
+      time.in_time_zone("Asia/Tokyo").strftime("%Y-%m-%d %H:%M:%S JST")
     end
 
     def self.refresh_audit_targets!(audit_run, target_ids)

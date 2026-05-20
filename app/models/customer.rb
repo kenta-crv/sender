@@ -1,9 +1,25 @@
 class Customer < ApplicationRecord
+  TEL_OR_URL_PRESENT_SQL = "(tel IS NOT NULL AND TRIM(tel) <> '') OR (url IS NOT NULL AND TRIM(url) <> '')".freeze
+  TEL_AND_URL_BLANK_SQL = "(tel IS NULL OR TRIM(tel) = '') AND (url IS NULL OR TRIM(url) = '')".freeze
+
   has_many :calls, dependent: :destroy  
   has_one :last_call, -> { order(created_at: :desc) }, class_name: 'Call'
   has_one :last_form_call, -> { where(call_type: 'form').order(created_at: :desc) }, class_name: 'Call'
   belongs_to :worker, optional: true#これがあるとインポートもCreateも通らない
   belongs_to :client, optional: true
+  scope :with_tel_or_url, -> { where(TEL_OR_URL_PRESENT_SQL) }
+  scope :without_tel_and_url, -> { where(TEL_AND_URL_BLANK_SQL) }
+
+  def tel_or_url_present?
+    tel.to_s.strip.present? || url.to_s.strip.present?
+  end
+
+  def effective_serp_status
+    return "serp_done" if serp_status.blank? && tel_or_url_present?
+
+    serp_status
+  end
+
   scope :between_created_at, ->(from, to){
     where(created_at: from..to).where.not(tel: nil)
   }

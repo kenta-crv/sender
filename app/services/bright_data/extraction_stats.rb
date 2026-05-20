@@ -22,10 +22,10 @@ module BrightData
         industry: companies.count { |c| c[:industry].present? }
       }
 
-      puts "\n=== SERP抽出率（検索結果から直接取得）==="
-      puts "SERPクエリ: #{total_queries} / エラー: #{serp_errors}"
-      puts "抽出企業: #{total}"
-      stats.each { |k, v| puts "  #{k}: #{v}/#{total} (#{total.zero? ? 0 : (v.to_f/total*100).round(1)}%)" }
+      LogContext.puts "\n=== SERP抽出率（検索結果から直接取得）==="
+      LogContext.puts "SERPクエリ: #{total_queries} / エラー: #{serp_errors}"
+      LogContext.puts "抽出企業: #{total}"
+      stats.each { |k, v| LogContext.puts "  #{k}: #{v}/#{total} (#{total.zero? ? 0 : (v.to_f/total*100).round(1)}%)" }
 
       stats
     end

@@ -750,6 +750,29 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     end
   end
 
+  test "execute_from_db targets only customers missing both url and tel" do
+    target = Customer.create!(company: "Both Missing Target", address: "Tokyo")
+    Customer.create!(company: "Has Tel Target", address: "Tokyo", tel: "03-1111-1111")
+    Customer.create!(company: "Has Url Target", address: "Tokyo", url: "https://has-url.example/")
+
+    captured_queries = []
+    fake_client = Object.new
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1|
+      captured_queries.replace(queries)
+      queries.map { |query| { "query" => query, "result" => {}, "timestamp" => Time.current.iso8601 } }
+    end
+
+    with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
+      with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
+        BrightData::Pipeline.execute_from_db(limit: 10, dry_run: true)
+      end
+    end
+
+    assert_equal 1, captured_queries.size
+    assert_match(/\ABoth Missing Target/, captured_queries.first)
+    assert_nil target.reload.serp_status
+  end
+
   test "execute_from_db honors explicit customer ids even when already complete" do
     customer = Customer.create!(
       company: "Complete Explicit Target",
@@ -851,6 +874,7 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
       limit: 1,
       targets: [customer]
     )
+    FileUtils.rm_f(run.log_path)
 
     fake_client = Object.new
     fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1, &progress|
@@ -893,7 +917,16 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
       end
     end
 
-    assert_includes stdout, "[SERP run=audit-run-test jid=jid-audit-1]"
+    audit_prefix = "[SERP run=audit-run-test jid=jid-audit-1]"
+    assert_equal 1, stdout.scan(audit_prefix).size
+    assert_includes stdout, "[WebEnricher] 対象企業: Audit Target Company"
+    assert_includes stdout, "[WebEnricher] 候補URL 1/1"
+    assert_includes stdout, "[Pipeline] Web補完 完了"
+    assert File.exist?(run.log_path)
+    run_log = File.read(run.log_path, encoding: "UTF-8")
+    assert_includes run_log, "[WebEnricher] 対象企業: Audit Target Company"
+    refute_includes run_log, "[SERP run=audit-run-test jid=jid-audit-1]"
+    refute_includes run_log, "2026-05-18"
     assert_equal "done", run.reload.status
     assert_equal "jid-audit-1", run.jid
 

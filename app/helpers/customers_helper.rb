@@ -13,6 +13,16 @@ module CustomersHelper
     "serp_error" => "エラー"
   }.freeze
 
+  def effective_serp_status(customer)
+    return nil if customer.blank?
+    return customer.effective_serp_status if customer.respond_to?(:effective_serp_status)
+
+    value = customer&.serp_status
+    return "serp_done" if value.blank? && (customer&.tel.to_s.strip.present? || customer&.url.to_s.strip.present?)
+
+    value
+  end
+
   def serp_status_label(value)
     SERP_STATUS_LABELS[value] || value.to_s
   end

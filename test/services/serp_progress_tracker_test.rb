@@ -103,6 +103,40 @@ class SerpProgressTrackerTest < ActiveSupport::TestCase
     SerpProgressTracker.send(:protected, :read)
   end
 
+  test "payload treats blank serp status with tel or url as done" do
+    customer = Customer.create!(company: "Preview Effective Done Target", serp_status: nil, tel: "03-1111-1111")
+    original_read = SerpProgressTracker.instance_method(:read)
+
+    SerpProgressTracker.define_method(:read) do
+      {
+        "run_id" => "preview-effective-done",
+        "phase" => "done",
+        "total" => "1",
+        "target_total" => "1",
+        "target_completed" => "1",
+        "target_ids" => customer.id.to_s,
+        "target_preview" => "[]",
+        "target_preview_limit" => "20",
+        "serp_total" => "1",
+        "serp_completed" => "1",
+        "web_total" => "1",
+        "web_completed" => "1",
+        "done_count" => "1",
+        "error_count" => "0",
+        "message" => "done",
+        "started_at" => Time.current.iso8601,
+        "updated_at" => Time.current.iso8601
+      }
+    end
+
+    preview = SerpProgressTracker.payload("preview-effective-done")[:target_preview]
+
+    assert_equal "serp_done", preview.first[:serp_status]
+  ensure
+    SerpProgressTracker.define_method(:read, original_read)
+    SerpProgressTracker.send(:protected, :read)
+  end
+
   test "payload includes audit run identifiers and before after target preview" do
     customer = Customer.create!(company: "Audit Preview Target", serp_status: nil)
     run = SerpEnrichmentRun.create_for_targets!(
@@ -152,6 +186,7 @@ class SerpProgressTrackerTest < ActiveSupport::TestCase
     assert_equal "done", payload[:run_status]
     assert_equal false, payload[:active]
     assert_equal 100.0, payload[:percent]
+    assert_equal SerpProgressTracker.format_duration(finished_at - started_at), payload[:elapsed_label]
     assert_equal "serp_done", payload[:target_preview].first[:serp_status]
     assert_equal "https://preview.example/", payload[:target_preview].first[:hp_url]
     assert_equal "", payload[:target_preview].first[:before_serp_status]

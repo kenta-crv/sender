@@ -2,6 +2,7 @@
 
 class SerpEnrichmentRun < ApplicationRecord
   STATUSES = %w[queued running serp web done error].freeze
+  LOG_DIR = Rails.root.join("log", "serp_runs")
 
   has_many :targets,
            class_name: "SerpEnrichmentRunTarget",
@@ -31,7 +32,7 @@ class SerpEnrichmentRun < ApplicationRecord
           customer_id: customer.id,
           position: index + 1,
           company: customer.company.to_s,
-          before_serp_status: customer.serp_status.to_s,
+          before_serp_status: customer.effective_serp_status.to_s,
           before_tel: customer.tel.to_s,
           before_address: customer.address.to_s,
           before_url: customer.url.to_s,
@@ -45,6 +46,14 @@ class SerpEnrichmentRun < ApplicationRecord
 
   def self.find_by_run_id(run_id)
     find_by(run_id: run_id.to_s)
+  end
+
+  def self.log_path_for(run_id)
+    LOG_DIR.join("#{run_id.to_s.gsub(/[^a-zA-Z0-9_-]/, '')}.log").to_s
+  end
+
+  def log_path
+    self.class.log_path_for(run_id)
   end
 
   def sidekiq_status

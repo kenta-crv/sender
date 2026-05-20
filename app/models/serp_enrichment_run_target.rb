@@ -25,7 +25,7 @@ class SerpEnrichmentRunTarget < ApplicationRecord
       selected_url: selected_url.to_s.presence,
       update_keys: Array(update_keys).map(&:to_s).uniq,
       error_message: error_message.to_s.presence,
-      after_serp_status: customer&.serp_status.to_s,
+      after_serp_status: customer&.effective_serp_status.to_s,
       after_tel: customer&.tel.to_s,
       after_address: customer&.address.to_s,
       after_url: customer&.url.to_s,
