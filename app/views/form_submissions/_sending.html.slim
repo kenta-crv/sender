@@ -1,8 +1,6 @@
 .sc-detect.container
-  / すべてのコンテンツを .sc-detect 内に包含
   h2.sc-detect__title 検索フォーム
 
-  / --- 検索フォーム ---
   .sc-detect__card.mb-5
     .sc-detect__card-body
       = search_form_for @q, url: form_submissions_path, method: :get do |f|
@@ -18,11 +16,19 @@
 
           .col-md-3
             label.sc-detect__card-body.p-0.mb-2 業種
-            = f.search_field :business_cont, class: "sc-detect__input"
+
+            = f.select :business_eq,\
+              options_for_select(@business_options, params.dig(:q, :business_eq)),\
+              { include_blank: '選択してください' },\
+              class: 'sc-detect__select'
 
           .col-md-3
             label.sc-detect__card-body.p-0.mb-2 職種
-            = f.search_field :genre_cont, class: "sc-detect__input"
+
+            = f.select :genre_eq,\
+              options_for_select(@genre_options, params.dig(:q, :genre_eq)),\
+              { include_blank: '選択してください' },\
+              class: 'sc-detect__select'
 
         .row.mb-3
           .col-md-3
@@ -81,94 +87,123 @@
         .mt-4
           = f.submit "検索実行", class: "sc-detect__btn sc-detect__btn--primary"
 
-    / --- 新規バッチ作成フォーム ---
   .sc-detect__card
-      .sc-detect__card-header
-        h5 新規バッチ送信
-      .sc-detect__card-body
-        = form_tag form_submissions_path, method: :post do
-          / パラメータ引き継ぎ
-          - if params[:q].present?
-            - params[:q].each do |key, value|
-              - if value.is_a?(Array)
-                - value.each do |v|
-                  = hidden_field_tag "q[#{key}][]", v
-              - elsif value.present?
-                = hidden_field_tag "q[#{key}]", value
-          - if params[:last_call].present?
-            - params[:last_call].each do |key, value|
-              - if value.is_a?(Array)
-                - value.each do |v|
-                  = hidden_field_tag "last_call[#{key}][]", v
-              - elsif value.present?
-                = hidden_field_tag "last_call[#{key}]", value
+    .sc-detect__card-header
+      h5 新規バッチ送信
 
-          .mb-4
-            p.sc-detect__card-body.p-0.mb-2 送信対象の顧客を選択してください。
-            .d-flex.gap-4
-              span
-                | contact_url 設定済み: 
-                strong = @customers.total_count
-                | 件
-              span.ms-3
-                | 自動検出対象: 
-                strong = @detectable_customers.total_count
-                | 件
+    .sc-detect__card-body
+      = form_tag form_submissions_path, method: :post do
 
-          .row.mb-4.align-items-end
-            .col-md-4
-              = link_to '新規Submission作成', new_submission_path, class: 'sc-detect__btn sc-detect__btn--primary w-100 mb-2', target: '_blank'
-            .col-md-4
-              label.sc-detect__card-body.p-0.mb-2 送信件数指定
-              .sc-detect__input-group
-                = number_field_tag :send_count, nil, class: 'sc-detect__input', min: 1, placeholder: '空欄＝全件'
-                span.ms-2 件
-            .col-md-4
-              label.sc-detect__card-body.p-0.mb-2 送信内容
-              = select_tag :submission_id, options_from_collection_for_select(@submissions, :id, :title), include_blank: 'デフォルト設定', class: 'sc-detect__select'
+        - if params[:q].present?
+          - params[:q].each do |key, value|
+            - if value.is_a?(Array)
+              - value.each do |v|
+                = hidden_field_tag "q[#{key}][]", v
+            - elsif value.present?
+              = hidden_field_tag "q[#{key}]", value
 
-          - if @detectable_customers.total_count > 0
-            .sc-detect__alert.sc-detect__alert--info
-              i.fas.fa-exclamation-triangle.me-2
-              | contact_url未設定が #{ @detectable_customers.total_count } 件あります。
+        - if params[:last_call].present?
+          - params[:last_call].each do |key, value|
+            - if value.is_a?(Array)
+              - value.each do |v|
+                = hidden_field_tag "last_call[#{key}][]", v
+            - elsif value.present?
+              = hidden_field_tag "last_call[#{key}]", value
 
-          .sc-detect__check-group.mb-3
-            = check_box_tag :select_all, '1', false, id: 'select_all'
-            label(for="select_all") リストの全顧客を選択
+        .mb-4
+          p.sc-detect__card-body.p-0.mb-2 送信対象の顧客を選択してください。
 
-          .sc-detect__table-wrapper
-            table.sc-detect__table
-              thead
+          .d-flex.gap-4
+            span
+              | contact_url 設定済み:
+              strong = @customers.total_count
+              | 件
+
+            span.ms-3
+              | 自動検出対象:
+              strong = @detectable_customers.total_count
+              | 件
+
+        .row.mb-4.align-items-end
+          .col-md-4
+            = link_to '新規Submission作成', new_submission_path, class: 'sc-detect__btn sc-detect__btn--primary w-100 mb-2', target: '_blank'
+
+          .col-md-4
+            label.sc-detect__card-body.p-0.mb-2 送信件数指定
+
+            .sc-detect__input-group
+              = number_field_tag :send_count, nil, class: 'sc-detect__input', min: 1, placeholder: '空欄＝全件'
+
+              span.ms-2 件
+
+          .col-md-4
+            label.sc-detect__card-body.p-0.mb-2 送信内容
+
+            = select_tag :submission_id,\
+              options_from_collection_for_select(@submissions, :id, :title),\
+              include_blank: 'デフォルト設定',\
+              class: 'sc-detect__select'
+
+        - if @detectable_customers.total_count > 0
+          .sc-detect__alert.sc-detect__alert--info
+            i.fas.fa-exclamation-triangle.me-2
+            | contact_url未設定が #{@detectable_customers.total_count} 件あります。
+
+        .sc-detect__check-group.mb-3
+          = check_box_tag :select_all, '1', false, id: 'select_all'
+
+          label(for="select_all") リストの全顧客を選択
+
+        .sc-detect__table-wrapper
+          table.sc-detect__table
+            thead
+              tr
+                th 選択
+                th ID
+                th 会社名
+                th 問い合わせURL
+                th 状態
+                th 最終送信
+                th ステータス
+
+            tbody
+              - @customers.each do |c|
                 tr
-                  th 選択
-                  th ID
-                  th 会社名
-                  th 問い合わせURL
-                  th 状態
-                  th 最終送信
-                  th ステータス
-              tbody
-                - @customers.each do |c|
-                  tr
-                    td
-                      .sc-detect__check-group
-                        = check_box_tag 'customer_ids[]', c.id, false, class: 'customer-check'
-                    td = c.id
-                    td = c.company
-                    td
-                      - if c.contact_url.present?
-                        = link_to truncate(c.contact_url, length: 40), c.contact_url, target: '_blank', rel: 'noopener noreferrer'
-                    td: span.sc-detect__badge.sc-detect__badge--success 設定済み
-                    td
-                      - if c.last_form_call
-                        span = c.last_form_call.created_at.strftime('%m/%d %H:%M')
-                    td
-                      - if c.last_form_call
-                        - status_class = case c.last_form_call.status when '自動送信成功', '送信成功' then 'success' when 'CAPTCHA NG' then 'warning' when '自動送信失敗', '送信失敗' then 'danger' else 'info' end
-                        span class="sc-detect__badge sc-detect__badge--#{status_class}" = c.last_form_call.status
+                  td
+                    .sc-detect__check-group
+                      = check_box_tag 'customer_ids[]', c.id, false, class: 'customer-check'
 
-          .sc-detect__pagination-zone.my-4.d-flex.justify-content-center
-            = paginate @customers, param_name: :customers_page
+                  td = c.id
 
-          .mt-4.text-center
-            = submit_tag 'バッチ送信開始', class: 'sc-detect__btn sc-detect__btn--warning w-50', data: { confirm: '一括送信を実行しますか？' }
+                  td = c.company
+
+                  td
+                    - if c.contact_url.present?
+                      = link_to truncate(c.contact_url, length: 40), c.contact_url, target: '_blank', rel: 'noopener noreferrer'
+
+                  td
+                    span.sc-detect__badge.sc-detect__badge--success 設定済み
+
+                  td
+                    - if c.last_form_call
+                      span = c.last_form_call.created_at.strftime('%m/%d %H:%M')
+
+                  td
+                    - if c.last_form_call
+                      - status_class = case c.last_form_call.status
+                      - when '自動送信成功', '送信成功'
+                        - 'success'
+                      - when 'CAPTCHA NG'
+                        - 'warning'
+                      - when '自動送信失敗', '送信失敗'
+                        - 'danger'
+                      - else
+                        - 'info'
+
+                      span class="sc-detect__badge sc-detect__badge--#{status_class}" = c.last_form_call.status
+
+        .sc-detect__pagination-zone.my-4.d-flex.justify-content-center
+          = paginate @customers, param_name: :customers_page
+
+        .mt-4.text-center
+          = submit_tag 'バッチ送信開始', class: 'sc-detect__btn sc-detect__btn--warning w-50', data: { confirm: '一括送信を実行しますか？' }
