@@ -22,12 +22,7 @@ module BrightData
     private
 
     def self.normalize_company_name(name)
-      return nil if name.blank?
-      name.gsub("　", " ").strip.gsub(/\s+/, " ")
-          .gsub(/[（\(]株[）\)]/, "株式会社")
-          .gsub(/[（\(]有[）\)]/, "有限会社")
-          .gsub(/[（\(]合[）\)]/, "合同会社")
-          .strip
+      UrlPolicy.normalize_company_name(name)
     end
 
     def self.normalize_phone(tel)

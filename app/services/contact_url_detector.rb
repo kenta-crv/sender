@@ -314,10 +314,14 @@ class ContactUrlDetector
 
     # URLパスにキーワードがあれば加点
     PATH_KEYWORDS.each do |kw|
-      score += 5 if path.include?(kw.downcase)
+      score += 5 if path_keyword_match?(path, kw)
     end
 
     score
+  end
+
+  def path_keyword_match?(path, keyword)
+    path.match?(%r{(?:\A|[/_-])#{Regexp.escape(keyword.downcase)}(?:\z|[/_.-])})
   end
 
   # ============================================================

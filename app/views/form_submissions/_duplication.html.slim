@@ -16,7 +16,13 @@
               th 操作
           tbody
             - %w[contact_url].each do |attr|
-              - duplicates = Customer.group(attr).having("count(#{attr}) > 1").count
+              - # ログイン状態に応じて集計対象のスコープを切り替え
+              - base_scope = Customer.all
+              - if client_signed_in? && !admin_signed_in?
+                - base_scope = base_scope.where(client_id: current_client.id)
+              
+              - # nilや空文字を除外した上で、指定スコープ内での重複をカウント
+              - duplicates = base_scope.where.not(attr => [nil, '']).group(attr).having("count(#{attr}) > 1").count
               - next if duplicates.keys.compact.empty?
               - total_excess = duplicates.values.sum - duplicates.size
               tr

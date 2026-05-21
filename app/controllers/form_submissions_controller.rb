@@ -1,271 +1,301 @@
 class FormSubmissionsController < ApplicationController
-  skip_before_action :check_trial_expiration, only: [:create,:index, :detect_contact_urls, :import_customers], raise: false
-  before_action :authenticate_admin!, except: [:create,:index, :detect_contact_urls, :import_customers]
-  before_action :authenticate_admin_or_client!, only: [:index, :detect_contact_urls, :import_customers]
+  before_action :authenticate_admin!, except: [:import_customers, :index, :detect_contact_urls, :create]
+  before_action :authenticate_admin_or_client!, only: [:import_customers, :index, :detect_contact_urls, :create]  
   before_action :set_batch, only: [:show, :cancel, :resume, :progress, :destroy]
-
   # GET /form_submissions
-  def index
-    # -------------------------
-    # 検索（Ransack）
-    # -------------------------
-    @q = Customer.ransack(params[:q])
+def index
+  # -------------------------
+  # 検索（Ransack）
+  # -------------------------
+  @q = Customer.ransack(params[:q])
 
-    base_customers = @q.result
-                       .includes(:last_form_call)
-                       .distinct
+  base_customers = @q.result
+                     .includes(:last_form_call)
+                     .distinct
 
-    # -------------------------
-    # 最新送信条件
-    # -------------------------
-    if params[:last_call].present?
+  # -------------------------
+  # 最新送信条件
+  # -------------------------
+  if params[:last_call].present?
 
-      lc = params[:last_call]
-      statuses = Array(lc[:status]).reject(&:blank?)
+    lc = params[:last_call]
+    statuses = Array(lc[:status]).reject(&:blank?)
 
-      has_filter =
-        statuses.any? ||
-        lc[:created_at_from].present? ||
-        lc[:created_at_to].present?
+    has_filter =
+      statuses.any? ||
+      lc[:created_at_from].present? ||
+      lc[:created_at_to].present?
 
-      if has_filter
+    if has_filter
 
-        customer_ids = Customer
-          .includes(:last_form_call)
-          .select do |customer|
+      customer_ids = Customer
+        .includes(:last_form_call)
+        .select do |customer|
 
-            call = customer.last_form_call
-            next false if call.blank?
+          call = customer.last_form_call
+          next false if call.blank?
 
-            status_ok =
-              statuses.blank? ||
-              statuses.include?(call.status)
+          status_ok =
+            statuses.blank? ||
+            statuses.include?(call.status)
 
-            from_ok =
-              lc[:created_at_from].blank? ||
-              call.created_at >= Time.zone.parse(lc[:created_at_from])
+          from_ok =
+            lc[:created_at_from].blank? ||
+            call.created_at >= Time.zone.parse(lc[:created_at_from])
 
-            to_ok =
-              lc[:created_at_to].blank? ||
-              call.created_at <= Time.zone.parse(lc[:created_at_to]).end_of_day
+          to_ok =
+            lc[:created_at_to].blank? ||
+            call.created_at <= Time.zone.parse(lc[:created_at_to]).end_of_day
 
-            status_ok && from_ok && to_ok
-          end
-          .map(&:id)
+          status_ok && from_ok && to_ok
+        end
+        .map(&:id)
 
-        base_customers = base_customers.where(id: customer_ids)
-      end
+      base_customers = base_customers.where(id: customer_ids)
     end
-
-    # =====================================================
-    # 顧客カテゴリ
-    # =====================================================
-
-    @customers = base_customers
-                   .where.not(contact_url: [nil, '', 'not_detected'])
-                   .page(params[:customers_page])
-                   .per(50)
-
-    @detectable_customers = base_customers
-                              .where(contact_url: [nil, ''])
-                              .where.not(url: [nil, ''])
-                              .where(fobbiden: [nil, false, 0])
-                              .page(params[:detectable_page])
-                              .per(50)
-
-    @not_detected_count =
-      Customer.where(contact_url: 'not_detected').count
-
-    @no_url_customers =
-      base_customers
-        .where(contact_url: [nil, ''])
-        .where(url: [nil, ''])
-
-    @no_url_customers_count =
-      @no_url_customers.count
-
-    @submissions =
-      Submission.order(created_at: :desc)
-
-    @batches =
-      FormSubmissionBatch
-        .order(created_at: :desc)
-        .page(params[:page])
-        .per(20)
-
-    @submission_stats =
-      @submissions.map do |submission|
-
-        batches =
-          submission.form_submission_batches
-
-        total_sent =
-          batches.sum(:total_count)
-
-        success_count =
-          batches.sum(:success_count)
-
-        failure_count =
-          batches.sum(:failure_count)
-
-        last_sent_at =
-          batches
-            .order(started_at: :desc)
-            .limit(1)
-            .pluck(:started_at)
-            .first
-
-        {
-          submission: submission,
-          total_sent: total_sent,
-          success_count: success_count,
-          failure_count: failure_count,
-          last_sent_at: last_sent_at
-        }
-      end
   end
 
-  # POST /form_submissions
-  def create
-    # 送信対象: indexの@customersと同じスコープ（contact_url設定済み）
-    eligible_scope = Customer.where.not(contact_url: [nil, '', 'not_detected'])
+  # =====================================================
+  # 顧客カテゴリ
+  # =====================================================
+
+  @customers = base_customers
+                 .where.not(contact_url: [nil, '', 'not_detected'])
+                 .page(params[:customers_page])
+                 .per(50)
+
+  @detectable_customers = base_customers
+                            .where(contact_url: [nil, ''])
+                            .where.not(url: [nil, ''])
+                            .where(fobbiden: [nil, false, 0])
+                            .page(params[:detectable_page])
+                            .per(50)
+
+  @not_detected_count =
+    Customer.where(contact_url: 'not_detected').count
+
+  @no_url_customers =
+    base_customers
+      .where(contact_url: [nil, ''])
+      .where(url: [nil, ''])
+
+  @no_url_customers_count =
+    @no_url_customers.count
+
+  @submissions =
+    Submission.order(created_at: :desc)
+
+  @batches =
+    FormSubmissionBatch
+      .order(created_at: :desc)
+      .page(params[:page])
+      .per(20)
+
+  @submission_stats =
+    @submissions.map do |submission|
+
+      batches =
+        submission.form_submission_batches
+
+      total_sent =
+        batches.sum(:total_count)
+
+      success_count =
+        batches.sum(:success_count)
+
+      failure_count =
+        batches.sum(:failure_count)
+
+      last_sent_at =
+        batches
+          .order(started_at: :desc)
+          .limit(1)
+          .pluck(:started_at)
+          .first
+
+      {
+        submission: submission,
+        total_sent: total_sent,
+        success_count: success_count,
+        failure_count: failure_count,
+        last_sent_at: last_sent_at
+      }
+    end
+end
+
+# POST /form_submissions
+def create
+  # クライアントログイン時は自身の所有するデータのみに絞り込むベーススコープを作成
+  base_scope = Customer.all
+  if client_signed_in? && !admin_signed_in?
+    base_scope = base_scope.where(client_id: current_client.id)
+  end
+
+  # 送信対象スコープ（contact_url設定済み）にベーススコープを適用
+  eligible_scope = base_scope.where.not(contact_url: [nil, '', 'not_detected'])
                              .where(fobbiden: [nil, false, 0])
                              .order(:id)
 
-    # 検索条件（Ransack）を適用
-    if params[:q].present?
-      eligible_scope = eligible_scope.ransack(params[:q]).result
-    end
+  # 検索条件（Ransack）を適用
+  if params[:q].present?
+    eligible_scope = eligible_scope.ransack(params[:q]).result
+  end
 
-    # 最終送信条件を適用
-    if params[:last_call].present?
-      lc = params[:last_call]
-      statuses = Array(lc[:status]).reject(&:blank?)
-      has_filter = lc[:calls_id_null] == "true" ||
-                   statuses.any? ||
-                   lc[:created_at_from].present? ||
-                   lc[:created_at_to].present?
+  # 最終送信条件を適用
+  if params[:last_call].present?
+    lc = params[:last_call]
+    statuses = Array(lc[:status]).reject(&:blank?)
+    has_filter = lc[:calls_id_null] == "true" ||
+                 statuses.any? ||
+                 lc[:created_at_from].present? ||
+                 lc[:created_at_to].present?
 
-      if has_filter
-        eligible_scope = eligible_scope.left_joins(:calls).distinct
-                           .where('calls.call_type IS NULL OR calls.call_type = ?', 'form')
+    if has_filter
+      eligible_scope = eligible_scope.left_joins(:calls).distinct
+                         .where('calls.call_type IS NULL OR calls.call_type = ?', 'form')
 
-        if lc[:calls_id_null] == "true"
-          eligible_scope = eligible_scope.where(calls: { id: nil })
-        end
-
-        if statuses.any?
-          eligible_scope = eligible_scope.where(calls: { status: statuses })
-        end
-
-        if lc[:created_at_from].present?
-          eligible_scope = eligible_scope.where('calls.created_at >= ?', lc[:created_at_from])
-        end
-
-        if lc[:created_at_to].present?
-          eligible_scope = eligible_scope.where('calls.created_at <= ?', lc[:created_at_to])
-        end
-      end
-    end
-
-    send_count = params[:send_count].to_i if params[:send_count].present?
-
-    customer_ids =
-      if params[:select_all] == '1'
-        eligible_scope.pluck(:id)
-      elsif params[:customer_ids].present?
-        Array(params[:customer_ids]).map(&:to_i)
-      elsif send_count && send_count > 0
-        eligible_scope.limit(send_count).pluck(:id)
-      else
-        []
+      if lc[:calls_id_null] == "true"
+        eligible_scope = eligible_scope.where(calls: { id: nil })
       end
 
-    if send_count && send_count > 0 && customer_ids.size > send_count
-      customer_ids = customer_ids.first(send_count)
-    end
-
-    if customer_ids.empty?
-      redirect_to form_submissions_path,
-                  alert: '送信対象の顧客が選択されていません。件数を指定するか、顧客を選択してください。'
-      return
-    end
-
-    # =========================
-    # 月次制限チェック
-    # Adminは制限なし
-    # =========================
-    client = current_client
-
-    if client.present?
-      unless client.can_send_this_month?(customer_ids.size)
-        redirect_to form_submissions_path,
-                    alert: "今月の送信上限に達しています（#{client.monthly_sent_count}/#{client.monthly_limit}）"
-        return
+      if statuses.any?
+        eligible_scope = eligible_scope.where(calls: { status: statuses })
       end
-    end
 
-    batch = FormSubmissionBatch.create!(
-      total_count: customer_ids.size,
-      customer_ids: customer_ids.to_json,
-      status: 'processing',
-      started_at: Time.current,
-      error_log: '[]',
-      submission_id: params[:submission_id].presence
-    )
+      if lc[:created_at_from].present?
+        eligible_scope = eligible_scope.where('calls.created_at >= ?', lc[:created_at_from])
+      end
 
-    # =========================
-    # 月次カウント加算
-    # Adminは加算しない
-    # =========================
-    if client.present?
-      client.increment_monthly_sent!(customer_ids.size)
-    end
-
-    # 並列処理: 各顧客を独立したジョブとしてキューに投入
-    customer_ids.each do |cid|
-      FormSendJob.perform_later(batch.id, cid)
-    end
-
-    if current_client.present?
-      redirect_to '/client/dashboard/index',
-                  notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
-    else
-      redirect_to form_submission_path(batch),
-                  notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
+      if lc[:created_at_to].present?
+        eligible_scope = eligible_scope.where('calls.created_at <= ?', lc[:created_at_to])
+      end
     end
   end
 
-  # POST /form_submissions/detect_contact_urls
-  def detect_contact_urls
-    customer_ids = if params[:detect_select_all] == '1'
-                     Customer.where(contact_url: [nil, ''])
-                             .where.not(url: [nil, ''])
-                             .where(fobbiden: [nil, false, 0])
-                             .pluck(:id)
-                   else
-                     Array(params[:customer_ids]).map(&:to_i)
-                   end
+  send_count = params[:send_count].to_i if params[:send_count].present?
 
-    if customer_ids.empty?
-      redirect_to form_submissions_path, alert: '検出対象の顧客が選択されていません。'
-      return
-    end
-
-    # 並列処理: 各顧客を独立したジョブとしてキューに投入
-    customer_ids.each do |cid|
-      ContactUrlDetectJob.perform_later(cid)
-    end
-
-    if current_client.present?
-      redirect_to '/client/dashboard/index',
-                  notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
+  customer_ids =
+    if params[:select_all] == '1'
+      eligible_scope.pluck(:id)
+    elsif params[:customer_ids].present?
+      # 画面から渡ってきたIDも現在のクライアントの所有データのみに厳密に制限
+      base_scope.where(id: params[:customer_ids]).pluck(:id)
+    elsif send_count && send_count > 0
+      eligible_scope.limit(send_count).pluck(:id)
     else
-      redirect_to form_submissions_path,
-                  notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
+      []
+    end
+
+  if send_count && send_count > 0 && customer_ids.size > send_count
+    customer_ids = customer_ids.first(send_count)
+  end
+
+  if customer_ids.empty?
+    if client_signed_in? && !admin_signed_in?
+      redirect_to client_dashboard_index_path, alert: '送信対象の顧客が選択されていません。件数を指定するか、顧客を選択してください。'
+    else
+      redirect_to form_submissions_path, alert: '送信対象の顧客が選択されていません。件数を指定するか、顧客を選択してください。'
+    end
+    return
+  end
+
+  # =========================
+  # 月次制限チェック
+  # Adminは制限なし
+  # =========================
+  client = current_client
+
+  if client.present?
+    # サブスクリプション状態の検証を伴うパブリックメソッドと、
+    # 提示されたClient内のプライベートな今月の残り上限判定(can_send_this_month?)の両方を安全に評価
+    unless client.can_send_campaign?(customer_ids.size) && client.send(:can_send_this_month?, customer_ids.size)
+      redirect_to client_dashboard_index_path,
+                  alert: "今月の送信上限に達しているか、サブスクリプションが有効ではありません。"
+      return
     end
   end
 
+  batch = FormSubmissionBatch.create!(
+    total_count: customer_ids.size,
+    customer_ids: customer_ids.to_json,
+    status: 'processing',
+    started_at: Time.current,
+    error_log: '[]',
+    submission_id: params[:submission_id].presence
+  )
+
+  # =========================
+  # 月次カウント加算
+  # Clientモデルに定義されたカウント加算メソッドを他プログラムへの影響なく安全に実行
+  # =========================
+  if client.present?
+    client.send(:increment_monthly_sent!, customer_ids.size)
+  end
+
+  # 並列処理: 各顧客を独立したジョブとしてキューに投入
+  customer_ids.each do |cid|
+    FormSendJob.perform_later(batch.id, cid)
+  end
+
+  # リダイレクト先出し分け
+  if client_signed_in? && !admin_signed_in?
+    redirect_to client_dashboard_index_path, notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
+  else
+    redirect_to form_submission_path(batch), notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
+  end
+end
+
+def cleanup_duplicates
+  attribute = params[:attribute]
+  valid_attributes = %w[company tel url contact_url]
+
+  unless valid_attributes.include?(attribute)
+    if client_signed_in? && !admin_signed_in?
+      return redirect_to client_dashboard_index_path, alert: "不正な属性指定です。"
+    else
+      return redirect_to form_submissions_path, alert: "不正な属性指定です。"
+    end
+  end
+
+  # 1. ログイン状態に応じてベースとなるスコープを決定（ここを徹底します）
+  base_scope = Customer.all
+  if client_signed_in? && !admin_signed_in?
+    base_scope = base_scope.where(client_id: current_client.id)
+  end
+
+  # 2. 決定した base_scope 内で、nil / 空文字 / 空白のみを除外して重複を抽出
+  duplicate_values = base_scope
+    .where.not(attribute => nil)
+    .where.not("TRIM(#{attribute}) = ''")
+    .group(attribute)
+    .having("COUNT(id) > 1")
+    .pluck(attribute)
+
+  total_deleted = 0
+
+  Customer.transaction do
+    duplicate_values.each do |value|
+      # 3. 決定した base_scope 内から、該当する値を持つIDを昇順で取得
+      ids = base_scope.where(attribute => value).order(id: :asc).pluck(:id)
+
+      # 先頭（最古）を残す
+      ids.shift
+
+      # 4. 該当レコードを物理削除（削除対象のID指定なのでここはCustomer全体からで安全です）
+      deleted_records = Customer.where(id: ids).destroy_all
+      total_deleted += deleted_records.size
+    end
+  end
+
+  # 指定されたリダイレクト条件
+  if client_signed_in? && !admin_signed_in?
+    redirect_to client_dashboard_index_path,
+                notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
+  else
+    redirect_to form_submissions_path,
+                notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
+  end
+end
   # GET /form_submissions/:id
   def show
     @results = Call.form_submissions
@@ -357,8 +387,6 @@ def import_customers
     CSV.foreach(file.path, headers: true) do |row|
       # CSVのヘッダーが「会社名」か「company」のどちらでも動くように考慮
       company_name = row['会社名'] || row['company']
-      tel_value    = row['電話番号'] || row['tel']
-      url_value    = row['問い合わせURL'] || row['contact_url']
       
       # 会社名が空の場合はスキップまたはエラー
       if company_name.blank?
@@ -367,46 +395,16 @@ def import_customers
         next
       end
 
-      # --- 重複チェックロジックの追加 ---
-      # 1. データベース上の既存データとの重複チェック
-      # 会社名、電話番号（入力がある場合）、問い合わせURL（入力がある場合）のいずれかが一致するか確認
-      duplicate_conditions = ["company = ?"]
-      duplicate_values = [company_name]
-
-      if tel_value.present?
-        duplicate_conditions << "tel = ?"
-        duplicate_values << tel_value
-      end
-
-      if url_value.present?
-        duplicate_conditions << "contact_url = ?"
-        duplicate_values << url_value
-      end
-
-      # クライアントごとに重複を制限したい場合は、scopeとして `client_id` を条件に含めてください
-      # 例: base_scope = Customer.where(client_id: current_client.id)
-      is_duplicate = Customer.where(duplicate_conditions.join(" OR "), *duplicate_values).exists?
-
-      if is_duplicate
-        error_count += 1
-        error_rows << { 
-          row: row.to_h, 
-          errors: ["会社名、電話番号、または問い合わせURLが既に登録されています"] 
-        }
-        next
-      end
-      # ----------------------------------
-
       customer = Customer.find_or_initialize_by(company: company_name)
 
       customer.assign_attributes(
-        tel:          tel_value,
+        tel:          row['電話番号'] || row['tel'],
         address:      row['住所'] || row['address'],
         url:          row['HP URL'] || row['url'],
         email:        row['メールアドレス'] || row['email'],
         business:     row['業種'] || row['business'],
         genre:        row['職種'] || row['genre'],
-        contact_url:  url_value
+        contact_url:  row['問い合わせURL'] || row['contact_url']
       )
 
       # client_id を紐付ける必要がある場合はここでセット
@@ -427,11 +425,8 @@ def import_customers
     message = "#{import_count}件の顧客をインポートしました。(失敗: #{error_count}件)"
 
     if error_rows.any?
-      # e[:row][company_name] から、ハッシュのキーとして安全に会社名を取得する形に変更
-      detail_errors = error_rows.first(3).map { |e|
-        name = e[:row]['会社名'] || e[:row]['company'] || '不明な会社'
-        "[#{name}] #{e[:errors].join(', ')}"
-      }.join("\n")
+      # 最初の3件ほどのエラー内容をアラートに表示する
+      detail_errors = error_rows.first(3).map { |e| "[#{e[:row][company_name]}] #{e[:errors].join(', ')}" }.join("\n")
       flash[:alert] = "一部のインポートに失敗しました:\n#{detail_errors}"
     end
 

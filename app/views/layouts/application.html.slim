@@ -7,20 +7,20 @@ html lang="ja"
     .hero 
       = render "shared/breadcrumbs" if breadcrumbs.any?
 
-    / Flash メッセージセクション（デザインの最大幅にジャストフィットする構造）
-    - if flash[:notice]
-      .flash-message.flash-notice
-        = flash[:notice]
-
-    - if flash[:alert]
-      .flash-message.flash-alert
-        = flash[:alert]
+    - if notice.present? || alert.present?
+      .app-flash-container
+        - if notice.present?
+          .app-flash.app-flash-notice
+            = notice
+        - if alert.present?
+          .app-flash.app-flash-alert
+            = alert
 
     = yield
 
     = render "layouts/footer"
 
-    / 【重要】ここにあった javascript_include_tag は重複蓄積バグの原因となるため削除しました。
+    = javascript_include_tag "application", "data-turbolinks-track": "reload"
 
     .floating-btn-wrap.left-side
       .floating-logo
@@ -30,7 +30,7 @@ html lang="ja"
 
     .floating-contact
       - if client_signed_in?
-        = link_to client_dashboard_index_path, data: { turbo: false, turbolinks: false }, class: 'contact-box dashboard-mode' do
+        = link_to client_dashboard_index_path, class: 'contact-box dashboard-mode' do
           .icon-container
             span.dashboard-icon
               i.fas.fa-th-large

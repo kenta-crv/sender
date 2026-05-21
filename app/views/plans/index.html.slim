@@ -29,7 +29,7 @@
 
           .sc-detect__card-body.d-flex.flex-column.text-center
             .mb-4
-              span.display-5.fw-bold style="color: #ffffff;" = "¥#{trial.price.to_s(:delimited)}"
+              span.display-5.fw-bold style="color: #ffffff;" = "¥#{trial.price}"
               span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;" 
                 |  / #{Subscription::TRIAL_DAYS}日間
             
@@ -66,20 +66,20 @@
 
         .sc-detect__card-body.d-flex.flex-column.text-center
           .mb-4
-            span.display-5.fw-bold style="color: #ffffff;" = "¥#{standard.price.to_s(:delimited)}"
+            span.display-5.fw-bold style="color: #ffffff;" = "¥#{standard.price}"
             span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;" 
               |  / 月
           
-          ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 最大#{standard.delivery_limit}回実行可能
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 月#{standard.price.to_s(:delimited)}円
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 解約はいつでも可能
+            ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 最大#{standard.delivery_limit}回実行可能
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 月#{standard.price}円
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 解約はいつでも可能
 
           .mt-auto
             - if is_standard
@@ -103,20 +103,20 @@
 
         .sc-detect__card-body.d-flex.flex-column.text-center
           .mb-4
-            span.display-5.fw-bold style="color: #ffffff;" = "¥#{enterprise.price.to_s(:delimited)}"
+            span.display-5.fw-bold style="color: #ffffff;" = "¥#{enterprise.price}"
             span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;" 
               |  / 月
           
-          ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 最大#{enterprise.delivery_limit}回実行可能
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 月#{enterprise.price.to_s(:delimited)}円
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 解約はいつでも可能
+            ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 最大#{enterprise.delivery_limit}回実行可能
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 月#{enterprise.price}円
+              li.mb-2
+                i.fas.fa-check-circle.me-2 style="color: #10b981;"
+                | 解約はいつでも可能
 
           .mt-auto
             - if is_enterprise

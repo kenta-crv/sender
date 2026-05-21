@@ -49,7 +49,7 @@ section.japan-notyo-section
         |  効率的な営業クロージングによりアポイントの最大化を行います。
         br
     .japan-notyo-column.japan-notyo-image-column
-      = image_tag "company-logo.png", class: "japan-notyo-image", alt: "Tool illustration"
+      = image_tag "company-logo.png", class: "japan-notyo-image", alt: "Tool illustration", loading: 'lazy', decoding: 'async'
 
 section.jap-notto-section
  .sp-company
@@ -64,7 +64,7 @@ section.jap-notto-section
       .jap-notto-card
         .card-inner
           .card-icon
-            = image_tag "ser-ai1.png", class: "card-img", alt: "営業リスト作成"
+            = image_tag "ser-ai1.png", class: "card-img", alt: "営業リスト作成", loading: 'lazy', decoding: 'async'
           p.card-text 営業リスト作成
           span.card-sub が効率的に作成出来ていない
 
@@ -72,7 +72,7 @@ section.jap-notto-section
       .jap-notto-card
         .card-inner
           .card-icon
-            = image_tag "ser-ai2.png", class: "card-img", alt: "送信作業"
+            = image_tag "ser-ai2.png", class: "card-img", alt: "送信作業", loading: 'lazy', decoding: 'async'
           p.card-text 問い合わせフォーム
           span.card-sub のアプローチが行えていない
 
@@ -80,7 +80,7 @@ section.jap-notto-section
       .jap-notto-card
         .card-inner
           .card-icon
-            = image_tag "ser-ai3.png", class: "card-img", alt: "フォーム対応"
+            = image_tag "ser-ai3.png", class: "card-img", alt: "フォーム対応", loading: 'lazy', decoding: 'async'
           p.card-text フォームアプローチデータ
           span.card-sub からのデータ収集が出来ていない
 
@@ -88,7 +88,7 @@ section.jap-notto-section
       .jap-notto-card.card-4
         .card-inner
           .card-icon
-            = image_tag "ser-ai4.png", class: "card-img", alt: "成果"
+            = image_tag "ser-ai4.png", class: "card-img", alt: "成果", loading: 'lazy', decoding: 'async'
           p.card-text テレフォンアポイント
           span.card-sub の効果が確実に以前より下がっている
 
@@ -96,7 +96,7 @@ section.jap-notto-section
       .jap-notto-card.card-5
         .card-inner
           .card-icon
-            = image_tag "ser-ai5.png", class: "card-img", alt: "コスト"
+            = image_tag "ser-ai5.png", class: "card-img", alt: "コスト", loading: 'lazy', decoding: 'async'
           p.card-text アプローチや商談
           span.card-sub の絶対数自体を伸ばしきれていない
 section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
@@ -111,7 +111,7 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
         .col-lg-6
           article.ser-mos-card
             .ser-mos-card-media
-              = image_tag "ser-app1.png", class: "ser-mos-card-img", alt: "Service 1"
+              = image_tag "ser-app1.png", class: "ser-mos-card-img", alt: "Service 1", loading: 'lazy', decoding: 'async'
             h3.ser-mos-card-title
               | AIによる高精度リスト抽出
             p.ser-mos-card-desc
@@ -122,7 +122,7 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
         .col-lg-6
           article.ser-mos-card
             .ser-mos-card-media
-              = image_tag "ser-app2.png", class: "ser-mos-card-img", alt: "Service 2"
+              = image_tag "ser-app2.png", class: "ser-mos-card-img", alt: "Service 2", loading: 'lazy', decoding: 'async'
             h3.ser-mos-card-title
               | フォーム情報の自動検出
             p.ser-mos-card-desc
@@ -133,7 +133,7 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
         .col-lg-6
           article.ser-mos-card
             .ser-mos-card-media
-              = image_tag "ser-app0.png", class: "ser-mos-card-img", alt: "Service 1"
+              = image_tag "ser-app0.png", class: "ser-mos-card-img", alt: "Service 1", loading: 'lazy', decoding: 'async'
             h3.ser-mos-card-title
               | AI自動問い合わせフォーム送信
             p.ser-mos-card-desc
@@ -144,7 +144,7 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
         .col-lg-6
           article.ser-mos-card
             .ser-mos-card-media
-              = image_tag "ser-app9.png", class: "ser-mos-card-img", alt: "Service 5"
+              = image_tag "ser-app9.png", class: "ser-mos-card-img", alt: "Service 5", loading: 'lazy', decoding: 'async'
             h3.ser-mos-card-title
               | 開封データの可視化と行動解析
             p.ser-mos-card-desc
@@ -155,7 +155,7 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
         .col-lg-6
           article.ser-mos-card
             .ser-mos-card-media
-              = image_tag "ser-app3.png", class: "ser-mos-card-img", alt: "Service 3"
+              = image_tag "ser-app3.png", class: "ser-mos-card-img", alt: "Service 3", loading: 'lazy', decoding: 'async'
             h3.ser-mos-card-title
               | AIによるフロントテレアポ対応
             p.ser-mos-card-desc
@@ -166,7 +166,7 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
         .col-lg-6
           article.ser-mos-card
             .ser-mos-card-media
-              = image_tag "ser-app8.png", class: "ser-mos-card-img", alt: "Service 4"
+              = image_tag "ser-app8.png", class: "ser-mos-card-img", alt: "Service 4", loading: 'lazy', decoding: 'async'
             h3.ser-mos-card-title
               | 全データをリアルタイム解析
             p.ser-mos-card-desc
@@ -187,7 +187,7 @@ section.main-moss-section
   .container-fluid.main-moss-block
     .row.align-items-center
       .col-lg-6.text-center
-        = image_tag "main-app5.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+        = image_tag "main-app5.png", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
           | AIによる検索エンジンからの最新リスト取得
@@ -196,7 +196,7 @@ section.main-moss-section
   .container-fluid.main-moss-block
     .row.align-items-center.flex-row-reverse
       .col-lg-6.text-center
-        = image_tag "main-app6.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+        = image_tag "main-app6.png", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
           | 24時間稼働するAI問い合わせフォーム送信
@@ -205,7 +205,7 @@ section.main-moss-section
   .container-fluid.main-moss-block
     .row.align-items-center
       .col-lg-6.text-center
-        = image_tag "main-app7.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+        = image_tag "main-app7.png", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
           | テクノロジーによる大量架電の実現
@@ -214,7 +214,7 @@ section.main-moss-section
   .container-fluid.main-moss-block
     .row.align-items-center.flex-row-reverse
       .col-lg-6.text-center
-        = image_tag "main-cargo3.png", class: "main-moss-img img-fluid", alt: "Feature Image"
+        = image_tag "main-cargo3.png", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
           | 安心のパッケージ料金モデル
@@ -233,7 +233,7 @@ section.admin-preview-section
     .admin-visual-container
       / メインのノートPCモックアップ風画像
       .main-device-wrapper
-        = image_tag "dashboard-capture.png", class: "admin-main-img", alt: "Okurite Dashboard"
+        = image_tag "dashboard-capture.png", class: "admin-main-img", alt: "Okurite Dashboard", loading: 'lazy', decoding: 'async'
         
         / 画像に重なる、あるいは周辺に配置する注釈
         .admin-pointer.p-1 style="top: 40%; left: 10%;"
@@ -327,7 +327,7 @@ section.compare-fixed
       p.desc 成果につながるプロセスと結果を、定量データで比較
 
   .compare-fixed__bg
-    = image_tag "ai_vs_human_bg.png", alt: "Human vs AI Background"
+    = image_tag "ai_vs_human_bg.png", alt: "Human vs AI Background", loading: 'lazy', decoding: 'async'
 
   .compare-fixed__overlay
 
@@ -510,7 +510,7 @@ section.service-compare
       .sp-grid
         .sp-card
           .sp-card-image
-            =image_tag "ai-rogo-image1.webp"
+            =image_tag "ai-rogo-image1.webp", loading: 'lazy', decoding: 'async'
           .sp-card-body
             .sp-card-num 01
             h3.en-title Sales Full Package Solutions
@@ -521,7 +521,7 @@ section.service-compare
         
         .sp-card
           .sp-card-image
-            =image_tag "ai-rogo-image2.webp"
+            =image_tag "ai-rogo-image2.webp", loading: 'lazy', decoding: 'async'
           .sp-card-body
             .sp-card-num 02
             h3.en-title Direct Form Approach 
@@ -552,7 +552,7 @@ section.faq-japan-section.py-5
           .faq-japan-item
             .faq-japan-question.d-flex.align-items-center.justify-content-between
               p = q
-              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon"
+              = image_tag "closee.png", class: "faq-japan-icon", alt: "toggle icon", loading: 'lazy', decoding: 'async'
             .faq-japan-answer
               p = a
 
@@ -571,21 +571,21 @@ section.cards-moos-section.py-5
     .row.g-4.cards-moos-row.d-none.d-md-flex
       .col-lg-4.col-md-6
         .cards-moos-card
-          = image_tag "image-app1.png", class: "cards-moos-img", alt: "Case Study 1"
+          = image_tag "image-app1.png", class: "cards-moos-img", alt: "Case Study 1", loading: 'lazy', decoding: 'async'
           h3.cards-moos-heading
             | ソフトウェア開発業
           p.cards-moos-desc
             |  Okuriteを導入しAIリスト抽出とフォーム営業を自動化。導入初月から毎月平均15件の有効商談を獲得し、営業マンの架電時間をゼロに削減。
       .col-lg-4.col-md-6
         .cards-moos-card
-          = image_tag "image-app2.png", class: "cards-moos-img", alt: "Case Study 2"
+          = image_tag "image-app2.png", class: "cards-moos-img", alt: "Case Study 2", loading: 'lazy', decoding: 'async'
           h3.cards-moos-heading
             | 人材紹介・登録支援業
           p.cards-moos-desc
             |  AI架電フロント対応を活用し、全国の製造業へ圧倒的な量をアプローチ。従来の3倍のスピードでリード獲得を実現しました。
       .col-lg-4.col-md-6
         .cards-moos-card
-          = image_tag "image-app3.png", class: "cards-moos-img", alt: "Case Study 3"
+          = image_tag "image-app3.png", class: "cards-moos-img", alt: "Case Study 3", loading: 'lazy', decoding: 'async'
           h3.cards-moos-heading
             | Webマーケティング代理店
           p.cards-moos-desc

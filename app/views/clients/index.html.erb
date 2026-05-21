@@ -1,41 +1,39 @@
-<div class="px-8 py-10 bg-gray-50 min-h-screen">
-  <h1 class="text-3xl font-bold text-gray-800 mb-6">Clients</h1>
+#okurite-client-portal
+  .top-header
+    h2 Clients
 
-  <div class="mb-6">
-    <%= link_to "➕ New Client", new_client_path, class: "px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700" %>
-  </div>
+  .mb-4
+    = link_to new_client_path, class: "btn-electric-outline", style: "background: rgba(0, 162, 255, 0.1);" do
+      i.fas.fa-plus.mr-2
+      | New Client
 
-  <div class="bg-white rounded-xl shadow overflow-x-auto">
-    <table class="w-full text-left border-collapse">
-      <thead class="bg-gray-100 text-gray-600 uppercase text-sm">
-        <tr>
-          <th class="py-3 px-6">ID</th>
-          <th class="py-3 px-6">Name</th>
-          <th class="py-3 px-6">Email</th>
-          <th class="py-3 px-6">Company</th>
-          <th class="py-3 px-6">Domain</th>
-          <th class="py-3 px-6">API Key</th>
-          <th class="py-3 px-6">Created</th>
-          <th class="py-3 px-6 text-right">Actions</th>
-        </tr>
-      </thead>
-      <tbody class="text-gray-700">
-        <% @clients.each do |client| %>
-          <tr class="border-t hover:bg-gray-50">
-            <td class="py-3 px-6"><%= client.id %></td>
-            <td class="py-3 px-6"><%= client.name%></td>
-            <td class="py-3 px-6"><%= client.email %></td>
-            <td class="py-3 px-6"><%= client.company %></td>
-            <td class="py-3 px-6 truncate"><%= client.api_key %></td>
-            <td class="py-3 px-6"><%= client.created_at.strftime("%Y-%m-%d") %></td>
-            <td class="py-3 px-6 text-right space-x-3">
-              <%= link_to "👁", client_path(client), class: "hover:text-indigo-600" %>
-              <%= link_to "✏️", edit_client_path(client), class: "hover:text-yellow-600" %>
-              <%= link_to "🗑", client_path(client), data: { turbo_method: :delete, confirm: "Are you sure?" }, class: "hover:text-red-600" %>
-            </td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
-  </div>
-</div>
+  .glass-card
+    .okurite-table-wrapper style="overflow-x: auto;"
+      table.okurite-table
+        thead
+          tr
+            th ID
+            th Name
+            th Email
+            th Company
+            th API Key
+            th Created
+            th style="text-align: right;" Actions
+        tbody
+          - @clients.each do |client|
+            tr
+              td style="color: var(--text-muted);" = client.id
+              td style="color: #fff; font-weight: 600;" = client.name
+              td = client.email
+              td = client.company
+              td
+                span.badge-electric style="font-size: 0.75rem; font-family: monospace;" = truncate(client.api_key, length: 24)
+              td style="color: var(--text-muted);" = client.created_at.strftime("%Y-%m-%d")
+              td style="text-align: right;"
+                .d-flex style="justify-content: flex-end; gap: 15px;"
+                  = link_to client_path(client), style: "color: var(--electric-blue); text-decoration: none;" do
+                    i.fas.fa-eye
+                  = link_to edit_client_path(client), style: "color: #fbbf24; text-decoration: none;" do
+                    i.fas.fa-edit
+                  = link_to client_path(client), data: { turbo_method: :delete, confirm: "Are you sure?" }, style: "color: rgba(255, 80, 80, 0.8); text-decoration: none;" do
+                    i.fas.fa-trash-alt

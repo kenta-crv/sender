@@ -119,47 +119,76 @@
 =========================================================== */
 @media (max-width: 768px) {
   .sp-hero-fullwide {
-    /* スマホ用背景画像に切り替え */
     background-image: asset-url('index-base-sp.webp');
-    padding: 100px 0; /* スマホ向けに上下余白を調整 */
+    padding: 80px 0 60px 0;
     margin-bottom: 40px;
-    /* 明るさを絶対に落とさない */
     filter: none !important;
     opacity: 1 !important;
   }
 
+  .sp-hero-container {
+    padding: 0 24px;
+  }
+
   .sp-badge {
-    font-size: 14px;
+    font-size: 11px;
     letter-spacing: 0.2em;
-    padding: 10px 20px;
-    border-left-width: 8px;
+    padding: 6px 16px;
+    border-left-width: 3px;
     margin-bottom: 25px;
   }
 
   .sp-copy {
-    font-size: 24px; /* 小さくなりすぎないよう固定気味に調整 */
-    line-height: 1.8;
-    margin-bottom: 20px;
-    padding: 0 10px;
+    font-size: 22px; /* スマホ最適なサイズに固定 */
+    line-height: 1.6;
+    margin-bottom: 25px;
+    padding: 0;
+
+    .reveal-row {
+      margin-bottom: 12px;
+      
+      /* スマホでは文字が溢れないよう、インラインブロック等で自然に改行を許容 */
+      .reveal {
+        display: inline-block;
+      }
+
+      &.sub-row {
+        font-size: 15px; /* コピーの重要度（主従）を明確にするため小さめに変更 */
+        letter-spacing: 0.04em;
+        line-height: 1.5;
+        margin-top: 5px;
+      }
+    }
+
+    .reveal-amp {
+      margin: 0 4px;
+    }
   }
 
+  /* 元コードの display: none を外し、スマホでも視認性の良い極小フォントでCoolに残すパターン */
   .sp-lead {
-    display: none;
-    font-size: 14px;
-    line-height: 1.6;
-    padding: 0 15px;
-    margin-bottom: 30px;
+    display: block; /* 非表示から、洗練された小さめの表示へ変更 */
+    font-size: 12px;
+    line-height: 1.8;
+    letter-spacing: 0.04em;
+    padding: 0;
+    margin-bottom: 35px;
+    color: rgba(255, 255, 255, 0.7);
+    
+    br {
+      display: none; /* スマホでは勝手な位置での改行を防ぎ自動流し込み */
+    }
   }
 
   .sp-btn-primary {
-    margin-top:130px;
-    padding: 16px 30px;
+    margin-top: 20px; /* 130pxから適正値に調整 */
+    padding: 18px 24px;
     font-size: 14px;
-    width: 85%; /* 押しやすいサイズ感 */
+    width: 100%;
+    max-width: 320px;
     box-sizing: border-box;
   }
 }
-
 
 
 /* --- 指定範囲のみのスタイル適用 --- */
@@ -183,7 +212,6 @@
   position: relative;
   box-shadow: 0 0 15px rgba(0, 170, 255, 0.1);
 }
-
 /* 左端のアクセントライン（ロゴの発光をイメージ） */
 .sp-content-container .sp-news-row::before {
   content: "";

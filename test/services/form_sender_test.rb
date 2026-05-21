@@ -20,27 +20,30 @@ puts "=" * 60
 puts "FormSender テスト実行"
 puts "=" * 60
 
-# === 1. sleep値テスト（控えめ短縮プラン） ===
-puts "\n--- sleep値テスト ---"
+# === 1. 待機処理テスト（動的wait化後の期待値） ===
+puts "\n--- 待機処理テスト ---"
 
 pass_count += 1 if assert_test(
-  "ページ読み込み待機が2秒",
-  source.include?('sleep 2 # ページ読み込み待機')
+  "ページ読み込み待機が動的wait",
+  source.include?('wait_for(min_seconds: 1, max_seconds: 10)') &&
+    source.include?('ページ読み込み待機（body+form存在で早期完了）')
 )
 
 pass_count += 1 if assert_test(
-  "送信後の待機が3秒",
-  source.include?('sleep 3 # 送信後の待機')
+  "送信後の待機が動的wait",
+  source.include?('wait_for(min_seconds: 2, max_seconds: 10)') &&
+    source.include?('送信後の待機（URL変更 or 成功パターン検出で早期完了）')
 )
 
 pass_count += 1 if assert_test(
-  "確認画面後の待機が2秒",
-  source.include?('sleep 2 # 確認画面後')
+  "確認画面後の待機が動的wait",
+  source.include?('wait_for(min_seconds: 2, max_seconds: 8)') &&
+    source.include?('確認画面後の待機（URL変更 or 成功パターン検出で早期完了）')
 )
 
 pass_count += 1 if assert_test(
-  "再判定前の追加待機が2秒",
-  source.include?("sleep 2\n") && source.include?('成功未検出')
+  "再判定前の追加待機が1.5秒",
+  source.include?("sleep 1.5") && source.include?('成功未検出')
 )
 
 # === 2. 旧sleep値が残っていないことを確認 ===

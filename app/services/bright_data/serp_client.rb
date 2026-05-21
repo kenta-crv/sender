@@ -12,6 +12,8 @@ module BrightData
     MAX_RETRIES = 3
     BASE_DELAY = 2  # seconds（指数バックオフの基底）
 
+    class AuthenticationError < StandardError; end
+
     def initialize(api_key: nil, zone: nil)
       @api_key = api_key || ENV['BRIGHT_DATA_API_KEY']
       @zone = zone || ENV['BRIGHT_DATA_ZONE']
@@ -26,6 +28,7 @@ module BrightData
     # @param hl [String] 言語コード（デフォルト: ja）
     # @return [Hash] パース済みレスポンス。エラー時は { error: message } を含む
     def search(query:, gl: "jp", hl: "ja")
+      query = normalize_text(query)
       encoded = CGI.escape(query)
       target_url = "https://www.google.com/search?q=#{encoded}&gl=#{gl}&hl=#{hl}&brd_json=1"
 
@@ -41,6 +44,9 @@ module BrightData
         end
 
         parsed
+      rescue AuthenticationError => e
+        log(:error, "Authentication failed for '#{query}': #{e.message}")
+        { "error" => e.message, "fatal" => true, "query" => query }
       rescue Net::ReadTimeout, Net::OpenTimeout => e
         retries += 1
         if retries <= MAX_RETRIES
@@ -75,14 +81,21 @@ module BrightData
       results = []
       total = queries.size
 
-      queries.each_with_index do |query, idx|
+      queries.each_with_index do |raw_query, idx|
+        query = normalize_text(raw_query)
         log(:info, "Processing #{idx + 1}/#{total}: #{query}")
         result = search(query: query)
-        results << {
+        item = {
           "query" => query,
           "result" => result,
           "timestamp" => Time.current.iso8601
         }
+        results << item
+        yield(item.merge("index" => idx, "total" => total)) if block_given?
+        if result["fatal"]
+          log(:error, "Fatal SERP error; stopping batch after #{idx + 1}/#{total}")
+          break
+        end
         sleep(delay_between) unless idx == total - 1
       end
 
@@ -90,6 +103,14 @@ module BrightData
     end
 
     private
+
+    def normalize_text(value)
+      text = value.to_s.dup
+      text.force_encoding(Encoding::UTF_8)
+      return text if text.valid_encoding?
+
+      value.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "")
+    end
 
     def execute_request(target_url)
       uri = URI(ENDPOINT)
@@ -117,12 +138,16 @@ module BrightData
 
       response = http.request(request)
 
+      if response.code.to_i == 401 || response.code.to_i == 403
+        raise AuthenticationError, "HTTP #{response.code}: Bright Data authentication failed"
+      end
+
       unless response.is_a?(Net::HTTPSuccess)
         raise "HTTP #{response.code}: #{response.body&.first(300)}"
       end
 
       # Net::HTTP は gzip を自動解凍する。念のため手動解凍フォールバックも保持
-      body = response.body.to_s
+      body = normalize_text(response.body.to_s)
 
       if body.empty?
         # 空ボディのデバッグ情報をログに出力
@@ -137,7 +162,7 @@ module BrightData
     end
 
     def log(level, message)
-      msg = "[BrightData::SerpClient] #{message}"
+      msg = normalize_text("[BrightData::SerpClient] #{message}")
       if defined?(Rails)
         Rails.logger.send(level, msg)
       end
