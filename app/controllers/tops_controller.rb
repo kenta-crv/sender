@@ -34,6 +34,13 @@ class TopsController < ApplicationController
   def short
     @contract = Contract.new
   end
+
+  def privacy 
+  end
+  def tos
+  end
+  def specific
+  end
   private
 
 

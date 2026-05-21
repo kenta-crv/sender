@@ -11,11 +11,11 @@
       / ===== KPI =====
       .stats-grid
         .glass-card
-          .card-label Total Sends
+          .card-label Monthly Sends
           .card-value
             = number_with_delimiter(@total_sent)
             span.unit 件
-          p.resets-in 全期間の送信件数
+          p.resets-in 今月の送信件数
           - percent = @total_sent > 0 ? ((@total_success.to_f / @total_sent) * 100).round : 0
           .progress-circle style="--value: #{percent};"
             .progress-value = "#{percent}%"
@@ -179,7 +179,6 @@
         br
         | 送信制限なしの体験を始めましょう。
       
-      / アニメーションや過度なグラデーション（グラデ無限ループ等）を上書きしてソリッドかつ上質な輝きに変更
       = link_to 'プランをアップグレードする', client_subscription_path, class: 'ok-btn-primary', style: 'background: #38bdf8; color: #020617; font-weight: 600; text-shadow: none; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4); animation: none; transition: all 0.2s ease;'
       
       button.ok-btn-close#closeTrialModal 閉じる

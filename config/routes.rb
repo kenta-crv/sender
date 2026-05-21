@@ -61,6 +61,9 @@ Rails.application.routes.draw do
   root to: 'tops#index'
   get 'okurite', to: 'tops#okurite'
   get 'sales', to: 'tops#sales'
+  get 'privacy', to: 'tops#privacy'
+  get 'tos', to: 'tops#tos'
+  get 'specific', to: 'tops#specific'
 
   # --- SEO用: ジャンル別コラム階層 (/genre/columns/:code) ---
   # constraintsに一致する場合、こちらのルーティングが優先されます

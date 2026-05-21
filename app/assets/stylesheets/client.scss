@@ -377,3 +377,185 @@
   0%, 100% { transform: translateX(0); }
   50% { transform: translateX(5px); }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+#okurite-client-portal {
+  .plain-form-wrapper {
+    padding: 40px;
+    background: var(--bg-black);
+    color: #fff;
+    min-height: 100vh;
+  }
+  .plain-form {
+    max-width: 800px;
+    margin: 0 auto;
+    h2 { margin-bottom: 30px; font-weight: 800; color: var(--electric-blue); }
+    
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 15px; color: var(--text-muted); font-size: 0.9rem; text-align: left; }
+    td { padding: 10px; }
+    
+    .form-control {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 12px;
+      color: #fff;
+      &:focus { border-color: var(--electric-blue); outline: none; }
+    }
+    
+    .btn-submit {
+      background: var(--electric-blue);
+      color: #fff;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      margin-top: 20px;
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+/* ===== Legal Pages (Privacy & Law) Additional Styles ===== */
+
+#okurite-client-portal {
+  .plain-form-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: 60px 20px;
+  }
+
+  .policy-container {
+    max-width: 800px;
+    width: 100%;
+  }
+
+  .policy-card {
+    background: var(--glass-bg);
+    border: 1px solid rgba(0, 162, 255, 0.3);
+    border-radius: 24px;
+    padding: 60px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .policy-header {
+    font-size: 2.5rem;
+    font-weight: 800;
+    text-align: center;
+    color: #fff;
+    margin-bottom: 50px;
+    text-shadow: var(--glow);
+  }
+
+  .policy-body {
+    color: var(--text-muted);
+    line-height: 1.9;
+    font-size: 1rem;
+
+    section {
+      margin-top: 40px;
+      &:first-child { margin-top: 0; }
+    }
+
+    h3 {
+      color: var(--electric-blue);
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      border-bottom: 1px solid rgba(0, 162, 255, 0.2);
+      padding-bottom: 10px;
+    }
+  }
+
+  .policy-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-muted);
+    line-height: 1.9;
+    font-size: 1rem;
+
+    th {
+      padding: 20px 0;
+      width: 40%;
+      text-align: left;
+      color: #fff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    td {
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  .policy-footer {
+    margin-top: 60px;
+    text-align: right;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .terms-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 60px 20px;
+  }
+
+  .terms-card {
+    background: var(--glass-bg);
+    border: 1px solid rgba(0, 162, 255, 0.3);
+    border-radius: 24px;
+    padding: 60px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .terms-header {
+    font-size: 2.5rem;
+    font-weight: 800;
+    text-align: center;
+    color: #fff;
+    margin-bottom: 50px;
+    text-shadow: var(--glow);
+  }
+
+  .terms-body {
+    color: var(--text-muted);
+    line-height: 1.9;
+    font-size: 1rem;
+
+    section {
+      margin-top: 40px;
+      &:first-child { margin-top: 0; }
+    }
+
+    h3 {
+      color: var(--electric-blue);
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      border-bottom: 1px solid rgba(0, 162, 255, 0.2);
+      padding-bottom: 10px;
+    }
+  }
+}
