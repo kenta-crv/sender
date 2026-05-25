@@ -7,6 +7,10 @@ class Subscription < ApplicationRecord
   validates :plan_type, presence: true
   validates :status, presence: true
 
+  validates :stripe_subscription_id,
+            uniqueness: true,
+            allow_nil: true
+
   # =========================
   # 表示名（追加）
   # =========================

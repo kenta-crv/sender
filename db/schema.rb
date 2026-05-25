@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_05_18_113000) do
+ActiveRecord::Schema.define(version: 2026_05_25_082518) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -74,6 +74,31 @@ ActiveRecord::Schema.define(version: 2026_05_18_113000) do
     t.index ["twilio_call_sid"], name: "index_calls_on_twilio_call_sid"
   end
 
+  create_table "click_logs", force: :cascade do |t|
+    t.integer "click_tracking_link_id", null: false
+    t.string "ip"
+    t.text "user_agent"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["click_tracking_link_id"], name: "index_click_logs_on_click_tracking_link_id"
+  end
+
+  create_table "click_tracking_links", force: :cascade do |t|
+    t.string "token", null: false
+    t.integer "customer_id"
+    t.integer "client_id"
+    t.integer "admin_id"
+    t.text "target_url"
+    t.integer "clicked_count", default: 0, null: false
+    t.datetime "last_clicked_at"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["admin_id"], name: "index_click_tracking_links_on_admin_id"
+    t.index ["client_id"], name: "index_click_tracking_links_on_client_id"
+    t.index ["customer_id"], name: "index_click_tracking_links_on_customer_id"
+    t.index ["token"], name: "index_click_tracking_links_on_token", unique: true
+  end
+
   create_table "clients", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -93,8 +118,10 @@ ActiveRecord::Schema.define(version: 2026_05_18_113000) do
     t.string "payjp_customer_id"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.string "stripe_customer_id"
     t.index ["email"], name: "index_clients_on_email", unique: true
     t.index ["reset_password_token"], name: "index_clients_on_reset_password_token", unique: true
+    t.index ["stripe_customer_id"], name: "index_clients_on_stripe_customer_id", unique: true
     t.index ["subscription_plan"], name: "index_clients_on_subscription_plan"
     t.index ["subscription_status"], name: "index_clients_on_subscription_status"
   end
@@ -162,7 +189,9 @@ ActiveRecord::Schema.define(version: 2026_05_18_113000) do
     t.string "serp_status"
     t.string "fax"
     t.integer "client_id"
+    t.string "unsubscribe_token"
     t.index ["client_id"], name: "index_customers_on_client_id"
+    t.index ["unsubscribe_token"], name: "index_customers_on_unsubscribe_token", unique: true
   end
 
   create_table "extract_trackings", force: :cascade do |t|
@@ -214,6 +243,8 @@ ActiveRecord::Schema.define(version: 2026_05_18_113000) do
     t.datetime "updated_at", precision: 6, null: false
     t.integer "submission_id"
     t.integer "client_id"
+    t.integer "admin_id"
+    t.index ["admin_id"], name: "index_form_submission_batches_on_admin_id"
     t.index ["client_id"], name: "index_form_submission_batches_on_client_id"
   end
 
@@ -247,10 +278,12 @@ ActiveRecord::Schema.define(version: 2026_05_18_113000) do
     t.text "description"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.string "stripe_payment_intent_id"
     t.index ["campaign_id"], name: "index_payments_on_campaign_id"
     t.index ["client_id"], name: "index_payments_on_client_id"
     t.index ["payjp_charge_id"], name: "index_payments_on_payjp_charge_id"
     t.index ["status"], name: "index_payments_on_status"
+    t.index ["stripe_payment_intent_id"], name: "index_payments_on_stripe_payment_intent_id", unique: true
   end
 
   create_table "serp_enrichment_run_targets", force: :cascade do |t|
@@ -331,10 +364,12 @@ ActiveRecord::Schema.define(version: 2026_05_18_113000) do
     t.string "payjp_subscription_id"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.string "stripe_subscription_id"
     t.index ["client_id"], name: "index_subscriptions_on_client_id"
     t.index ["payjp_subscription_id"], name: "index_subscriptions_on_payjp_subscription_id"
     t.index ["plan_type"], name: "index_subscriptions_on_plan_type"
     t.index ["status"], name: "index_subscriptions_on_status"
+    t.index ["stripe_subscription_id"], name: "index_subscriptions_on_stripe_subscription_id", unique: true
   end
 
   create_table "twilio_configs", force: :cascade do |t|
@@ -374,10 +409,15 @@ ActiveRecord::Schema.define(version: 2026_05_18_113000) do
   end
 
   add_foreign_key "calls", "customers"
+  add_foreign_key "click_logs", "click_tracking_links"
+  add_foreign_key "click_tracking_links", "admins"
+  add_foreign_key "click_tracking_links", "clients"
+  add_foreign_key "click_tracking_links", "customers"
   add_foreign_key "customer_update_logs", "customers"
   add_foreign_key "customer_update_logs", "workers"
   add_foreign_key "customers", "clients"
   add_foreign_key "fax_deliveries", "customers"
+  add_foreign_key "form_submission_batches", "admins"
   add_foreign_key "form_submission_batches", "clients"
   add_foreign_key "monthly_usage_logs", "clients"
   add_foreign_key "payments", "campaigns"

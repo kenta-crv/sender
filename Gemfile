@@ -106,3 +106,5 @@ gem 'tzinfo-data', platforms: [:mingw, :mswin, :x64_mingw, :jruby]
 gem 'slim-rails'
 gem 'payjp'
 gem 'sitemap_generator'
+
+gem 'stripe'

@@ -15,72 +15,53 @@
           .card-value
             = number_with_delimiter(@total_sent)
             span.unit 件
+
           p.resets-in 今月の送信件数
+
           - percent = @total_sent > 0 ? ((@total_success.to_f / @total_sent) * 100).round : 0
+
           .progress-circle style="--value: #{percent};"
             .progress-value = "#{percent}%"
 
         .glass-card
-          .card-label Avg. Success Rate
-          .card-value = "#{@success_rate}%"
-          p.trend.up
-            i.fas.fa-arrow-up
-            |  成功率
+          .card-label Success
 
-        .glass-card
-          .card-label Active Jobs
           .card-value
-            = @active_jobs
-            span.unit Jobs
-          p.status-text
-            i.fas.fa-circle.pulse
-            |  Processing...
+            = number_with_delimiter(@total_success)
+            span.unit 件
 
-      / ===== Active Job Realtime Progress =====
-      - progress = @serp_progress || {}
-      .history-section.mt-5
+          p.trend.up
+            i.fas.fa-check-circle
+            |  成功数
+
+          .mini-rate
+            = "#{@success_rate}% Success Rate"
+
         .glass-card
-          .card-header-flex style="display: flex; justify-content: space-between; align-items: center;"
-            h5.m-0
-              i.fas.fa-tasks.me-2 style="color: #38bdf8;"
-              | 送信ジョブ進行状況
-          
-          .card-body.pt-3
-            #serp-progress-panel.sc-serp-progress data-progress-url=serp_progress_customers_path data-active=progress[:active].to_s
-              .d-flex.justify-content-between.align-items-center.mb-2
-                span.card-label style="font-size: 0.9rem;" 現在の処理フェーズ:
-                strong#serp-progress-phase.text-blue = progress[:phase_label] || "停止中"
-                span#serp-progress-percent.fw-bold style="color: #38bdf8; font-size: 1.1rem;" = "#{progress[:percent] || 0}%"
-              
-              .custom-progress-bg.mb-3 style="height: 12px; background: rgba(2, 6, 23, 0.4); border-radius: 6px; overflow: hidden;" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="#{progress[:percent] || 0}"
-                #serp-progress-bar.bar-electric style="width: #{progress[:percent] || 0}%; height: 100%; transition: width 0.3s ease;"
-              
-              .d-flex.flex-wrap.justify-content-between.gap-2.small style="color: rgba(229, 231, 235, 0.6);"
-                span#serp-progress-message = progress[:message] || "待機中..."
-                span#serp-progress-counts = "対象 #{progress[:target_completed] || 0}/#{progress[:target_total] || 0} / 送信 #{progress[:serp_completed] || 0}/#{progress[:serp_total] || 0}"
-                span#serp-progress-eta style="color: #7dd3fc;"
+          .card-label Click Response
 
-              / デバッグ・監査用メタ情報
-              .d-flex.flex-wrap.gap-3.mt-3.pt-2.small style="border-top: 1px solid rgba(255, 255, 255, 0.05); color: rgba(229, 231, 235, 0.4); font-size: 0.75rem;"
-                span
-                  | Run ID: 
-                  code#serp-progress-run style="color: #7dd3fc;" = progress[:run_id].presence || "-"
-                span
-                  | JID: 
-                  code#serp-progress-jid style="color: #7dd3fc;" = progress[:jid].presence || "-"
-                span
-                  | Sidekiq: 
-                  code#serp-progress-sidekiq style="color: #7dd3fc;" = progress[:sidekiq_status].presence || "-"
-                span
-                  | Status: 
-                  code#serp-progress-run-status style="color: #7dd3fc;" = progress[:run_status].presence || "-"
+          .card-value
+            = number_with_delimiter(@clicked_users_count)
+            span.unit 件
+
+          p.status-text
+            i.fas.fa-mouse-pointer
+            |  クリック反応数
+
+          .mini-rate
+            = "#{@click_rate}% CTR"
+
 
       / ===== Recent Batches =====
       .history-section.mt-5
         .glass-card
           .card-header-flex style="display: flex; justify-content: space-between; align-items: center; width: 100%;"
             h5.m-0 Recent Send Forms
-            = link_to client_dashboard_history_path, class: 'btn-electric-outline', style: 'display: inline-flex; align-items: center; padding: 0.6rem 1.2rem; font-size: 0.9rem; text-decoration: none; line-height: 1; border-radius: 6px; font-weight: 500;' do
+
+            = link_to client_dashboard_history_path,
+              class: 'btn-electric-outline',
+              style: 'display: inline-flex; align-items: center; padding: 0.6rem 1.2rem; font-size: 0.9rem; text-decoration: none; line-height: 1; border-radius: 6px; font-weight: 500;' do
+
               | View All
               i.fas.fa-chevron-right.ms-2 style="font-size: 0.75rem;"
 
@@ -92,26 +73,36 @@
                 th Target
                 th Progress
                 th Status
+
             tbody
               - @batches.limit(5).each do |batch|
                 tr
                   td = batch.created_at.strftime('%Y/%m/%d')
+
                   td = batch.submission&.title || 'Default'
+
                   td = number_with_delimiter(batch.total_count)
+
                   td
                     - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round : 0
+
                     .custom-progress-bg
                       .bar-electric style="width: #{percent}%;"
+
                   td
                     - case batch.status
                     - when 'processing'
                       span.text-blue Processing
+
                     - when 'completed'
                       span.text-green Completed
+
                     - when 'pending'
                       span.text-muted Pending
+
                     - when 'cancelled'
                       span.text-warning Cancelled
+
                     - else
                       span.text-muted = batch.status
 
@@ -126,13 +117,16 @@
               tr
                 th 指標
                 th 数値
+
             tbody
               tr
                 td 送信可能顧客（contact_url有）
                 td = number_with_delimiter(@customers.total_count)
+
               tr
                 td フォーム未検出
                 td = number_with_delimiter(@not_detected_count)
+
               tr
                 td URL未設定
                 td = number_with_delimiter(@no_url_customers_count)
@@ -151,6 +145,7 @@
                 th Success
                 th Failure
                 th Rate
+
             tbody
               - @submissions.each do |submission|
                 - batches = submission.form_submission_batches.where(client_id: current_client.id)
@@ -158,6 +153,7 @@
                 - success = batches.sum(:success_count)
                 - failure = batches.sum(:failure_count)
                 - rate = total > 0 ? ((success.to_f / total) * 100).round(1) : 0
+
                 tr
                   td = submission.title
                   td = total
@@ -171,16 +167,21 @@
     .ok-trial-card
       .ok-icon
         i.fas.fa-bolt
+
       h3 Trial Active
-      p 
+
+      p
         | 現在トライアルプランをご利用中です。
         br
         | プロプランへアップグレードして、
         br
         | 送信制限なしの体験を始めましょう。
-      
-      = link_to 'プランをアップグレードする', client_subscription_path, class: 'ok-btn-primary', style: 'background: #38bdf8; color: #020617; font-weight: 600; text-shadow: none; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4); animation: none; transition: all 0.2s ease;'
-      
+
+      = link_to 'プランをアップグレードする',
+        client_subscription_path,
+        class: 'ok-btn-primary',
+        style: 'background: #38bdf8; color: #020617; font-weight: 600; text-shadow: none; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4); animation: none; transition: all 0.2s ease;'
+
       button.ok-btn-close#closeTrialModal 閉じる
 
   javascript:
@@ -188,145 +189,25 @@
       const toggleModal = () => {
         const overlay = document.getElementById('trialOverlay');
         const closeBtn = document.getElementById('closeTrialModal');
+
         if (overlay && closeBtn) {
           overlay.classList.add('is-visible');
+
           closeBtn.onclick = () => overlay.classList.remove('is-visible');
+
           overlay.onclick = (e) => {
-            if (e.target === overlay) overlay.classList.remove('is-visible');
+            if (e.target === overlay) {
+              overlay.classList.remove('is-visible');
+            }
           };
         }
       };
 
-      if (document.readyState !== 'loading') toggleModal();
-      else document.addEventListener('DOMContentLoaded', toggleModal);
+      if (document.readyState !== 'loading') {
+        toggleModal();
+      } else {
+        document.addEventListener('DOMContentLoaded', toggleModal);
+      }
+
       document.addEventListener('turbo:load', toggleModal);
     })();
-
-javascript:
-  (function() {
-    const setupSerpProgress = function() {
-      const panel = document.getElementById('serp-progress-panel');
-      if (!panel || panel.dataset.pollingStarted === 'true') return;
-
-      panel.dataset.pollingStarted = 'true';
-      const url = panel.dataset.progressUrl;
-      const bar = document.getElementById('serp-progress-bar');
-      const track = panel.querySelector('.custom-progress-bg');
-      const phase = document.getElementById('serp-progress-phase');
-      const percent = document.getElementById('serp-progress-percent');
-      const message = document.getElementById('serp-progress-message');
-      const counts = document.getElementById('serp-progress-counts');
-      const eta = document.getElementById('serp-progress-eta');
-      const runId = document.getElementById('serp-progress-run');
-      const jid = document.getElementById('serp-progress-jid');
-      const sidekiq = document.getElementById('serp-progress-sidekiq');
-      const runStatus = document.getElementById('serp-progress-run-status');
-
-      let startTime = null;
-
-      const setText = function(el, text) {
-        if (el) el.textContent = text || '';
-      };
-
-      const formatTime = function(seconds) {
-        if (seconds < 60) return seconds + '秒';
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return mins + '分' + secs + '秒';
-      };
-
-      const stopPolling = function() {
-        if (!panel.dataset.pollingTimer) return;
-        window.clearInterval(Number(panel.dataset.pollingTimer));
-        panel.dataset.pollingTimer = '';
-      };
-
-      const poll = function() {
-        fetch(url, { headers: { 'Accept': 'application/json' } })
-          .then(function(response) { return response.json(); })
-          .then(render)
-          .catch(function() {});
-      };
-
-      const startPolling = function() {
-        if (panel.dataset.pollingTimer) return;
-        panel.dataset.pollingTimer = window.setInterval(poll, 1000);
-      };
-
-      const refreshListAfterCompletion = function(data) {
-        const finished = panel.dataset.wasActive === 'true' &&
-          data &&
-          data.active === false &&
-          (data.phase === 'done' || data.phase === 'error');
-
-        if (!finished || panel.dataset.reloadScheduled === 'true') return;
-
-        panel.dataset.reloadScheduled = 'true';
-        if (data.phase === 'done') {
-          setText(message, '送信処理が完了しました。ダッシュボードを更新しています...');
-        }
-        window.setTimeout(function() {
-          window.location.reload();
-        }, 1000);
-      };
-
-      const render = function(data) {
-        if (!data || data.present === false) return;
-
-        let value = Number(data.percent || 0);
-        if (data.phase === 'done' && data.active === false) value = 100;
-        value = value.toFixed(1);
-        
-        if (bar) bar.style.width = value + '%';
-        if (track) track.setAttribute('aria-valuenow', value);
-        setText(phase, data.phase_label);
-        setText(percent, value + '%');
-        setText(message, data.message);
-        setText(counts, '対象 ' + (data.target_completed || 0) + '/' + (data.target_total || 0) + ' / 送信 ' + (data.serp_completed || 0) + '/' + (data.serp_total || 0));
-        
-        if (data.active && Number(value) > 0) {
-          if (!startTime) startTime = Date.now();
-          const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-          
-          if (elapsedSeconds > 0) {
-            const totalEstimatedSeconds = (elapsedSeconds / Number(value)) * 100;
-            const remainingSeconds = Math.max(0, Math.floor(totalEstimatedSeconds - elapsedSeconds));
-            setText(eta, '経過: ' + formatTime(elapsedSeconds) + ' / 残り目安: ' + formatTime(remainingSeconds));
-          } else {
-            setText(eta, '');
-          }
-        } else if (data.phase === 'done') {
-          setText(eta, '完了');
-        } else {
-          setText(eta, '');
-        }
-        
-        setText(runId, data.run_id || '-');
-        setText(jid, data.jid || '-');
-        setText(sidekiq, data.sidekiq_status || '-');
-        setText(runStatus, data.run_status || '-');
-
-        if (data.active) {
-          panel.dataset.wasActive = 'true';
-          startPolling();
-        } else {
-          stopPolling();
-          refreshListAfterCompletion(data);
-        }
-      };
-
-      stopPolling();
-
-      if (panel.dataset.active === 'true') {
-        panel.dataset.wasActive = 'true';
-      }
-      poll();
-      if (panel.dataset.active === 'true') {
-        startPolling();
-      }
-    };
-
-    document.addEventListener('turbo:load', setupSerpProgress);
-    document.addEventListener('DOMContentLoaded', setupSerpProgress);
-    setupSerpProgress();
-  })();

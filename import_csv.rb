@@ -1,4 +1,4 @@
-#rails runner import_csv.rb /home/smart/webroot/okurite/factory.csv
+#rails runner import_csv.rb /home/smart/webroot/okurite/customers_exports.csv
 
 require 'csv'
 require 'sqlite3'

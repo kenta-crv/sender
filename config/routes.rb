@@ -47,6 +47,7 @@ Rails.application.routes.draw do
   get 'checkout/success', to: 'checkout#success', as: :checkout_success
   get 'checkout/cancel', to: 'checkout#cancel', as: :checkout_cancel
 
+  post 'stripe/webhook', to: 'stripe_webhooks#create'
   # プラン選択
   get 'plans', to: 'plans#index', as: :plans
   post 'plans/select', to: 'plans#select', as: :select_plan
@@ -98,7 +99,9 @@ end
       post :resume
       get :progress
     end
+    
   end
+  get '/unsubscribe/:token',to: 'unsubscribes#show',as: :unsubscribe
 
   # --- Twilio Webhooks ---
   namespace :twilio do
@@ -144,4 +147,6 @@ end
     end
     resources :calls
   end
+
+  get '/l/:token',to: 'click_tracking#redirect',as: :click_tracking
 end

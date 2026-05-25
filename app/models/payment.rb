@@ -5,7 +5,7 @@ class Payment < ApplicationRecord
   enum status: { pending: "pending", succeeded: "succeeded", failed: "failed" }
 
   validates :amount, presence: true, numericality: { greater_than: 0 }
-  validates :payjp_charge_id, presence: true
+  validates :stripe_payment_intent_id, presence: true, allow_nil: true
   validates :status, presence: true
 
   def amount_in_yen
@@ -16,4 +16,3 @@ class Payment < ApplicationRecord
     "¥#{amount.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\1,').reverse}"
   end
 end
-

@@ -354,8 +354,8 @@ body {
   justify-content: flex-end;
   align-items: center;
   margin-top: auto;
-  margin-bottom: 65px;
-  padding-right: 5%;
+  margin-bottom: 55px;
+  padding-right: 0%;
 }
 
 .btn-glow-blue {
@@ -438,7 +438,7 @@ body {
   .hero-action-area {
     justify-content: center; /* スマホでは中央に寄せないと画面外へ突き抜けるため */
     padding-right: 0;
-    margin-top: 270px;
+    margin-top: 430px;
     margin-bottom: 40px;
   }
 

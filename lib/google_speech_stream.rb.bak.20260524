@@ -1,7 +1,7 @@
 require 'google/cloud/speech/v1'
 
 class GoogleSpeechStream
-  def initialize(call_id:, hints: [], single_utterance: false, on_result:, on_error: nil, interim_any: false)
+  def initialize(call_id:, hints: [], single_utterance: false, on_result:, on_error: nil)
     @call_id = call_id
     @hints = hints
     @single_utterance = single_utterance
@@ -9,7 +9,6 @@ class GoogleSpeechStream
     @on_error = on_error || ->(e) { Rails.logger.error("[GoogleSpeech] call_id=#{call_id} error: #{e.message}") }
     @audio_queue = Queue.new
     @running = false
-    @interim_any = interim_any
   end
 
   def start
@@ -70,7 +69,7 @@ class GoogleSpeechStream
         buffer << chunk
 
         # 100ms分（800バイト @ 8kHz mulaw）ごとにまとめて送信
-        if buffer.bytesize >= 800
+        if buffer.bytesize >= 320
           yielder << Google::Cloud::Speech::V1::StreamingRecognizeRequest.new(
             audio_content: buffer
           )
@@ -101,19 +100,12 @@ class GoogleSpeechStream
           Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} FINAL: '#{transcript}' (#{confidence})")
           @on_result.call(transcript, confidence)
         else
+          # 中間結果では厳密なキーワードのみマッチ（誤判定防止）
           transcript_utf8 = transcript.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') rescue transcript
-
-          # 初期フェーズ用: 何でもいいので2文字以上の発話で即トリガー
-          if @interim_any && transcript_utf8.strip.length >= 2
-            Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} INTERIM ANY: '#{transcript}'")
+          category, _ = TwilioService.classify_speech_strict(transcript_utf8)
+          if category != 'unknown'
+            Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} INTERIM STRICT MATCH: '#{transcript}' → #{category}")
             @on_result.call(transcript, confidence)
-          else
-            # 通常フェーズ: 厳密なキーワードのみマッチ（誤判定防止）
-            category, _ = TwilioService.classify_speech_strict(transcript_utf8)
-            if category != 'unknown'
-              Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} INTERIM STRICT MATCH: '#{transcript}' → #{category}")
-              @on_result.call(transcript, confidence)
-            end
           end
         end
       end

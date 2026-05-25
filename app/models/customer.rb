@@ -4,6 +4,7 @@ class Customer < ApplicationRecord
   has_one :last_form_call, -> { where(call_type: 'form').order(created_at: :desc) }, class_name: 'Call'
   belongs_to :worker, optional: true#これがあるとインポートもCreateも通らない
   belongs_to :client, optional: true
+  before_create :generate_unsubscribe_token
   scope :between_created_at, ->(from, to){
     where(created_at: from..to).where.not(tel: nil)
   }
@@ -42,5 +43,10 @@ class Customer < ApplicationRecord
       updated_at
       id
     ]
+  end
+
+
+  def generate_unsubscribe_token
+    self.unsubscribe_token ||= SecureRandom.hex(32)
   end
 end

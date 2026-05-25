@@ -11,28 +11,60 @@ class Subscription::TrialProcessor
       begin
         next if subscription.status == "expired"
 
+        unless client.stripe_customer_id.present?
+          Rails.logger.error "[TrialProcessor] stripe_customer_id missing client_id=#{client.id}"
+          next
+        end
+
         idempotency_key = "trial_upgrade_#{subscription.id}"
 
-        charge = Payjp::Charge.create(
+        stripe_price_id = ENV["STRIPE_PRICE_STANDARD"]
+
+        unless stripe_price_id.present?
+          Rails.logger.error "[TrialProcessor] STRIPE_PRICE_STANDARD missing"
+          next
+        end
+
+        stripe_subscription = Stripe::Subscription.create(
           {
-            amount: Subscription::PLAN_PRICES[:standard],
-            currency: "jpy",
-            customer: client.payjp_customer_id,
-            description: "Auto upgrade from trial"
+            customer: client.stripe_customer_id,
+            items: [
+              {
+                price: stripe_price_id
+              }
+            ],
+            metadata: {
+              client_id: client.id,
+              upgraded_from_trial: true
+            }
           },
           {
             idempotency_key: idempotency_key
           }
         )
 
-        unless charge.paid
-          Rails.logger.error "[TrialProcessor] charge failed subscription_id=#{subscription.id}"
+        unless stripe_subscription.present?
+          Rails.logger.error "[TrialProcessor] subscription create failed subscription_id=#{subscription.id}"
           next
         end
 
         subscription.expire_trial_and_upgrade!
 
+        latest_subscription = client.subscriptions
+                                    .where(status: :active)
+                                    .order(created_at: :desc)
+                                    .first
+
+        if latest_subscription.present?
+          latest_subscription.update!(
+            stripe_subscription_id: stripe_subscription.id
+          )
+        end
+
         Rails.logger.info "[TrialProcessor] success subscription_id=#{subscription.id}"
+
+      rescue Stripe::StripeError => e
+        Rails.logger.error "[TrialProcessor] stripe error subscription_id=#{subscription.id} #{e.class}: #{e.message}"
 
       rescue => e
         Rails.logger.error "[TrialProcessor] error subscription_id=#{subscription.id} #{e.class}: #{e.message}"

@@ -9,7 +9,7 @@ class Client::SubscriptionsController < ApplicationController
 
   def update
     new_plan_type = params[:plan_type]
-    
+
     unless Subscription::PLAN_PRICES.key?(new_plan_type.to_sym)
       redirect_to client_subscription_path, alert: "無効なプランです。"
       return
@@ -22,23 +22,47 @@ class Client::SubscriptionsController < ApplicationController
     end
   end
 
-def cancel_confirm
+  def cancel_confirm
     unless @subscription&.active?
-      redirect_to client_subscription_path, alert: "現在有効なサブスクリプションはありません。"
+      redirect_to client_subscription_path,
+                  alert: "現在有効なサブスクリプションはありません。"
     end
   end
-def cancel
-    # end_date カラムが存在しないため、status のみの更新に変更
-    if @subscription&.update(status: :cancelled)
-      # クライアント本体のプランを 'none' にし、status を 'cancelled' に更新
-      # これにより、View側での Trial 判定などを一括で無効化します
-      current_client.update(
-        subscription_status: "cancelled",
-        subscription_plan: "none"
-      )
-      redirect_to client_subscription_path, notice: "サブスクリプションをキャンセルしました。機能が制限されます。"
-    else
-      redirect_to client_subscription_path, alert: "キャンセル処理に失敗しました。"
+
+  def cancel
+    unless @subscription.present?
+      redirect_to client_subscription_path,
+                  alert: "サブスクリプションが存在しません。"
+      return
+    end
+
+    begin
+      if @subscription.stripe_subscription_id.present?
+        stripe_subscription = Stripe::Subscription.retrieve(
+          @subscription.stripe_subscription_id
+        )
+
+        stripe_subscription.cancel
+      end
+
+      if @subscription.update(status: :cancelled)
+        current_client.update(
+          subscription_status: "cancelled",
+          subscription_plan: "none"
+        )
+
+        redirect_to client_subscription_path,
+                    notice: "サブスクリプションをキャンセルしました。機能が制限されます。"
+      else
+        redirect_to client_subscription_path,
+                    alert: "キャンセル処理に失敗しました。"
+      end
+
+    rescue Stripe::StripeError => e
+      Rails.logger.error "Stripe cancel error: #{e.class} - #{e.message}"
+
+      redirect_to client_subscription_path,
+                  alert: "Stripe側のキャンセル処理に失敗しました。"
     end
   end
 

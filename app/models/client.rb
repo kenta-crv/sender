@@ -46,6 +46,30 @@ class Client < ApplicationRecord
     sub.can_send_delivery?(recipient_count)
   end
 
+  # =====================================================
+  # 月次制限・利用カウント関連（Publicに引っ越ししたメソッド群）
+  # =====================================================
+
+  # 今月の送信数
+  def monthly_sent_count
+    monthly_usage_log.sent_count
+  end
+
+  # 今月の上限（Subscription準拠）
+  def monthly_limit
+    current_subscription&.delivery_limit || 0
+  end
+
+  # 送信可能判定
+  def can_send_this_month?(count)
+    (monthly_sent_count + count) <= monthly_limit
+  end
+
+  # 加算処理
+  def increment_monthly_sent!(count)
+    monthly_usage_log.increment!(:sent_count, count)
+  end
+
   def check_and_upgrade_expired_trial
     return unless subscription_plan == "trial"
     return unless trial_ends_at.present?
@@ -132,48 +156,20 @@ class Client < ApplicationRecord
     )
   end
 
-    # =========================
+  # =====================================================
+  # 内部補助用（Privateのまま維持する内部メソッド）
+  # =====================================================
+
   # 月キー
-  # =========================
   def current_month_key
     Time.current.strftime("%Y-%m")
   end
 
-  # =========================
   # 月次ログ取得 or 作成
-  # =========================
   def monthly_usage_log
     MonthlyUsageLog.find_or_create_by!(
       client_id: id,
       month: current_month_key
     )
-  end
-
-  # =========================
-  # 今月の送信数
-  # =========================
-  def monthly_sent_count
-    monthly_usage_log.sent_count
-  end
-
-  # =========================
-  # 今月の上限（Subscription準拠）
-  # =========================
-  def monthly_limit
-    current_subscription&.delivery_limit || 0
-  end
-
-  # =========================
-  # 送信可能判定
-  # =========================
-  def can_send_this_month?(count)
-    (monthly_sent_count + count) <= monthly_limit
-  end
-
-  # =========================
-  # 加算処理
-  # =========================
-  def increment_monthly_sent!(count)
-    monthly_usage_log.increment!(:sent_count, count)
   end
 end

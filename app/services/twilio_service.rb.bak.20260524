@@ -6,16 +6,17 @@ class TwilioService
     )
   end
 
-  # 日本の電話番号をE.164形式に変換（例: "03-6820-3278" → "+81368203278"）
+  # 日本式の電話番号(03-1234-5678)をE.164形式(+81312345678)に変換
   def self.to_e164(tel)
     return tel if tel.nil? || tel.empty?
     return tel if tel.start_with?('+')
 
-    digits = tel.gsub(/[^\d]/, '')
+    digits = tel.gsub(/[^0-9]/, '')
+
     if digits.start_with?('0')
       "+81#{digits[1..]}"
     else
-      "+81#{digits}"
+      "+#{digits}"
     end
   end
 
@@ -29,6 +30,7 @@ class TwilioService
       status_callback_event: %w[initiated ringing answered completed],
       timeout: config.no_answer_timeout
     )
+
     twilio_call.sid
   end
 
@@ -43,14 +45,16 @@ class TwilioService
     )
   end
 
-  # 音声認識キーワード判定（final結果用 — 全キーワード）
+
   def self.classify_speech(text)
     return ["unknown", nil] if text.nil? || text.empty?
 
-    text = text.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') unless text.encoding == Encoding::UTF_8
+    unless text.encoding == Encoding::UTF_8
+      text = text.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
+    end
 
     case text
-    when /待たせ|担当|代わり|かわりました|分かりました|繋ぐ|つなぎ|変わり|興味|詳しく|もっと|教えて|聞かせて/
+    when /待たせ|担当|代わり|かわりました|分かりました|繋ぐ|つなぎ|変わり/
       ["transfer", text]
     when /お待ち|待って|少々/
       ["wait", text]
@@ -72,7 +76,7 @@ class TwilioService
     text = text.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') unless text.encoding == Encoding::UTF_8
 
     case text
-    when /待たせ|担当|代わり|かわりました|分かりました|興味|詳しく/
+    when /待たせ|担当|代わり|かわりました|分かりました/
       ["transfer", text]
     when /少々お待ち/
       ["wait", text]
