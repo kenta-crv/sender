@@ -1,7 +1,5 @@
 SitemapGenerator::Sitemap.default_host = "https://ri-plus.jp"
 
-SitemapGenerator::Sitemap.sitemaps_path = 'sitemaps/'
-
 SitemapGenerator::Sitemap.create do
   # トップページ
   add root_path, changefreq: 'hourly', priority: 1.0
