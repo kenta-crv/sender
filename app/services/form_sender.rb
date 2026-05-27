@@ -240,7 +240,15 @@ class FormSender
       filled = fill_form
       log "入力完了: #{filled}フィールド"
 
-      if filled >= 2
+      if filled >= 2 && !@message_filled
+        # 送信品質ガード①：本文入力欄が無い場合は送信スキップ
+        @result = { status: '本文未入力スキップ', message: '本文入力欄が見つからなかったため送信をスキップしました' }
+        teardown_driver
+      elsif filled >= 2 && @email_filled_count >= 3
+        # 送信品質ガード②：メアド欄が3個以上検出された場合は送信スキップ（誤判定の可能性）
+        @result = { status: 'メアド過多スキップ', message: "メールアドレス入力欄が#{@email_filled_count}個検出されたため送信をスキップしました" }
+        teardown_driver
+      elsif filled >= 2
         if @confirm_mode
           # 確認モード：送信せずに停止
           log "=== 確認モード ==="
@@ -661,6 +669,9 @@ class FormSender
   # フォームに入力
   def fill_form
     filled_count = 0
+    # 送信前ガード用：本文入力済みフラグ、メアド入力回数カウンタ
+    @message_filled = false
+    @email_filled_count = 0
 
     # 電話番号のハイフン有無を事前判定
     @current_tel_value = detect_tel_format
@@ -757,6 +768,9 @@ class FormSender
             filled_count += 1
             log "    → 入力成功: #{value[0..20]}..."
           end
+          # 送信前ガード用の入力内容トラッキング
+          @message_filled = true if value == sender_info[:message]
+          @email_filled_count += 1 if value == sender_info[:email]
         rescue StandardError => e
           log "    → 入力失敗: #{e.message}"
         end
