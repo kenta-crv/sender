@@ -1,54 +1,51 @@
 Rails.application.routes.draw do
-  # admin認証 (admins)
   devise_for :admins, controllers: {
     sessions: "admins/sessions",
     registrations: "admins/registrations",
     passwords: "admins/passwords"
   }
-  namespace :admin do
-    get 'dashboard/index'
-    get 'dashboard/setting'
-    get 'dashboard/history'
-    root "dashboard#index"
-    resources :notifications
-  end
   
-  # クライアント認証 (clients)
   devise_for :clients, controllers: {
     sessions: "clients/sessions",
     registrations: "clients/registrations",
     passwords: "clients/passwords"
   }
-  namespace :client do
-    get 'dashboard/index'
-    get 'dashboard/setting'
-    get 'dashboard/history'
-    get 'dashboard/duplication'
-    get 'dashboard/import'
-    get 'dashboard/searching_form'
-    get 'dashboard/sending'
-    root "dashboard#index"
-    resources :notifications
+
+  namespace :dashboard do
+    get 'index', to: 'dashboards#index'
+    get 'setting', to: 'dashboards#setting'
+    get 'history', to: 'dashboards#history'
+    get 'duplication', to: 'dashboards#duplication'
+    get 'import', to: 'dashboards#import'
+    get 'searching_form', to: 'dashboards#searching_form'
+    get 'sending', to: 'dashboards#sending'
+    get 'management', to: 'dashboards#management'
+
+
+    root "dashboards#index"
     
-    get 'subscription', to: 'subscriptions#show', as: :subscription
-    patch 'subscription', to: 'subscriptions#update'
-    get 'subscription/cancel_confirm', to: 'subscriptions#cancel_confirm', as: :cancel_confirm_subscription
-    post 'subscription/cancel', to: 'subscriptions#cancel', as: :cancel_subscription
+    resource :subscription, only: [:show, :update] do
+      get :cancel_confirm
+      post :cancel
+    end
+    resources :notifications
   end
 
-  # クライアントリソース
+  namespace :admin do
+    root to: redirect('/dashboard/index')
+    resources :notifications
+  end
+
   resources :clients do
     resources :push_subscriptions, only: [:index, :create]
   end
 
-  # 決済関連 (詳細を1行ずつ維持)
   get 'checkout/confirmation', to: 'checkout#confirmation', as: :checkout_confirmation
   post 'checkout/create', to: 'checkout#create', as: :checkout_create
   get 'checkout/success', to: 'checkout#success', as: :checkout_success
   get 'checkout/cancel', to: 'checkout#cancel', as: :checkout_cancel
 
   post 'stripe/webhook', to: 'stripe_webhooks#create'
-  # プラン選択
   get 'plans', to: 'plans#index', as: :plans
   post 'plans/select', to: 'plans#select', as: :select_plan
 
@@ -58,7 +55,6 @@ Rails.application.routes.draw do
   }
   resources :workers, only: [:show]
 
-
   root to: 'tops#index'
   get 'okurite', to: 'tops#okurite'
   get 'sales', to: 'tops#sales'
@@ -66,8 +62,6 @@ Rails.application.routes.draw do
   get 'tos', to: 'tops#tos'
   get 'specific', to: 'tops#specific'
 
-  # --- SEO用: ジャンル別コラム階層 (/genre/columns/:code) ---
-  # constraintsに一致する場合、こちらのルーティングが優先されます
   scope ':genre', constraints: { genre: /app/ } do
     resources :columns, only: [:index, :show], as: :nested_columns
   end
@@ -75,18 +69,17 @@ Rails.application.routes.draw do
 
   get 'draft/progress', to: 'draft#progress'
 
-  # --- Sidekiq Web UI ---
   require 'sidekiq/web'
   authenticate :admin do 
     mount Sidekiq::Web, at: "/sidekiq"
   end
 
-resources :submissions do
-  member do
-    get :history
-    get :manual
+  resources :submissions do
+    member do
+      get :history
+      get :manual
+    end
   end
-end
 
   resources :form_submissions, only: [:index, :create, :show, :destroy] do
     collection do
@@ -99,11 +92,9 @@ end
       post :resume
       get :progress
     end
-    
   end
-  get '/unsubscribe/:token',to: 'unsubscribes#show',as: :unsubscribe
+  get '/unsubscribe/:token', to: 'unsubscribes#show', as: :unsubscribe
 
-  # --- Twilio Webhooks ---
   namespace :twilio do
     post 'voice', to: 'voice#voice'
     post 'greeting', to: 'voice#greeting'
@@ -117,7 +108,6 @@ end
     post 'conference/status', to: 'conference#status'
   end
 
-  # --- 自動発信バッチ管理 ---
   resources :call_batches do
     member do
       patch :pause
@@ -147,6 +137,6 @@ end
     end
     resources :calls
   end
-
-  get '/l/:token',to: 'click_tracking#redirect',as: :click_tracking
+  post '/webhooks/stripe', to: 'webhooks#stripe'
+  get '/l/:token', to: 'click_tracking#redirect', as: :click_tracking
 end

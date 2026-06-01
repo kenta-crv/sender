@@ -29,8 +29,8 @@ html lang="ja"
             = image_tag "logo2.png", class: "main-logo", alt: "Home"
 
     .floating-contact
-      - if client_signed_in?
-        = link_to client_dashboard_index_path, class: 'contact-box dashboard-mode' do
+      - if client_signed_in? && current_client.subscription_active?
+        = link_to dashboard_index_path, class: 'contact-box dashboard-mode' do
           .icon-container
             span.dashboard-icon
               i.fas.fa-th-large

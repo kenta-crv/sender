@@ -1,11 +1,9 @@
 class Payment < ApplicationRecord
   belongs_to :client
-  belongs_to :campaign, optional: true
 
   enum status: { pending: "pending", succeeded: "succeeded", failed: "failed" }
 
   validates :amount, presence: true, numericality: { greater_than: 0 }
-  validates :stripe_payment_intent_id, presence: true, allow_nil: true
   validates :status, presence: true
 
   def amount_in_yen

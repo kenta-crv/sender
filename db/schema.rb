@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_05_25_082518) do
+ActiveRecord::Schema.define(version: 2026_05_29_140511) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -271,15 +271,13 @@ ActiveRecord::Schema.define(version: 2026_05_25_082518) do
 
   create_table "payments", force: :cascade do |t|
     t.integer "client_id", null: false
-    t.integer "campaign_id", null: false
     t.integer "amount", null: false
-    t.string "payjp_charge_id", null: false
+    t.string "payjp_charge_id"
     t.string "status", default: "pending", null: false
     t.text "description"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.string "stripe_payment_intent_id"
-    t.index ["campaign_id"], name: "index_payments_on_campaign_id"
     t.index ["client_id"], name: "index_payments_on_client_id"
     t.index ["payjp_charge_id"], name: "index_payments_on_payjp_charge_id"
     t.index ["status"], name: "index_payments_on_status"
@@ -420,7 +418,6 @@ ActiveRecord::Schema.define(version: 2026_05_25_082518) do
   add_foreign_key "form_submission_batches", "admins"
   add_foreign_key "form_submission_batches", "clients"
   add_foreign_key "monthly_usage_logs", "clients"
-  add_foreign_key "payments", "campaigns"
   add_foreign_key "payments", "clients"
   add_foreign_key "serp_enrichment_run_targets", "serp_enrichment_runs"
   add_foreign_key "submissions", "clients"

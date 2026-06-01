@@ -1,3 +1,4 @@
+
 #okurite-client-portal
   .wrapper
     = render 'sidebar'
@@ -6,26 +7,36 @@
       header.top-header
         h2 Dashboard
         .user-meta
-          span.badge-electric = current_client.subscription_plan.presence
+          - if current_client.present?
+            span.badge-electric = current_client.subscription_plan.presence
+          - else
+            span.badge-electric Admin
+
+      / ===== 解約予約中（期間内猶予）の警告バナー =====
+      - if current_client.present? && current_client.subscription_status == 'cancelled' && current_client.subscription_plan != 'none'
+        .alert-neon style="margin: 1.5rem 2rem 0; padding: 1rem; background: rgba(255, 80, 80, 0.1); border: 1px solid rgba(255, 80, 80, 0.3); border-radius: 8px; color: #ff8080;"
+          i.fas.fa-exclamation-triangle.me-2
+          | サブスクリプションは解約手続き済みです。現在の契約期間が終了するまでダッシュボードをご利用いただけます。
 
       / ===== KPI =====
       .stats-grid
         .glass-card
           .card-label Monthly Sends
           .card-value
-            = number_with_delimiter(@total_sent)
+            = number_with_delimiter(@total_sent.to_i)
             span.unit 件
 
-          p.resets-in 今月の送信件数
+          p.resets-in 今月の送信実行総数
 
-          - percent = @total_sent > 0 ? ((@total_success.to_f / @total_sent) * 100).round : 0
+          - total_sent = (@total_sent || 0).to_i
+          - monthly_limit = (current_client&.monthly_limit || 0).to_i
+          - remaining_slots = [monthly_limit - total_sent, 0].max
 
-          .progress-circle style="--value: #{percent};"
-            .progress-value = "#{percent}%"
+          .mini-rate
+            = "残り枠: #{number_with_delimiter(remaining_slots)} 件 / 上限: #{number_with_delimiter(monthly_limit)} 件"
 
         .glass-card
           .card-label Success
-
           .card-value
             = number_with_delimiter(@total_success)
             span.unit 件
@@ -39,7 +50,6 @@
 
         .glass-card
           .card-label Click Response
-
           .card-value
             = number_with_delimiter(@clicked_users_count)
             span.unit 件
@@ -51,14 +61,13 @@
           .mini-rate
             = "#{@click_rate}% CTR"
 
-
       / ===== Recent Batches =====
       .history-section.mt-5
         .glass-card
           .card-header-flex style="display: flex; justify-content: space-between; align-items: center; width: 100%;"
             h5.m-0 Recent Send Forms
 
-            = link_to client_dashboard_history_path,
+            = link_to dashboard_history_path,
               class: 'btn-electric-outline',
               style: 'display: inline-flex; align-items: center; padding: 0.6rem 1.2rem; font-size: 0.9rem; text-decoration: none; line-height: 1; border-radius: 6px; font-weight: 500;' do
 
@@ -75,17 +84,14 @@
                 th Status
 
             tbody
-              - @batches.limit(5).each do |batch|
+              - (@batches || []).first(5).each do |batch|
                 tr
                   td = batch.created_at.strftime('%Y/%m/%d')
-
                   td = batch.submission&.title || 'Default'
-
                   td = number_with_delimiter(batch.total_count)
 
                   td
                     - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round : 0
-
                     .custom-progress-bg
                       .bar-electric style="width: #{percent}%;"
 
@@ -93,16 +99,12 @@
                     - case batch.status
                     - when 'processing'
                       span.text-blue Processing
-
                     - when 'completed'
                       span.text-green Completed
-
                     - when 'pending'
                       span.text-muted Pending
-
                     - when 'cancelled'
                       span.text-warning Cancelled
-
                     - else
                       span.text-muted = batch.status
 
@@ -148,7 +150,7 @@
 
             tbody
               - @submissions.each do |submission|
-                - batches = submission.form_submission_batches.where(client_id: current_client.id)
+                - batches = submission.form_submission_batches
                 - total = batches.sum(:total_count)
                 - success = batches.sum(:success_count)
                 - failure = batches.sum(:failure_count)
@@ -161,8 +163,7 @@
                   td = failure
                   td = "#{rate}%"
 
-/ --- Trial Modal ---
-- if current_client.subscription_plan == 'trial'
+- if current_client.present? && current_client.subscription_plan == 'trial'
   .ok-trial-overlay#trialOverlay
     .ok-trial-card
       .ok-icon
@@ -178,7 +179,7 @@
         | 送信制限なしの体験を始めましょう。
 
       = link_to 'プランをアップグレードする',
-        client_subscription_path,
+        dashboard_subscription_path,
         class: 'ok-btn-primary',
         style: 'background: #38bdf8; color: #020617; font-weight: 600; text-shadow: none; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4); animation: none; transition: all 0.2s ease;'
 

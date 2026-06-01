@@ -99,7 +99,8 @@ class Subscription < ApplicationRecord
 
       client.update!(
         subscription_plan: "standard",
-        subscription_status: "active"
+        subscription_status: "active",
+        trial_ends_at: nil
       )
     end
   end

@@ -18,9 +18,9 @@ class ApplicationController < ActionController::Base
 def after_sign_in_path_for(resource)
   case resource
   when Admin
-    admin_dashboard_index_path(resource)
+    dashboard_index_path(resource)
   when Client
-    client_dashboard_index_path(resource)
+    dashboard_index_path(resource)
   when Worker
     # ↓ ここは「s」なし！ (resource)を忘れずに
     worker_path(resource) 

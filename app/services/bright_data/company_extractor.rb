@@ -29,12 +29,8 @@ module BrightData
     GENERIC_PROFILE_PATH_PATTERN = %r{/(?:company|about|profile)(?:/|[-_a-z]*\.html?|$)}i.freeze
     PREFECTURE_PATTERN = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/.freeze
 
-    # ★ クライアント提供の業種リストに差し替えること
-    TARGET_INDUSTRIES = %w[
-      IT Web システム ソフトウェア 情報
-      コンサルティング 広告 人材 不動産
-      建設 製造 飲食 医療 教育
-    ].freeze
+    # 業種フィルターを無効化したため、定数自体を削除、またはコメントアウトします。
+    # TARGET_INDUSTRIES = [].freeze
 
     # SERP結果1件分から企業情報を抽出
     # ★ キー名（"organic_results" vs "organic" 等）はDay1の確認結果に合わせて修正
@@ -129,13 +125,14 @@ module BrightData
       UrlPolicy.normalize_company_name(title).presence || parts.first.to_s.strip.presence
     end
 
+    # 業種に関わらず、すべての件数を通過させるように修正（queryの一致確認は維持）
     def self.filter_by_industry(companies, query: nil)
       companies.select do |c|
         if query.present? && c[:company].present? && c[:source] == "organic"
           next false unless matches_query_company?(c[:company], query)
         end
 
-        c[:industry].nil? || TARGET_INDUSTRIES.any? { |t| c[:industry].include?(t) }
+        true # 業種フィルターをかけず、常に通す
       end
     end
 

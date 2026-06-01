@@ -1,6 +1,6 @@
 #okurite-client-portal
   .wrapper
-    = render 'client/dashboard/sidebar'
+    = render 'dashboard/dashboards/sidebar'
 
     #content
       header.top-header
@@ -13,9 +13,12 @@
               | 本当にサブスクリプションを解約しますか？
             
             p.form-group style="margin-top: 1.5rem; line-height: 1.8;"
-              | 解約手続きを完了すると、即座にメッセージ送信機能などのすべての有料機能が利用できなくなります。
+              | 解約手続きを完了すると、自動更新が停止されます。
               br
-              span style="color: var(--text-muted);" 再度利用するには、改めてプランへの加入が必要となります。
+              strong style="color: #38bdf8; font-size: 1.2rem;"
+                | 最終利用可能日： #{@available_until.strftime("%Y年%m月%d日")}
+              br
+              span style="color: var(--text-muted);" この日付まで、すべての有料機能を引き続きご利用いただけます。
             
             .form-group style="margin-top: 2rem;"
               span.card-label style="display: block; margin-bottom: 8px;" 現在のプラン
@@ -25,7 +28,8 @@
             hr
 
             .d-flex style="justify-content: center; gap: 15px;"
-              = link_to '設定へ戻る', client_dashboard_setting_path, class: 'btn-electric-outline'
+              = link_to '設定へ戻る', dashboard_setting_path(client_id: params[:client_id]), class: 'btn-electric-outline'
               
-              / sign_outのスタイル定義（赤色）が当たるように属性を調整
-              = link_to '解約を確定する', client_cancel_subscription_path, method: :post, class: 'btn-electric-outline', style: 'border-color: rgba(255, 80, 80, 0.6); color: rgba(255, 80, 80, 0.8);'
+              / 正しいヘルパー名 cancel_dashboard_subscription_path に修正
+              = form_with url: cancel_dashboard_subscription_path(client_id: params[:client_id]), method: :post do |f|
+                = f.submit '解約を確定する', class: 'btn-electric-outline', style: 'border-color: rgba(255, 80, 80, 0.6); color: rgba(255, 80, 80, 0.8);'

@@ -1,0 +1,52 @@
+nav#sidebar
+  .sidebar-header
+    = link_to dashboard_index_path do
+      = image_tag 'okurite-logo.png', class: 'logo-glow'
+
+  ul.list-unstyled.components
+
+    li class=(current_page?(dashboard_index_path) ? 'active' : '')
+      = link_to dashboard_index_path do
+        i.fas.fa-chart-line
+        span Dashboard
+
+    li class=(current_page?(dashboard_import_path) ? 'active' : '')
+      = link_to dashboard_import_path do
+        i.fas.fa-users
+        span Import List
+
+    li class=(current_page?(draft_customers_path) ? 'active' : '')
+      = link_to draft_customers_path do
+        i.fas.fa-users
+        span AI SERP List
+
+    li class=(current_page?(dashboard_searching_form_path) ? 'active' : '')
+      = link_to dashboard_searching_form_path do
+        i.fas.fa-users
+        span Auto Form Search
+
+    li class=(current_page?(dashboard_duplication_path) ? 'active' : '')
+      = link_to dashboard_duplication_path do
+        i.fas.fa-users
+        span Duplication
+
+    li class=(current_page?(new_submission_path) ? 'active' : '')
+      = link_to submissions_path do
+        i.fas.fa-file-alt
+        span Create Contents
+
+    li class=(current_page?(dashboard_sending_path) ? 'active' : '')
+      = link_to dashboard_sending_path do
+        i.fas.fa-paper-plane
+        span Send Forms
+
+    - if admin_signed_in?
+      li class=(current_page?(dashboard_management_path) ? 'active' : '')
+        = link_to dashboard_management_path do
+          i.fas.fa-user-shield
+          span Management
+    - else
+      li class=(current_page?(dashboard_setting_path) ? 'active' : '')
+        = link_to dashboard_setting_path do
+          i.fas.fa-cog
+          span Settings

@@ -199,7 +199,7 @@ def create
 
   # チェック後も対象が空の場合はアラートを出して戻す
   if customer_ids.empty?
-    redirect_to client_signed_in? ? client_dashboard_index_path : form_submissions_path,
+    redirect_to client_signed_in? ? dashboard_index_path : form_submissions_path,
                 alert: '送信対象の顧客が選択されていません。件数を指定するか、顧客を選択してください。'
     return
   end
@@ -212,7 +212,7 @@ def create
 
   if client.present?
     unless client.can_send_this_month?(customer_ids.size)
-      redirect_to client_signed_in? ? client_dashboard_index_path : form_submissions_path,
+      redirect_to client_signed_in? ? dashboard_index_path : form_submissions_path,
                   alert: "今月の送信上限に達しています（#{client.monthly_sent_count}/#{client.monthly_limit}）"
       return
     end
@@ -245,7 +245,7 @@ def create
 
   # 遷移先の判定
   if client_signed_in?
-    redirect_to client_dashboard_index_path, notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
+    redirect_to dashboard_index_path, notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
   else
     redirect_to form_submission_path(batch), notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
   end
@@ -257,7 +257,7 @@ def cleanup_duplicates
 
   unless valid_attributes.include?(attribute)
     if client_signed_in? && !admin_signed_in?
-      return redirect_to client_dashboard_index_path, alert: "不正な属性指定です。"
+      return redirect_to dashboard_index_path, alert: "不正な属性指定です。"
     else
       return redirect_to form_submissions_path, alert: "不正な属性指定です。"
     end
@@ -295,7 +295,7 @@ def cleanup_duplicates
 
   # 指定されたリダイレクト条件
   if client_signed_in? && !admin_signed_in?
-    redirect_to client_dashboard_index_path,
+    redirect_to dashboard_index_path,
                 notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
   else
     redirect_to form_submissions_path,
@@ -375,7 +375,7 @@ def import_customers
 
   if file.blank?
     if client_signed_in? && !admin_signed_in?
-      redirect_to client_dashboard_index_path,
+      redirect_to dashboard_index_path,
                   alert: 'CSVファイルを選択してください。'
     else
       redirect_to form_submissions_path,
@@ -437,7 +437,7 @@ def import_customers
     end
 
     if client_signed_in? && !admin_signed_in?
-      redirect_to client_dashboard_index_path, notice: message
+      redirect_to dashboard_index_path, notice: message
     else
       redirect_to form_submissions_path, notice: message
     end
@@ -446,7 +446,7 @@ def import_customers
     Rails.logger.error("IMPORT FATAL ERROR: #{e.message}\n#{e.backtrace.join("\n")}")
 
     if client_signed_in? && !admin_signed_in?
-      redirect_to client_dashboard_index_path,
+      redirect_to dashboard_index_path,
                   alert: "エラーが発生しました: #{e.message}"
     else
       redirect_to form_submissions_path,
@@ -455,6 +455,30 @@ def import_customers
   end
 end
 
+# POST /form_submissions/detect_contact_urls
+  def detect_contact_urls
+    customer_ids = if params[:detect_select_all] == '1'
+                     # 全件選択 → ページネーションに関係なく全対象顧客を取得
+                     Customer.where(contact_url: [nil, ''])
+                             .where.not(url: [nil, ''])
+                             .where(fobbiden: [nil, false, 0])
+                             .pluck(:id)
+                   else
+                     Array(params[:customer_ids]).map(&:to_i)
+                   end
+
+    if customer_ids.empty?
+      redirect_to form_submissions_path, alert: '検出対象の顧客が選択されていません。'
+      return
+    end
+
+    # 並列処理: 各顧客を独立したジョブとしてキューに投入
+    customer_ids.each do |cid|
+      ContactUrlDetectJob.perform_later(cid)
+    end
+
+    redirect_to form_submissions_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
+  end
   private
 
   def set_batch

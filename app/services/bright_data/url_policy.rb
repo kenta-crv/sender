@@ -10,6 +10,7 @@ module BrightData
       syukatsu-kaigi.jp
       wantedly.com
       indeed.com
+      prtimes.com
       en-gage.net
       rikunabi.com
       mynavi.jp

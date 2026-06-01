@@ -4,7 +4,7 @@
     .col-md-8.col-lg-6
       .sc-detect__card
         .sc-detect__card-header
-          h5.m-0 
+          h5.m-0
             i.fas.fa-shield-alt.me-2
             | お支払い内容の確認
 
@@ -13,101 +13,29 @@
           .sc-detect__table-wrapper.p-4.mb-4 style="background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2);"
             .d-flex.justify-content-between.mb-2
               span style="color: rgba(229, 231, 235, 0.6);" 選択プラン
-              span.fw-bold style="color: #7dd3fc; letter-spacing: 0.05em;" = @plan_type.to_s.upcase
+              span.fw-bold style="color: #7dd3fc; letter-spacing: 0.05em;"
+                = @plan_type.to_s.upcase
+
             .d-flex.justify-content-between.align-items-center
               span style="color: rgba(229, 231, 235, 0.6);" お支払い金額
+
               - amount = Subscription::PLAN_PRICES[@plan_type.to_s.downcase.to_sym] || 0
+
               .text-end
                 span.h2.fw-bold style="color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);"
                   = "¥#{amount.to_s(:delimited)}"
-                span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);" (税込)
+
+                span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);"
+                  | (税込)
 
           hr style="border-color: rgba(56, 189, 248, 0.2); margin: 30px 0;"
 
-          / --- 決済フォーム ---
-          = form_with url: checkout_create_path, method: :post, id: "payment-form", local: true do |f|
+          / --- Stripe Checkout ---
+          = form_with url: checkout_create_path, method: :post, local: true do |f|
             = hidden_field_tag :plan_type, @plan_type
-            
-            - if @has_saved_card
-              / --- 登録済みカードがある場合 ---
-              .sc-detect__form-group
-                label.sc-detect__label お支払い方法
-                .sc-detect__input style="background: rgba(56, 189, 248, 0.1); border: 1px dashed rgba(56, 189, 248, 0.4); display: flex; align-items: center; justify-content: center; min-height: 60px;"
-                  span style="color: #7dd3fc;"
-                    i.fas.fa-check-circle.me-2
-                    | 登録済みのクレジットカードを使用します
 
-              .sc-detect__form-actions.mt-4
-                = f.submit "決済を確定する", class: "sc-detect__btn sc-detect__btn--warning w-100", style: "justify-content: center; font-size: 1.1rem; padding: 16px;"
 
-            - else
-              / --- カード未登録の場合 ---
-              .sc-detect__form-group
-                label.sc-detect__label カード情報
-                #card-element data-pk="#{@payjp_public_key}" class="sc-detect__input" style="min-height: 60px; padding: 18px; background: rgba(2, 6, 23, 0.8);"
-                  span style="color: rgba(229, 231, 235, 0.3);" 決済システムを読み込み中...
-                #card-errors.text-danger.small.mt-2 style="font-weight: 600;"
-
-              .sc-detect__form-actions
-                = f.submit "決済を確定する", class: "sc-detect__btn sc-detect__btn--warning w-100", id: "submit-button", disabled: true, style: "justify-content: center; font-size: 1.1rem; padding: 16px;"
-
-/ SDKの読み込み（未登録時のみ有効化するロジック）
-- unless @has_saved_card
-  script src="https://js.pay.jp/v2/pay.js" onload="initPayjp()"
-
-  javascript:
-    function initPayjp() {
-      var el = document.getElementById('card-element');
-      if (!el || el.firstChild.nodeName === 'IFRAME') return;
-
-      var pk = el.getAttribute('data-pk');
-      if (!pk || typeof Payjp === 'undefined') {
-        setTimeout(initPayjp, 200);
-        return;
-      }
-
-      var payjp = Payjp(pk);
-      var elements = payjp.elements();
-      
-      var card = elements.create('card', {
-        style: {
-          base: {
-            fontSize: '16px',
-            color: '#ffffff',
-            letterSpacing: '0.05em',
-            '::placeholder': { color: 'rgba(229, 231, 235, 0.3)' }
-          },
-          invalid: { color: '#ef4444' }
-        }
-      });
-
-      el.innerHTML = '';
-      card.mount('#card-element');
-
-      card.on('ready', function() {
-        document.getElementById('submit-button').disabled = false;
-      });
-
-      var form = document.getElementById('payment-form');
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        var btn = document.getElementById('submit-button');
-        btn.disabled = true;
-
-        payjp.createToken(card).then(function(r) {
-          if (r.error) {
-            document.getElementById('card-errors').innerText = r.error.message;
-            btn.disabled = false;
-          } else {
-            var tokenInput = document.createElement('input');
-            tokenInput.type = 'hidden';
-            tokenInput.name = 'payjp_token';
-            tokenInput.value = r.id;
-            form.appendChild(tokenInput);
-            form.submit();
-          }
-        });
-      });
-    }
-
-    if (window.Payjp) initPayjp();
+            .sc-detect__form-actions
+              = f.submit "Stripeで決済へ進む",
+                class: "sc-detect__btn sc-detect__btn--warning w-100",
+                style: "justify-content: center; font-size: 1.1rem; padding: 16px;"

@@ -221,222 +221,83 @@ def destroy
     redirect_to customers_url, notice: 'インポート処理をバックグラウンドで実行しています。完了までしばらくお待ちください。'
   end
 
-def draft
+# GET /draft
+# GET /draft
+  def draft
     start_time = Time.current
 
-    # 期間パラメータの解釈（未指定可）
-    @period_start = nil
-    @period_end   = nil
+    # 1. 期間パラメータのパース
+    parse_period_params
 
-    if params[:period_start].present?
-      begin
-        @period_start = Date.parse(params[:period_start])
-      rescue ArgumentError
-        @period_start = nil
-      end
+    # 2. 権限や業種に応じたベーススコープをモデルから取得
+    base_scope = Customer.draft_base_scope(
+      current_client_id: client_signed_in? ? current_client.id : nil,
+      is_admin: admin_signed_in?,
+      industry_name: params[:industry_name]
+    )
+
+    # 社名検索パラメータの取得
+    @company_query = params[:company_query].presence
+
+    # 未抽出・補完対象（@serp_targets）用のベーススコープを構築
+    # (serp_status が未処理、かつ tel/url/contact_url のいずれかが空のデータ)
+    serp_target_base = base_scope.where(serp_status: [nil, ''])
+                                 .where(
+                                   "(tel IS NULL OR TRIM(tel) = '') OR " \
+                                   "(url IS NULL OR TRIM(url) = '') OR " \
+                                   "(contact_url IS NULL OR TRIM(contact_url) = '')"
+                                 )
+
+    # 未抽出エリアへの検索機能の適用（社名検索が指定されていれば絞り込む）
+    if @company_query.present?
+      serp_target_base = filter_company_query(serp_target_base, @company_query)
     end
 
-    if params[:period_end].present?
-      begin
-        @period_end = Date.parse(params[:period_end])
-      rescue ArgumentError
-        @period_end = nil
-      end
+    # 3. 画面表示用のメイン顧客リストの絞り込み
+    # メインリスト側も社名検索が指定されていれば絞り込む
+    main_scope = base_scope
+    if @company_query.present?
+      main_scope = filter_company_query(main_scope, @company_query)
     end
 
-    # 期間の整合性（逆転していたら入れ替え）
-    if @period_start.present? && @period_end.present? && @period_end < @period_start
-      @period_start, @period_end = @period_end, @period_start
-    end
+    @customers = main_scope
+                   .apply_status_filter(params[:status_filter])
+                   .apply_serp_status_filter(params[:serp_status_filter])
+                   .apply_tel_role_filter(is_admin: admin_signed_in?, is_worker: worker_signed_in?, tel_filter: params[:tel_filter])
+                   .apply_fill_filter(params[:fill_filter])
+                   .apply_updated_at_filter(params[:updated_from], params[:updated_to], params[:updated_today])
+                   .apply_created_at_range(@range_start, @range_end)
 
-    range_start = @period_start&.beginning_of_day
-    range_end   = @period_end&.end_of_day
-
-    # --- 基本スコープの定義 ---
-    draft_base = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
-
-    # 【重要修正】ログイン状態によるフィルタリング
-    if admin_signed_in?
-      # Adminは全件表示（追加フィルタなし）
-    elsif client_signed_in?
-      # Clientログイン時は自身の client_id に紐づくもののみ
-      draft_base = draft_base.where(client_id: current_client.id)
-    else
-      # どちらでもない場合（Workerなど）は、必要に応じて制限
-      # ここでは未ログイン時などの考慮として空を返すか、特定の仕様があれば記述
-      # draft_base = draft_base.none 
-    end
-
-    # status による絞り込み
-    draft_base = draft_base.where(status: params[:status_filter]) if params[:status_filter].present?
-
-    # serp_status での絞り込み
-    case params[:serp_status_filter]
-    when "null"
-      draft_base = draft_base.where(serp_status: [nil, ''])
-    when "serp_queued", "serp_done", "serp_imported", "serp_error"
-      draft_base = draft_base.where(serp_status: params[:serp_status_filter])
-    end
-
-    # Adminを優先した条件分岐（tel_filter）
-    @customers = case
-    when admin_signed_in? && params[:tel_filter] == "with_tel"
-      draft_base.where.not(tel: [nil, '', ' '])
-    when admin_signed_in? && params[:tel_filter] == "without_tel"
-      draft_base.where(tel: [nil, '', ' '])
-    when worker_signed_in?
-      draft_base.where(tel: [nil, '', ' '])
-    else
-      draft_base
-    end
-
-    # 充足条件フィルタ
-    case params[:fill_filter]
-    when "missing_tel"
-      @customers = @customers.where("tel IS NULL OR TRIM(tel) = ''")
-    when "missing_address"
-      @customers = @customers.where("address IS NULL OR TRIM(address) = ''")
-    when "missing_url"
-      @customers = @customers.where("url IS NULL OR TRIM(url) = ''")
-    when "missing_contact_url"
-      @customers = @customers.where("contact_url IS NULL OR TRIM(contact_url) = ''")
-    when "fully_enriched"
-      @customers = @customers.where.not(tel: [nil, '', ' '])
-                             .where.not(address: [nil, '', ' '])
-                             .where.not(url: [nil, '', ' '])
-                             .where.not(contact_url: [nil, '', ' '])
-    when "done_missing_tel"
-      @customers = @customers.where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = ''")
-    when "done_missing_address"
-      @customers = @customers.where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = ''")
-    end
-
-    # 最終更新日のフィルタ
-    updated_from = (Date.parse(params[:updated_from]) rescue nil) if params[:updated_from].present?
-    updated_to   = (Date.parse(params[:updated_to])   rescue nil) if params[:updated_to].present?
-    if updated_from || updated_to
-      if updated_from && updated_to
-        @customers = @customers.where(updated_at: updated_from.beginning_of_day..updated_to.end_of_day)
-      elsif updated_from
-        @customers = @customers.where("updated_at >= ?", updated_from.beginning_of_day)
-      else
-        @customers = @customers.where("updated_at <= ?", updated_to.end_of_day)
-      end
-    elsif params[:updated_today] == "1"
-      @customers = @customers.where(updated_at: Time.current.beginning_of_day..Time.current.end_of_day)
-    end
-
-    # 期間でフィルタ
-    if range_start && range_end
-      @customers = @customers.where(created_at: range_start..range_end)
-    elsif range_start
-      @customers = @customers.where('created_at >= ?', range_start)
-    elsif range_end
-      @customers = @customers.where('created_at <= ?', range_end)
-    end
-
-    # 業種でフィルタ
-    if params[:industry_name].present?
-      @customers = @customers.where(industry: params[:industry_name])
-    end
-
-    # ページネーション（workerをincludesしてN+1を回避）
+    # メインリストの順序制御・ページネーション・件数取得 (100件区切り)
     @customers = @customers.order(updated_at: :desc).includes(:worker).page(params[:page]).per(100)
+    @filtered_count = @customers.total_count
 
-    # 残り件数取得
-    today_total = ExtractTracking
-                    .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
-                    .sum(:total_count)
+    # 4. 「実行前に対象となる企業」のデータを20件でページネーション
+    @serp_targets = serp_target_base.order(id: :asc)
+                                    .page(params[:serp_page])
+                                    .per(20)
 
-    daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
-    @remaining_extractable = [daily_limit - today_total, 0].max
+    # 5. 残り抽出可能件数の取得（モデルから算出）
+    # クライアントの場合は、契約やシステムの上限に加えて、自身の検索スコープに合致する「補完対象の総件数」を絶対に超えないよう上限を丸める
+    raw_remaining = ExtractTracking.remaining_extractable_count
+    @serp_target_count = serp_target_base.count # 検索・フィルタ反映後の補完対象件数
 
-    # --- SERP補完対象件数（スコープにclient制限を反映） ---
-    serp_scope = Customer.where(serp_status: [nil, ''])
-                         .where(
-                           "(tel IS NULL OR TRIM(tel) = '') OR " \
-                           "(url IS NULL OR TRIM(url) = '') OR " \
-                           "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                         )
-    # 権限フィルタをここでも適用
-    serp_scope = serp_scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
-    
-    serp_scope = serp_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
-    @serp_target_count = serp_scope.count
+    if client_signed_in? && !admin_signed_in?
+      @remaining_extractable = [raw_remaining, @serp_target_count].min
+    else
+      @remaining_extractable = raw_remaining
+    end
 
-    # --- ダッシュボードサマリー（スコープにclient制限を反映） ---
-    dash_scope = Customer.where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
-    dash_scope = dash_scope.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
-    dash_scope = dash_scope.where(industry: params[:industry_name]) if params[:industry_name].present?
+    # 6. 統計情報の取得（ダッシュボード等で利用するベース統計）
+    @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
 
-    total = dash_scope.count
-    status_counts = dash_scope.group(:serp_status).count
-    null_c     = (status_counts[nil].to_i + status_counts[""].to_i)
-    queued_c   = status_counts["serp_queued"].to_i
-    done_c     = status_counts["serp_done"].to_i
-    imported_c = status_counts["serp_imported"].to_i
-    error_c    = status_counts["serp_error"].to_i
-
-    tel_c     = dash_scope.where.not(tel: [nil, '', ' ']).count
-    addr_c    = dash_scope.where.not(address: [nil, '', ' ']).count
-    url_c     = dash_scope.where.not(url: [nil, '', ' ']).count
-    contact_c = dash_scope.where.not(contact_url: [nil, '', ' ']).count
-    full_c    = dash_scope.where.not(tel: [nil, '', ' '])
-                          .where.not(address: [nil, '', ' '])
-                          .where.not(url: [nil, '', ' '])
-                          .where.not(contact_url: [nil, '', ' '])
-                          .count
-
-    @dashboard_stats = {
-      total: total,
-      status: {
-        null: null_c, queued: queued_c, done: done_c, imported: imported_c, error: error_c
-      },
-      fill: {
-        tel: tel_c, address: addr_c, url: url_c, contact_url: contact_c, full: full_c
-      }
-    }
+    # ビュー側で「SERP API START」に渡す上限設定パラメータ（クライアント時は残り抽出可能件数でクリップ）
+    @max_search_limit = admin_signed_in? ? @serp_target_count : [@serp_target_count, @remaining_extractable].min
 
     elapsed = ((Time.current - start_time) * 1000).round(2)
     Rails.logger.info("draft action: completed in #{elapsed}ms")
   end
-  
-  def extract_company_info
-    start_time = Time.current
-    Rails.logger.info("extract_company_info called (SYNC MODE).")
-    industry_name = params[:industry_name]
-    total_count = params[:count]
-
-    tracking = ExtractTracking.create!(
-      industry:       industry_name,
-      total_count:    total_count,
-      success_count:  0,
-      failure_count:  0,
-      status:         "抽出中"
-    )
-
-    # 同期実行に変更
-    # ExtractCompanyInfoWorker.perform_async(tracking.id)
-    begin
-      ExtractCompanyInfoWorker.new.perform(tracking.id)
-      tracking.reload
-      
-      if tracking.status == "抽出完了"
-        flash[:notice] = "抽出処理が正常に完了しました。（#{tracking.success_count}件成功 / #{tracking.failure_count}件失敗）"
-      else
-        flash[:alert] = "抽出処理が中断または失敗しました。（ステータス: #{tracking.status}）"
-      end
-    rescue => e
-      Rails.logger.error("Sync execution failed: #{e.message}")
-      flash[:alert] = "システムエラーにより抽出処理が失敗しました。"
-    end
-
-    elapsed = ((Time.current - start_time) * 1000).round(2)
-    Rails.logger.info("extract_company_info: completed in #{elapsed}ms (tracking_id: #{tracking.id})")
-    redirect_to draft_path
-  end
-
-  # SERP APIによる情報補完実行（UIから起動）
+  # POST /customers/serp_search
   def serp_search
     industry  = params[:industry].presence
     limit     = (params[:limit] || 100).to_i
@@ -474,104 +335,9 @@ def draft
     end
   end
 
-  # 進捗取得API（ポーリング用）
-  # GET /draft/progress.json?industry=業界名
-  # industryパラメータが指定されていない場合、全業種の進捗を返す
-  def extract_progress
-    # ポーリング用のため、キャッシュを無効化
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    
-    industry = params[:industry].to_s.presence
-    
-    if industry
-      # 後方互換性のため、industryパラメータが指定されている場合は既存の動作を維持
-      tracking = ExtractTracking.where(industry: industry).order(id: :desc).first
-      if tracking
-        render json: tracking.progress_payload
-      else
-        render json: { message: 'no_tracking' }
-      end
-    else
-      # 全業種の進捗を返す（N+1クエリを回避）
-      crowdworks = Crowdwork.all || []
-      industry_names = crowdworks.map(&:title)
-      
-      # 各業種の最新のtrackingを一括取得
-      all_trackings = ExtractTracking.where(industry: industry_names).order(id: :desc)
-      latest_trackings = all_trackings.group_by(&:industry).transform_values { |trackings| trackings.first }
-      
-      progress_data = {}
-      crowdworks.each do |crowdwork|
-        tracking = latest_trackings[crowdwork.title]
-        if tracking
-          progress_data[crowdwork.title] = tracking.progress_payload
-        else
-          progress_data[crowdwork.title] = { message: 'no_tracking' }
-        end
-      end
-      
-      render json: progress_data
-    end
-  end
-  
-  def serp_progress
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-
-    render json: current_serp_progress_payload
-  end
-
-  # 進捗取得API（ポーリング用）
-  # GET /draft/progress.json?industry=業界名
-  # industryパラメータが指定されていない場合、全業種の進捗を返す
-  def extract_progress
-    # ポーリング用のため、キャッシュを無効化
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    
-    industry = params[:industry].to_s.presence
-    
-    if industry
-      # 後方互換性のため、industryパラメータが指定されている場合は既存の動作を維持
-      tracking = ExtractTracking.where(industry: industry).order(id: :desc).first
-      if tracking
-        render json: tracking.progress_payload
-      else
-        render json: { message: 'no_tracking' }
-      end
-    else
-      # 全業種の進捗を返す（N+1クエリを回避）
-      crowdworks = Crowdwork.all || []
-      industry_names = crowdworks.map(&:title)
-      
-      # 各業種の最新のtrackingを一括取得
-      all_trackings = ExtractTracking.where(industry: industry_names).order(id: :desc)
-      latest_trackings = all_trackings.group_by(&:industry).transform_values { |trackings| trackings.first }
-      
-      progress_data = {}
-      crowdworks.each do |crowdwork|
-        tracking = latest_trackings[crowdwork.title]
-        if tracking
-          progress_data[crowdwork.title] = tracking.progress_payload
-        else
-          progress_data[crowdwork.title] = { message: 'no_tracking' }
-        end
-      end
-      
-      render json: progress_data
-    end
-  end
-
-
   def filter_by_industry
-    # crowdworkタイトルの初期化
     @crowdworks = Crowdwork.all || []
 
-    # 期間パラメータの解釈（未指定可）
     @period_start = nil
     @period_end   = nil
     if params[:period_start].present?
@@ -589,14 +355,12 @@ def draft
       end
     end
 
-    # 期間の整合性（逆転していたら入れ替え）
     if @period_start.present? && @period_end.present? && @period_end < @period_start
       @period_start, @period_end = @period_end, @period_start
     end
     range_start = @period_start&.beginning_of_day
     range_end   = @period_end&.end_of_day
 
-    # タイトルによるフィルタリング
     industry_name = params[:industry_name]
     base_query = Customer.where(status: "draft")
     if range_start && range_end
@@ -608,7 +372,6 @@ def draft
     end
     base_query = base_query.where(industry: industry_name) if industry_name.present?
 
-    # Adminを優先した条件分岐
     @customers = case
     when admin_signed_in? && params[:tel_filter] == "with_tel"
       base_query.where.not(tel: [nil, '', ' '])
@@ -620,7 +383,6 @@ def draft
       base_query.where.not(tel: [nil, '', ' '])
     end
 
-    # タイトルごとの件数を計算（期間条件があれば適用）
     tel_with_scope = Customer.where(status: "draft").where.not(tel: [nil, '', ' '])
     tel_without_scope = Customer.where(status: "draft").where(tel: [nil, '', ' '])
     if range_start && range_end
@@ -636,10 +398,8 @@ def draft
     tel_with_counts = tel_with_scope.group(:industry).count
     tel_without_counts = tel_without_scope.group(:industry).count
 
-    # ExtractTrackingを一括取得してN+1を回避（SQLite対応）
     industry_names = @crowdworks.map(&:title)
     all_trackings = ExtractTracking.where(industry: industry_names).order(id: :desc)
-    # Ruby側で各業種の最新のtrackingを取得
     latest_trackings = all_trackings.group_by(&:industry).transform_values { |trackings| trackings.first }
 
     @industry_counts = @crowdworks.each_with_object({}) do |crowdwork, hash|
@@ -660,19 +420,110 @@ def draft
       }
     end
 
-    # ページネーション
     @customers = @customers.page(params[:page]).per(100)
 
-    # 残り件数取得
     today_total = ExtractTracking
                     .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
                     .sum(:total_count)
     daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
     @remaining_extractable = [daily_limit - today_total, 0].max
 
+    base_scope = Customer.draft_base_scope(
+      current_client_id: client_signed_in? ? current_client.id : nil,
+      is_admin: admin_signed_in?,
+      industry_name: params[:industry_name]
+    )
+
+    @serp_targets = base_scope.where(serp_status: [nil, ''])
+                              .where(
+                                "(tel IS NULL OR TRIM(tel) = '') OR " \
+                                "(url IS NULL OR TRIM(url) = '') OR " \
+                                "(contact_url IS NULL OR TRIM(contact_url) = '')"
+                              )
+                              .order(id: :asc)
+                              .page(params[:serp_page])
+                              .per(20)
+
+    @serp_target_count = Customer.calculate_serp_target_count(base_scope)
+    @dashboard_stats   = Customer.calculate_dashboard_stats(base_scope)
+
     render :draft
-  end  
+  end
+
+  def extract_company_info
+    start_time = Time.current
+    Rails.logger.info("extract_company_info called (SYNC MODE).")
+    industry_name = params[:industry_name]
+    total_count = params[:count]
+
+    tracking = ExtractTracking.create!(
+      industry:       industry_name,
+      total_count:    total_count,
+      success_count:  0,
+      failure_count:  0,
+      status:         "抽出中"
+    )
+
+    begin
+      ExtractCompanyInfoWorker.new.perform(tracking.id)
+      tracking.reload
+      
+      if tracking.status == "抽出完了"
+        flash[:notice] = "抽出処理が正常に完了しました。（#{tracking.success_count}件成功 / #{tracking.failure_count}件失敗）"
+      else
+        flash[:alert] = "抽出処理が中断または失敗しました。（ステータス: #{tracking.status}）"
+      end
+    rescue => e
+      Rails.logger.error("Sync execution failed: #{e.message}")
+      flash[:alert] = "システムエラーにより抽出処理が失敗しました。"
+    end
+
+    elapsed = ((Time.current - start_time) * 1000).round(2)
+    Rails.logger.info("extract_company_info: completed in #{elapsed}ms (tracking_id: #{tracking.id})")
+    redirect_to draft_path
+  end
+
+  def extract_progress
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    industry = params[:industry].to_s.presence
+    
+    if industry
+      tracking = ExtractTracking.where(industry: industry).order(id: :desc).first
+      if tracking
+        render json: tracking.progress_payload
+      else
+        render json: { message: 'no_tracking' }
+      end
+    else
+      crowdworks = Crowdwork.all || []
+      industry_names = crowdworks.map(&:title)
+      all_trackings = ExtractTracking.where(industry: industry_names).order(id: :desc)
+      latest_trackings = all_trackings.group_by(&:industry).transform_values { |trackings| trackings.first }
+      
+      progress_data = {}
+      crowdworks.each do |crowdwork|
+        tracking = latest_trackings[crowdwork.title]
+        if tracking
+          progress_data[crowdwork.title] = tracking.progress_payload
+        else
+          progress_data[crowdwork.title] = { message: 'no_tracking' }
+        end
+      end
+      render json: progress_data
+    end
+  end
   
+  def serp_progress
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+
+    render json: current_serp_progress_payload
+  end
+
   def bulk_action
     @customers = Customer.where(id: params[:deletes].keys)
   
@@ -687,112 +538,96 @@ def draft
     end
   end
           
-def update_all_status
-  status = params[:status] || 'hidden'
-  published_count = 0
-  hidden_count = 0
-  deleted_count = 0
-  reposted_count = 0
+  def update_all_status
+    status = params[:status] || 'hidden'
+    published_count = 0
+    hidden_count = 0
+    deleted_count = 0
+    reposted_count = 0
 
-  @customers.each do |customer|
-    customer.skip_validation = true
+    @customers.each do |customer|
+      customer.skip_validation = true
 
-    if customer.status == 'draft'
-      normalized_company = Customer.normalized_name(customer.company)
-      normalized_tel = customer.tel.to_s.delete('-')
+      if customer.status == 'draft'
+        normalized_company = Customer.normalized_name(customer.company)
+        normalized_tel = customer.tel.to_s.delete('-')
 
-      existing_customer = Customer.where(industry: customer.industry, status: nil) # 公開中のみ
-                                  .where.not(id: customer.id)
-                                  .find do |c|
-        # 電話番号比較（ハイフン無視）
-        c_tel = c.tel.to_s.delete('-')
-        tel_match = normalized_tel.present? && c_tel.present? && normalized_tel == c_tel
+        existing_customer = Customer.where(industry: customer.industry, status: nil)
+                                    .where.not(id: customer.id)
+                                    .find do |c|
+          c_tel = c.tel.to_s.delete('-')
+          tel_match = normalized_tel.present? && c_tel.present? && normalized_tel == c_tel
+          c_company = Customer.normalized_name(c.company)
+          name_match = Customer.name_similarity?(normalized_company, c_company)
+          tel_match || name_match
+        end
 
-        # 会社名比較（法人格除去後、3文字以上一致）
-        c_company = Customer.normalized_name(c.company)
-        name_match = Customer.name_similarity?(normalized_company, c_company)
+        if existing_customer
+          latest_call = existing_customer.calls.order(created_at: :desc).first
 
-        tel_match || name_match
-      end
-
-      if existing_customer
-        latest_call = existing_customer.calls.order(created_at: :desc).first
-
-        if latest_call && latest_call.created_at <= 2.months.ago
-          # APP・永久NG・見込 の場合は再掲載しない
-          unless %w(APP 永久NG 見込).include?(latest_call.status)
-            existing_customer.calls.create(status: '再掲載')
-
-            if customer.worker.present?
-              customer.worker.increment!(:deleted_customer_count)
+          if latest_call && latest_call.created_at <= 2.months.ago
+            unless %w(APP 永久NG 見込).include?(latest_call.status)
+              existing_customer.calls.create(status: '再掲載')
+              customer.worker.increment!(:deleted_customer_count) if customer.worker.present?
+              customer.destroy
+              reposted_count += 1
+              next
             end
-
-            customer.destroy
-            reposted_count += 1
-            next
           end
-        end
 
-        # 再掲載しない場合は単純削除
-        if customer.worker.present?
-          customer.worker.increment!(:deleted_customer_count)
+          customer.worker.increment!(:deleted_customer_count) if customer.worker.present?
+          customer.destroy
+          deleted_count += 1
+          next
         end
+      end
 
-        customer.destroy
-        deleted_count += 1
-        next
+      if status == 'hidden'
+        hidden_count += 1 if customer.update_columns(status: 'hidden')
+      else
+        published_count += 1 if customer.update_columns(status: nil)
       end
     end
 
-    if status == 'hidden'
-      hidden_count += 1 if customer.update_columns(status: 'hidden')
-    else
-      published_count += 1 if customer.update_columns(status: nil)
+    flash[:notice] = "#{published_count}件が公開され、#{hidden_count}件が非表示にされ、#{reposted_count}件を再掲載に登録しました。#{deleted_count}件のドラフトが重複のため削除されました。"
+    redirect_to customers_path
+  end
+
+  def cleanup_duplicates
+    attribute = params[:attribute]
+    valid_attributes = %w[company tel url contact_url]
+
+    unless valid_attributes.include?(attribute)
+      return redirect_to(request.referer || form_submissions_path, alert: "不正な属性指定です。")
     end
-  end
 
-  flash[:notice] = "#{published_count}件が公開され、#{hidden_count}件が非表示にされ、#{reposted_count}件を再掲載に登録しました。#{deleted_count}件のドラフトが重複のため削除されました。"
-  redirect_to customers_path
-end
+    duplicate_values = Customer
+      .where.not(attribute => nil)
+      .where.not("TRIM(#{attribute}) = ''")
+      .group(attribute)
+      .having("COUNT(id) > 1")
+      .pluck(attribute)
 
-def cleanup_duplicates
-  attribute = params[:attribute]
-  valid_attributes = %w[company tel url contact_url]
+    total_deleted = 0
 
-  unless valid_attributes.include?(attribute)
-    return redirect_to(request.referer || form_submissions_path, alert: "不正な属性指定です。")
-  end
-
-  # nil / 空文字 / 空白のみ をすべて除外
-  duplicate_values = Customer
-    .where.not(attribute => nil)
-    .where.not("TRIM(#{attribute}) = ''")
-    .group(attribute)
-    .having("COUNT(id) > 1")
-    .pluck(attribute)
-
-  total_deleted = 0
-
-  Customer.transaction do
-    duplicate_values.each do |value|
-      ids = Customer.where(attribute => value).order(id: :asc).pluck(:id)
-
-      # 先頭（最古）を残す
-      ids.shift
-
-      deleted_records = Customer.where(id: ids).destroy_all
-      total_deleted += deleted_records.size
+    Customer.transaction do
+      duplicate_values.each do |value|
+        ids = Customer.where(attribute => value).order(id: :asc).pluck(:id)
+        ids.shift
+        deleted_records = Customer.where(id: ids).destroy_all
+        total_deleted += deleted_records.size
+      end
     end
+
+    redirect_to request.referer || form_submissions_path,
+                notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
   end
 
-  redirect_to request.referer || form_submissions_path,
-              notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
-end
-      
   private
 
+  # ── プライベート領域（これより下はアクションとして外部公開されない） ──
+
   def authenticate_admin_or_client!
-    # deviseなどを使用している場合の例
     unless admin_signed_in? || client_signed_in?
       render json: { error: 'Unauthorized' }, status: :unauthorized
     end
@@ -805,6 +640,18 @@ end
     else
       @customers = Customer.none
     end
+  end
+
+  def parse_period_params
+    @period_start = Date.parse(params[:period_start]) rescue nil if params[:period_start].present?
+    @period_end   = Date.parse(params[:period_end])   rescue nil if params[:period_end].present?
+
+    if @period_start.present? && @period_end.present? && @period_end < @period_start
+      @period_start, @period_end = @period_end, @period_start
+    end
+
+    @range_start = @period_start&.beginning_of_day
+    @range_end   = @period_end&.end_of_day
   end
 
   def serp_worker_running?
@@ -828,7 +675,7 @@ end
   end
 
   def filter_company_query(scope, query)
-    terms = query.to_s.strip.split(/[[:space:]　]+/).reject(&:blank?)
+    terms = query.to_s.strip.split(/[[:space:] ']+/).reject(&:blank?)
     terms.reduce(scope) do |relation, term|
       escaped = ActiveRecord::Base.sanitize_sql_like(term)
       relation.where("company LIKE ?", "%#{escaped}%")
@@ -898,45 +745,7 @@ end
     end
     customer_info
   end
-
-  def create_pdf_page(report, data)
-    customer = @customer
-    report.start_new_page do |page|
-
-      company_name = data[:company_name]
-      start_of_month = Time.current.beginning_of_month
-      end_of_month = Time.current.end_of_month
-      app_count = data[:app_count]
-      # 現在の日時を取得し、指定の形式にフォーマット
-      current_time = Time.now.strftime('%Y年%m月%d日')  
-      # 合計値の計算
-      industry_code = data[:industry_code]
-      total = (data[:industry_code] * data[:app_count])
-      # 税金の計算（合計値の10%とする）
-      tax = (total * 0.10).to_i
-      # 税込み合計値の計算
-      all = (total + tax).to_i
-      formatted_all = all.to_s.gsub(/(\d)(?=(\d{3})+(?!\d))/, '\1,')
-      # 支払い月の計算（翌月の年月
-      next_month = Time.now.next_month.strftime('%Y年%m月')
-      payment_month = "#{next_month}#{data[:payment_date]}"
   
-      page.values(
-        company_name: company_name, # 会社名
-        created_at: current_time, # 発行日
-        app_count: app_count, # アポカウント
-        industry_code: industry_code, # 単価
-        total: total, # 税抜合計
-        total_1: total, # 税抜合計
-        total_2: total, # 税抜合計
-        all: formatted_all, # 税込み合計
-        all_1: all, # 税込み合計
-        tax_price: tax, # 税抜合計
-        payment: payment_month, # 支払い月        
-      )
-    end
-  end
-
   def calculate_app_calls_counts
     counts = {}
     @industry_mapping.each do |key, value|

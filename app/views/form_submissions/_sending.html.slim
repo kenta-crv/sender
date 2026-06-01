@@ -18,7 +18,7 @@
             label.sc-detect__card-body.p-0.mb-2 業種
 
             = f.select :business_eq,\
-              options_for_select(@business_options, params.dig(:q, :business_eq)),\
+              options_for_select(@business_options || [], params.dig(:q, :business_eq)),\
               { include_blank: '選択してください' },\
               class: 'sc-detect__select'
 
@@ -26,7 +26,7 @@
             label.sc-detect__card-body.p-0.mb-2 職種
 
             = f.select :genre_eq,\
-              options_for_select(@genre_options, params.dig(:q, :genre_eq)),\
+              options_for_select(@genre_options || [], params.dig(:q, :genre_eq)),\
               { include_blank: '選択してください' },\
               class: 'sc-detect__select'
 

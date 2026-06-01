@@ -35,25 +35,24 @@
               h3.sc-detect__label.mb-3 プランのアップグレード・変更
               .d-flex.flex-wrap.gap-3
                 - unless @subscription.plan_type == 'standard'
-                  = link_to checkout_confirmation_path(plan_type: "standard"), class: "sc-detect__btn sc-detect__btn--primary", style: "text-decoration: none;" do
+                  = link_to checkout_confirmation_path(plan_type: "standard", client_id: params[:client_id]), class: "sc-detect__btn sc-detect__btn--primary", style: "text-decoration: none;" do
                     i.fas.fa-level-up-alt.me-1
                     = "#{Subscription::PLAN_NAMES[:standard]}に変更"
                 
                 - unless @subscription.plan_type == 'enterprise'
-                  = link_to checkout_confirmation_path(plan_type: "enterprise"), class: "sc-detect__btn sc-detect__btn--primary", style: "text-decoration: none;" do
+                  = link_to checkout_confirmation_path(plan_type: "enterprise", client_id: params[:client_id]), class: "sc-detect__btn sc-detect__btn--primary", style: "text-decoration: none;" do
                     i.fas.fa-rocket.me-1
                     = "#{Subscription::PLAN_NAMES[:enterprise]}に変更"
 
             / --- キャンセルボタン ---
             - if @subscription&.active?
               .mt-4.pt-4 style="border-top: 1px solid rgba(56, 189, 248, 0.1);"
-                = form_with url: client_cancel_subscription_path, method: :post, data: { turbo_confirm: "本当にサブスクリプションをキャンセルしますか？" } do |f|
-                  = f.submit "サブスクリプションをキャンセル", class: "sc-detect__btn sc-detect__btn--danger"
+                = link_to "サブスクリプションを解約する", cancel_confirm_dashboard_subscription_path(client_id: params[:client_id]), class: "sc-detect__btn sc-detect__btn--danger"
 
           - else
             .text-center.py-5
               p style="color: rgba(229, 231, 235, 0.5);" アクティブなサブスクリプションがありません。
-              = link_to plans_path, class: "sc-detect__btn sc-detect__btn--warning mt-3", style: "text-decoration: none; justify-content: center; min-width: 200px;" do
+              = link_to plans_path(client_id: params[:client_id]), class: "sc-detect__btn sc-detect__btn--warning mt-3", style: "text-decoration: none; justify-content: center; min-width: 200px;" do
                 | プランを選択する
 
       / --- 支払い履歴セクション ---
@@ -78,5 +77,5 @@
                     span.sc-detect__badge class="sc-detect__badge--#{p_status}"
                       = payment.status.capitalize
         - else
-          /.p-4.text-center style="color: rgba(229, 231, 235, 0.4);"
+          .p-4.text-center style="color: rgba(229, 231, 235, 0.4);"
             | 支払い履歴がありません。
