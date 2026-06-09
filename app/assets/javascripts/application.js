@@ -15,18 +15,21 @@
 //= require turbolinks
 //= require_tree .
 
-document.addEventListener('DOMContentLoaded', () => {
+// Turbolinksの遷移時と初回読み込み時の両方で実行する初期化関数
+const initializeAnimations = () => {
   const mobileNavToggle = document.getElementById('mobile-nav-toggle');
   const mobileNavMenu = document.getElementById('mobile-nav-menu');
   const mobileNavClose = document.getElementById('mobile-nav-close');
   
   function closeMobileMenu() {
-    mobileNavToggle.classList.remove('active');
-    mobileNavMenu.classList.remove('active');
+    if (mobileNavToggle) mobileNavToggle.classList.remove('active');
+    if (mobileNavMenu) mobileNavMenu.classList.remove('active');
     document.body.style.overflow = '';
   }
   
   if (mobileNavToggle && mobileNavMenu) {
+    // 重複登録を防ぐため一度削除してから登録
+    mobileNavToggle.removeEventListener('click', closeMobileMenu);
     mobileNavToggle.addEventListener('click', () => {
       mobileNavToggle.classList.toggle('active');
       mobileNavMenu.classList.toggle('active');
@@ -85,21 +88,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-});
-
-document.querySelectorAll('.brand-track img').forEach(icon => {
-  icon.addEventListener('mouseenter', () => {
-    icon.style.transition = 'transform 0.3s ease';
-    icon.style.transform = 'scale(1.1)';
+  // ブランドトラックのホバーイベント登録
+  document.querySelectorAll('.brand-track img').forEach(icon => {
+    icon.addEventListener('mouseenter', () => {
+      icon.style.transition = 'transform 0.3s ease';
+      icon.style.transform = 'scale(1.1)';
+    });
+    icon.addEventListener('mouseleave', () => {
+      icon.style.transform = 'scale(1)';
+    });
   });
-  icon.addEventListener('mouseleave', () => {
-    icon.style.transform = 'scale(1)';
-  });
-});
 
-(function(){
+  // IntersectionObserver関連の初期化
   const cards = document.querySelectorAll('.ser-mos-card');
-
   if ('IntersectionObserver' in window && cards.length) {
     const io = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
@@ -127,11 +128,9 @@ document.querySelectorAll('.brand-track img').forEach(icon => {
   } else {
     cards.forEach(c => c.classList.add('inview'));
   }
-})();
 
-(function(){
   const blocks = document.querySelectorAll('.main-moss-block');
-  if ('IntersectionObserver' in window) {
+  if ('IntersectionObserver' in window && blocks.length) {
     const observer = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -145,200 +144,199 @@ document.querySelectorAll('.brand-track img').forEach(icon => {
   } else {
     blocks.forEach(block => block.classList.add('inview'));
   }
-})();
 
-document.querySelectorAll(".faq-japan-item").forEach((item) => {
-  const question = item.querySelector(".faq-japan-question");
+  document.querySelectorAll(".faq-japan-item").forEach((item) => {
+    const question = item.querySelector(".faq-japan-question");
+    if (question) {
+      question.addEventListener("click", () => {
+        document.querySelectorAll(".faq-japan-item").forEach((faq) => {
+          if (faq !== item) faq.classList.remove("active");
+        });
+        item.classList.toggle("active");
+      });
+    }
+  });
 
-  question.addEventListener("click", () => {
-    document.querySelectorAll(".faq-japan-item").forEach((faq) => {
-      if (faq !== item) faq.classList.remove("active");
+  // GSAPアニメーションの初期化
+  if (typeof gsap !== "undefined") {
+    gsap.utils.toArray(".faq-japan-item").forEach((el, i) => {
+      gsap.from(el, {
+        opacity: 0,
+        y: 50,
+        duration: 0.8,
+        delay: i * 0.1,
+        scrollTrigger: {
+          trigger: el,
+          start: "top 90%",
+        },
+      });
     });
 
-    item.classList.toggle("active");
-  });
-});
-
-if (typeof gsap !== "undefined") {
-  gsap.utils.toArray(".faq-japan-item").forEach((el, i) => {
-    gsap.from(el, {
-      opacity: 0,
-      y: 50,
-      duration: 0.8,
-      delay: i * 0.1,
-      scrollTrigger: {
-        trigger: el,
-        start: "top 90%",
-      },
+    gsap.utils.toArray(".cards-moos-card").forEach((card, i) => {
+      gsap.from(card, {
+        opacity: 0,
+        y: 50,
+        duration: 0.8,
+        delay: i * 0.2,
+        scrollTrigger: {
+          trigger: card,
+          start: "top 90%",
+        },
+      });
     });
-  });
-}
 
-if (typeof gsap !== "undefined") {
-  gsap.utils.toArray(".cards-moos-card").forEach((card, i) => {
-    gsap.from(card, {
-      opacity: 0,
-      y: 50,
-      duration: 0.8,
-      delay: i * 0.2,
-      scrollTrigger: {
-        trigger: card,
-        start: "top 90%",
-      },
-    });
-  });
+    if (document.querySelector(".cards-moos-btn")) {
+      gsap.from(".cards-moos-btn", {
+        opacity: 0,
+        y: 40,
+        duration: 1,
+        scrollTrigger: {
+          trigger: ".cards-moos-btn",
+          start: "top 95%",
+        },
+      });
+    }
 
-  gsap.from(".cards-moos-btn", {
-    opacity: 0,
-    y: 40,
-    duration: 1,
-    scrollTrigger: {
-      trigger: ".cards-moos-btn",
-      start: "top 95%",
-    },
-  });
-}
-
-if (typeof gsap !== "undefined") {
-  gsap.utils.toArray(".pricing-cards-card").forEach((card, i) => {
-    gsap.from(card, {
-      opacity: 0,
-      y: 50,
-      duration: 1,
-      delay: i * 0.2,
-      scrollTrigger: {
-        trigger: card,
-        start: "top 90%",
-      },
-    });
-  });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  if (typeof Swiper === 'undefined') return;
-
-  if (document.querySelector('.case-studies-swiper')) {
-    new Swiper('.case-studies-swiper', {
-      slidesPerView: 1,
-      spaceBetween: 20,
-      loop: true,
-      autoplay: false,
-      navigation: {
-        nextEl: '.case-studies-next',
-        prevEl: '.case-studies-prev',
-      },
-      pagination: {
-        el: '.case-studies-pagination',
-        clickable: true,
-      },
-      breakpoints: {
-        768: {
-          slidesPerView: 1,
-          spaceBetween: 20,
-        }
-      }
+    gsap.utils.toArray(".pricing-cards-card").forEach((card, i) => {
+      gsap.from(card, {
+        opacity: 0,
+        y: 50,
+        duration: 1,
+        delay: i * 0.2,
+        scrollTrigger: {
+          trigger: card,
+          start: "top 90%",
+        },
+      });
     });
   }
 
-  if (document.querySelector('.pricing-swiper')) {
-    new Swiper('.pricing-swiper', {
-      slidesPerView: 1,
-      spaceBetween: 20,
-      loop: true,
-      autoplay: false,
-      navigation: {
-        nextEl: '.pricing-next',
-        prevEl: '.pricing-prev',
-      },
-      pagination: {
-        el: '.pricing-pagination',
-        clickable: true,
-      },
-      breakpoints: {
-        768: {
-          slidesPerView: 1,
-          spaceBetween: 20,
+  // Swiperの初期化
+  if (typeof Swiper !== 'undefined') {
+    if (document.querySelector('.case-studies-swiper')) {
+      new Swiper('.case-studies-swiper', {
+        slidesPerView: 1,
+        spaceBetween: 20,
+        loop: true,
+        autoplay: false,
+        navigation: {
+          nextEl: '.case-studies-next',
+          prevEl: '.case-studies-prev',
+        },
+        pagination: {
+          el: '.case-studies-pagination',
+          clickable: true,
+        },
+        breakpoints: {
+          768: {
+            slidesPerView: 1,
+            spaceBetween: 20,
+          }
         }
-      }
-    });
-  }
-});
+      });
+    }
 
-document.addEventListener('DOMContentLoaded', () => {
+    if (document.querySelector('.pricing-swiper')) {
+      new Swiper('.pricing-swiper', {
+        slidesPerView: 1,
+        spaceBetween: 20,
+        loop: true,
+        autoplay: false,
+        navigation: {
+          nextEl: '.pricing-next',
+          prevEl: '.pricing-prev',
+        },
+        pagination: {
+          el: '.pricing-pagination',
+          clickable: true,
+        },
+        breakpoints: {
+          768: {
+            slidesPerView: 1,
+            spaceBetween: 20,
+          }
+        }
+      });
+    }
+  }
+
+  // Japan Notyo Section Observer
   const section = document.querySelector('.japan-notyo-section');
-  if (!section || !('IntersectionObserver' in window)) return;
+  if (section && ('IntersectionObserver' in window)) {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          section.classList.add('japan-notyo-visible');
+          observer.unobserve(section);
+        }
+      });
+    }, { threshold: 0.3 });
+    observer.observe(section);
+  }
 
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        section.classList.add('japan-notyo-visible');
-        observer.unobserve(section);
+  // Jap Notto Observer
+  if ('IntersectionObserver' in window) {
+    const observerOptions = {
+      root: null,
+      rootMargin: '0px',
+      threshold: 0.2
+    };
+    
+    const observerCallback = (entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('jap-notto-visible');
+        }
+      });
+    };
+    
+    const observer = new IntersectionObserver(observerCallback, observerOptions);
+    
+    const heading = document.querySelector('.jap-notto-heading');
+    if (heading) observer.observe(heading);
+    
+    const imageContainers = document.querySelectorAll('.jap-notto-image-container');
+    imageContainers.forEach(container => observer.observe(container));
+    
+    const centerImage = document.querySelector('.jap-notto-center-image');
+    if (centerImage) {
+      observer.observe(centerImage);
+    }
+    
+    setTimeout(() => {
+      if (centerImage && centerImage.classList.contains('jap-notto-visible')) {
+        centerImage.style.animation = 'jap-notto-float 3s ease-in-out infinite';
       }
+    }, 2000);
+  }
+
+  // Modal 初期化
+  const modal = document.getElementById('trial-upgrade-modal');
+  const closeBtn = document.getElementById('close-modal');
+  if (modal && closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
     });
-  }, { threshold: 0.3 });
-
-  observer.observe(section);
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-  if (!('IntersectionObserver' in window)) return;
-  
-  const observerOptions = {
-    root: null,
-    rootMargin: '0px',
-    threshold: 0.2
-  };
-  
-  const observerCallback = (entries, observer) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('jap-notto-visible');
-        
-      }
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.style.display = 'none';
     });
-  };
-  
-  const observer = new IntersectionObserver(observerCallback, observerOptions);
-  
-  const heading = document.querySelector('.jap-notto-heading');
-  if (heading) {
-    observer.observe(heading);
   }
-  
-  const imageContainers = document.querySelectorAll('.jap-notto-image-container');
-  imageContainers.forEach(container => {
-    observer.observe(container);
-  });
-  
-  const centerImage = document.querySelector('.jap-notto-center-image');
-  if (centerImage) {
-    observer.observe(centerImage);
-  }
-  
-  setTimeout(() => {
-    if (centerImage && centerImage.classList.contains('jap-notto-visible')) {
-      centerImage.style.animation = 'jap-notto-float 3s ease-in-out infinite';
+};
+
+// スタイルタグの追加（一度だけ生成）
+if (!document.getElementById('jap-notto-float-style')) {
+  const style = document.createElement('style');
+  style.id = 'jap-notto-float-style';
+  style.textContent = `
+    @keyframes jap-notto-float {
+      0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+      50% { transform: translate(-50%, -50%) translateY(-10px); }
     }
-  }, 2000);
-  
-});
+  `;
+  document.head.appendChild(style);
+}
 
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes jap-notto-float {
-    0%, 100% {
-      transform: translate(-50%, -50%) translateY(0px);
-    }
-    50% {
-      transform: translate(-50%, -50%) translateY(-10px);
-    }
-  }
-`;
-document.head.appendChild(style);
-
-
-
-
+// データターゲットナビゲーション
 const mountDataTargetNav = () => {
   document.body.addEventListener('click', (e) => {
     const a = e.target.closest('a[data-target]');
@@ -354,37 +352,17 @@ const mountDataTargetNav = () => {
 
     window.scrollTo({ top: Math.max(0, Math.round(top)), behavior: 'smooth' });
 
-    // 擬似スクロールイベントでfadeIn系の再判定を促す
     setTimeout(() => window.dispatchEvent(new Event('scroll')), 60);
   });
 };
 
-if (window.Turbo) document.addEventListener('turbo:load', mountDataTargetNav);
-else document.addEventListener('DOMContentLoaded', mountDataTargetNav);
-
-
-
-
-
-
-
-
-
-// Client Trial Modal
+// 各イベントリスナーへの一括登録
+document.addEventListener('turbolinks:load', () => {
+  initializeAnimations();
+  mountDataTargetNav();
+});
 
 document.addEventListener('DOMContentLoaded', () => {
-  const modal = document.getElementById('trial-upgrade-modal');
-  const closeBtn = document.getElementById('close-modal');
-
-  if (modal && closeBtn) {
-    // 閉じるボタンの動作
-    closeBtn.addEventListener('click', () => {
-      modal.style.display = 'none';
-    });
-
-    // 背景クリックでも閉じる場合
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.style.display = 'none';
-    });
-  }
+  initializeAnimations();
+  mountDataTargetNav();
 });

@@ -304,14 +304,19 @@ def serp_search
     industry  = params[:industry].presence
     limit     = (params[:limit] || 100).to_i
 
+    # draft_base_scopeを使用してクライアント権限を適切にフィルタリング
+    base_scope = Customer.draft_base_scope(
+      current_client_id: client_signed_in? ? current_client.id : nil,
+      is_admin: admin_signed_in?,
+      industry_name: industry
+    )
+
     # 対象件数を事前確認（serp_status NULL かつ tel/url/contact_url いずれか空）
-    scope = Customer.where(serp_status: [nil, ''])
-                    .where(
-                      "(tel IS NULL OR TRIM(tel) = '') OR " \
-                      "(url IS NULL OR TRIM(url) = '') OR " \
-                      "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                    )
-    scope = scope.where(industry: industry) if industry.present?
+    scope = base_scope.where(
+      "(tel IS NULL OR TRIM(tel) = '') OR " \
+      "(url IS NULL OR TRIM(url) = '') OR " \
+      "(contact_url IS NULL OR TRIM(contact_url) = '')"
+    )
     target_count = scope.count
 
     if target_count == 0

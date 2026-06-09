@@ -170,9 +170,9 @@
                 th ID
                 th 会社名
                 th 問い合わせURL
-                th 状態
-                th 最終送信
-                th ステータス
+                - if admin_signed_in?
+                 th 最終送信
+                 th ステータス
 
             tbody
               - @customers.each do |c|
@@ -189,14 +189,12 @@
                     - if c.contact_url.present?
                       = link_to truncate(c.contact_url, length: 40), c.contact_url, target: '_blank', rel: 'noopener noreferrer'
 
-                  td
-                    span.sc-detect__badge.sc-detect__badge--success 設定済み
-
-                  td
+                  - if admin_signed_in?
+                   td
                     - if c.last_form_call
                       span = c.last_form_call.created_at.strftime('%m/%d %H:%M')
 
-                  td
+                   td
                     - if c.last_form_call
                       - status_class = case c.last_form_call.status
                       - when '自動送信成功', '送信成功'
