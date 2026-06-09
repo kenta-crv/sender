@@ -48,7 +48,8 @@
               = @batch.completed_at.strftime('%Y/%m/%d %H:%M:%S')
 
         .d-flex.gap-2.mt-4
-          - if @batch.status.in?(['pending', 'processing'])
+          - if admin_signed_in?
+           - if @batch.status.in?(['pending', 'processing'])
             = link_to cancel_form_submission_path(@batch), method: :patch, class: 'sc-detect__badge sc-detect__badge--danger', style: 'text-decoration: none; padding: 10px 20px;', data: { confirm: 'バッチ送信をキャンセルしますか？' } do
               i.fas.fa-stop-circle.me-1
               | キャンセル

@@ -85,13 +85,11 @@ class FormSendJob < ApplicationJob
     # =====================================================
     # 会社名
     # =====================================================
-
     info[:company] = submission.company if submission.company.present?
 
     # =====================================================
     # 担当者名
     # =====================================================
-
     if submission.person.present?
       info[:name] = submission.person
 
@@ -106,7 +104,6 @@ class FormSendJob < ApplicationJob
     # =====================================================
     # 担当者カナ
     # =====================================================
-
     if submission.person_kana.present?
       kana = submission.person_kana.strip
 
@@ -136,7 +133,6 @@ class FormSendJob < ApplicationJob
     # =====================================================
     # 電話番号
     # =====================================================
-
     if submission.tel.present?
       tel = submission.tel.strip
 
@@ -155,7 +151,6 @@ class FormSendJob < ApplicationJob
     # =====================================================
     # 住所
     # =====================================================
-
     if submission.address.present?
       addr = submission.address.strip
 
@@ -181,23 +176,25 @@ class FormSendJob < ApplicationJob
     # =====================================================
     # メール
     # =====================================================
-
     info[:email] = submission.email if submission.email.present?
 
     # =====================================================
-    # 配信停止URL
+    # 自社メインドメイン（ri-plus.jp）用のURLオプション定義
     # =====================================================
+    ri_plus_options = { host: 'ri-plus.jp', protocol: 'https', port: nil }
 
+    # =====================================================
+    # 配信停止URL（自社メインドメインに固定）
+    # =====================================================
     unsubscribe_link =
       Rails.application.routes.url_helpers.unsubscribe_url(
         customer.unsubscribe_token,
-        host: ENV.fetch('APP_HOST', 'localhost:3000')
+        ri_plus_options
       )
 
     # =====================================================
     # クリック追跡リンク
     # =====================================================
-
     tracking = ClickTrackingLink.create!(
       customer: customer,
       client: batch.client,
@@ -205,16 +202,16 @@ class FormSendJob < ApplicationJob
       target_url: submission.url
     )
 
+    # クリック追跡URL（自社メインドメインに固定）
     tracking_link =
       Rails.application.routes.url_helpers.click_tracking_url(
         tracking.token,
-        host: ENV.fetch('APP_HOST', 'localhost:3000')
+        ri_plus_options
       )
 
     # =====================================================
     # メッセージ本文
     # =====================================================
-
     if submission.content.present?
       info[:message] = <<~TEXT
         #{submission.content}
@@ -232,7 +229,6 @@ class FormSendJob < ApplicationJob
     # =====================================================
     # URL
     # =====================================================
-
     info[:url] = submission.url if submission.url.present?
 
     info

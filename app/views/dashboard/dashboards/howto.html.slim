@@ -1,0 +1,118 @@
+#okurite-client-portal
+  .wrapper
+    = render 'sidebar'
+
+    #content
+      .howto-container
+        / 中央寄せのヘッダーエリア
+        .howto-header-center-group
+          h2 HOW TO USE
+          p.howto-subtitle-center 問い合わせフォーム送信 基本フロー解説
+
+        .howto-section
+          / 概要カード（Dashboardへのリンク）
+          = link_to dashboard_index_path, class: 'glass-card-link' do
+            .glass-card.margin-bottom-30.hover-glow
+              .card-label Okuriteについて
+              .card-value
+                | SENDING FLOW
+              p.mini-rate ターゲットリストのインポートからフォーム送信まで、システムがシームレスに自動処理します。
+
+          / フローコンテナ
+          .flow-steps-container
+            
+            / STEP 1 （Import Listへのリンク）
+            = link_to dashboard_import_path, class: 'flow-step-link' do
+              .flow-step-card
+                .step-badge STEP 01
+                .flow-step-content
+                  h3 ターゲットのインポート（新規リスト）
+                  p.flow-description
+                    | 新規ターゲットへアプローチする場合、まず「
+                    strong Import List
+                    | 」から企業リスト（CSV形式など）をインポートします。
+                    br
+                    | 尚、過去に生成した「AI SERP List」などの既存ターゲットリストをそのまま使用する場合は、このステップをスキップして直接次のステップへ進むことが可能です。
+                  .flow-meta
+                    span.badge-electric 自社リストを使いたい
+
+            / ステップ間の接続ライン
+            .flow-connector-line
+
+            / STEP 2 （AI SERP Listへのリンク）
+            = link_to draft_customers_path, class: 'flow-step-link' do
+              .flow-step-card
+                .step-badge STEP 02
+                .flow-step-content
+                  h3 インポートリストから情報抽出
+                  p.flow-description
+                    | インポートしたデータに、問い合わせフォーム情報が不足している場合、「
+                    strong AI SERP List
+                    | 」より実行をするだけで、AIがGoogle検索を行い、企業情報を抽出します。
+                  .flow-meta
+                    span.badge-electric リスト情報を抽出したい
+
+            / ステップ間の接続ライン
+            .flow-connector-line
+
+            / STEP 3 （Auto Form Searchへのリンク）
+            = link_to dashboard_searching_form_path, class: 'flow-step-link' do
+              .flow-step-card
+                .step-badge STEP 03
+                .flow-step-content
+                  h3 自動フォームURL抽出
+                  p.flow-description
+                    | ターゲット企業の問い合わせフォームURLが未設定の場合、「
+                    strong Auto Form Search
+                    | 」を実行します。システムが自動で企業のWebサイトをクロールし、問い合わせページを精度高く自動検知してリストへ紐付けます。
+                  .flow-meta
+                    span.badge-electric 問い合わせフォームを検出したい
+
+            / ステップ間の接続ライン
+            .flow-connector-line
+
+            / STEP 4 （Duplicationへのリンク）
+            = link_to dashboard_duplication_path, class: 'flow-step-link' do
+              .flow-step-card
+                .step-badge STEP 04
+                .flow-step-content
+                  h3 重複データのクレンジング
+                  p.flow-description
+                    | 過去に送信済みの企業や、リスト内で重複しているドメイン・問い合わせURLを排除するために「
+                    strong Duplication
+                    | 」機能を利用します。同一企業への過剰な重複送信を防ぎ、安全でクレームのないクリーンなアプローチリストへと自動最適化します。
+                  .flow-meta
+                    span.badge-electric 重複自動排除
+
+            / ステップ間の接続ライン
+            .flow-connector-line
+
+            / STEP 5 （Create Contentsへのリンク）
+            = link_to submissions_path, class: 'flow-step-link' do
+              .flow-step-card
+                .step-badge STEP 05
+                .flow-step-content
+                  h3 送信コンテンツ（文章）の作成
+                  p.flow-description
+                    | 「
+                    strong Create Contents
+                    | 」に移動し、ターゲットのフォームへ投稿する案内本文や、フォーム項目にマッピングする定型文を作成します。用途に応じた複数パターンのテンプレート保存が可能です。
+                  .flow-meta
+                    span.badge-electric 【必須】送信内容設定
+
+            / ステップ間の接続ライン
+            .flow-connector-line
+
+            / STEP 6 （Send Formsへのリンク）
+            = link_to dashboard_sending_path, class: 'flow-step-link' do
+              .flow-step-card
+                .step-badge.badge-highlight STEP 06
+                .flow-step-content
+                  h3 フォーム送信の実行・スケジュール設定
+                  p.flow-description
+                    | 完成したリストと送信コンテンツを組み合わせ、「
+                    strong Send Forms
+                    | 」から自動送信処理を実行します。送信が開始されると、進捗や送信成功・失敗の判定結果はリアルタイムにダッシュボードへと反映されます。
+                  .flow-meta
+                    span.badge-electric 送信実行
+                    span.meta-text 結果リアルタイム反映

@@ -11,18 +11,12 @@ class Subscription < ApplicationRecord
             uniqueness: true,
             allow_nil: true
 
-  # =========================
-  # 表示名（追加）
-  # =========================
   PLAN_NAMES = {
     trial: "トライアルプラン",
     standard: "スタンダードプラン",
     enterprise: "エンタープライズプラン"
   }.freeze
 
-  # =========================
-  # 価格
-  # =========================
   PLAN_PRICES = {
     trial: 0,
     standard: 49_800,
@@ -31,9 +25,6 @@ class Subscription < ApplicationRecord
 
   DELIVERY_COST = 50
 
-  # =========================
-  # 上限
-  # =========================
   PLAN_DELIVERY_LIMITS = {
     trial: 1000,
     standard: 15_000,
@@ -42,9 +33,6 @@ class Subscription < ApplicationRecord
 
   TRIAL_DAYS = 10
 
-  # =========================
-  # helper（追加）
-  # =========================
   def plan_name
     PLAN_NAMES[plan_type.to_sym]
   end
@@ -61,9 +49,10 @@ class Subscription < ApplicationRecord
     delivery_limit == Float::INFINITY
   end
 
+  # 今月これまでに送信した累積件数を含めて、上限（トライアルなら1000件）を超えないか正しく検証
   def can_send_delivery?(count)
     return true if unlimited?
-    count <= delivery_limit
+    (client.monthly_sent_count + count) <= delivery_limit
   end
 
   def trial?
@@ -78,9 +67,7 @@ class Subscription < ApplicationRecord
     trial? && trial_ends_at.present? && trial_ends_at <= Time.current
   end
 
-  # =========================
-  # トライアル期限 → 自動移行
-  # =========================
+  # トライアル期間終了時のアップグレード先を「enterprise（98,000円）」に完全統一
   def expire_trial_and_upgrade!
     return unless trial?
     return if trial_ends_at.blank?
@@ -93,12 +80,12 @@ class Subscription < ApplicationRecord
       client.subscriptions.where(status: :active).update_all(status: :cancelled)
 
       client.subscriptions.create!(
-        plan_type: :standard,
+        plan_type: :enterprise,
         status: :active
       )
 
       client.update!(
-        subscription_plan: "standard",
+        subscription_plan: "enterprise",
         subscription_status: "active",
         trial_ends_at: nil
       )

@@ -20,6 +20,7 @@ Rails.application.routes.draw do
     get 'searching_form', to: 'dashboards#searching_form'
     get 'sending', to: 'dashboards#sending'
     get 'management', to: 'dashboards#management'
+    get 'howto', to: 'dashboards#howto'
 
 
     root "dashboards#index"
@@ -93,7 +94,6 @@ Rails.application.routes.draw do
       get :progress
     end
   end
-  get '/unsubscribe/:token', to: 'unsubscribes#show', as: :unsubscribe
 
   namespace :twilio do
     post 'voice', to: 'voice#voice'
@@ -137,6 +137,7 @@ Rails.application.routes.draw do
     end
     resources :calls
   end
+  get '/unsubscribe/:token', to: 'unsubscribes#show', as: :unsubscribe
   post '/webhooks/stripe', to: 'webhooks#stripe'
   get '/l/:token', to: 'click_tracking#redirect', as: :click_tracking
 end

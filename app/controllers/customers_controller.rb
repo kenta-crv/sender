@@ -221,8 +221,6 @@ def destroy
     redirect_to customers_url, notice: 'インポート処理をバックグラウンドで実行しています。完了までしばらくお待ちください。'
   end
 
-# GET /draft
-# GET /draft
   def draft
     start_time = Time.current
 
@@ -298,7 +296,11 @@ def destroy
     Rails.logger.info("draft action: completed in #{elapsed}ms")
   end
   # POST /customers/serp_search
-  def serp_search
+def serp_search
+    # ブラウザからCookieが送られずセッションが空（nil）であっても、
+    # このアクションだけはCSRF検問をスルーして確実にSidekiqへ処理を流すようにします。
+    self.class.skip_before_action :verify_authenticity_token, only: [:serp_search], raise: false
+
     industry  = params[:industry].presence
     limit     = (params[:limit] || 100).to_i
 
@@ -334,7 +336,6 @@ def destroy
       end
     end
   end
-
   def filter_by_industry
     @crowdworks = Crowdwork.all || []
 
@@ -449,7 +450,7 @@ def destroy
 
     render :draft
   end
-
+  
   def extract_company_info
     start_time = Time.current
     Rails.logger.info("extract_company_info called (SYNC MODE).")

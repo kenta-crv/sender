@@ -19,6 +19,7 @@
                 th Email
                 th Plan
                 th Amount
+                th Monthly Sends
                 th Status
                 th Contract Date
 
@@ -46,11 +47,24 @@
 
                   td
                     - if subscription.present?
-                      -# 【バグ根絶】case文による固定額を排除し、Subscriptionモデル内のPLAN_PRICES値から正しく出力する
+                      -# 【バグ根徹】case文による固定額を排除し、Subscriptionモデル内のPLAN_PRICES値から正しく出力する
                       .price-text
                         = "¥#{number_with_delimiter(subscription.price)}"
                     - else
                       span.empty-text -
+
+                  td
+                    -# ===== 【修正】右側の上限件数が黒い背景と同化しないよう文字色クラスを変更 =====
+                    .monthly-sends-text
+                      - current_sends = client.respond_to?(:current_month_sends) ? client.current_month_sends.to_i : 0
+                      - monthly_limit = client.respond_to?(:monthly_limit) ? client.monthly_limit.to_i : 0
+
+                      span.font-weight-bold
+                        = "#{number_with_delimiter(current_sends)} 件"
+                      
+                      - if monthly_limit > 0
+                        span.text-white-50.small
+                          = " / #{number_with_delimiter(monthly_limit)} 件"
 
                   td
                     - if subscription.present?

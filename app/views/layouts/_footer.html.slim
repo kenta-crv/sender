@@ -6,13 +6,14 @@ footer.custom-footer.bg-dark.text-white.py-4.mt-5
       .col-12.col-lg-auto
         nav.footer-nav
           ul.d-flex.flex-wrap.justify-content-center.list-unstyled.mb-0.gap-4
-            li = link_to "トップ", "/" , class: "footer-link"
+            li = link_to "トップ", "/", class: "footer-link"
             li = link_to "ブログ", "https://ri-plus.jp/columns", target: "_blank", rel: "noopener noreferrer", class: "footer-link"
-            li 
-             - if client_signed_in?
-              = link_to "ログアウト", destroy_client_session_path, method: :delete, class: "footer-link" 
-             - else
-              = link_to "ログイン", new_client_session_path, class: "footer-link"
+
+            li
+              - if client_signed_in? || admin_signed_in?
+                = link_to "ログアウト", destroy_client_session_path, method: :delete, class: "footer-link"
+              - else
+                = link_to "ログイン", new_client_session_path, class: "footer-link"
 
   .footer-bottom.text-center.mt-3.pt-2.border-top.border-secondary
     p.mb-0.small &copy; 2026 J Work.co.ltd . All Rights Reserved.

@@ -75,8 +75,8 @@
               = link_to manual_submission_path(@submissions.first), class: 'sc-detect__btn sc-detect__btn--primary', style: "text-decoration: none;", target: '_blank', rel: 'noopener noreferrer' do
                 i.fas.fa-paper-plane.me-1
                 | 手動送信開始
-
-  .mt-4.pb-5
+  - if @admin_signed_in
+   .mt-4.pb-5
     = link_to dashboard_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "text-decoration: none;" do
       i.fas.fa-arrow-left.me-1
       | ダッシュボードへ戻る

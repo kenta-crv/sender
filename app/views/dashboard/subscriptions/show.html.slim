@@ -9,43 +9,57 @@
           h5
             i.fas.fa-id-card.me-2 style="color: #38bdf8;"
             | 現在のプラン
-        
+
         .sc-detect__card-body.p-4
-          - if @subscription.present?
+          - is_trial = (@subscription&.trial?) || (@target_client.subscription_plan == 'trial')
+          - is_active = @subscription.present? ? @subscription.active? : (@target_client.subscription_status == 'active' || is_trial)
+
+          - if @subscription.present? || is_trial
             .row.g-4
               .col-md-6
                 .sc-detect__label プランタイプ
                 p.h4.fw-bold style="color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);"
-                  = @subscription.plan_name
-              
+                  - if is_trial
+                    = Subscription::PLAN_NAMES[:trial]
+                  - else
+                    = @subscription.plan_name
+
               .col-md-6
                 .sc-detect__label ステータス
-                - status_class = @subscription.active? ? 'success' : 'danger'
+                - status_class = is_active ? 'success' : 'danger'
                 span.sc-detect__badge class="sc-detect__badge--#{status_class}"
-                  = @subscription.status.capitalize
+                  - if is_trial
+                    | トライアル中
+                  - else
+                    = @subscription.status.capitalize
 
-              - if @subscription.trial_ends_at.present?
+              / --- 修正ポイント（10日固定） ---
+              - current_trial_ends_at = nil
+              - if is_trial && @subscription.present?
+                - current_trial_ends_at = @subscription.created_at + Subscription::TRIAL_DAYS.days
+
+              - if current_trial_ends_at.present?
                 .col-12.mt-3
                   .sc-detect__label トライアル終了日
                   p.h5.fw-bold style="color: #ffffff;"
-                    = @subscription.trial_ends_at.strftime("%Y年%m月%d日")
+                    = current_trial_ends_at.strftime("%Y年%m月%d日")
 
-            / --- プラン変更ボタン ---
             .mt-5.pt-4 style="border-top: 1px solid rgba(56, 189, 248, 0.2);"
               h3.sc-detect__label.mb-3 プランのアップグレード・変更
               .d-flex.flex-wrap.gap-3
-                - unless @subscription.plan_type == 'standard'
+                - current_plan = @subscription&.plan_type || @target_client.subscription_plan
+
+                - unless current_plan == 'standard'
                   = link_to checkout_confirmation_path(plan_type: "standard", client_id: params[:client_id]), class: "sc-detect__btn sc-detect__btn--primary", style: "text-decoration: none;" do
                     i.fas.fa-level-up-alt.me-1
                     = "#{Subscription::PLAN_NAMES[:standard]}に変更"
-                
-                - unless @subscription.plan_type == 'enterprise'
+
+                - unless current_plan == 'enterprise'
                   = link_to checkout_confirmation_path(plan_type: "enterprise", client_id: params[:client_id]), class: "sc-detect__btn sc-detect__btn--primary", style: "text-decoration: none;" do
                     i.fas.fa-rocket.me-1
                     = "#{Subscription::PLAN_NAMES[:enterprise]}に変更"
 
-            / --- キャンセルボタン ---
-            - if @subscription&.active?
+            - if is_active
               .mt-4.pt-4 style="border-top: 1px solid rgba(56, 189, 248, 0.1);"
                 = link_to "サブスクリプションを解約する", cancel_confirm_dashboard_subscription_path(client_id: params[:client_id]), class: "sc-detect__btn sc-detect__btn--danger"
 
@@ -55,8 +69,8 @@
               = link_to plans_path(client_id: params[:client_id]), class: "sc-detect__btn sc-detect__btn--warning mt-3", style: "text-decoration: none; justify-content: center; min-width: 200px;" do
                 | プランを選択する
 
-      / --- 支払い履歴セクション ---
       h2.sc-detect__title style="font-size: 20px;" 支払い履歴
+
       .sc-detect__table-wrapper
         - if @payments.present?
           table.sc-detect__table

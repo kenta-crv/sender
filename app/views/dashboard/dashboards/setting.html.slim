@@ -18,6 +18,8 @@
             = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
               .form-group
                 = f.email_field :email, class: 'form-control', value: current_client.email
+              .form-group.mt-2
+                = f.password_field :current_password, placeholder: 'Current Password (Required to update)', class: 'form-control'
               .mt-2
                 = f.submit 'Update Email', class: 'btn-electric-outline'
 

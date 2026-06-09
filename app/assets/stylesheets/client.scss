@@ -726,6 +726,19 @@
   color: #64748b;
 }
 
+/* その月の送信実数表示のスタイルを追加 */
+.monthly-sends-text {
+  color: #38bdf8;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.monthly-sends-text .small {
+  color: #64748b;
+  font-weight: 500;
+  font-size: 12px;
+}
+
 .plan-badge,
 .status-badge {
   display: inline-flex;
@@ -776,6 +789,16 @@
     0 0 20px rgba(14, 165, 233, 0.24);
 }
 
+/* 【新規追加】エンタープライズプラン（高貴なパープルネオンで視認性を確保） */
+.plan-enterprise {
+  color: #f3e8ff;
+  background: rgba(168, 85, 247, 0.16);
+  border: 1px solid rgba(216, 180, 254, 0.35);
+
+  box-shadow:
+    0 0 20px rgba(168, 85, 247, 0.26);
+}
+
 .status-active {
   color: #dbeafe;
   background: rgba(59, 130, 246, 0.14);
@@ -819,5 +842,233 @@
   .management-table th,
   .management-table td {
     padding: 16px;
+  }
+}
+
+
+#okurite-client-portal {
+
+  /* コンテンツを画面中央にロックするコンテナ */
+  .howto-container {
+    max-width: 800px;
+    margin: 0 auto !important;
+    width: 100%;
+  }
+
+  /* タイトルエリアの中央配置 */
+  .howto-header-group,
+  .howto-header-center-group {
+    text-align: center !important;
+    margin-bottom: 40px;
+    h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      text-shadow: 0 0 10px var(--electric-blue);
+      margin: 0 0 10px 0;
+    }
+  }
+
+  /* サブタイトルの中央寄せ */
+  .howto-subtitle-center {
+    margin: 0 !important;
+    padding: 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    text-align: center !important;
+  }
+
+  /* セクション全体の幅固定解除 */
+  .howto-section {
+    width: 100%;
+  }
+
+  /* リンク要素をブロック化して100%化 */
+  .glass-card-link,
+  .flow-step-link {
+    text-decoration: none !important;
+    display: block;
+    color: inherit;
+    width: 100%;
+  }
+
+  /* カード類のホバーエフェクト */
+  .hover-glow {
+    transition: all 0.3s ease;
+    width: 100%;
+    &:hover {
+      border-color: var(--electric-blue);
+      box-shadow: 0 0 20px rgba(0, 162, 255, 0.15);
+      transform: translateY(-2px);
+    }
+  }
+
+  /* フローコンテナ */
+  .flow-steps-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    width: 100%;
+  }
+
+  /* カード本体 */
+  .flow-step-card {
+    display: flex;
+    align-items: flex-start;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(0, 162, 255, 0.15);
+    border-radius: 16px;
+    padding: 30px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    width: 100%;
+  }
+
+  /* ホバー時にカードを僅かに右へシフト */
+  .flow-step-link:hover .flow-step-card {
+    border-color: var(--electric-blue);
+    box-shadow: 0 0 20px rgba(0, 162, 255, 0.15);
+    transform: translateX(5px);
+  }
+
+  /* 左側のステップバッジ */
+  .step-badge {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 6px 14px;
+    border-radius: 30px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    margin-right: 25px;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+    text-align: center;
+    min-width: 85px;
+
+    &.badge-highlight {
+      background: rgba(0, 162, 255, 0.1);
+      border-color: var(--electric-blue);
+      color: var(--electric-blue);
+      text-shadow: var(--glow);
+    }
+  }
+
+  /* コンテンツ */
+  .flow-step-content {
+    flex: 1;
+    h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 12px 0;
+    }
+  }
+
+  /* 解説文内のstrong強調 */
+  .flow-description {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin: 0 0 15px 0;
+
+    strong {
+      color: #fff;
+      font-weight: 600;
+      background: rgba(0, 162, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin: 0 2px;
+    }
+  }
+
+  /* 下部メタ情報 */
+  .flow-meta {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    .meta-text {
+      font-size: 0.8rem;
+      color: rgba(148, 163, 184, 0.6);
+    }
+  }
+
+  /* バッジ下に伸びる垂直線 */
+  .flow-connector-line {
+    width: 2px;
+    height: 25px;
+    background: linear-gradient(to bottom, var(--electric-blue), rgba(0, 162, 255, 0.1));
+    margin-left: 72px;
+    opacity: 0.6;
+  }
+
+  /* 警告テキスト */
+  .text-warning {
+    color: #fde68a !important;
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+  }
+
+  /* ユーティリティマージン */
+  .margin-bottom-30 { margin-bottom: 30px; }
+  .margin-top-40 { margin-top: 40px; }
+  .margin-top-10 { margin-top: 10px; }
+  .margin-right-5 { margin-right: 5px; }
+}
+
+
+
+
+#okurite-client-portal {
+
+  /* ヘッダー右側をインラインで整列 */
+  .user-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important; /* ボタンとバッジの間の綺麗な余白 */
+  }
+
+  /* 独立したHowToボタンのデザイン定義 */
+  .howto-header-btn {
+    all: unset !important; /* 既存の干渉をすべて初期化 */
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid var(--electric-blue) !important;
+    color: var(--electric-blue) !important;
+    background: rgba(0, 162, 255, 0.05) !important;
+    padding: 6px 14px !important;
+    border-radius: 4px !important; /* 既存のbadge-electricと角丸を統一 */
+    font-size: 0.8rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    text-decoration: none !important; /* 下線を完全に消去 */
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+
+    /* アイコンの幅固定を解除 */
+    i {
+      width: auto !important;
+      margin-right: 5px !important;
+    }
+
+    /* ホバー時のネオンエフェクト */
+    &:hover {
+      background: rgba(0, 162, 255, 0.15) !important;
+      box-shadow: var(--glow) !important;
+      color: #ffffff !important;
+      text-shadow: 0 0 8px var(--electric-blue) !important;
+    }
+  }
+
+  /* 既存バッジのフレックス干渉防止 */
+  .badge-electric {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
   }
 }

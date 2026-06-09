@@ -62,17 +62,18 @@ class WebhooksController < ApplicationController
           
           client.subscriptions.where.not(id: sub.id).update_all(status: :cancelled)
 
+          final_plan_type = (plan_type == "trial") ? "enterprise" : plan_type
+          
           sub.update!(
-            plan_type: plan_type,
+            plan_type: final_plan_type,
             status: :active,
             trial_ends_at: trial_ends_at
-          )
-
+            )
+            
           client.update!(
-            subscription_plan: plan_type,
-            subscription_status: 'active'
+              subscription_plan: final_plan_type,
+              subscription_status: 'active'
           )
-        end
 
       elsif session.mode == 'payment'
         campaign_id = session.metadata.campaign_id

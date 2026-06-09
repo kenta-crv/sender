@@ -17,7 +17,8 @@ module Dashboard
         return
       end
 
-      if new_plan_type != @target_client.subscription_plan
+      # 現在トライアル中、もしくは現在のプランと異なる場合は購入・変更画面へリダイレクト
+      if @subscription&.trial? || new_plan_type != @target_client.subscription_plan
         redirect_to checkout_confirmation_path(plan_type: new_plan_type, client_id: params[:client_id])
       else
         redirect_to dashboard_subscription_path(client_id: params[:client_id]), notice: "同じプランです。"
@@ -30,21 +31,32 @@ module Dashboard
         return
       end
 
+      # トライアル中の場合はStripeにサブスクリプションが存在しない（IDが無い）ケースを考慮
+      if @subscription.stripe_subscription_id.blank?
+        @available_until = @subscription.trial_ends_at || Date.today
+        return
+      end
+
       begin
         stripe_subscription = Stripe::Subscription.retrieve(@subscription.stripe_subscription_id)
         
-        # Stripe::Subscriptionの直下、またはitemsの最初の要素からcurrent_period_endを取得
-        period_end = stripe_subscription.respond_to?(:current_period_end) ? stripe_subscription.current_period_end : nil
+        # Stripe側のステータスが trialing の場合は trial_end、それ以外は current_period_end を取得
+        period_end = if stripe_subscription.status == 'trialing'
+                       stripe_subscription.respond_to?(:trial_end) ? stripe_subscription.trial_end : nil
+                     else
+                       stripe_subscription.respond_to?(:current_period_end) ? stripe_subscription.current_period_end : nil
+                     end
+        
         period_end ||= stripe_subscription.items&.data&.first&.current_period_end
 
         if period_end
           @available_until = Time.at(period_end).to_date
         else
-          @available_until = Date.today.end_of_month
+          @available_until = @subscription.trial_ends_at || Date.today.end_of_month
         end
       rescue Stripe::StripeError => e
         Rails.logger.error "Stripe retrieve error: #{e.message}"
-        @available_until = Date.today.end_of_month
+        @available_until = @subscription.trial_ends_at || Date.today.end_of_month
       end
     end
 
@@ -57,7 +69,6 @@ module Dashboard
 
       begin
         if @subscription.stripe_subscription_id.present?
-          # Stripe SDKの最新仕様に合わせ、cancelメソッドの引数として更新
           Stripe::Subscription.update(
             @subscription.stripe_subscription_id,
             { cancel_at_period_end: true }
@@ -71,7 +82,7 @@ module Dashboard
           )
 
           redirect_to dashboard_subscription_path(client_id: params[:client_id]),
-                      notice: "解約手続きが完了しました。有料機能は期間終了日まで継続してご利用いただけます。"
+                      notice: "解約手続きが完了しました。期間終了日まで継続してご利用いただけます。"
         else
           redirect_to dashboard_subscription_path(client_id: params[:client_id]),
                       alert: "解約処理に失敗しました。"

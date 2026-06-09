@@ -9,6 +9,15 @@
             | お支払い内容の確認
 
         .sc-detect__card-body.p-4
+
+          / --- トライアル時の注意表示 ---
+          - if @plan_type.to_s.downcase == "trial"
+            .sc-detect__alert.sc-detect__alert--info.mb-4 style="justify-content: center;"
+              i.fas.fa-info-circle.me-2
+              strong style="color: #38bdf8; margin-right: 6px;"
+                | 無料トライアル
+              | の期間は費用発生しません。
+
           / --- 金額表示エリア ---
           .sc-detect__table-wrapper.p-4.mb-4 style="background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2);"
             .d-flex.justify-content-between.mb-2
@@ -23,7 +32,7 @@
 
               .text-end
                 span.h2.fw-bold style="color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);"
-                  = "¥#{amount.to_s(:delimited)}"
+                  = @plan_type.to_s.downcase == "trial" ? "¥0" : "¥#{amount.to_s(:delimited)}"
 
                 span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);"
                   | (税込)
@@ -33,7 +42,6 @@
           / --- Stripe Checkout ---
           = form_with url: checkout_create_path, method: :post, local: true do |f|
             = hidden_field_tag :plan_type, @plan_type
-
 
             .sc-detect__form-actions
               = f.submit "Stripeで決済へ進む",

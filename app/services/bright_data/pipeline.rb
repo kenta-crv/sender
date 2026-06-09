@@ -65,7 +65,7 @@ module BrightData
       puts "=" * 60
       progress_tracker = progress_run_id.present? ? SerpProgressTracker.new(progress_run_id) : nil
       audit_run = progress_run_id.present? ? SerpEnrichmentRun.find_by_run_id(progress_run_id) : nil
-      audit_run&.update!(jid: jid.to_s) if jid.present? && audit_run.jid.blank?
+      audit_run&.update!(jid: jid.to_s) if jid.present? && audit_run&.jid.blank?
       audit_prefix = "[SERP run=#{progress_run_id.presence || '-'} jid=#{jid.presence || audit_run&.jid || '-'}]"
       log = ->(message) { puts "#{audit_prefix} #{message}" }
       log.call("[Pipeline] audit context attached") if audit_run

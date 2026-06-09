@@ -30,7 +30,8 @@ nav#sidebar
         i.fas.fa-users
         span Duplication
 
-    li class=(current_page?(new_submission_path) ? 'active' : '')
+    / リンク先 (submissions_path) に合わせて、アクティブ判定のパスも submissions_path に修正
+    li class=(current_page?(submissions_path) ? 'active' : '')
       = link_to submissions_path do
         i.fas.fa-file-alt
         span Create Contents

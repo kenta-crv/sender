@@ -29,7 +29,9 @@ html lang="ja"
             = image_tag "logo2.png", class: "main-logo", alt: "Home"
 
     .floating-contact
-      - if client_signed_in? && current_client.subscription_active?
+      / トライアルプランなどでの不整合を防ぐため、subscription_active? を使わず、
+      / ログイン中かつプランが空（none）でなければ確実に DASHBOARD へのリンクを出すよう修正
+      - if client_signed_in? && current_client.subscription_plan != 'none' && current_client.subscription_plan.present?
         = link_to dashboard_index_path, class: 'contact-box dashboard-mode' do
           .icon-container
             span.dashboard-icon

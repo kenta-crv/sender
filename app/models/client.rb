@@ -1,9 +1,9 @@
 class Client < ApplicationRecord
-  # Devise modules
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable
+
   has_many :monthly_usage_logs, dependent: :destroy
-  # Associations
+
   has_one :plan
   has_many :push_subscriptions, dependent: :destroy
   has_many :campaigns, dependent: :destroy
@@ -16,9 +16,7 @@ class Client < ApplicationRecord
   has_many :customers
   has_many :form_submission_batches
   has_many :submissions
-  # validates :api_key, uniqueness: true
 
-  # Methods
   def full_name
     [first_name, last_name].compact.join(" ")
   end
@@ -46,62 +44,56 @@ class Client < ApplicationRecord
     sub.can_send_delivery?(recipient_count)
   end
 
-  # =====================================================
-  # 月次制限・利用カウント関連（Publicに引っ越ししたメソッド群）
-  # =====================================================
-
-  # 今月の送信数
   def monthly_sent_count
     monthly_usage_log.sent_count
   end
 
-  # 今月の上限（Subscription準拠）
   def monthly_limit
     current_subscription&.delivery_limit || 0
   end
 
-  # 送信可能判定
   def can_send_this_month?(count)
     (monthly_sent_count + count) <= monthly_limit
   end
 
-  # 加算処理
   def increment_monthly_sent!(count)
     monthly_usage_log.increment!(:sent_count, count)
   end
 
+  # トライアル終了時の自動アップグレードロジック（Stripe・エンタープライズプラン仕様に修正）
   def check_and_upgrade_expired_trial
     return unless subscription_plan == "trial"
     return unless trial_ends_at.present?
     return if trial_ends_at > Time.current
 
-    unless payjp_customer_id.present?
-      Rails.logger.error "Client #{id} trial expired but no PayJP customer ID found"
+    unless stripe_customer_id.present?
+      Rails.logger.error "Client #{id} trial expired but no Stripe customer ID found"
       return nil
     end
 
     begin
-      amount = Subscription::PLAN_PRICES[:standard]
-      
-      charge = Payjp::Charge.create(
+      amount = Subscription::PLAN_PRICES[:enterprise] # 98,000円
+
+      # Stripeでの決済実行
+      charge = Stripe::Charge.create(
         amount: amount,
-        currency: 'jpy',
-        customer: payjp_customer_id,
-        description: "Standard Plan subscription (trial upgrade)"
+        currency: "jpy",
+        customer: stripe_customer_id,
+        description: "Enterprise Plan subscription (trial upgrade)"
       )
 
-      if charge.paid
+      if charge.status == "succeeded"
         subscriptions.where(status: :active).update_all(status: :cancelled)
-        
+
         subscription = subscriptions.create!(
-          plan_type: :standard,
+          plan_type: :enterprise,
           status: :active,
-          payjp_subscription_id: charge.id,
+          stripe_subscription_id: charge.id, # 決済IDを保持
           trial_ends_at: nil
         )
 
         update!(
-          subscription_plan: "standard",
+          subscription_plan: "enterprise",
           subscription_status: "active",
           trial_ends_at: nil
         )
@@ -109,25 +101,28 @@ class Client < ApplicationRecord
         payments.create!(
           campaign_id: nil,
           amount: amount,
-          payjp_charge_id: charge.id,
-          status: charge.paid ? 'succeeded' : 'failed',
-          description: "Standard Plan subscription (trial upgrade)"
+          stripe_charge_id: charge.id, # Stripeの決済IDに変更して記録
+          status: "succeeded",
+          description: "Enterprise Plan subscription (trial upgrade)"
         )
 
-        Rails.logger.info "Client #{id} trial expired, charged and upgraded to standard plan"
+        Rails.logger.info "Client #{id} trial expired, charged 98,000 JPY via Stripe and upgraded to enterprise plan"
         subscription
       else
-        Rails.logger.error "Client #{id} trial expired but charge failed: #{charge.failure_message}"
+        Rails.logger.error "Client #{id} trial expired but Stripe charge failed: #{charge.failure_message}"
+
         subscriptions.where(status: :active).update_all(status: :cancelled)
+
         update!(
-          subscription_plan: "standard",
+          subscription_plan: "enterprise",
           subscription_status: "active",
           trial_ends_at: nil
         )
+
         nil
       end
     rescue => e
-      Rails.logger.error "Error upgrading trial for client #{id}: #{e.message}"
+      Rails.logger.error "Error upgrading trial via Stripe for client #{id}: #{e.message}"
       nil
     end
   end
@@ -138,34 +133,27 @@ class Client < ApplicationRecord
   private
 
   def generate_api_key_if_blank
-    if api_key.blank?
-      self.api_key = SecureRandom.hex(32)
-    end
+    self.api_key = SecureRandom.hex(32) if api_key.blank?
   end
 
   def initialize_trial_subscription
     subscriptions.create!(
       plan_type: :trial,
       status: :active,
-      trial_ends_at: 15.days.from_now
+      trial_ends_at: Subscription::TRIAL_DAYS.days.from_now
     )
+
     update(
       subscription_plan: "trial",
       subscription_status: "active",
-      trial_ends_at: 15.days.from_now
+      trial_ends_at: Subscription::TRIAL_DAYS.days.from_now
     )
   end
 
-  # =====================================================
-  # 内部補助用（Privateのまま維持する内部メソッド）
-  # =====================================================
-
-  # 月キー
   def current_month_key
     Time.current.strftime("%Y-%m")
   end
 
-  # 月次ログ取得 or 作成
   def monthly_usage_log
     MonthlyUsageLog.find_or_create_by!(
       client_id: id,

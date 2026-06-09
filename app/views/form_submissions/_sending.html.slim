@@ -3,7 +3,7 @@
 
   .sc-detect__card.mb-5
     .sc-detect__card-body
-      = search_form_for @q, url: form_submissions_path, method: :get do |f|
+      = search_form_for @q, url: dashboard_sending_path, method: :get do |f|
 
         .row.mb-3
           .col-md-3
@@ -124,6 +124,12 @@
               strong = @detectable_customers.total_count
               | 件
 
+        / 要件3: Submissionsが自身のIDで持っていない場合（空の場合）にnotice通知メッセージを表示
+        - if @submissions.blank?
+          .sc-detect__alert.sc-detect__alert--danger.mb-4
+            i.fas.fa-exclamation-circle.me-2
+            | 送信内容（Submission）が登録されていません。送信を実行する前に「新規Submission作成」からコンテンツを作成してください。
+
         .row.mb-4.align-items-end
           .col-md-4
             = link_to '新規Submission作成', new_submission_path, class: 'sc-detect__btn sc-detect__btn--primary w-100 mb-2', target: '_blank'
@@ -139,9 +145,11 @@
           .col-md-4
             label.sc-detect__card-body.p-0.mb-2 送信内容
 
+            / 要件1 & 2: デフォルト（空白）項目を消し、必須選択（required: true）に変更
+            / 選択肢の最初に「選択してください」を用意し、空送信を防ぎます
             = select_tag :submission_id,\
-              options_from_collection_for_select(@submissions, :id, :title),\
-              include_blank: 'デフォルト設定',\
+              options_for_select([['-- 送信内容を選択してください --', '']] + (@submissions || []).map { |s| [s.title, s.id] }, params[:submission_id]),\
+              required: true,\
               class: 'sc-detect__select'
 
         - if @detectable_customers.total_count > 0
@@ -207,3 +215,30 @@
 
         .mt-4.text-center
           = submit_tag 'バッチ送信開始', class: 'sc-detect__btn sc-detect__btn--warning w-50', data: { confirm: '一括送信を実行しますか？' }
+
+/ 多重実行や不要な再読み込みリクエストをJavaScript側から完全に遮断するための安全ロジック
+javascript:
+  (function() {
+    if (window.isSendingPageInitialized) return;
+    window.isSendingPageInitialized = true;
+
+    const initSelectAllLogic = () => {
+      const selectAllCheck = document.getElementById('select_all');
+      const customerChecks = document.querySelectorAll('.customer-check');
+
+      if (selectAllCheck) {
+        selectAllCheck.onclick = function() {
+          customerChecks.forEach(cb => {
+            cb.checked = selectAllCheck.checked;
+          });
+        };
+      }
+    };
+
+    if (document.readyState !== 'loading') {
+      initSelectAllLogic();
+    } else {
+      document.addEventListener('DOMContentLoaded', initSelectAllLogic);
+    }
+    document.addEventListener('turbo:load', initSelectAllLogic);
+  })();

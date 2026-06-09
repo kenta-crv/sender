@@ -6,38 +6,46 @@ class Dashboard::DashboardsController < ApplicationController
   before_action :check_subscription_active!, unless: :admin_signed_in?
   before_action :set_base_scope, except: [:setting, :management]
 
-  def index
-    @q = @base_customers.ransack(params[:q])
-    filtered = @q.result(distinct: true)
+def index
+  # 「送信可能顧客（contact_url有）」についてのみ、現在のログインClientに縛られず、
+  # システム全体の Customer から重複なし・クリーンな状態で全件数を強制取得
+  @total_customers_count = Customer.unscoped.where.not(contact_url: [nil, '', 'not_detected']).count
 
-    @customers = filtered.where.not(contact_url: [nil, '', 'not_detected']).page(params[:customers_page]).per(20)
-    @detectable_customers = filtered.where(contact_url: [nil, '']).where.not(url: [nil, '']).where(fobbiden: [nil, false, 0]).page(params[:detectable_page]).per(20)
+  # その他の項目（フォーム未検出、URL未設定）については、ログイン中のベーススコープ（既存の絞り込み仕様）を維持しつつ、
+  # left_joins による集計バグを回避するため unscope(:joins) を適用して安全にカウント
+  @not_detected_count = @base_customers.unscope(:joins).where(contact_url: 'not_detected').count
+  @no_url_customers_count = @base_customers.unscope(:joins).where(contact_url: [nil, '']).where(url: [nil, '']).count
 
-    @business_options = generate_options(:business)
-    @genre_options = generate_options(:genre)
+  # 画面描画用・検索用の既存ロジック（そのまま維持します）
+  @q = @base_customers.ransack(params[:q])
+  filtered = @q.result(distinct: true)
 
-    @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
-    @no_url_customers_count = @base_customers.where(contact_url: [nil, '']).where(url: [nil, '']).count
+  @customers = filtered.where.not(contact_url: [nil, '', 'not_detected']).page(params[:customers_page]).per(20)
+  @detectable_customers = filtered.where(contact_url: [nil, '']).where.not(url: [nil, '']).where(fobbiden: [nil, false, 0]).page(params[:detectable_page]).per(20)
 
-    if client_signed_in?
-      @submissions = current_client.submissions.order(created_at: :desc)
-      @batches = current_client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(10)
-    elsif admin_signed_in?
-      if params[:client_id].present?
-        @submissions = Submission.where(client_id: params[:client_id]).order(created_at: :desc)
-        @batches = FormSubmissionBatch.where(client_id: params[:client_id]).order(created_at: :desc).page(params[:page]).per(10)
-      else
-        @submissions = Submission.order(created_at: :desc)
-        @batches = FormSubmissionBatch.order(created_at: :desc).page(params[:page]).per(10)
-      end
+  @business_options = generate_options(:business)
+  @genre_options = generate_options(:genre)
+
+  if client_signed_in?
+    @submissions = current_client.submissions.order(created_at: :desc)
+    @batches = current_client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(10)
+  elsif admin_signed_in?
+    if params[:client_id].present?
+      @submissions = Submission.where(client_id: params[:client_id]).order(created_at: :desc)
+      @batches = FormSubmissionBatch.where(client_id: params[:client_id]).order(created_at: :desc).page(params[:page]).per(10)
     else
-      @submissions = Submission.none
-      @batches = FormSubmissionBatch.none
+      @submissions = Submission.order(created_at: :desc)
+      @batches = FormSubmissionBatch.order(created_at: :desc).page(params[:page]).per(10)
     end
+  else
+    @submissions = Submission.none
+    @batches = FormSubmissionBatch.none
+  end
 
-    current_month_range = Time.current.beginning_of_month..Time.current.end_of_month
+  current_month_range = Time.current.beginning_of_month..Time.current.end_of_month
 
-    scope = if client_signed_in?
+  scope =
+    if client_signed_in?
       current_client.form_submission_batches
     elsif admin_signed_in? && params[:client_id].present?
       FormSubmissionBatch.where(client_id: params[:client_id])
@@ -45,13 +53,17 @@ class Dashboard::DashboardsController < ApplicationController
       FormSubmissionBatch.all
     end
 
-    @monthly_batches = scope.where(created_at: current_month_range)
-    @total_sent = @monthly_batches.sum(:total_count)
-    @total_success = @monthly_batches.sum(:success_count)
-    @total_failure = @monthly_batches.sum(:failure_count)
-    @success_rate = @total_sent > 0 ? ((@total_success.to_f / @total_sent) * 100).round(1) : 0
+  @monthly_batches = scope.where(created_at: current_month_range)
 
-    click_scope = if client_signed_in?
+  @total_sent = @monthly_batches.sum(:total_count)
+  @total_success = @monthly_batches.sum(:success_count)
+  @total_failure = @monthly_batches.sum(:failure_count)
+
+  @success_rate =
+    @total_sent.positive? ? ((@total_success.to_f / @total_sent) * 100).round(1) : 0
+
+  click_scope =
+    if client_signed_in?
       ClickTrackingLink.where(client_id: current_client.id)
     elsif admin_signed_in? && params[:client_id].present?
       ClickTrackingLink.where(client_id: params[:client_id])
@@ -59,11 +71,22 @@ class Dashboard::DashboardsController < ApplicationController
       ClickTrackingLink.all
     end
 
-    @total_clicks = click_scope.sum(:clicked_count)
-    @clicked_users_count = click_scope.where.not(last_clicked_at: nil).count
-    @click_rate = @total_sent > 0 ? ((@clicked_users_count.to_f / @total_sent) * 100).round(1) : 0
-  end
+  click_scope = click_scope.where(created_at: current_month_range)
 
+  @total_clicks = click_scope.sum(:clicked_count).to_i
+
+  @clicked_users_count = click_scope
+    .where.not(clicked_count: nil)
+    .where("clicked_count > 0")
+    .where.not(last_clicked_at: nil)
+    .where("last_clicked_at <= ?", Time.current)
+    .count
+
+  # クリックレートの分母を送信総数(@total_sent)から送信成功数(@total_success)に変更
+  @click_rate =
+    @total_success.positive? ? ((@clicked_users_count.to_f / @total_success) * 100).round(1) : 0
+end
+  
   def history
     @q = @base_customers.ransack(params[:q])
 
@@ -154,9 +177,21 @@ class Dashboard::DashboardsController < ApplicationController
 
   def setting; end
 
-  def management
-    @clients = Client.includes(:subscriptions).order(created_at: :desc)
+def management
+    start_of_month = Time.current.beginning_of_month
+    end_of_month   = Time.current.end_of_month
+
+    # 各Clientに完全に1対1で紐づく、monthly_usage_logsの最新のsent_countをピンポイントで取得します。
+    # サブクエリ形式にすることで、結合によるデータの重複や他クライアントとの数値の混ざりを完全に防ぎます。
+    @clients = Client.select(
+                       'clients.*',
+                       "(SELECT sent_count FROM monthly_usage_logs WHERE monthly_usage_logs.client_id = clients.id AND monthly_usage_logs.created_at BETWEEN '#{start_of_month.to_s(:db)}' AND '#{end_of_month.to_s(:db)}' ORDER BY monthly_usage_logs.id DESC LIMIT 1) AS current_month_sends"
+                     )
+                     .includes(:subscriptions)
+                     .order(created_at: :desc)
   end
+
+  def howto; end
 
   private
 

@@ -1,12 +1,16 @@
-
 #okurite-client-portal
   .wrapper
     = render 'sidebar'
-
+    
     #content
       header.top-header
         h2 Dashboard
         .user-meta
+          / 完全に独立したクラスで配置
+          = link_to dashboard_howto_path, class: 'howto-header-btn' do
+            i.fas.fa-question-circle.margin-right-5
+            span HowTo
+
           - if current_client.present?
             span.badge-electric = current_client.subscription_plan.presence
           - else
@@ -123,7 +127,7 @@
             tbody
               tr
                 td 送信可能顧客（contact_url有）
-                td = number_with_delimiter(@customers.total_count)
+                td = @total_customers_count
 
               tr
                 td フォーム未検出
@@ -187,14 +191,21 @@
 
   javascript:
     (function() {
-      const toggleModal = () => {
+      const initTrialModal = () => {
         const overlay = document.getElementById('trialOverlay');
         const closeBtn = document.getElementById('closeTrialModal');
 
         if (overlay && closeBtn) {
+          // キャッシュ対策として一度確実にクラスを取り除き、クリーンな状態で表示
+          overlay.classList.remove('is-visible');
+          
+          // 強制リロードやイベント多重発火の原因になる window.location 関連の記述がないことを確定
           overlay.classList.add('is-visible');
 
-          closeBtn.onclick = () => overlay.classList.remove('is-visible');
+          closeBtn.onclick = (e) => {
+            e.preventDefault();
+            overlay.classList.remove('is-visible');
+          };
 
           overlay.onclick = (e) => {
             if (e.target === overlay) {
@@ -204,11 +215,7 @@
         }
       };
 
-      if (document.readyState !== 'loading') {
-        toggleModal();
-      } else {
-        document.addEventListener('DOMContentLoaded', toggleModal);
-      }
-
-      document.addEventListener('turbo:load', toggleModal);
+      // Turbo環境下で確実に1度だけ実行させるためのイベント管理
+      // DOMContentLoaded との重複発火を防ぐため、ベースは turbo:load に一本化します
+      document.addEventListener('turbo:load', initTrialModal);
     })();

@@ -238,10 +238,11 @@ class CheckoutController < ApplicationController
       return
     end
 
+    # トライアル終了後の移行先をエンタープライズ(ENV["STRIPE_PRICE_ENTERPRISE"])に変更
     stripe_price_id = case plan_type
-                      when "trial", "standard"
+                      when "standard"
                         ENV["STRIPE_PRICE_STANDARD"]
-                      when "enterprise"
+                      when "trial", "enterprise"
                         ENV["STRIPE_PRICE_ENTERPRISE"]
                       else
                         nil
@@ -263,7 +264,7 @@ class CheckoutController < ApplicationController
 
     session_params = {
       mode: "subscription",
-      customer: customer.id, # 【バグ修正】新作成時でも確実にIDを適用できるように変更
+      customer: customer.id,
       payment_method_types: ["card"],
       line_items: [{ price: stripe_price_id, quantity: 1 }],
       metadata: {
