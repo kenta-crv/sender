@@ -13,7 +13,6 @@
 //= require rails-ujs
 //= require activestorage
 //= require turbolinks
-//= require_tree .
 
 // Turbolinksの遷移時と初回読み込み時の両方で実行する初期化関数
 const initializeAnimations = () => {

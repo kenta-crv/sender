@@ -74,19 +74,15 @@ module BrightData
       #   - serp_status IS NULL / '' （未実行）
       #   - かつ tel / url / contact_url のいずれかが空
       # status カラムは取引先環境で別用途に使われているため参照しない。
-      incomplete_scope = Customer.where(
-        "(tel IS NULL OR TRIM(tel) = '') OR " \
-        "(url IS NULL OR TRIM(url) = '') OR " \
-        "(contact_url IS NULL OR TRIM(contact_url) = '')"
-      )
-
-      selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
+selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
       if selected_ids.any?
-        records_by_id = Customer.where(id: selected_ids).index_by(&:id)
-        targets = selected_ids.filter_map { |id| records_by_id[id] }.first(limit)
+        targets = Customer.serp_extraction_targets
+                          .where(id: selected_ids)
+                          .order(id: :asc)
+                          .first(limit)
       else
-        scope = incomplete_scope.where(serp_status: [nil, ''])
-        scope = scope.where(industry: industry) if industry.present?
+        scope = Customer.serp_extraction_targets
+        scope = scope.where(business: industry) if industry.present?
 
         targets = scope.order(updated_at: :desc, id: :asc).limit(limit).to_a
       end
@@ -350,6 +346,22 @@ module BrightData
           Concurrent::Promises.zip(*futures).wait
           pool.shutdown
           pool.wait_for_termination
+
+          # ── 業種自動分類 → business カラムに保存 ──
+          # WebEnricher 補完後に実行。business が空の顧客にのみ書き込む。
+          begin
+            company_by_customer = companies.group_by { |c| c[:customer_id] }
+            classify_count = 0
+            Customer.where(id: target_ids, business: [nil, ""]).find_each do |customer|
+              group = company_by_customer[customer.id] || []
+              best = group.find { |c| c[:industry].present? } || group.first
+              IndustryClassifier.classify_and_save!(customer, best || {})
+              classify_count += 1
+            end
+            puts "[Pipeline] 業種自動分類 完了: #{classify_count}件を business カラムに保存"
+          rescue => e
+            Rails.logger.error("[Pipeline] 業種自動分類エラー: #{e.message}")
+          end
 
           puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / URLのみ保存 #{counters[:url_fallback]}件 / SERP直接更新 #{counters[:serp_direct]}件 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(URL除外) #{counters[:excluded_url]}件 / スキップ(候補URLなし) #{counters[:no_candidate]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
         end

@@ -5,7 +5,7 @@ class FormSubmissionsController < ApplicationController
   before_action :ensure_own_batch!, only: [:show, :cancel, :resume, :progress, :destroy]
 
   # GET /form_submissions
-  def index
+def index
     # -------------------------
     # 検索（Ransack）
     # -------------------------
@@ -123,8 +123,13 @@ class FormSubmissionsController < ApplicationController
           last_sent_at: last_sent_at
         }
       end
-  end
 
+    # =====================================================
+    # 【追加項目】検索フォーム（ビュー）用の選択肢データ生成
+    # =====================================================
+    @business_options = Customer.where.not(business: [nil, '']).order(:business).pluck(:business).uniq
+    @genre_options    = Customer.where.not(genre: [nil, '']).order(:genre).pluck(:genre).uniq
+  end
   # POST /form_submissions
   def create
     # 送信対象のベーススコープ定義

@@ -114,6 +114,7 @@
           = form_with url: serp_search_customers_path, method: :post, local: true, id: "serp-search-form" do
             = hidden_field_tag :company_query, @company_query
             = hidden_field_tag :industry, params[:industry_name]
+            = hidden_field_tag :serp_target_ids, @serp_targets.pluck(:id).join(',')
             .row.g-2
               .col-sm-12
                 .sc-detect__form-group.mb-2

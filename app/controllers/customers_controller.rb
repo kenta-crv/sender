@@ -147,7 +147,7 @@ def update
 
     # 次の draft 顧客を取得（フィルタ考慮）
     query = Customer.where(status: 'draft').where('id > ?', @customer.id)
-    query = query.where(industry: params[:industry_name]) if params[:industry_name].present?
+    query = query.where(business: params[:industry_name]) if params[:industry_name].present?
 
     case params[:tel_filter]
     when "with_tel"
@@ -221,118 +221,129 @@ def destroy
     redirect_to customers_url, notice: 'インポート処理をバックグラウンドで実行しています。完了までしばらくお待ちください。'
   end
 
-  def draft
-    start_time = Time.current
+def draft
+  start_time = Time.current
 
-    # 1. 期間パラメータのパース
-    parse_period_params
+  # 1. 期間パラメータのパース
+  parse_period_params
 
-    # 2. 権限や業種に応じたベーススコープをモデルから取得
-    base_scope = Customer.draft_base_scope(
-      current_client_id: client_signed_in? ? current_client.id : nil,
-      is_admin: admin_signed_in?,
-      industry_name: params[:industry_name]
-    )
+  # 2. 権限や業種に応じたベーススコープをモデルから取得
+  base_scope = Customer.draft_base_scope(
+    current_client_id: client_signed_in? ? current_client.id : nil,
+    is_admin:          admin_signed_in?,
+    industry_name:     params[:industry_name]
+  )
 
-    # 社名検索パラメータの取得
-    @company_query = params[:company_query].presence
+  # 社名検索パラメータの取得
+  @company_query = params[:company_query].presence
 
-    # 未抽出・補完対象（@serp_targets）用のベーススコープを構築
-    # (serp_status が未処理、かつ tel/url/contact_url のいずれかが空のデータ)
-    serp_target_base = base_scope.where(serp_status: [nil, ''])
-                                 .where(
-                                   "(tel IS NULL OR TRIM(tel) = '') OR " \
-                                   "(url IS NULL OR TRIM(url) = '') OR " \
-                                   "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                                 )
+  # 3. 未抽出・補完対象（@serp_targets）用スコープ
+  #    draft アクションと serp_search アクションで同じ定義を使うことでズレを防ぐ
+  serp_target_base = base_scope.serp_extraction_targets
 
-    # 未抽出エリアへの検索機能の適用（社名検索が指定されていれば絞り込む）
-    if @company_query.present?
-      serp_target_base = filter_company_query(serp_target_base, @company_query)
-    end
-
-    # 3. 画面表示用のメイン顧客リストの絞り込み
-    # メインリスト側も社名検索が指定されていれば絞り込む
-    main_scope = base_scope
-    if @company_query.present?
-      main_scope = filter_company_query(main_scope, @company_query)
-    end
-
-    @customers = main_scope
-                   .apply_status_filter(params[:status_filter])
-                   .apply_serp_status_filter(params[:serp_status_filter])
-                   .apply_tel_role_filter(is_admin: admin_signed_in?, is_worker: worker_signed_in?, tel_filter: params[:tel_filter])
-                   .apply_fill_filter(params[:fill_filter])
-                   .apply_updated_at_filter(params[:updated_from], params[:updated_to], params[:updated_today])
-                   .apply_created_at_range(@range_start, @range_end)
-
-    # メインリストの順序制御・ページネーション・件数取得 (100件区切り)
-    @customers = @customers.order(updated_at: :desc).includes(:worker).page(params[:page]).per(100)
-    @filtered_count = @customers.total_count
-
-    # 4. 「実行前に対象となる企業」のデータを20件でページネーション
-    @serp_targets = serp_target_base.order(id: :asc)
-                                    .page(params[:serp_page])
-                                    .per(20)
-
-    # 5. 残り抽出可能件数の取得（モデルから算出）
-    # クライアントの場合は、契約やシステムの上限に加えて、自身の検索スコープに合致する「補完対象の総件数」を絶対に超えないよう上限を丸める
-    raw_remaining = ExtractTracking.remaining_extractable_count
-    @serp_target_count = serp_target_base.count # 検索・フィルタ反映後の補完対象件数
-
-    if client_signed_in? && !admin_signed_in?
-      @remaining_extractable = [raw_remaining, @serp_target_count].min
-    else
-      @remaining_extractable = raw_remaining
-    end
-
-    # 6. 統計情報の取得（ダッシュボード等で利用するベース統計）
-    @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
-
-    # ビュー側で「SERP API START」に渡す上限設定パラメータ（クライアント時は残り抽出可能件数でクリップ）
-    @max_search_limit = admin_signed_in? ? @serp_target_count : [@serp_target_count, @remaining_extractable].min
-
-    elapsed = ((Time.current - start_time) * 1000).round(2)
-    Rails.logger.info("draft action: completed in #{elapsed}ms")
+  if @company_query.present?
+    serp_target_base = filter_company_query(serp_target_base, @company_query)
   end
+
+  # 4. 画面表示用メインリストの絞り込み
+  main_scope = base_scope
+  main_scope = filter_company_query(main_scope, @company_query) if @company_query.present?
+
+  @customers = main_scope
+                 .apply_status_filter(params[:status_filter])
+                 .apply_serp_status_filter(params[:serp_status_filter])
+                 .apply_tel_role_filter(
+                   is_admin:   admin_signed_in?,
+                   is_worker:  worker_signed_in?,
+                   tel_filter: params[:tel_filter]
+                 )
+                 .apply_fill_filter(params[:fill_filter])
+                 .apply_updated_at_filter(
+                   params[:updated_from],
+                   params[:updated_to],
+                   params[:updated_today]
+                 )
+                 .apply_created_at_range(@range_start, @range_end)
+                 .order(updated_at: :desc)
+                 .includes(:worker)
+                 .page(params[:page])
+                 .per(100)
+
+  @filtered_count = @customers.total_count
+
+  # 5. SERP一覧（20件ページネーション）
+  @serp_targets = serp_target_base.order(id: :asc)
+                                  .page(params[:serp_page])
+                                  .per(20)
+
+  # 6. 残り抽出可能件数
+  raw_remaining      = ExtractTracking.remaining_extractable_count
+  @serp_target_count = serp_target_base.count
+
+  @remaining_extractable = if client_signed_in? && !admin_signed_in?
+                             [raw_remaining, @serp_target_count].min
+                           else
+                             raw_remaining
+                           end
+
+  # 7. ダッシュボード統計
+  @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
+
+  # ビュー側「SERP API START」に渡す上限
+  @max_search_limit = admin_signed_in? ? @serp_target_count
+                                       : [@serp_target_count, @remaining_extractable].min
+
+  elapsed = ((Time.current - start_time) * 1000).round(2)
+  Rails.logger.info("draft action: completed in #{elapsed}ms")
+end
+
   # POST /customers/serp_search
-def serp_search
-    # ブラウザからCookieが送られずセッションが空（nil）であっても、
-    # このアクションだけはCSRF検問をスルーして確実にSidekiqへ処理を流すようにします。
+  def serp_search
     self.class.skip_before_action :verify_authenticity_token, only: [:serp_search], raise: false
 
-    industry  = params[:industry].presence
-    limit     = (params[:limit] || 100).to_i
+    industry        = params[:industry].presence
+    limit           = (params[:limit] || 100).to_i
+    company_query   = params[:company_query].presence
+    serp_target_ids = params[:serp_target_ids].presence
 
-    # draft_base_scopeを使用してクライアント権限を適切にフィルタリング
+    # draft アクションのプレビューと同じ base_scope + serp_extraction_targets を使う
+    # → プレビューに表示された企業と実際に実行される企業が一致する
     base_scope = Customer.draft_base_scope(
       current_client_id: client_signed_in? ? current_client.id : nil,
-      is_admin: admin_signed_in?,
-      industry_name: industry
+      is_admin:          admin_signed_in?,
+      industry_name:     industry
     )
+    scope = base_scope.serp_extraction_targets
 
-    # 対象件数を事前確認（serp_status NULL かつ tel/url/contact_url いずれか空）
-    scope = base_scope.where(
-      "(tel IS NULL OR TRIM(tel) = '') OR " \
-      "(url IS NULL OR TRIM(url) = '') OR " \
-      "(contact_url IS NULL OR TRIM(contact_url) = '')"
-    )
+    # company_query があればフィルタを適用（draft アクションと同じロジック）
+    if company_query.present?
+      scope = filter_company_query(scope, company_query)
+    end
+
     target_count = scope.count
 
     if target_count == 0
       redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
     end
 
-    # Sidekiq経由で非同期実行。Redisが未起動の場合は同期フォールバック
     actual_limit = [limit, target_count].min
+
+    # プレビューで表示された企業のIDを取得（プレビューと実行を一致させる）
+    customer_ids = if serp_target_ids.present?
+                     serp_target_ids.split(',').map(&:to_i).take(actual_limit)
+                   else
+                     # フォールバック：プレビューと同じ順序で取得
+                     scope.order(id: :asc).limit(actual_limit).pluck(:id)
+                   end
+
     begin
-      SerpPipelineDbWorker.perform_async(industry, actual_limit)
+      SerpPipelineDbWorker.perform_async(industry, actual_limit, customer_ids)
       redirect_to draft_customers_path,
         notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
     rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
       Rails.logger.warn("[serp_search] Redis未起動のため同期実行にフォールバック: #{e.message}")
       begin
-        BrightData::Pipeline.execute_from_db(industry: industry.presence, limit: actual_limit, dry_run: false)
+        BrightData::Pipeline.execute_from_db(industry: industry, limit: actual_limit, customer_ids: customer_ids, dry_run: false)
         redirect_to draft_customers_path,
           notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
       rescue => pipeline_err
@@ -341,6 +352,7 @@ def serp_search
       end
     end
   end
+
   def filter_by_industry
     @crowdworks = Crowdwork.all || []
 
@@ -376,7 +388,7 @@ def serp_search
     elsif range_end
       base_query = base_query.where('created_at <= ?', range_end)
     end
-    base_query = base_query.where(industry: industry_name) if industry_name.present?
+    base_query = base_query.where(business: industry_name) if industry_name.present?
 
     @customers = case
     when admin_signed_in? && params[:tel_filter] == "with_tel"
@@ -440,12 +452,7 @@ def serp_search
       industry_name: params[:industry_name]
     )
 
-    @serp_targets = base_scope.where(serp_status: [nil, ''])
-                              .where(
-                                "(tel IS NULL OR TRIM(tel) = '') OR " \
-                                "(url IS NULL OR TRIM(url) = '') OR " \
-                                "(contact_url IS NULL OR TRIM(contact_url) = '')"
-                              )
+    @serp_targets = base_scope.serp_extraction_targets
                               .order(id: :asc)
                               .page(params[:serp_page])
                               .per(20)
@@ -558,7 +565,7 @@ def serp_search
         normalized_company = Customer.normalized_name(customer.company)
         normalized_tel = customer.tel.to_s.delete('-')
 
-        existing_customer = Customer.where(industry: customer.industry, status: nil)
+        existing_customer = Customer.where(business: customer.business, status: nil)
                                     .where.not(id: customer.id)
                                     .find do |c|
           c_tel = c.tel.to_s.delete('-')
@@ -631,11 +638,12 @@ def serp_search
 
   private
 
-  # ── プライベート領域（これより下はアクションとして外部公開されない） ──
-
   def authenticate_admin_or_client!
     unless admin_signed_in? || client_signed_in?
-      render json: { error: 'Unauthorized' }, status: :unauthorized
+      respond_to do |format|
+        format.html { redirect_to new_client_session_path, alert: 'ログインが必要です。' }
+        format.json { render json: { error: 'Unauthorized' }, status: :unauthorized }
+      end
     end
   end
 
@@ -762,22 +770,22 @@ def serp_search
     counts
   end
 
-    def customer_params
-      params.require(:customer).permit(
-      :company, #会社名
-      :name, #代表者
-      :tel, #電話番号1
-      :address, #住所
-      :mobile, #携帯番号
-      :industry, #業種
-      :email, #メール
-      :url, #URL
-      :business, #
-      :genre, #
+  def customer_params
+    params.require(:customer).permit(
+      :company,
+      :name,
+      :tel,
+      :address,
+      :mobile,
+      :industry,
+      :email,
+      :url,
+      :business,
+      :genre,
       :contact_form,
       :contact_url,
       :fobbiden,
-      :remarks, #履歴
-      )
-    end
+      :remarks,
+    )
+  end
 end
