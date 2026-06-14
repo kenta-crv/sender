@@ -104,7 +104,7 @@ class WebhooksController < ApplicationController
     return if sub.blank?
 
     sub.update!(status: :cancelled)
-    sub.client.update!(subscription_status: 'cancelled', subscription_plan: nil)
+    sub.client.update!(subscription_status: 'cancelled', subscription_plan: 'none')
   end
 
   def handle_invoice_payment_succeeded(invoice)

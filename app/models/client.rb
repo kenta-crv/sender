@@ -49,6 +49,7 @@ class Client < ApplicationRecord
   end
 
   def monthly_limit
+    return 0 unless subscription_active?
     current_subscription&.delivery_limit || 0
   end
 

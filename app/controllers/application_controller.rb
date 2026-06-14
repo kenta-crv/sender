@@ -20,10 +20,11 @@ def after_sign_in_path_for(resource)
   when Admin
     dashboard_index_path(resource)
   when Client
-    dashboard_index_path(resource)
+    # Always redirect to dashboard for Clients, ignore stored location
+    dashboard_index_path
   when Worker
     # ↓ ここは「s」なし！ (resource)を忘れずに
-    worker_path(resource) 
+    worker_path(resource)
   else
     root_path
   end

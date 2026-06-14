@@ -32,12 +32,14 @@
 
           p.resets-in 今月の送信実行総数
 
-          - total_sent = (@total_sent || 0).to_i
-          - monthly_limit = (current_client&.monthly_limit || 0).to_i
-          - remaining_slots = [monthly_limit - total_sent, 0].max
-
           .mini-rate
-            = "残り枠: #{number_with_delimiter(remaining_slots)} 件 / 上限: #{number_with_delimiter(monthly_limit)} 件"
+            - if current_client.present?
+              - total_sent = (@total_sent || 0).to_i
+              - monthly_limit = (current_client.monthly_limit || 0).to_i
+              - remaining_slots = [monthly_limit - total_sent, 0].max
+              = "残り枠: #{number_with_delimiter(remaining_slots)} 件 / 上限: #{number_with_delimiter(monthly_limit)} 件"
+            - else
+              = "上限: 無制限"
 
         .glass-card
           .card-label Success

@@ -12,9 +12,16 @@
 
         .sc-detect__card-body.p-4
           - is_trial = (@subscription&.trial?) || (@target_client.subscription_plan == 'trial')
+          - is_cancelled = @target_client.subscription_status == 'cancelled' || (@subscription.present? && @subscription.cancelled?)
           - is_active = @subscription.present? ? @subscription.active? : (@target_client.subscription_status == 'active' || is_trial)
 
-          - if @subscription.present? || is_trial
+          - if @target_client.subscription_plan == 'none' || is_cancelled
+            .text-center.py-5
+              p style="color: rgba(229, 231, 235, 0.5);" アクティブなサブスクリプションがありません。
+              = link_to plans_path(client_id: params[:client_id]), class: "sc-detect__btn sc-detect__btn--warning mt-3", style: "text-decoration: none; justify-content: center; min-width: 200px;" do
+                | プランを選択する
+
+          - elsif @subscription.present? || is_trial
             .row.g-4
               .col-md-6
                 .sc-detect__label プランタイプ

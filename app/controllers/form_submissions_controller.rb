@@ -474,6 +474,7 @@ def import_customers
   end
   
   # POST /form_submissions/detect_contact_urls
+# POST /form_submissions/detect_contact_urls
   def detect_contact_urls
     customer_ids = if params[:detect_select_all] == '1'
                      # 全件選択 → ページネーションに関係なく全対象顧客を取得
@@ -486,7 +487,11 @@ def import_customers
                    end
 
     if customer_ids.empty?
-      redirect_to form_submissions_path, alert: '検出対象の顧客が選択されていません。'
+      if client_signed_in? && !admin_signed_in?
+        redirect_to dashboard_index_path, alert: '検出対象の顧客が選択されていません。'
+      else
+        redirect_to form_submissions_path, alert: '検出対象の顧客が選択されていません。'
+      end
       return
     end
 
@@ -495,9 +500,14 @@ def import_customers
       ContactUrlDetectJob.perform_later(cid)
     end
 
-    redirect_to form_submissions_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
+    # ログイン状態に応じて適切なリダイレクト先へ戻す
+    if client_signed_in? && !admin_signed_in?
+      redirect_to dashboard_index_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
+    else
+      redirect_to form_submissions_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
+    end
   end
-
+  
   private
 
   def set_batch
