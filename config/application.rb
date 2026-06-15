@@ -27,9 +27,9 @@ module Smart
     config.action_mailer.delivery_method = :smtp
     config.action_mailer.smtp_settings = {
     address: 'smtp.lolipop.jp',
-    domain: 'okey.work',
+    domain: 'ri-plus.jp',
     port: 587,
-    user_name: 'info@okey.work',
+    user_name: 'info@ri-plus.jp',
     password: ENV['EMAIL_PASSWORD'],
     authentication: 'plain',
     enable_starttls_auto: true

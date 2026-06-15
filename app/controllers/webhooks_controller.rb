@@ -68,12 +68,13 @@ class WebhooksController < ApplicationController
             plan_type: final_plan_type,
             status: :active,
             trial_ends_at: trial_ends_at
-            )
+          )
             
           client.update!(
-              subscription_plan: final_plan_type,
-              subscription_status: 'active'
+            subscription_plan: final_plan_type,
+            subscription_status: 'active'
           )
+        end # <- Subscription.transaction の end が不足していたのを修正
 
       elsif session.mode == 'payment'
         campaign_id = session.metadata.campaign_id

@@ -1,3 +1,7 @@
+# 1. 実行時にモデルなどの定数が未定義（NameError）になるのを防ぐため、
+#    Railsアプリケーションの環境を明示的に読み込みます。
+Rails.application.eager_load! if defined?(Rails)
+
 SitemapGenerator::Sitemap.default_host = "https://ri-plus.jp"
 
 SitemapGenerator::Sitemap.create do
@@ -15,12 +19,15 @@ SitemapGenerator::Sitemap.create do
   end
 
   # Column（LP配下）
-  Column.find_each do |column|
-    next unless column.code.present?   # code があるものだけ追加
-    lp = column.genre # 例: "cleaning"
-
-    add "/columns/#{column.code}",
-        lastmod: column.updated_at,
-        priority: 0.5
+  # 念のため定義されているかチェック（安全策）
+  if defined?(Column)
+    Column.find_each do |column|
+      next unless column.code.present?   # code があるものだけ追加
+      
+      add "columns/#{column.code}",
+          lastmod: column.updated_at,
+          changefreq: 'weekly',
+          priority: 0.5
+    end
   end
 end
