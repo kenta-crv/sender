@@ -146,8 +146,8 @@
                     tr
                       td style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{target.company}"
                         = target.company
-                      td style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{target.industry}"
-                        = target.industry.presence || "-"
+                      td style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{target.business}"
+                        = target.business.presence || "-"
                 - else
                   tr
                     td colspan="2" style="color: rgba(229, 231, 235, 0.4); text-align: center; font-size: 0.8rem;" 補完対象の企業はありません
@@ -254,14 +254,14 @@
                     span style="color: rgba(229, 231, 235, 0.25);" -
               
               / 業種カラム (アイコン + データ)
-              - industry_filled = [customer&.industry, customer&.business, customer&.genre].any? { |v| v.to_s.strip.present? }
+              - industry_filled = [customer&.business, customer&.genre].any? { |v| v.to_s.strip.present? }
               td style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
                 .d-flex.align-items-center.gap-1.w-100
                   span style="flex-shrink: 0;" = fill_icon(industry_filled ? "1" : nil)
                   .overflow-hidden style="flex-grow: 1;"
-                    - if customer&.industry.present? || customer&.business.present?
-                      div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{customer&.industry.presence || customer&.business}"
-                        = customer&.industry.presence || customer&.business
+                    - if customer&.business.present?
+                      div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{customer&.business}"
+                        = customer&.business
                     - else
                       div style="color: rgba(229, 231, 235, 0.25);" -
                     - if customer&.genre.present?

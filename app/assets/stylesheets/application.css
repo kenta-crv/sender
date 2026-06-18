@@ -3438,112 +3438,52 @@ h2::after {
 
 /* ロゴ関連・アイコン関連の未使用CSSを削除 */
 
-/* 中央寄せの補強（rowにjustify-content-centerがあるため基本は不要ですが明示） */
+/* 中央寄せの補強 */
 .footer-nav {
   display: flex;
   justify-content: center;
   width: 100%;
-}/* application.css に貼り付け */
+}
 
+/* ===== フローティングボタン共通ラッパー ===== */
+.floating-btn-wrap {
+  position: fixed;
+  bottom: 30px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.floating-btn-wrap.left-side {
+  left: 30px;
+}
+
+/* ===== フローティング お問い合わせ（右側・独立） ===== */
 .floating-contact {
   position: fixed;
   bottom: 30px;
   right: 30px;
   z-index: 9999;
-}
-
-.floating-contact .contact-box {
   display: flex;
   align-items: center;
-  background-color: #000; /* 背景を黒 */
-  border: 1px solid #444; /* 縁を少し明るくして立体感を出す */
-  padding: 10px 20px;
-  border-radius: 50px; /* カプセル型 */
-  text-decoration: none;
-  color: #fff;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5); /* 強めの影で浮遊感を出す */
-  transition: all 0.3s ease;
+  gap: 12px;
 }
 
-/* ホバーした時に少し浮き上がり、境界線を白くする */
-.floating-contact .contact-box:hover {
-  transform: translateY(-5px);
-  border-color: #fff;
-  box-shadow: 0 15px 30px rgba(0,0,0,0.8);
-}
-
-.floating-contact .icon-container {
-  display: flex;
-  align-items: center;
-}
-
-.floating-contact .main-icon {
-  width: 20px;
-  height: 20px;
-  filter: invert(1); /* アイコンを白く反転 */
-}
-
-.floating-contact .text-container {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.floating-contact .text-container span {
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 1px;
-}
-
-.floating-contact .text-container small {
-  font-size: 10px;
-  color: #aaa;
-}
-
-/* スマホでは邪魔にならないよう、文字を消してアイコンを際立たせる */
-@media (max-width: 768px) {
-  .floating-contact {
-    bottom: 20px;
-    right: 20px;
-  }
-  .floating-contact .text-container {
-    display: none; /* スマホでは文字を消す */
-  }
-  .floating-contact .contact-box {
-    padding: 15px; /* 丸に近い形に調整 */
-  }
-  .floating-contact .icon-container {
-    margin-right: 0;
-  }
-}
-
-
-/* application.css に貼り付け */
-
-/* 左側のロゴ、右側のお問い合わせ共通のベース設定 */
-.floating-logo, .floating-contact {
-  position: fixed;
-  bottom: 30px;
-  z-index: 9999;
-}
-
-.floating-logo { left: 30px; }
-.floating-contact { right: 30px; }
-
-/* 左右のボタンの高さと padding を完全に統一 */
+/* ===== ボタン共通スタイル ===== */
 .floating-logo .logo-box,
 .floating-contact .contact-box {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
   background-color: #000;
   border: 1px solid #444;
-  height: 46px;      /* 高さを固定 */
-  padding: 0 20px;   /* 左右の余白を統一 */
-  border-radius: 50px; /* カプセル型で統一 */
+  height: 46px;
+  padding: 0 20px;
+  border-radius: 50px;
   text-decoration: none;
   color: #fff;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
   transition: all 0.3s ease;
   box-sizing: border-box;
 }
@@ -3553,37 +3493,101 @@ h2::after {
 .floating-contact .contact-box:hover {
   transform: translateY(-5px);
   border-color: #fff;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.8);
 }
 
-/* アイコンサイズの調整 */
+/* ===== ロゴ ===== */
+.floating-logo .logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .floating-logo .main-logo {
   width: 120px;
   height: auto;
   display: block;
 }
 
+/* ===== お問い合わせ・ログイン アイコン ===== */
+.floating-contact .icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .floating-contact .main-icon {
   width: 18px;
   height: 18px;
-  margin-right: 8px;
   filter: invert(1);
 }
 
-/* スマホ用調整 */
+.floating-contact .dashboard-icon i,
+.floating-contact .login-icon i {
+  font-size: 16px;
+  color: #fff;
+}
+
+/* ===== テキスト部分 ===== */
+.floating-contact .text-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.floating-contact .text-container span {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-align: center;
+  display: block;
+  width: 100%;
+}
+
+.floating-contact .text-container small {
+  font-size: 10px;
+  color: #aaa;
+  text-align: center;
+  display: block;
+  width: 100%;
+}
+
+/* ===== スマホ用調整 ===== */
 @media (max-width: 768px) {
-  .floating-logo, .floating-contact {
+  .floating-btn-wrap {
     bottom: 20px;
   }
-  .floating-logo { left: 20px; }
-  .floating-contact { right: 20px; }
+
+  .floating-btn-wrap.left-side {
+    left: 20px;
+  }
+
+  .floating-contact {
+    bottom: 20px;
+    right: 20px;
+  }
 
   .floating-logo .logo-box,
   .floating-contact .contact-box {
     height: 40px;
-    padding: 0 15px;
+    padding: 0 12px;
+  }
+
+  .floating-contact .text-container {
+    display: none;
+  }
+
+  .floating-contact .icon-container {
+    margin-right: 0;
+  }
+
+  .floating-logo .main-logo {
+    width: 90px;
   }
 }
-
 
 
 
@@ -3986,3 +3990,13 @@ h2::after {
     display: inline;
   }
 }
+
+
+
+
+
+
+
+
+
+

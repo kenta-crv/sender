@@ -35,14 +35,14 @@ section.japan-notyo-section
   .japan-notyo-container
     .japan-notyo-column.japan-notyo-text-column
       h2.japan-notyo-heading
-        | AIが導く圧倒的な商談数。絶対量を増やし最大化できる
+        | AIが導く圧倒的なアプローチ数。営業の絶対量を増やし商談を最大化
 
       p.japan-notyo-description
-        | 『Okurite』は、独自のAI技術と営業代行実績を融合させた
+        | 『Okurite』は、問い合わせフォーム送信を自動化するサービスです。
         br
-        | 次世代の営業代行パッケージサービスです。AIによる自動アプローチと
+        | AIによる自動アプローチと人件費の削減により
         br
-        | 効率的な営業クロージングによりアポイントの最大化を行います。
+        | 効率的なアプローチの最大化を行います。
 
     .japan-notyo-column.japan-notyo-image-column
       = image_tag "okurite-logo.png", class: "japan-notyo-image", alt: "Tool illustration", loading: 'lazy', decoding: 'async'
@@ -53,7 +53,7 @@ section.jap-notto-section
   .sp-company-inner
     .sp-section-header
       span.en-sub CCURRENT CHALLENGES
-      h2 営業の最大化はできていますか？
+      h2 営業効率の最大化はできていますか？
       p.desc 成果を最大化するために、今解決すべきボトルネック
   .jap-notto-container
     .jap-notto-grid
@@ -112,9 +112,9 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
             .ser-mos-card-media
               = image_tag "ser-app1.png", class: "ser-mos-card-img", alt: "Service 1", loading: 'lazy', decoding: 'async'
             h3.ser-mos-card-title
-              | AIによる高精度リスト抽出
+              | AIによりGoogleからリスト抽出
             p.ser-mos-card-desc
-              |  独自のAIアルゴリズムを用いて、Web上の膨大なデータから自動で常に最新リストをアップしているため、倒産リストが圧倒的に少ない。
+              |  独自のAIアルゴリズムを用いて、会社名を元にGoogle検索を行い、企業情報を自動で生成します。
             /button.ser-mos-card-btn
               | 詳しく見る 
               = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
@@ -134,9 +134,9 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
             .ser-mos-card-media
               = image_tag "ser-app0.png", class: "ser-mos-card-img", alt: "Service 1", loading: 'lazy', decoding: 'async'
             h3.ser-mos-card-title
-              | AI自動問い合わせフォーム送信
+              | 自動問い合わせフォーム送信
             p.ser-mos-card-desc
-              | 事前に用意したリストに対してAIが24時間365日あなたの代わりに問い合わせフォームに送信を行い、アプローチを行います。
+              | 事前に用意したリストに対してシステムが24時間365日あなたの代わりに問い合わせフォームに送信を行い、営業アプローチを行います。
             /button.ser-mos-card-btn
               | 詳しく見る 
               = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
@@ -147,7 +147,7 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
             h3.ser-mos-card-title
               | 開封データの可視化と行動解析
             p.ser-mos-card-desc
-              |  メールや資料の閲覧状況をリアルタイムで可視化し、開封・未開封に応じた最適なアプローチを実現します。
+              |  ランディングページや資料の閲覧状況をリアルタイムで可視化し、開封・未開封の確認を行うことができます。
             /button.ser-mos-card-btn
               | 詳しく見る 
               = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
@@ -254,9 +254,9 @@ section.admin-preview-section
   { title: "トライアルプラン", sub: "Trial Plan", btn: "10日間無料トライアル", btn_class: "btn-gray", desc: "問い合わせフォームからのAI自動営業送信に特化した、手軽に始められるプラン", features: [ \
     ["初期費用","0円"], \
     ["月額費用","0円"], \
-    ["AIリスト制作","-"], \
-    ["フォーム自動検出","1,000件"], \
-    ["自動フォーム営業","1,000件"], \
+    ["AIリスト制作","10件"], \
+    ["フォーム自動検出","100件"], \
+    ["自動フォーム営業実行","1,000件"], \
     ["契約期間","10日間"] \
   ], cta: "トライアル 〉" }, \
   { title: "ライトプラン", sub: "Light Plan", btn: "自動フォーム送信特化型", btn_class: "btn-blue", desc: "問い合わせフォームからのAI自動営業送信に特化した、手軽に始められるプラン", features: [ \
@@ -264,16 +264,15 @@ section.admin-preview-section
     ["月額費用","49,800円"], \
     ["AIリスト制作","1,000件"], \
     ["フォーム自動検出","15,000件"], \
-    ["自動フォーム営業","15,000件"], \
+    ["自動フォーム営業実行","15,000件"], \
     ["契約期間","いつでも解約可"] \
   ], cta: "お申し込みはこちら 〉" }, \
-  { title: "ビジネスプラン", sub: "Business Plan", btn: "業界唯一のロボット回避型", btn_class: "btn-green", desc: "専門人材を付けて送信を実行するので、ロボットによる自動送信拒否を回避して事実上の全送信が可能なプラン。", features: [ \
+  { title: "ビジネスプラン", sub: "Business Plan", btn: "業界唯一のロボット回避型", btn_class: "btn-green", desc: "スタンダードプランより更に大量送信を実行したい企業におすすめのプラン。", features: [ \
     ["初期費用","0円"], \
-    ["月額費用","99,000円"], \
+    ["月額費用","98,000円"], \
     ["AIリスト制作","3,000件"], \
     ["フォーム自動検出","40,000件"], \
-    ["自動フォーム営業","40,000件"], \
-    ["ロボット回避送信","5,000件"], \
+    ["自動フォーム営業実行","40,000件"], \
     ["契約期間","いつでも解約可"] \
   ], cta: "お申し込みはこちら 〉" } \
 ]
@@ -519,7 +518,6 @@ section.service-compare
   ["AI問い合わせフォーム送信代行の仕組みを教えてください。", "『Okurite』は、企業が指定するリストに対して、最適な問い合わせフォームをAIが自動判別して営業文を届けるサービスです。AIが入力項目を理解し、人間が送るような自然な形でアプローチを自動化します。"], \
   ["送信先のリストはどのように作成しますか？", "業種、地域、企業規模だけでなく、特定のキーワードや直近の求人情報などから「今ニーズがある企業」を常に抽出しております。もちろん御社自身で保持しているリストに送信する事も可能です。"], \
   ["リストはありますが、問い合わせフォームURLがありません。", "問い合わせフォームが把握できない場合、当社のAIシステムが企業トップページURLからスクリーニングし、問い合わせフォームを自動で検出します。"], \
-  ["他社の自動送信ツールとの違いは何ですか？", "Okuriteはフォーム送信以外にも、リスト精度の高さやリストからの高い検出精度に提供があります。またビジネスプランの活用を頂けますと、専門の担当者でAIブロックを回避しながら送信実行が行えるので、営業慣れしていない企業への送信が可能となります。"], \
   ["1日に送信できる上限はありますか？", "企業のドメイン保護や受信側のマナーを考慮し、一定の時間間隔を空けながら送信作業を行います。そのため無限に送信出来るものとは異なります。"] \
 ]
 

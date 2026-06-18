@@ -5,7 +5,7 @@ nav#sidebar
 
   ul.list-unstyled.components
 
-    li class=(current_page?(dashboard_index_path) ? 'active' : '')
+    /li class=(current_page?(dashboard_index_path) ? 'active' : '')
       = link_to dashboard_index_path do
         i.fas.fa-chart-line
         span Dashboard
@@ -40,6 +40,11 @@ nav#sidebar
       = link_to dashboard_sending_path do
         i.fas.fa-paper-plane
         span Send Forms
+
+    li class=(current_page?(dashboard_click_tracking_path) ? 'active' : '')
+      = link_to dashboard_click_tracking_path do
+        i.fas.fa-mouse-pointer
+        span Click Tracking
 
     - if admin_signed_in?
       li class=(current_page?(dashboard_management_path) ? 'active' : '')

@@ -155,10 +155,25 @@ class Client < ApplicationRecord
     Time.current.strftime("%Y-%m")
   end
 
+  public
+
   def monthly_usage_log
-    MonthlyUsageLog.find_or_create_by!(
+    log = MonthlyUsageLog.find_or_create_by!(
       client_id: id,
       month: current_month_key
     )
+
+    # Initialize limits if they are 0 (newly created or not set)
+    if log.serp_api_limit == 0 && log.form_detection_limit == 0
+      subscription = current_subscription
+      if subscription
+        log.update(
+          serp_api_limit: subscription.serp_api_limit,
+          form_detection_limit: subscription.form_detection_limit
+        )
+      end
+    end
+
+    log
   end
 end

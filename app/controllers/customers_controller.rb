@@ -83,9 +83,14 @@ end
 
 def show
   @customer = Customer.find(params[:id])
+  # Clientは自分の顧客のみ閲覧可能、Adminは全権
+  if client_signed_in? && @customer.client_id != current_client.id
+    redirect_to customers_path, alert: 'アクセス権限がありません。'
+    return
+  end
   @submission_id = params[:submission_id]
   @all_ids = params[:all_ids].to_s.split(',').map(&:to_i)
-  
+
   # URLで指定されたインデックスを優先（見つからない場合のみ検索）
   @current_index = params[:current_index].present? ? params[:current_index].to_i : (@all_ids.index(@customer.id) || 0)
 
@@ -113,10 +118,19 @@ end
 
 def edit
   @customer = Customer.find(params[:id])
+  # Clientは自分の顧客のみ編集可能、Adminは全権
+  if client_signed_in? && @customer.client_id != current_client.id
+    redirect_to customers_path, alert: 'アクセス権限がありません。'
+  end
 end
 
 def update
   @customer = Customer.find(params[:id])
+  # Clientは自分の顧客のみ更新可能、Adminは全権
+  if client_signed_in? && @customer.client_id != current_client.id
+    redirect_to customers_path, alert: 'アクセス権限がありません。'
+    return
+  end
 
   # 1. 共通の属性変更（コミットボタンに応じたステータス調整）
   if params[:commit] == '対象外リストとして登録'
@@ -194,13 +208,24 @@ end
 
 def destroy
     @customer = Customer.find(params[:id])
+    # Clientは自分の顧客のみ削除可能、Adminは全権
+    if client_signed_in? && @customer.client_id != current_client.id
+      redirect_to customers_path, alert: 'アクセス権限がありません。'
+      return
+    end
     @customer.destroy
     redirect_to customers_path
   end
 
   def destroy_all
     checked_data = params[:deletes].keys # チェックされたデータを取得
-    deleted_count = Customer.where(id: checked_data).destroy_all # 削除処理を実行
+    # Clientは自分の顧客のみ削除可能、Adminは全権
+    if client_signed_in?
+      checked_customers = Customer.where(id: checked_data, client_id: current_client.id)
+    else
+      checked_customers = Customer.where(id: checked_data)
+    end
+    deleted_count = checked_customers.destroy_all # 削除処理を実行
     if deleted_count.present?
       redirect_to customers_path, notice: "draftから#{deleted_count.size}件削除しました。" # 削除件数を含めたメッセージ
     else
@@ -276,15 +301,17 @@ def draft
                                   .page(params[:serp_page])
                                   .per(20)
 
-  # 6. 残り抽出可能件数
+  # 6. 残り抽出可能件数（サブスクリプション制限を優先）
   raw_remaining      = ExtractTracking.remaining_extractable_count
   @serp_target_count = serp_target_base.count
 
-  @remaining_extractable = if client_signed_in? && !admin_signed_in?
-                             [raw_remaining, @serp_target_count].min
-                           else
-                             raw_remaining
-                           end
+  if client_signed_in? && !admin_signed_in?
+    monthly_log = current_client.monthly_usage_log
+    subscription_remaining = [monthly_log.serp_api_limit - monthly_log.serp_api_used, 0].max
+    @remaining_extractable = [subscription_remaining, @serp_target_count].min
+  else
+    @remaining_extractable = [raw_remaining, @serp_target_count].min
+  end
 
   # 7. ダッシュボード統計
   @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
@@ -305,6 +332,19 @@ end
     limit           = (params[:limit] || 100).to_i
     company_query   = params[:company_query].presence
     serp_target_ids = params[:serp_target_ids].presence
+
+    # サブスクリプション制限チェック（Clientの場合）
+    if client_signed_in? && !admin_signed_in?
+      monthly_log = current_client.monthly_usage_log
+      subscription_remaining = [monthly_log.serp_api_limit - monthly_log.serp_api_used, 0].max
+
+      if subscription_remaining <= 0
+        redirect_to draft_customers_path, alert: "今月のSERP API使用上限に達しています（#{monthly_log.serp_api_used}/#{monthly_log.serp_api_limit}）" and return
+      end
+
+      # リクエストされた件数が残り上限を超えている場合は制限する
+      limit = [limit, subscription_remaining].min
+    end
 
     # draft アクションのプレビューと同じ base_scope + serp_extraction_targets を使う
     # → プレビューに表示された企業と実際に実行される企業が一致する
@@ -335,6 +375,11 @@ end
                      # フォールバック：プレビューと同じ順序で取得
                      scope.order(id: :asc).limit(actual_limit).pluck(:id)
                    end
+
+    # サブスクリプション使用数を加算（Clientの場合）
+    if client_signed_in? && !admin_signed_in?
+      current_client.monthly_usage_log.increment!(:serp_api_used, actual_limit)
+    end
 
     begin
       SerpPipelineDbWorker.perform_async(industry, actual_limit, customer_ids)
@@ -538,8 +583,13 @@ end
   end
 
   def bulk_action
-    @customers = Customer.where(id: params[:deletes].keys)
-  
+    # Clientは自分の顧客のみ操作可能、Adminは全権
+    if client_signed_in?
+      @customers = Customer.where(id: params[:deletes].keys, client_id: current_client.id)
+    else
+      @customers = Customer.where(id: params[:deletes].keys)
+    end
+
     if params[:commit] == '一括更新'
       update_all_status
     elsif params[:commit] == '一括削除'
@@ -614,7 +664,14 @@ end
       return redirect_to(request.referer || form_submissions_path, alert: "不正な属性指定です。")
     end
 
-    duplicate_values = Customer
+    # Clientは自分の顧客のみ操作可能、Adminは全権
+    base_scope = if client_signed_in?
+                  Customer.where(client_id: current_client.id)
+                else
+                  Customer.all
+                end
+
+    duplicate_values = base_scope
       .where.not(attribute => nil)
       .where.not("TRIM(#{attribute}) = ''")
       .group(attribute)
@@ -625,7 +682,7 @@ end
 
     Customer.transaction do
       duplicate_values.each do |value|
-        ids = Customer.where(attribute => value).order(id: :asc).pluck(:id)
+        ids = base_scope.where(attribute => value).order(id: :asc).pluck(:id)
         ids.shift
         deleted_records = Customer.where(id: ids).destroy_all
         total_deleted += deleted_records.size

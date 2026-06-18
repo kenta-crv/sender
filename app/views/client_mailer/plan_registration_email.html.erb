@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+    .price-box { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border: 2px solid #667eea; }
+    .price-box h2 { margin: 0 0 10px 0; color: #667eea; }
+    .price-box .price { font-size: 32px; font-weight: bold; color: #333; }
+    .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>プラン登録完了のお知らせ</h1>
+    </div>
+    <div class="content">
+      <p><%= @client.name %> 様</p>
+      <p>この度は、Okurite（オクリテ）のプランをご登録いただき、誠にありがとうございます。</p>
+      <p>プラン登録が完了いたしました。以下の内容で登録されています。</p>
+      
+      <div class="price-box">
+        <h2><%= @subscription.plan_name %></h2>
+        <p class="price">¥<%= @payment ? number_with_delimiter(@payment.amount) : '0' %></p>
+        <% if @payment %>
+          <p>決済ID: <%= @payment.stripe_payment_intent_id %></p>
+        <% end %>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <tr style="border-bottom: 1px solid #ddd;">
+          <td style="padding: 10px; font-weight: bold;">プラン名</td>
+          <td style="padding: 10px;"><%= @subscription.plan_name %></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #ddd;">
+          <td style="padding: 10px; font-weight: bold;">金額</td>
+          <td style="padding: 10px;">¥<%= @payment ? number_with_delimiter(@payment.amount) : '0（無料トライアル）' %></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #ddd;">
+          <td style="padding: 10px; font-weight: bold;">登録日時</td>
+          <td style="padding: 10px;"><%= @subscription.created_at.strftime('%Y年%m月%d日 %H:%M') %></td>
+        </tr>
+        <% if @payment %>
+          <tr>
+            <td style="padding: 10px; font-weight: bold;">決済ID</td>
+            <td style="padding: 10px;"><%= @payment.stripe_payment_intent_id %></td>
+          </tr>
+        <% end %>
+      </table>
+
+      <p>このプランでご利用いただける機能と制限：</p>
+      <ul>
+        <li>フォーム送信：月間<%= number_with_delimiter(@subscription.delivery_limit) %>件まで</li>
+        <li>SERP API実行：月間<%= number_with_delimiter(@subscription.serp_api_limit) %>件まで</li>
+        <li>フォーム自動検出：月間<%= number_with_delimiter(@subscription.form_detection_limit) %>件まで</li>
+      </ul>
+
+      <p>ダッシュボードにログインして、すぐにサービスをご利用いただけます。</p>
+      
+      <%= link_to 'ダッシュボードへ移動', dashboard_index_url, class: 'button' %>
+      
+      <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
+      <p>今後ともよろしくお願いいたします。</p>
+    </div>
+    <div class="footer">
+      <p>株式会社J Work</p>
+      <p>〒105-0023 東京都港区浜松町２丁目２番１５号２Ｆ</p>
+      <p>Email: info@ri-plus.jp</p>
+    </div>
+  </div>
+</body>
+</html>

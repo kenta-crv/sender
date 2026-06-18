@@ -112,16 +112,26 @@ class SubmissionsController < ApplicationController
   end
 
   def scoped_submissions
-    admin_signed_in? ? Submission.all : Submission.where(client_id: current_client.id)
+    if admin_signed_in?
+      Submission.where(client_id: nil)
+    else
+      Submission.where(client_id: current_client.id)
+    end
   end
 
   def scoped_batches
-    admin_signed_in? ? FormSubmissionBatch.all : FormSubmissionBatch.where(client_id: current_client.id)
+    if admin_signed_in?
+      FormSubmissionBatch.where(client_id: nil)
+    else
+      FormSubmissionBatch.where(client_id: current_client.id)
+    end
   end
 
   def build_submission(params = {})
     if admin_signed_in?
-      Submission.new(params)
+      submission = Submission.new(params)
+      submission.client_id = nil
+      submission
     else
       current_client.submissions.new(params)
     end
@@ -135,7 +145,7 @@ class SubmissionsController < ApplicationController
     params.require(:submission).permit(
       :headline, :company, :person, :person_kana,
       :tel, :fax, :address, :email, :url,
-      :title, :content, :manual, :client_id
+      :title, :content, :manual
     )
   end
 end

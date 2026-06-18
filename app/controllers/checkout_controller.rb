@@ -45,7 +45,6 @@ class CheckoutController < ApplicationController
         @description = "無料トライアル (#{Subscription::TRIAL_DAYS}日間)"
         @amount = 0
 
-        # 確認画面での制限チェック
         if current_client.created_at < Subscription::TRIAL_DAYS.days.ago || current_client.subscriptions.exists?(plan_type: :trial)
           redirect_to plans_path,
                       alert: "無料トライアルは新規アカウントのみ利用できます。"
@@ -67,7 +66,6 @@ class CheckoutController < ApplicationController
       "[Checkout#create] plan_type=#{plan_type} campaign_id=#{campaign_id}"
     )
 
-    # トライアルの不正申請防止チェック
     if plan_type == "trial"
       if current_client.created_at < Subscription::TRIAL_DAYS.days.ago || current_client.subscriptions.exists?(plan_type: :trial)
         redirect_to plans_path, alert: "無料トライアルは新規アカウントのみ利用できます。"
@@ -99,7 +97,6 @@ class CheckoutController < ApplicationController
   def success
     session_id = params[:session_id]
 
-    # 万が一セッションIDがない場合のフォールバック（旧ロジック互換）
     if session_id.blank?
       @subscription = current_client.subscriptions.order(created_at: :desc).first
       @payment = current_client.payments.order(created_at: :desc).first
@@ -110,14 +107,11 @@ class CheckoutController < ApplicationController
     end
 
     begin
-      # 1. Stripeから最新のセッションオブジェクトをダイレクトに引っ張る
       @session = Stripe::Checkout::Session.retrieve(session_id)
-      
-      # 2. セッションから決済状態、金額、IDを確実に抽出（これでDB同期遅れによる画面バグを完全に破壊する）
+
       @amount = @session.amount_total
       @invoice_id = @session.invoice || @session.payment_intent
 
-      # 3. メタデータから今回の決済内容を安全に復元
       @plan_type = @session.metadata["plan_type"]
       @payment_type = @session.metadata["payment_type"]
 
@@ -127,32 +121,32 @@ class CheckoutController < ApplicationController
         @plan_name = "都度配信決済"
       end
 
-      # 4. 【重要】画面アクセス時の強制フォールバック同期（Webhook未到達対策のセーフティネット）
-      if @session.payment_status == "paid"
+      if @session.payment_status == "paid" || @session.payment_status == "no_payment_required"
         if @payment_type == "subscription" && @plan_type.present? && @session.subscription.present?
-          
+
           Subscription.transaction do
-            # 既存レコードがなければ作成、あれば最新化
             sub = current_client.subscriptions.find_or_initialize_by(stripe_subscription_id: @session.subscription)
             current_client.subscriptions.where.not(id: sub.id).update_all(status: :cancelled)
-            
+
             sub.update!(plan_type: @plan_type, status: :active)
             current_client.update!(
               subscription_plan: @plan_type,
               subscription_status: "active"
             )
           end
-          
-          # ビューのためにインスタンス変数を束ねる
+
           @subscription = current_client.subscriptions.find_by(stripe_subscription_id: @session.subscription)
-        
+
+          @payment = current_client.payments.find_by(stripe_payment_intent_id: @invoice_id) || current_client.payments.order(created_at: :desc).first
+          if @subscription
+            ClientMailer.plan_registration_email(current_client, @subscription, @payment).deliver_now
+          end
+
         elsif @payment_type == "campaign"
-          # キャンペーン（都度決済）の場合の同期確認
           campaign_id = @session.metadata["campaign_id"]
           if campaign_id.present?
             campaign = current_client.campaigns.find_by(id: campaign_id)
-            
-            # 既に売上レコード（Payment）がWebhook等で作られていない場合のみ、画面側でセーフティ作成
+
             payment_intent_id = @session.payment_intent || @session.id
             unless current_client.payments.exists?(stripe_payment_intent_id: payment_intent_id)
               current_client.payments.create!(
@@ -168,7 +162,6 @@ class CheckoutController < ApplicationController
         end
       end
 
-      # 既存ビューへの影響を最小限にするためのPaymentオブジェクトのフォールバック
       @payment = current_client.payments.find_by(stripe_payment_intent_id: @invoice_id) || current_client.payments.order(created_at: :desc).first
 
     rescue Stripe::StripeError => e
@@ -238,7 +231,6 @@ class CheckoutController < ApplicationController
       return
     end
 
-    # トライアル終了後の移行先をエンタープライズ(ENV["STRIPE_PRICE_ENTERPRISE"])に変更
     stripe_price_id = case plan_type
                       when "standard"
                         ENV["STRIPE_PRICE_STANDARD"]

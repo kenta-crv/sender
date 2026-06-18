@@ -21,10 +21,11 @@ Rails.application.routes.draw do
     get 'sending', to: 'dashboards#sending'
     get 'management', to: 'dashboards#management'
     get 'howto', to: 'dashboards#howto'
+    get 'click_tracking', to: 'dashboards#click_tracking'
 
 
     root "dashboards#index"
-    
+
     resource :subscription, only: [:show, :update] do
       get :cancel_confirm
       post :cancel

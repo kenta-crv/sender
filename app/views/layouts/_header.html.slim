@@ -27,7 +27,12 @@
               span.close-line
           ul.mobile-nav-list
             li
-              = link_to "トップページ", "/" , class: "nav-link-custom"        
+              = link_to "トップページ", "/" , class: "nav-link-custom"
+            li
+              - if client_signed_in?
+                = link_to "ログアウト", destroy_client_session_path, method: :delete, class: "nav-link-custom"
+              - else
+                = link_to "ログイン", new_client_session_path, class: "nav-link-custom"
             li
               a.nav-link-custom href="javascript:void(0)" data-target="service" サービス
             li
@@ -36,10 +41,6 @@
               a.nav-link-custom href="javascript:void(0)" data-target="case" 導入事例
           .mobile-nav-actions
             = image_tag "search.png", class: "search-icon", alt: "Search"
-            - if client_signed_in?
-              = link_to "ログアウト", destroy_client_session_path, method: :delete, class: "btn login-btn"
-            - else
-              = link_to "ログイン", new_client_session_path, class: "btn login-btn"
             button.btn.contact-btn.d-flex.align-items-center.gap-2
               a.nav-link-custom href="javascript:void(0)" data-target="inquiry" お問い合わせ
               = image_tag "arrow-down.png", class: "arrow-icon", alt: "Arrow"

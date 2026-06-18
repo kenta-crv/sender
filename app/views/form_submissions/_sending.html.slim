@@ -133,7 +133,7 @@
           .col-md-4
             label.sc-detect__card-body.p-0.mb-2 送信内容
             = select_tag :submission_id,\
-              options_for_select([['-- 送信内容を選択してください --', '']] + (@submissions || []).map { |s| [s.title, s.id] }, params[:submission_id]),\
+              options_for_select([['-- 送信内容を選択してください --', '']] + (@submissions || []).map { |s| [(s.title.presence || s.headline.presence || "Submission ##{s.id}"), s.id] }, params[:submission_id]),\
               required: true,\
               class: 'sc-detect__select'
 

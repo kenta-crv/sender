@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_06_11_074005) do
+ActiveRecord::Schema.define(version: 2026_06_16_072955) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -260,6 +260,10 @@ ActiveRecord::Schema.define(version: 2026_06_11_074005) do
     t.integer "sent_count", default: 0, null: false
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.integer "serp_api_limit", default: 0, null: false
+    t.integer "serp_api_used", default: 0, null: false
+    t.integer "form_detection_limit", default: 0, null: false
+    t.integer "form_detection_used", default: 0, null: false
     t.index ["client_id", "month"], name: "index_monthly_usage_logs_on_client_id_and_month", unique: true
     t.index ["client_id"], name: "index_monthly_usage_logs_on_client_id"
   end

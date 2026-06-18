@@ -7,16 +7,11 @@ class Dashboard::DashboardsController < ApplicationController
   before_action :set_base_scope, except: [:setting, :management]
 
 def index
-  # 「送信可能顧客（contact_url有）」についてのみ、現在のログインClientに縛られず、
-  # システム全体の Customer から重複なし・クリーンな状態で全件数を強制取得
   @total_customers_count = Customer.unscoped.where.not(contact_url: [nil, '', 'not_detected']).count
 
-  # その他の項目（フォーム未検出、URL未設定）については、ログイン中のベーススコープ（既存の絞り込み仕様）を維持しつつ、
-  # left_joins による集計バグを回避するため unscope(:joins) を適用して安全にカウント
   @not_detected_count = @base_customers.unscope(:joins).where(contact_url: 'not_detected').count
   @no_url_customers_count = @base_customers.unscope(:joins).where(contact_url: [nil, '']).where(url: [nil, '']).count
 
-  # 画面描画用・検索用の既存ロジック（そのまま維持します）
   @q = @base_customers.ransack(params[:q])
   filtered = @q.result(distinct: true)
 
@@ -26,17 +21,18 @@ def index
   @business_options = generate_options(:business)
   @genre_options = generate_options(:genre)
 
-  if client_signed_in?
+  if admin_signed_in?
+    if params[:client_id].present?
+      client = Client.find(params[:client_id])
+      @submissions = client.submissions.order(created_at: :desc)
+      @batches = client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(10)
+    else
+      @submissions = Submission.all.order(created_at: :desc)
+      @batches = FormSubmissionBatch.all.order(created_at: :desc).page(params[:page]).per(10)
+    end
+  elsif client_signed_in?
     @submissions = current_client.submissions.order(created_at: :desc)
     @batches = current_client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(10)
-  elsif admin_signed_in?
-    if params[:client_id].present?
-      @submissions = Submission.where(client_id: params[:client_id]).order(created_at: :desc)
-      @batches = FormSubmissionBatch.where(client_id: params[:client_id]).order(created_at: :desc).page(params[:page]).per(10)
-    else
-      @submissions = Submission.order(created_at: :desc)
-      @batches = FormSubmissionBatch.order(created_at: :desc).page(params[:page]).per(10)
-    end
   else
     @submissions = Submission.none
     @batches = FormSubmissionBatch.none
@@ -45,12 +41,14 @@ def index
   current_month_range = Time.current.beginning_of_month..Time.current.end_of_month
 
   scope =
-    if client_signed_in?
-      current_client.form_submission_batches
-    elsif admin_signed_in? && params[:client_id].present?
+    if admin_signed_in? && params[:client_id].present?
       FormSubmissionBatch.where(client_id: params[:client_id])
-    else
+    elsif admin_signed_in?
       FormSubmissionBatch.all
+    elsif client_signed_in?
+      current_client.form_submission_batches
+    else
+      FormSubmissionBatch.none
     end
 
   @monthly_batches = scope.where(created_at: current_month_range)
@@ -62,13 +60,36 @@ def index
   @success_rate =
     @total_sent.positive? ? ((@total_success.to_f / @total_sent) * 100).round(1) : 0
 
+  # SERPAPI and form detection limits
+  if admin_signed_in? && params[:client_id].present?
+    client = Client.find(params[:client_id])
+    monthly_log = client.monthly_usage_log
+    @serp_api_limit = monthly_log.serp_api_limit
+    @serp_api_used = monthly_log.serp_api_used
+    @form_detection_limit = monthly_log.form_detection_limit
+    @form_detection_used = monthly_log.form_detection_used
+  elsif client_signed_in?
+    monthly_log = current_client.monthly_usage_log
+    @serp_api_limit = monthly_log.serp_api_limit
+    @serp_api_used = monthly_log.serp_api_used
+    @form_detection_limit = monthly_log.form_detection_limit
+    @form_detection_used = monthly_log.form_detection_used
+  else
+    @serp_api_limit = 0
+    @serp_api_used = 0
+    @form_detection_limit = 0
+    @form_detection_used = 0
+  end
+
   click_scope =
-    if client_signed_in?
-      ClickTrackingLink.where(client_id: current_client.id)
-    elsif admin_signed_in? && params[:client_id].present?
+    if admin_signed_in? && params[:client_id].present?
       ClickTrackingLink.where(client_id: params[:client_id])
-    else
+    elsif admin_signed_in?
       ClickTrackingLink.all
+    elsif client_signed_in?
+      ClickTrackingLink.where(client_id: current_client.id)
+    else
+      ClickTrackingLink.none
     end
 
   click_scope = click_scope.where(created_at: current_month_range)
@@ -82,7 +103,6 @@ def index
     .where("last_clicked_at <= ?", Time.current)
     .count
 
-  # クリックレートの分母を送信総数(@total_sent)から送信成功数(@total_success)に変更
   @click_rate =
     @total_success.positive? ? ((@clicked_users_count.to_f / @total_success) * 100).round(1) : 0
 end
@@ -90,10 +110,7 @@ end
   def history
     @q = @base_customers.ransack(params[:q])
 
-    if client_signed_in?
-      @batches = current_client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(20)
-      @submissions = current_client.submissions.order(created_at: :desc)
-    elsif admin_signed_in?
+    if admin_signed_in?
       if params[:client_id].present?
         @batches = FormSubmissionBatch.where(client_id: params[:client_id]).order(created_at: :desc).page(params[:page]).per(20)
         @submissions = Submission.where(client_id: params[:client_id]).order(created_at: :desc)
@@ -101,6 +118,9 @@ end
         @batches = FormSubmissionBatch.order(created_at: :desc).page(params[:page]).per(20)
         @submissions = Submission.order(created_at: :desc)
       end
+    elsif client_signed_in?
+      @batches = current_client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(20)
+      @submissions = current_client.submissions.order(created_at: :desc)
     else
       @batches = FormSubmissionBatch.none
       @submissions = Submission.none
@@ -108,7 +128,7 @@ end
 
     @submission_stats = @submissions.map do |submission|
       batches = submission.form_submission_batches
-      batches = batches.where(client_id: current_client.id) if client_signed_in?
+      batches = batches.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
 
       {
         submission: submission,
@@ -152,10 +172,12 @@ end
                             .or(query_scope.where(calls: { status: excluded_statuses }))
                             .distinct.count
 
-    if client_signed_in?
+    if admin_signed_in?
+      @submissions = Submission.where(client_id: nil).order(created_at: :desc)
+    elsif client_signed_in?
       @submissions = current_client.submissions.order(created_at: :desc)
     else
-      @submissions = Submission.order(created_at: :desc)
+      @submissions = Submission.none
     end
   end
 
@@ -172,17 +194,15 @@ end
     @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
     @no_url_customers_count = @base_customers.where(contact_url: [nil, '']).where(url: [nil, '']).count
 
-    @submissions = client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none
+    @submissions = admin_signed_in? ? Submission.where(client_id: nil).order(created_at: :desc) : (client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none)
   end
 
   def setting; end
 
-def management
+  def management
     start_of_month = Time.current.beginning_of_month
     end_of_month   = Time.current.end_of_month
 
-    # 各Clientに完全に1対1で紐づく、monthly_usage_logsの最新のsent_countをピンポイントで取得します。
-    # サブクエリ形式にすることで、結合によるデータの重複や他クライアントとの数値の混ざりを完全に防ぎます。
     @clients = Client.select(
                        'clients.*',
                        "(SELECT sent_count FROM monthly_usage_logs WHERE monthly_usage_logs.client_id = clients.id AND monthly_usage_logs.created_at BETWEEN '#{start_of_month.to_s(:db)}' AND '#{end_of_month.to_s(:db)}' ORDER BY monthly_usage_logs.id DESC LIMIT 1) AS current_month_sends"
@@ -193,6 +213,28 @@ def management
 
   def howto; end
 
+def click_tracking
+    click_scope =
+      if admin_signed_in?
+        if params[:client_id].present?
+          ClickTrackingLink.where(client_id: params[:client_id])
+        else
+          ClickTrackingLink.all
+        end
+      elsif client_signed_in?
+        ClickTrackingLink.where(client_id: current_client.id)
+      else
+        ClickTrackingLink.none
+      end
+
+    # 修正箇所: :submission を外し、元の :click_logs に戻します
+    @clicked_links = click_scope.where.not(clicked_count: nil)
+                                  .where("clicked_count > 0")
+                                  .includes(:customer, :click_logs)
+                                  .order(last_clicked_at: :desc)
+                                  .page(params[:page])
+                                  .per(20)
+  end
   private
 
   def authenticate_any!
@@ -238,8 +280,10 @@ def management
       else
         @base_customers = Customer.all.includes(:last_form_call).left_joins(:calls).distinct
       end
-    else
+    elsif client_signed_in?
       @base_customers = Customer.where(client_id: current_client.id).includes(:last_form_call).left_joins(:calls).distinct
+    else
+      @base_customers = Customer.none
     end
   end
 

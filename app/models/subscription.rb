@@ -31,6 +31,18 @@ class Subscription < ApplicationRecord
     enterprise: 40_000
   }.freeze
 
+  PLAN_SERP_API_LIMITS = {
+    trial: 10,
+    standard: 1000,
+    enterprise: 3000
+  }.freeze
+
+  PLAN_FORM_DETECTION_LIMITS = {
+    trial: 100,
+    standard: 15_000,
+    enterprise: 40_000
+  }.freeze
+
   TRIAL_DAYS = 10
 
   def plan_name
@@ -43,6 +55,14 @@ class Subscription < ApplicationRecord
 
   def delivery_limit
     PLAN_DELIVERY_LIMITS[plan_type.to_sym] || 0
+  end
+
+  def serp_api_limit
+    PLAN_SERP_API_LIMITS[plan_type.to_sym] || 0
+  end
+
+  def form_detection_limit
+    PLAN_FORM_DETECTION_LIMITS[plan_type.to_sym] || 0
   end
 
   def unlimited?

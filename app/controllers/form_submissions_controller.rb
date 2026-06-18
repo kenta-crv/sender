@@ -251,7 +251,7 @@ def index
     end
 
     # 遷移先の判定
-    if client_signed_in?
+    if client_signed_in? || admin_signed_in?
       redirect_to dashboard_index_path, notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
     else
       redirect_to form_submission_path(batch), notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
@@ -493,6 +493,27 @@ def import_customers
         redirect_to form_submissions_path, alert: '検出対象の顧客が選択されていません。'
       end
       return
+    end
+
+    # サブスクリプション制限チェック（Clientの場合）
+    if client_signed_in? && !admin_signed_in?
+      monthly_log = current_client.monthly_usage_log
+      subscription_remaining = [monthly_log.form_detection_limit - monthly_log.form_detection_used, 0].max
+
+      if subscription_remaining <= 0
+        redirect_to dashboard_index_path, alert: "今月のフォーム検出使用上限に達しています（#{monthly_log.form_detection_used}/#{monthly_log.form_detection_limit}）"
+        return
+      end
+
+      # リクエストされた件数が残り上限を超えている場合は制限する
+      if customer_ids.size > subscription_remaining
+        customer_ids = customer_ids.first(subscription_remaining)
+        redirect_to dashboard_index_path, alert: "残り上限（#{subscription_remaining}件）を超えているため、#{subscription_remaining}件のみ処理します。"
+        return
+      end
+
+      # 使用数を加算
+      monthly_log.increment!(:form_detection_used, customer_ids.size)
     end
 
     # 並列処理: 各顧客を独立したジョブとしてキューに投入

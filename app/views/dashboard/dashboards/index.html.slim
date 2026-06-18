@@ -30,7 +30,7 @@
             = number_with_delimiter(@total_sent.to_i)
             span.unit 件
 
-          p.resets-in 今月の送信実行総数
+          p.resets-in 送信実行総数
 
           .mini-rate
             - if current_client.present?
@@ -67,6 +67,32 @@
           .mini-rate
             = "#{@click_rate}% CTR"
 
+      / ===== SERPAPI & Form Detection Limits =====
+      .stats-grid.mt-4
+        .glass-card
+          .card-label SERP API
+          .card-value
+            = number_with_delimiter(@serp_api_limit)
+            span.unit 件
+
+          p.resets-in 上限
+
+          .mini-rate
+            - remaining_serp = [@serp_api_limit - @serp_api_used, 0].max
+            = "残り: #{number_with_delimiter(remaining_serp)} 件"
+
+        .glass-card
+          .card-label Form Detection
+          .card-value
+            = number_with_delimiter(@form_detection_limit)
+            span.unit 件
+
+          p.resets-in 上限
+
+          .mini-rate
+            - remaining_form = [@form_detection_limit - @form_detection_used, 0].max
+            = "残り: #{number_with_delimiter(remaining_form)} 件"
+
       / ===== Recent Batches =====
       .history-section.mt-5
         .glass-card
@@ -80,21 +106,43 @@
               | View All
               i.fas.fa-chevron-right.ms-2 style="font-size: 0.75rem;"
 
-          table.okurite-table
+          / テーブル幅の固定と均等配置のためのスタイルを追加
+          table.okurite-table style="table-layout: fixed; width: 100%;"
             thead
               tr
-                th Date
-                th Title
-                th Target
-                th Progress
-                th Status
+                th style="width: 12%;" Date
+                th style="width: 35%;" Title
+                th style="width: 10%;" Target
+                th style="width: 10%;" Sender
+                th style="width: 10%;" Sender ID
+                th style="width: 13%;" Progress
+                th style="width: 10%;" Status
 
             tbody
               - (@batches || []).first(5).each do |batch|
                 tr
                   td = batch.created_at.strftime('%Y/%m/%d')
-                  td = batch.submission&.title || 'Default'
+                  / タイトルの省略処理とホバー時のツールチップ（title属性）を追加
+                  td
+                    .text-ellipsis style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="#{batch.submission&.title || 'Default'}"
+                      = batch.submission&.title || 'Default'
                   td = number_with_delimiter(batch.total_count)
+
+                  td
+                    - if batch.client.present?
+                      span.text-blue Client
+                    - elsif batch.admin.present?
+                      span.text-green Admin
+                    - else
+                      span.text-muted -
+
+                  td
+                    - if batch.client.present?
+                      = batch.client.id
+                    - elsif batch.admin.present?
+                      = batch.admin.id
+                    - else
+                      span.text-muted -
 
                   td
                     - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round : 0
@@ -145,14 +193,17 @@
           .card-header-flex
             h5.m-0 Submission Performance
 
-          table.okurite-table
+          / テーブル幅の固定と均等配置のためのスタイルを追加
+          table.okurite-table style="table-layout: fixed; width: 100%;"
             thead
               tr
-                th Submission
-                th Total
-                th Success
-                th Failure
-                th Rate
+                th style="width: 35%;" Submission
+                th style="width: 11%;" Sender
+                th style="width: 11%;" Sender ID
+                th style="width: 11%;" Total
+                th style="width: 11%;" Success
+                th style="width: 11%;" Failure
+                th style="width: 10%;" Rate
 
             tbody
               - @submissions.each do |submission|
@@ -161,9 +212,28 @@
                 - success = batches.sum(:success_count)
                 - failure = batches.sum(:failure_count)
                 - rate = total > 0 ? ((success.to_f / total) * 100).round(1) : 0
+                - sender_client = batches.first&.client
+                - sender_admin = batches.first&.admin
 
                 tr
-                  td = submission.title
+                  / タイトルの省略処理とホバー時のツールチップ（title属性）を追加
+                  td
+                    .text-ellipsis style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="#{submission.title}"
+                      = submission.title
+                  td
+                    - if sender_client.present?
+                      span.text-blue Client
+                    - elsif sender_admin.present?
+                      span.text-green Admin
+                    - else
+                      span.text-muted -
+                  td
+                    - if sender_client.present?
+                      = sender_client.id
+                    - elsif sender_admin.present?
+                      = sender_admin.id
+                    - else
+                      span.text-muted -
                   td = total
                   td = success
                   td = failure
@@ -198,10 +268,7 @@
         const closeBtn = document.getElementById('closeTrialModal');
 
         if (overlay && closeBtn) {
-          // キャッシュ対策として一度確実にクラスを取り除き、クリーンな状態で表示
           overlay.classList.remove('is-visible');
-          
-          // 強制リロードやイベント多重発火の原因になる window.location 関連の記述がないことを確定
           overlay.classList.add('is-visible');
 
           closeBtn.onclick = (e) => {
@@ -217,7 +284,5 @@
         }
       };
 
-      // Turbo環境下で確実に1度だけ実行させるためのイベント管理
-      // DOMContentLoaded との重複発火を防ぐため、ベースは turbo:load に一本化します
       document.addEventListener('turbo:load', initTrialModal);
     })();
