@@ -1,0 +1,30 @@
+<p>以下の内容で問題報告がありました。</p>
+
+<table>
+  <tr>
+    <th>会社名</th>
+    <td><%= @problem.company %></td>
+  </tr>
+  <tr>
+    <th>メールアドレス</th>
+    <td><%= @problem.email %></td>
+  </tr>
+  <tr>
+    <th>内容</th>
+    <td>
+      <% if @problem.respond_to?(:message) && @problem.message.present? %>
+        <%= simple_format(@problem.message) %>
+      <% elsif @problem.respond_to?(:body) && @problem.body.present? %>
+        <%= simple_format(@problem.body) %>
+      <% else %>
+        <span style="color: #999;">（内容なし）</span>
+      <% end %>
+    </td>
+  </tr>
+</table>
+
+<% if @problem.photo.present? %>
+  <p>添付された写真:</p>
+  <p>
+    <%= image_tag attachments[@problem.photo.identifier].url, width: 400 %>
+  </p>

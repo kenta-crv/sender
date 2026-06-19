@@ -32,6 +32,14 @@ html lang="ja"
       / トライアルプランなどでの不整合を防ぐため、subscription_active? を使わず、
       / ログイン中かつプランが空（none）でなければ確実に DASHBOARD へのリンクを出すよう修正
       - if client_signed_in? && current_client.subscription_plan != 'none' && current_client.subscription_plan.present?
+        = link_to new_problem_path, target: '_blank', class: 'contact-box login-mode' do
+          .icon-container
+            span.login-icon
+              i.fas.fa-sign-in-alt
+          .text-container
+            span Problem
+            small 問題報告
+
         = link_to dashboard_index_path, class: 'contact-box dashboard-mode' do
           .icon-container
             span.dashboard-icon

@@ -141,4 +141,6 @@ Rails.application.routes.draw do
   get '/unsubscribe/:token', to: 'unsubscribes#show', as: :unsubscribe
   post '/webhooks/stripe', to: 'webhooks#stripe'
   get '/l/:token', to: 'click_tracking#redirect', as: :click_tracking
+
+  resources :problems
 end

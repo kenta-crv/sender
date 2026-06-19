@@ -11,7 +11,8 @@
     .price-box { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border: 2px solid #667eea; }
     .price-box h2 { margin: 0 0 10px 0; color: #667eea; }
     .price-box .price { font-size: 32px; font-weight: bold; color: #333; }
-    .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    /* メールのインライン表示に対応できるようにカラーの視認性を考慮 */
+    .button { display: inline-block; background: #667eea; color: #ffffff !important; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
     .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
   </style>
 </head>
@@ -21,14 +22,14 @@
       <h1>プラン登録完了のお知らせ</h1>
     </div>
     <div class="content">
-      <p><%= @client.name %> 様</p>
+      <p><%= @client.respond_to?(:name) ? @client.name : 'お客様' %> 様</p>
       <p>この度は、Okurite（オクリテ）のプランをご登録いただき、誠にありがとうございます。</p>
       <p>プラン登録が完了いたしました。以下の内容で登録されています。</p>
       
       <div class="price-box">
-        <h2><%= @subscription.plan_name %></h2>
+        <h2><%= @subscription&.plan_name.presence || "登録プラン" %></h2>
         <p class="price">¥<%= @payment ? number_with_delimiter(@payment.amount) : '0' %></p>
-        <% if @payment %>
+        <% if @payment.respond_to?(:stripe_payment_intent_id) && @payment.stripe_payment_intent_id.present? %>
           <p>決済ID: <%= @payment.stripe_payment_intent_id %></p>
         <% end %>
       </div>
@@ -36,7 +37,7 @@
       <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
         <tr style="border-bottom: 1px solid #ddd;">
           <td style="padding: 10px; font-weight: bold;">プラン名</td>
-          <td style="padding: 10px;"><%= @subscription.plan_name %></td>
+          <td style="padding: 10px;"><%= @subscription&.plan_name.presence || "登録プラン" %></td>
         </tr>
         <tr style="border-bottom: 1px solid #ddd;">
           <td style="padding: 10px; font-weight: bold;">金額</td>
@@ -44,9 +45,9 @@
         </tr>
         <tr style="border-bottom: 1px solid #ddd;">
           <td style="padding: 10px; font-weight: bold;">登録日時</td>
-          <td style="padding: 10px;"><%= @subscription.created_at.strftime('%Y年%m月%d日 %H:%M') %></td>
+          <td style="padding: 10px;"><%= @subscription&.created_at ? @subscription.created_at.strftime('%Y年%m月%d日 %H:%M') : Time.current.strftime('%Y年%m月%d日 %H:%M') %></td>
         </tr>
-        <% if @payment %>
+        <% if @payment.respond_to?(:stripe_payment_intent_id) && @payment.stripe_payment_intent_id.present? %>
           <tr>
             <td style="padding: 10px; font-weight: bold;">決済ID</td>
             <td style="padding: 10px;"><%= @payment.stripe_payment_intent_id %></td>
@@ -56,9 +57,9 @@
 
       <p>このプランでご利用いただける機能と制限：</p>
       <ul>
-        <li>フォーム送信：月間<%= number_with_delimiter(@subscription.delivery_limit) %>件まで</li>
-        <li>SERP API実行：月間<%= number_with_delimiter(@subscription.serp_api_limit) %>件まで</li>
-        <li>フォーム自動検出：月間<%= number_with_delimiter(@subscription.form_detection_limit) %>件まで</li>
+        <li>フォーム送信：月間<%= @subscription.respond_to?(:delivery_limit) ? number_with_delimiter(@subscription.delivery_limit) : 0 %>件まで</li>
+        <li>SERP API実行：月間<%= @subscription.respond_to?(:serp_api_limit) ? number_with_delimiter(@subscription.serp_api_limit) : 0 %>件まで</li>
+        <li>フォーム自動検出：月間<%= @subscription.respond_to?(:form_detection_limit) ? number_with_delimiter(@subscription.form_detection_limit) : 0 %>件まで</li>
       </ul>
 
       <p>ダッシュボードにログインして、すぐにサービスをご利用いただけます。</p>
@@ -70,7 +71,7 @@
     </div>
     <div class="footer">
       <p>株式会社J Work</p>
-      <p>〒105-0023 東京都港区浜松町２丁目２番１５号２Ｆ</p>
+      <p>〒105-0023 東京都港区浜松町２丁目２番１5号２Ｆ</p>
       <p>Email: info@ri-plus.jp</p>
     </div>
   </div>

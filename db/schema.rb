@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_06_16_072955) do
+ActiveRecord::Schema.define(version: 2026_06_18_062922) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -281,6 +281,15 @@ ActiveRecord::Schema.define(version: 2026_06_16_072955) do
     t.index ["payjp_charge_id"], name: "index_payments_on_payjp_charge_id"
     t.index ["status"], name: "index_payments_on_status"
     t.index ["stripe_payment_intent_id"], name: "index_payments_on_stripe_payment_intent_id", unique: true
+  end
+
+  create_table "problems", force: :cascade do |t|
+    t.string "company"
+    t.string "email"
+    t.string "body"
+    t.string "photo"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
   end
 
   create_table "serp_enrichment_run_targets", force: :cascade do |t|
