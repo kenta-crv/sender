@@ -20,14 +20,19 @@ class Customer < ApplicationRecord
   }
 
   # プレビュー（draft画面）と実行（execute_from_db）で同じ条件を使うための共通スコープ。
-  # serp_status が未処理（NULL/'') かつ tel/url/contact_url のいずれかが空の企業が対象。
-  scope :serp_extraction_targets, -> {
-    where(serp_status: [nil, ''])
-      .where(
-        "(tel IS NULL OR TRIM(tel) = '') OR " \
-        "(url IS NULL OR TRIM(url) = '') OR " \
-        "(contact_url IS NULL OR TRIM(contact_url) = '')"
+  scope :serp_extraction_targets, ->(fill_filter = nil) {
+    base = where(serp_status: [nil, ''])
+    
+    if fill_filter.present?
+      # 画面で充足フィルタが選択されている場合は、その条件に限定する
+      base.apply_fill_filter(fill_filter)
+    else
+      # 【修正】SQLite3対応: tel と url の両方が「nil、空文字、半角スペース、全角スペースのみ」である企業を厳密にAND結合で抽出
+      base.where(
+        "(tel IS NULL OR TRIM(tel) = '' OR tel = ' ') AND " \
+        "(url IS NULL OR TRIM(url) = '' OR url = ' ')"
       )
+    end
   }
 
   def self.ransackable_associations(auth_object = nil)
@@ -100,22 +105,22 @@ class Customer < ApplicationRecord
   def self.apply_fill_filter(fill_filter)
     case fill_filter
     when "missing_tel"
-      where("tel IS NULL OR TRIM(tel) = ''")
+      where("tel IS NULL OR TRIM(tel) = '' OR tel = ' '")
     when "missing_address"
-      where("address IS NULL OR TRIM(address) = ''")
+      where("address IS NULL OR TRIM(address) = '' OR address = ' '")
     when "missing_url"
-      where("url IS NULL OR TRIM(url) = ''")
+      where("url IS NULL OR TRIM(url) = '' OR url = ' '")
     when "missing_contact_url"
-      where("contact_url IS NULL OR TRIM(contact_url) = ''")
+      where("contact_url IS NULL OR TRIM(contact_url) = '' OR contact_url = ' '")
     when "fully_enriched"
-      where.not(tel: [nil, '', ' '])
-           .where.not(address: [nil, '', ' '])
-           .where.not(url: [nil, '', ' '])
-           .where.not(contact_url: [nil, '', ' '])
+      where.not(tel: [nil, '', ' ', ' '])
+           .where.not(address: [nil, '', ' ', ' '])
+           .where.not(url: [nil, '', ' ', ' '])
+           .where.not(contact_url: [nil, '', ' ', ' '])
     when "done_missing_tel"
-      where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = ''")
+      where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = '' OR tel = ' '")
     when "done_missing_address"
-      where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = ''")
+      where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = '' OR address = ' '")
     else
       all
     end
@@ -152,8 +157,8 @@ class Customer < ApplicationRecord
     end
   end
 
-  def self.calculate_serp_target_count(base_scope)
-    base_scope.serp_extraction_targets.count
+  def self.calculate_serp_target_count(base_scope, fill_filter = nil)
+    base_scope.serp_extraction_targets(fill_filter).count
   end
 
   def self.calculate_dashboard_stats(base_scope)
@@ -170,14 +175,14 @@ class Customer < ApplicationRecord
         error:    status_counts["serp_error"].to_i
       },
       fill: {
-        tel:         base_scope.where.not(tel: [nil, '', ' ']).count,
-        address:     base_scope.where.not(address: [nil, '', ' ']).count,
-        url:         base_scope.where.not(url: [nil, '', ' ']).count,
-        contact_url: base_scope.where.not(contact_url: [nil, '', ' ']).count,
-        full:        base_scope.where.not(tel: [nil, '', ' '])
-                               .where.not(address: [nil, '', ' '])
-                               .where.not(url: [nil, '', ' '])
-                               .where.not(contact_url: [nil, '', ' '])
+        tel:         base_scope.where.not(tel: [nil, '', ' ', ' ']).count,
+        address:     base_scope.where.not(address: [nil, '', ' ', ' ']).count,
+        url:         base_scope.where.not(url: [nil, '', ' ', ' ']).count,
+        contact_url: base_scope.where.not(contact_url: [nil, '', ' ', ' ']).count,
+        full:        base_scope.where.not(tel: [nil, '', ' ', ' '])
+                               .where.not(address: [nil, '', ' ', ' '])
+                               .where.not(url: [nil, '', ' ', ' '])
+                               .where.not(contact_url: [nil, '', ' ', ' '])
                                .count
       }
     }

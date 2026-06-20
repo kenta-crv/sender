@@ -247,82 +247,82 @@ def destroy
   end
 
 def draft
-  start_time = Time.current
+    start_time = Time.current
 
-  # 1. 期間パラメータのパース
-  parse_period_params
+    # 1. 期間パラメータのパース
+    parse_period_params
 
-  # 2. 権限や業種に応じたベーススコープをモデルから取得
-  base_scope = Customer.draft_base_scope(
-    current_client_id: client_signed_in? ? current_client.id : nil,
-    is_admin:          admin_signed_in?,
-    industry_name:     params[:industry_name]
-  )
+    # 2. 権限や業種に応じたベーススコープをモデルから取得
+    base_scope = Customer.draft_base_scope(
+      current_client_id: client_signed_in? ? current_client.id : nil,
+      is_admin:          admin_signed_in?,
+      industry_name:     params[:industry_name]
+    )
 
-  # 社名検索パラメータの取得
-  @company_query = params[:company_query].presence
+    # 社名検索パラメータの取得
+    @company_query = params[:company_query].presence
 
-  # 3. 未抽出・補完対象（@serp_targets）用スコープ
-  #    draft アクションと serp_search アクションで同じ定義を使うことでズレを防ぐ
-  serp_target_base = base_scope.serp_extraction_targets
+    # 3. 未抽出・補完対象（@serp_targets）用スコープ
+    #    画面の充足条件フィルタ（params[:fill_filter]）をモデルに渡して完全一致させる
+    serp_target_base = base_scope.serp_extraction_targets(params[:fill_filter])
 
-  if @company_query.present?
-    serp_target_base = filter_company_query(serp_target_base, @company_query)
+    if @company_query.present?
+      serp_target_base = filter_company_query(serp_target_base, @company_query)
+    end
+
+    # 4. 画面表示用メインリストの絞り込み
+    main_scope = base_scope
+    main_scope = filter_company_query(main_scope, @company_query) if @company_query.present?
+
+    @customers = main_scope
+                   .apply_status_filter(params[:status_filter])
+                   .apply_serp_status_filter(params[:serp_status_filter])
+                   .apply_tel_role_filter(
+                     is_admin:   admin_signed_in?,
+                     is_worker:  worker_signed_in?,
+                     tel_filter: params[:tel_filter]
+                   )
+                   .apply_fill_filter(params[:fill_filter])
+                   .apply_updated_at_filter(
+                     params[:updated_from],
+                     params[:updated_to],
+                     params[:updated_today]
+                   )
+                   .apply_created_at_range(@range_start, @range_end)
+                   .order(updated_at: :desc)
+                   .includes(:worker)
+                   .page(params[:page])
+                   .per(100)
+
+    @filtered_count = @customers.total_count
+
+    # 5. SERP一覧（20件ページネーション）
+    @serp_targets = serp_target_base.order(id: :asc)
+                                    .page(params[:serp_page])
+                                    .per(20)
+
+    # 6. 残り抽出可能件数（サブスクリプション制限を優先）
+    raw_remaining      = ExtractTracking.remaining_extractable_count
+    @serp_target_count = serp_target_base.count
+
+    if client_signed_in? && !admin_signed_in?
+      monthly_log = current_client.monthly_usage_log
+      subscription_remaining = [monthly_log.serp_api_limit - monthly_log.serp_api_used, 0].max
+      @remaining_extractable = [subscription_remaining, @serp_target_count].min
+    else
+      @remaining_extractable = [raw_remaining, @serp_target_count].min
+    end
+
+    # 7. ダッシュボード統計
+    @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
+
+    # ビュー側「SERP API START」に渡す上限
+    @max_search_limit = admin_signed_in? ? @serp_target_count
+                                         : [@serp_target_count, @remaining_extractable].min
+
+    elapsed = ((Time.current - start_time) * 1000).round(2)
+    Rails.logger.info("draft action: completed in #{elapsed}ms")
   end
-
-  # 4. 画面表示用メインリストの絞り込み
-  main_scope = base_scope
-  main_scope = filter_company_query(main_scope, @company_query) if @company_query.present?
-
-  @customers = main_scope
-                 .apply_status_filter(params[:status_filter])
-                 .apply_serp_status_filter(params[:serp_status_filter])
-                 .apply_tel_role_filter(
-                   is_admin:   admin_signed_in?,
-                   is_worker:  worker_signed_in?,
-                   tel_filter: params[:tel_filter]
-                 )
-                 .apply_fill_filter(params[:fill_filter])
-                 .apply_updated_at_filter(
-                   params[:updated_from],
-                   params[:updated_to],
-                   params[:updated_today]
-                 )
-                 .apply_created_at_range(@range_start, @range_end)
-                 .order(updated_at: :desc)
-                 .includes(:worker)
-                 .page(params[:page])
-                 .per(100)
-
-  @filtered_count = @customers.total_count
-
-  # 5. SERP一覧（20件ページネーション）
-  @serp_targets = serp_target_base.order(id: :asc)
-                                  .page(params[:serp_page])
-                                  .per(20)
-
-  # 6. 残り抽出可能件数（サブスクリプション制限を優先）
-  raw_remaining      = ExtractTracking.remaining_extractable_count
-  @serp_target_count = serp_target_base.count
-
-  if client_signed_in? && !admin_signed_in?
-    monthly_log = current_client.monthly_usage_log
-    subscription_remaining = [monthly_log.serp_api_limit - monthly_log.serp_api_used, 0].max
-    @remaining_extractable = [subscription_remaining, @serp_target_count].min
-  else
-    @remaining_extractable = [raw_remaining, @serp_target_count].min
-  end
-
-  # 7. ダッシュボード統計
-  @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
-
-  # ビュー側「SERP API START」に渡す上限
-  @max_search_limit = admin_signed_in? ? @serp_target_count
-                                       : [@serp_target_count, @remaining_extractable].min
-
-  elapsed = ((Time.current - start_time) * 1000).round(2)
-  Rails.logger.info("draft action: completed in #{elapsed}ms")
-end
 
   # POST /customers/serp_search
   def serp_search
@@ -331,6 +331,7 @@ end
     industry        = params[:industry].presence
     limit           = (params[:limit] || 100).to_i
     company_query   = params[:company_query].presence
+    fill_filter     = params[:fill_filter].presence
     serp_target_ids = params[:serp_target_ids].presence
 
     # サブスクリプション制限チェック（Clientの場合）
@@ -347,13 +348,13 @@ end
     end
 
     # draft アクションのプレビューと同じ base_scope + serp_extraction_targets を使う
-    # → プレビューに表示された企業と実際に実行される企業が一致する
+    # 充足条件フィルタ（fill_filter）も確実に引き渡す
     base_scope = Customer.draft_base_scope(
       current_client_id: client_signed_in? ? current_client.id : nil,
       is_admin:          admin_signed_in?,
       industry_name:     industry
     )
-    scope = base_scope.serp_extraction_targets
+    scope = base_scope.serp_extraction_targets(fill_filter)
 
     # company_query があればフィルタを適用（draft アクションと同じロジック）
     if company_query.present?
@@ -398,6 +399,7 @@ end
     end
   end
 
+  # GET /customers/filter_by_industry
   def filter_by_industry
     @crowdworks = Crowdwork.all || []
 
@@ -497,17 +499,30 @@ end
       industry_name: params[:industry_name]
     )
 
-    @serp_targets = base_scope.serp_extraction_targets
+    # filter_by_industry メソッド内でも充足条件に対応させる場合はparams[:fill_filter]を渡す
+    @serp_targets = base_scope.serp_extraction_targets(params[:fill_filter])
                               .order(id: :asc)
                               .page(params[:serp_page])
                               .per(20)
 
-    @serp_target_count = Customer.calculate_serp_target_count(base_scope)
+    @serp_target_count = base_scope.serp_extraction_targets(params[:fill_filter]).count
     @dashboard_stats   = Customer.calculate_dashboard_stats(base_scope)
 
     render :draft
   end
-  
+
+  private
+
+  # 必要に応じて、parse_period_params や filter_company_query などのプライベートメソッドをここに残してください
+  def parse_period_params
+    # 既存の処理
+  end
+
+  def filter_company_query(scope, query)
+    # 既存の社名フィルタ処理（例: scope.where('company LIKE ?', "%#{query}%") など）
+    scope.where('company LIKE ?', "%#{query}%")
+  end
+    
   def extract_company_info
     start_time = Time.current
     Rails.logger.info("extract_company_info called (SYNC MODE).")
