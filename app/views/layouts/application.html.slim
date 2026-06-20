@@ -29,24 +29,24 @@ html lang="ja"
             = image_tag "logo2.png", class: "main-logo", alt: "Home"
 
     .floating-contact
-      / トライアルプランなどでの不整合を防ぐため、subscription_active? を使わず、
-      / ログイン中かつプランが空（none）でなければ確実に DASHBOARD へのリンクを出すよう修正
-      - if client_signed_in? && current_client.subscription_plan != 'none' && current_client.subscription_plan.present?
+      - if client_signed_in? || admin_signed_in?
         = link_to new_problem_path, target: '_blank', class: 'contact-box login-mode' do
-          .icon-container
-            span.login-icon
-              i.fas.fa-sign-in-alt
-          .text-container
-            span Problem
-            small 問題報告
+            .icon-container
+              span.login-icon
+                i.fas.fa-sign-in-alt
+            .text-container
+              span Problem
+              small 問題報告
 
-        = link_to dashboard_index_path, class: 'contact-box dashboard-mode' do
-          .icon-container
-            span.dashboard-icon
-              i.fas.fa-th-large
-          .text-container
-            span DASHBOARD
+        = link_to dashboard_index_path, class: 'contact-box login-mode' do
+            .icon-container
+              span.login-icon
+                i.fas.fa-sign-in-alt
+            .text-container
+              span Dashboard
+              small ダッシュボード
       - else
+        / どちらも未ログイン時の表示
         = link_to new_client_session_path, class: 'contact-box login-mode' do
           .icon-container
             span.login-icon
@@ -57,6 +57,8 @@ html lang="ja"
 
         = link_to '/contracts/new', class: 'contact-box', target: '_blank', rel: 'noopener' do
           .icon-container
+            span.contact-icon
+              i.fas.fa-envelope
           .text-container
             span CONTACT
             small お問い合わせ
