@@ -39,7 +39,7 @@ gem 'friendly_id', '~> 5.5'
 gem 'carrierwave'
 
 # Background jobs
-gem 'sidekiq', '~> 5.2'
+gem 'sidekiq', '~> 7.3.10'
 gem 'sidekiq-cron'
 
 # Markdown / Text processing
