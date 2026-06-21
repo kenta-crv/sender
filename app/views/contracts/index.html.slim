@@ -5,7 +5,6 @@ h1.mb-4 契約一覧
     thead.table-light
       tr
         th 会社名
-        th 問い合わせ元
         th 担当者
         th 電話
         th メール
@@ -16,7 +15,6 @@ h1.mb-4 契約一覧
       - @contracts.each do |contract|
         tr
           td.fw-semibold = contract.company
-          td = contract.origin 
           td = contract.name
           td = contract.tel
           td = contract.email
