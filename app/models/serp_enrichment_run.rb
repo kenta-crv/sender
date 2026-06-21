@@ -80,6 +80,9 @@ class SerpEnrichmentRun < ApplicationRecord
       finished_at: Time.current,
       summary_json: (summary || {}).merge(done_count: done_count.to_i, error_count: error_count.to_i)
     )
+    
+    # Create notification for SERP completion
+    Notification.create_for_serp!(run: self)
   end
 
   def fail!(message)

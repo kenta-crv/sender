@@ -6,23 +6,36 @@
       header.top-header
         h2 Dashboard
         .user-meta
-          / 完全に独立したクラスで配置
           = link_to dashboard_howto_path, class: 'howto-header-btn' do
             i.fas.fa-question-circle.margin-right-5
             span HowTo
+
+          / CSSのみで開閉を制御する構造に変更
+          .notification-wrapper class="#{'has-unread' if @unread_notification_count.to_i > 0}" style="position: relative; display: inline-block;"
+            / 隠しチェックボックス
+            input#notification-toggle type="checkbox" style="display: none;"
+            
+            / ボタンの見た目をしたラベル（クリックするとチェックボックスがON/OFFになります）
+            label.notification-btn class="#{ @unread_notification_count.to_i > 0 ? 'btn-danger-neon' : 'howto-header-btn' }" for="notification-toggle" style="position: relative; cursor: pointer; margin-bottom: 0; display: inline-flex; align-items: center;"
+              i.fas.fa-bell.margin-right-5
+              span Notice
+              - if @unread_notification_count.to_i > 0
+                span.notification-badge = @unread_notification_count
+            
+            / チェックボックスがONのときだけ表示されるコンテナ
+            .notification-dropdown-container
+              = render '/dashboard/notifications/dropdown'
 
           - if current_client.present?
             span.badge-electric = current_client.subscription_plan.presence
           - else
             span.badge-electric Admin
 
-      / ===== 解約予約中（期間内猶予）の警告バナー =====
       - if current_client.present? && current_client.subscription_status == 'cancelled' && current_client.subscription_plan != 'none'
         .alert-neon style="margin: 1.5rem 2rem 0; padding: 1rem; background: rgba(255, 80, 80, 0.1); border: 1px solid rgba(255, 80, 80, 0.3); border-radius: 8px; color: #ff8080;"
           i.fas.fa-exclamation-triangle.me-2
           | サブスクリプションは解約手続き済みです。現在の契約期間が終了するまでダッシュボードをご利用いただけます。
 
-      / ===== KPI =====
       .stats-grid
         .glass-card
           .card-label Monthly Sends
@@ -67,7 +80,6 @@
           .mini-rate
             = "#{@click_rate}% CTR"
 
-      / ===== SERPAPI & Form Detection Limits =====
       .stats-grid.mt-4
         .glass-card
           .card-label SERP API
@@ -93,7 +105,6 @@
             - remaining_form = [@form_detection_limit - @form_detection_used, 0].max
             = "残り: #{number_with_delimiter(remaining_form)} 件"
 
-      / ===== Recent Batches =====
       .history-section.mt-5
         .glass-card
           .card-header-flex style="display: flex; justify-content: space-between; align-items: center; width: 100%;"
@@ -106,7 +117,6 @@
               | View All
               i.fas.fa-chevron-right.ms-2 style="font-size: 0.75rem;"
 
-          / テーブル幅の固定と均等配置のためのスタイルを追加
           table.okurite-table style="table-layout: fixed; width: 100%;"
             thead
               tr
@@ -122,7 +132,6 @@
               - (@batches || []).first(5).each do |batch|
                 tr
                   td = batch.created_at.strftime('%Y/%m/%d')
-                  / タイトルの省略処理とホバー時のツールチップ（title属性）を追加
                   td
                     .text-ellipsis style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="#{batch.submission&.title || 'Default'}"
                       = batch.submission&.title || 'Default'
@@ -162,7 +171,6 @@
                     - else
                       span.text-muted = batch.status
 
-      / ===== Customer Stats =====
       .history-section.mt-5
         .glass-card
           .card-header-flex
@@ -187,13 +195,11 @@
                 td URL未設定
                 td = number_with_delimiter(@no_url_customers_count)
 
-      / ===== Submission Stats =====
       .history-section.mt-5
         .glass-card
           .card-header-flex
             h5.m-0 Submission Performance
 
-          / テーブル幅の固定と均等配置のためのスタイルを追加
           table.okurite-table style="table-layout: fixed; width: 100%;"
             thead
               tr
@@ -216,7 +222,6 @@
                 - sender_admin = batches.first&.admin
 
                 tr
-                  / タイトルの省略処理とホバー時のツールチップ（title属性）を追加
                   td
                     .text-ellipsis style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="#{submission.title}"
                       = submission.title
@@ -260,29 +265,3 @@
         style: 'background: #38bdf8; color: #020617; font-weight: 600; text-shadow: none; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4); animation: none; transition: all 0.2s ease;'
 
       button.ok-btn-close#closeTrialModal 閉じる
-
-  javascript:
-    (function() {
-      const initTrialModal = () => {
-        const overlay = document.getElementById('trialOverlay');
-        const closeBtn = document.getElementById('closeTrialModal');
-
-        if (overlay && closeBtn) {
-          overlay.classList.remove('is-visible');
-          overlay.classList.add('is-visible');
-
-          closeBtn.onclick = (e) => {
-            e.preventDefault();
-            overlay.classList.remove('is-visible');
-          };
-
-          overlay.onclick = (e) => {
-            if (e.target === overlay) {
-              overlay.classList.remove('is-visible');
-            }
-          };
-        }
-      };
-
-      document.addEventListener('turbo:load', initTrialModal);
-    })();

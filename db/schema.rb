@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_06_18_062922) do
+ActiveRecord::Schema.define(version: 2026_06_20_114522) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -223,6 +223,20 @@ ActiveRecord::Schema.define(version: 2026_06_18_062922) do
     t.datetime "updated_at", precision: 6, null: false
   end
 
+  create_table "form_detection_batches", force: :cascade do |t|
+    t.integer "total_count"
+    t.integer "processed_count"
+    t.integer "success_count"
+    t.integer "error_count"
+    t.integer "client_id"
+    t.string "status"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.text "customer_ids"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+  end
+
   create_table "form_submission_batches", force: :cascade do |t|
     t.integer "total_count", default: 0
     t.integer "processed_count", default: 0
@@ -266,6 +280,27 @@ ActiveRecord::Schema.define(version: 2026_06_18_062922) do
     t.integer "form_detection_used", default: 0, null: false
     t.index ["client_id", "month"], name: "index_monthly_usage_logs_on_client_id_and_month", unique: true
     t.index ["client_id"], name: "index_monthly_usage_logs_on_client_id"
+  end
+
+  create_table "notifications", force: :cascade do |t|
+    t.string "type"
+    t.string "status"
+    t.integer "total_count"
+    t.integer "success_count"
+    t.integer "error_count"
+    t.integer "client_id"
+    t.datetime "read_at"
+    t.string "notifiable_type"
+    t.integer "notifiable_id"
+    t.text "message"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["client_id"], name: "index_notifications_on_client_id"
+    t.index ["created_at"], name: "index_notifications_on_created_at"
+    t.index ["notifiable_id"], name: "index_notifications_on_notifiable_id"
+    t.index ["notifiable_type", "notifiable_id"], name: "index_notifications_on_notifiable_type_and_notifiable_id"
+    t.index ["notifiable_type"], name: "index_notifications_on_notifiable_type"
+    t.index ["read_at"], name: "index_notifications_on_read_at"
   end
 
   create_table "payments", force: :cascade do |t|

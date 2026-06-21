@@ -30,7 +30,11 @@ Rails.application.routes.draw do
       get :cancel_confirm
       post :cancel
     end
-    resources :notifications
+    resources :notifications do
+      collection do
+        post :mark_all_as_read
+      end
+    end
   end
 
   namespace :admin do
@@ -143,4 +147,6 @@ Rails.application.routes.draw do
   get '/l/:token', to: 'click_tracking#redirect', as: :click_tracking
 
   resources :problems
+
+  
 end

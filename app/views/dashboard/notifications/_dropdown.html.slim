@@ -1,0 +1,26 @@
+.notification-dropdown id="notificationDropdown"
+  .notification-header
+    h6 通知
+    = link_to '全て既読にする', mark_all_as_read_dashboard_notifications_path, class: 'mark-all-read', method: :post, data: { turbo_method: :post }
+  
+  ul.notification-list
+    - if @unread_notifications.any?
+      - @unread_notifications.each do |notification|
+        li.notification-item class=(notification.unread? ? 'unread' : '')
+          = link_to dashboard_notification_path(notification), class: 'notification-link' do
+            .notification-type
+              - case notification.type
+              - when 'SerpEnrichment'
+                span.serp SERP
+              - when 'FormSubmission'
+                span.form-submission フォーム送信
+              - when 'FormDetection'
+                span.form-detection フォーム検出
+            .notification-message = notification.message
+            .notification-time = time_ago_in_words(notification.created_at) + '前'
+    - else
+      li.no-notifications
+        | 新しい通知はありません
+  
+  .notification-footer
+    = link_to '全て見る', dashboard_notifications_path

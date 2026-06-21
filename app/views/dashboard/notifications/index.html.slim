@@ -1,0 +1,56 @@
+#okurite-client-portal
+  .wrapper
+    = render 'dashboard/dashboards/sidebar'
+    
+    #content
+      header.top-header
+        h2 通知一覧
+        .user-meta
+          - if current_client.present?
+            span.badge-electric = current_client.subscription_plan.presence
+          - else
+            span.badge-electric Admin
+
+      .notifications-index
+        .notifications-header
+          h2 
+            | 通知
+            - if @unread_count > 0
+              span style="color: #38bdf8; font-size: 0.8rem; margin-left: 0.5rem;"
+                | (#{@unread_count}件の未読)
+          = button_to '全て既読にする', mark_all_as_read_dashboard_notifications_path, method: :post, class: 'mark-all-read-btn', data: { turbo_method: :post }
+
+        .notifications-list
+          .glass-card
+            - if @notifications.any?
+              - @notifications.each do |notification|
+                .notification-item class=(notification.unread? ? 'unread' : '')
+                  = link_to dashboard_notification_path(notification), class: 'notification-link' do
+                    .notification-header-row
+                      .notification-type-badge class=(notification.type.underscore)
+                        - case notification.type
+                        - when 'SerpEnrichment'
+                          | SERP
+                        - when 'FormSubmission'
+                          | フォーム送信
+                        - when 'FormDetection'
+                          | フォーム検出
+                      .notification-time = time_ago_in_words(notification.created_at) + '前'
+                    
+                    .notification-message = notification.message
+                    
+                    .notification-stats
+                      .stat
+                        i.fas.fa-tasks
+                        | 実行: #{notification.total_count}件
+                      .stat
+                        i.fas.fa-check-circle
+                        | 成功: #{notification.success_count}件
+                      .stat
+                        i.fas.fa-times-circle
+                        | エラー: #{notification.error_count}件
+            - else
+              .no-notifications style="padding: 2rem; text-align: center; color: #64748b;"
+                | 通知はありません
+
+        = paginate @notifications

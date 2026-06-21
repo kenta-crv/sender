@@ -1,0 +1,23 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  total_count: 1
+  processed_count: 1
+  success_count: 1
+  error_count: 1
+  client_id: 1
+  status: MyString
+  started_at: 2026-06-20 20:45:22
+  completed_at: 2026-06-20 20:45:22
+  customer_ids: MyText
+
+two:
+  total_count: 1
+  processed_count: 1
+  success_count: 1
+  error_count: 1
+  client_id: 1
+  status: MyString
+  started_at: 2026-06-20 20:45:22
+  completed_at: 2026-06-20 20:45:22
+  customer_ids: MyText

@@ -397,7 +397,7 @@ def import_customers
     error_rows = []
     
     # 法人敬称をチェックするための正規表現パターン
-    legal_entity_pattern = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/
+    legal_entity_pattern = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人|(株)|（株）|(有)|（有）|(同)|（同）/
 
     begin
       # headers: true により1行目をヘッダーとして扱う
@@ -476,13 +476,26 @@ def import_customers
   # POST /form_submissions/detect_contact_urls
 # POST /form_submissions/detect_contact_urls
   def detect_contact_urls
+    # Build base scope for customer selection
+    base_scope = Customer.where(contact_url: [nil, ''])
+                        .where.not(url: [nil, ''])
+                        .where(fobbiden: [nil, false, 0])
+    
+    # Apply client filtering
+    if client_signed_in? && !admin_signed_in?
+      base_scope = base_scope.where(client_id: current_client.id)
+    end
+    
+    # Apply business filter if provided
+    if params[:business_filter].present?
+      base_scope = base_scope.where(business: params[:business_filter])
+    end
+
     customer_ids = if params[:detect_select_all] == '1'
                      # 全件選択 → ページネーションに関係なく全対象顧客を取得
-                     Customer.where(contact_url: [nil, ''])
-                             .where.not(url: [nil, ''])
-                             .where(fobbiden: [nil, false, 0])
-                             .pluck(:id)
+                     base_scope.pluck(:id)
                    else
+                     # customer_ids parameter is sent as array from checkbox inputs
                      Array(params[:customer_ids]).map(&:to_i)
                    end
 
@@ -516,9 +529,19 @@ def import_customers
       monthly_log.increment!(:form_detection_used, customer_ids.size)
     end
 
+    # Create batch for form detection
+    batch = FormDetectionBatch.create!(
+      total_count: customer_ids.size,
+      customer_ids: customer_ids.to_json,
+      status: 'processing',
+      started_at: Time.current,
+      client: current_client,
+      admin: current_admin
+    )
+
     # 並列処理: 各顧客を独立したジョブとしてキューに投入
     customer_ids.each do |cid|
-      ContactUrlDetectJob.perform_later(cid)
+      ContactUrlDetectJob.perform_later(cid, batch.id)
     end
 
     # ログイン状態に応じて適切なリダイレクト先へ戻す

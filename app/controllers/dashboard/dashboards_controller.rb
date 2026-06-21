@@ -6,107 +6,118 @@ class Dashboard::DashboardsController < ApplicationController
   before_action :check_subscription_active!, unless: :admin_signed_in?
   before_action :set_base_scope, except: [:setting, :management]
 
-def index
-  @total_customers_count = Customer.unscoped.where.not(contact_url: [nil, '', 'not_detected']).count
+  def index
+    @total_customers_count = Customer.unscoped.where.not(contact_url: [nil, '', 'not_detected']).count
 
-  @not_detected_count = @base_customers.unscope(:joins).where(contact_url: 'not_detected').count
-  @no_url_customers_count = @base_customers.unscope(:joins).where(contact_url: [nil, '']).where(url: [nil, '']).count
+    @not_detected_count = @base_customers.unscope(:joins).where(contact_url: 'not_detected').count
+    @no_url_customers_count = @base_customers.unscope(:joins).where(contact_url: [nil, '']).where(url: [nil, '']).count
 
-  @q = @base_customers.ransack(params[:q])
-  filtered = @q.result(distinct: true)
+    @q = @base_customers.ransack(params[:q])
+    filtered = @q.result(distinct: true)
 
-  @customers = filtered.where.not(contact_url: [nil, '', 'not_detected']).page(params[:customers_page]).per(20)
-  @detectable_customers = filtered.where(contact_url: [nil, '']).where.not(url: [nil, '']).where(fobbiden: [nil, false, 0]).page(params[:detectable_page]).per(20)
+    @customers = filtered.where.not(contact_url: [nil, '', 'not_detected']).page(params[:customers_page]).per(20)
+    @detectable_customers = filtered.where(contact_url: [nil, '']).where.not(url: [nil, '']).where(fobbiden: [nil, false, 0]).page(params[:detectable_page]).per(20)
 
-  @business_options = generate_options(:business)
-  @genre_options = generate_options(:genre)
+    @business_options = generate_options(:business)
+    @genre_options = generate_options(:genre)
 
-  if admin_signed_in?
-    if params[:client_id].present?
+    # Notification data
+    notification_scope = if admin_signed_in?
+      Notification.all
+    elsif client_signed_in?
+      Notification.for_client(current_client.id)
+    else
+      Notification.none
+    end
+
+    @unread_notifications = notification_scope.unread.recent.limit(5)
+    @unread_notification_count = notification_scope.unread.count
+
+    if admin_signed_in?
+      if params[:client_id].present?
+        client = Client.find(params[:client_id])
+        @submissions = client.submissions.order(created_at: :desc)
+        @batches = client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(10)
+      else
+        @submissions = Submission.all.order(created_at: :desc)
+        @batches = FormSubmissionBatch.all.order(created_at: :desc).page(params[:page]).per(10)
+      end
+    elsif client_signed_in?
+      @submissions = current_client.submissions.order(created_at: :desc)
+      @batches = current_client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(10)
+    else
+      @submissions = Submission.none
+      @batches = FormSubmissionBatch.none
+    end
+
+    current_month_range = Time.current.beginning_of_month..Time.current.end_of_month
+
+    scope =
+      if admin_signed_in? && params[:client_id].present?
+        FormSubmissionBatch.where(client_id: params[:client_id])
+      elsif admin_signed_in?
+        FormSubmissionBatch.all
+      elsif client_signed_in?
+        current_client.form_submission_batches
+      else
+        FormSubmissionBatch.none
+      end
+
+    @monthly_batches = scope.where(created_at: current_month_range)
+
+    @total_sent = @monthly_batches.sum(:total_count)
+    @total_success = @monthly_batches.sum(:success_count)
+    @total_failure = @monthly_batches.sum(:failure_count)
+
+    @success_rate =
+      @total_sent.positive? ? ((@total_success.to_f / @total_sent) * 100).round(1) : 0
+
+    if admin_signed_in? && params[:client_id].present?
       client = Client.find(params[:client_id])
-      @submissions = client.submissions.order(created_at: :desc)
-      @batches = client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(10)
+      monthly_log = client.monthly_usage_log
+      @serp_api_limit = monthly_log.serp_api_limit
+      @serp_api_used = monthly_log.serp_api_used
+      @form_detection_limit = monthly_log.form_detection_limit
+      @form_detection_used = monthly_log.form_detection_used
+    elsif client_signed_in?
+      monthly_log = current_client.monthly_usage_log
+      @serp_api_limit = monthly_log.serp_api_limit
+      @serp_api_used = monthly_log.serp_api_used
+      @form_detection_limit = monthly_log.form_detection_limit
+      @form_detection_used = monthly_log.form_detection_used
     else
-      @submissions = Submission.all.order(created_at: :desc)
-      @batches = FormSubmissionBatch.all.order(created_at: :desc).page(params[:page]).per(10)
+      @serp_api_limit = 0
+      @serp_api_used = 0
+      @form_detection_limit = 0
+      @form_detection_used = 0
     end
-  elsif client_signed_in?
-    @submissions = current_client.submissions.order(created_at: :desc)
-    @batches = current_client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(10)
-  else
-    @submissions = Submission.none
-    @batches = FormSubmissionBatch.none
+
+    click_scope =
+      if admin_signed_in? && params[:client_id].present?
+        ClickTrackingLink.where(client_id: params[:client_id])
+      elsif admin_signed_in?
+        ClickTrackingLink.all
+      elsif client_signed_in?
+        ClickTrackingLink.where(client_id: current_client.id)
+      else
+        ClickTrackingLink.none
+      end
+
+    click_scope = click_scope.where(created_at: current_month_range)
+
+    @total_clicks = click_scope.sum(:clicked_count).to_i
+
+    @clicked_users_count = click_scope
+      .where.not(clicked_count: nil)
+      .where("clicked_count > 0")
+      .where.not(last_clicked_at: nil)
+      .where("last_clicked_at <= ?", Time.current)
+      .count
+
+    @click_rate =
+      @total_success.positive? ? ((@clicked_users_count.to_f / @total_success) * 100).round(1) : 0
   end
 
-  current_month_range = Time.current.beginning_of_month..Time.current.end_of_month
-
-  scope =
-    if admin_signed_in? && params[:client_id].present?
-      FormSubmissionBatch.where(client_id: params[:client_id])
-    elsif admin_signed_in?
-      FormSubmissionBatch.all
-    elsif client_signed_in?
-      current_client.form_submission_batches
-    else
-      FormSubmissionBatch.none
-    end
-
-  @monthly_batches = scope.where(created_at: current_month_range)
-
-  @total_sent = @monthly_batches.sum(:total_count)
-  @total_success = @monthly_batches.sum(:success_count)
-  @total_failure = @monthly_batches.sum(:failure_count)
-
-  @success_rate =
-    @total_sent.positive? ? ((@total_success.to_f / @total_sent) * 100).round(1) : 0
-
-  # SERPAPI and form detection limits
-  if admin_signed_in? && params[:client_id].present?
-    client = Client.find(params[:client_id])
-    monthly_log = client.monthly_usage_log
-    @serp_api_limit = monthly_log.serp_api_limit
-    @serp_api_used = monthly_log.serp_api_used
-    @form_detection_limit = monthly_log.form_detection_limit
-    @form_detection_used = monthly_log.form_detection_used
-  elsif client_signed_in?
-    monthly_log = current_client.monthly_usage_log
-    @serp_api_limit = monthly_log.serp_api_limit
-    @serp_api_used = monthly_log.serp_api_used
-    @form_detection_limit = monthly_log.form_detection_limit
-    @form_detection_used = monthly_log.form_detection_used
-  else
-    @serp_api_limit = 0
-    @serp_api_used = 0
-    @form_detection_limit = 0
-    @form_detection_used = 0
-  end
-
-  click_scope =
-    if admin_signed_in? && params[:client_id].present?
-      ClickTrackingLink.where(client_id: params[:client_id])
-    elsif admin_signed_in?
-      ClickTrackingLink.all
-    elsif client_signed_in?
-      ClickTrackingLink.where(client_id: current_client.id)
-    else
-      ClickTrackingLink.none
-    end
-
-  click_scope = click_scope.where(created_at: current_month_range)
-
-  @total_clicks = click_scope.sum(:clicked_count).to_i
-
-  @clicked_users_count = click_scope
-    .where.not(clicked_count: nil)
-    .where("clicked_count > 0")
-    .where.not(last_clicked_at: nil)
-    .where("last_clicked_at <= ?", Time.current)
-    .count
-
-  @click_rate =
-    @total_success.positive? ? ((@clicked_users_count.to_f / @total_success) * 100).round(1) : 0
-end
-  
   def history
     @q = @base_customers.ransack(params[:q])
 
@@ -185,6 +196,10 @@ end
     @q = @base_customers.ransack(params[:q])
     filtered = @q.result(distinct: true)
 
+    if params[:business_filter].present?
+      filtered = filtered.where(business: params[:business_filter])
+    end
+
     @detectable_customers = filtered
                               .where(contact_url: [nil, ''])
                               .where.not(url: [nil, ''])
@@ -193,6 +208,18 @@ end
 
     @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
     @no_url_customers_count = @base_customers.where(contact_url: [nil, '']).where(url: [nil, '']).count
+
+    detectable_base = @q.result(distinct: true)
+                        .where(contact_url: [nil, ''])
+                        .where.not(url: [nil, ''])
+                        .where(fobbiden: [nil, false, 0])
+
+    @business_options = detectable_base.where.not(business: [nil, ''])
+                                       .group(:business)
+                                       .count
+                                       .select { |_name, count| count >= 1 }
+                                       .sort_by { |_name, count| -count }
+                                       .map { |name, count| ["#{name}（#{count}件）", name] }
 
     @submissions = admin_signed_in? ? Submission.where(client_id: nil).order(created_at: :desc) : (client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none)
   end
@@ -213,7 +240,7 @@ end
 
   def howto; end
 
-def click_tracking
+  def click_tracking
     click_scope =
       if admin_signed_in?
         if params[:client_id].present?
@@ -227,14 +254,14 @@ def click_tracking
         ClickTrackingLink.none
       end
 
-    # 修正箇所: :submission を外し、元の :click_logs に戻します
     @clicked_links = click_scope.where.not(clicked_count: nil)
-                                  .where("clicked_count > 0")
-                                  .includes(:customer, :click_logs)
-                                  .order(last_clicked_at: :desc)
-                                  .page(params[:page])
-                                  .per(20)
+                                .where("clicked_count > 0")
+                                .includes(:customer, :click_logs)
+                                .order(last_clicked_at: :desc)
+                                .page(params[:page])
+                                .per(20)
   end
+
   private
 
   def authenticate_any!

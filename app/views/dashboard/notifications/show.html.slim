@@ -1,0 +1,54 @@
+#okurite-client-portal
+  .wrapper
+    = render 'dashboard/dashboards/sidebar'
+    
+    #content
+      header.top-header
+        h2 通知詳細
+        .user-meta
+          - if current_client.present?
+            span.badge-electric = current_client.subscription_plan.presence
+          - else
+            span.badge-electric Admin
+
+      .notification-show
+        .glass-card
+          .notification-detail
+            .notification-header
+              .notification-type-badge class=(@notification.type.underscore)
+                - case @notification.type
+                - when 'SerpEnrichment'
+                  | SERP実行
+                - when 'FormSubmission'
+                  | フォーム送信
+                - when 'FormDetection'
+                  | フォーム検出
+              .notification-time = @notification.created_at.strftime('%Y/%m/%d %H:%M')
+            
+            .notification-message = @notification.message
+            
+            .notification-stats
+              .stat-card
+                .stat-label 実行件数
+                .stat-value = number_with_delimiter(@notification.total_count)
+              .stat-card
+                .stat-label 成功件数
+                .stat-value = number_with_delimiter(@notification.success_count)
+              .stat-card
+                .stat-label エラー件数
+                .stat-value = number_with_delimiter(@notification.error_count)
+              .stat-card
+                .stat-label ステータス
+                .stat-value style="font-size: 1.2rem;"
+                  = @notification.status
+            
+            .notification-actions
+              = link_to '一覧に戻る', dashboard_notifications_path, class: 'btn btn-outline'
+              - if @notification.notifiable
+                - case @notification.type
+                - when 'SerpEnrichment'
+                  = link_to '詳細を表示', @notification.notifiable, class: 'btn btn-electric'
+                - when 'FormSubmission'
+                  = link_to '詳細を表示', @notification.notifiable, class: 'btn btn-electric'
+                - when 'FormDetection'
+                  = link_to '詳細を表示', @notification.notifiable, class: 'btn btn-electric'

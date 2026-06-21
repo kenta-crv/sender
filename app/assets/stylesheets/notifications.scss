@@ -1,0 +1,407 @@
+// Notification button and badge styling
+.notification-wrapper {
+  position: relative;
+  display: inline-block;
+  margin-left: 1rem;
+}
+
+.notification-btn {
+  position: relative;
+  color: #38bdf8;
+  font-size: 1.2rem;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(56, 189, 248, 0.1);
+    color: #0ea5e9;
+  }
+  
+  i {
+    margin: 0;
+  }
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+// Notification dropdown styling
+.notification-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 350px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  margin-top: 0.5rem;
+  
+  .notification-header {
+    padding: 1rem;
+    border-bottom: 1px solid #334155;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    h6 {
+      margin: 0;
+      color: #f1f5f9;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    
+    .mark-all-read {
+      color: #38bdf8;
+      font-size: 0.8rem;
+      text-decoration: none;
+      
+      &:hover {
+        color: #0ea5e9;
+        text-decoration: underline;
+      }
+    }
+  }
+  
+  .notification-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    
+    .notification-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      
+      &:last-child {
+        border-bottom: none;
+      }
+      
+      &:hover {
+        background: rgba(56, 189, 248, 0.05);
+      }
+      
+      &.unread {
+        background: rgba(56, 189, 248, 0.1);
+        border-left: 3px solid #38bdf8;
+      }
+      
+      .notification-type {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-bottom: 0.25rem;
+        
+        .serp { color: #a855f7; }
+        .form-submission { color: #22c55e; }
+        .form-detection { color: #f59e0b; }
+      }
+      
+      .notification-message {
+        font-size: 0.85rem;
+        color: #f1f5f9;
+        margin-bottom: 0.25rem;
+        line-height: 1.4;
+      }
+      
+      .notification-time {
+        font-size: 0.7rem;
+        color: #64748b;
+      }
+    }
+    
+    .no-notifications {
+      padding: 2rem;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+  }
+  
+  .notification-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #334155;
+    text-align: center;
+    
+    a {
+      color: #38bdf8;
+      font-size: 0.85rem;
+      text-decoration: none;
+      
+      &:hover {
+        color: #0ea5e9;
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+// Notification index page styling
+.notifications-index {
+  .notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    
+    h2 {
+      margin: 0;
+      color: #f1f5f9;
+    }
+    
+    .mark-all-read-btn {
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background: #0ea5e9;
+      }
+    }
+  }
+  
+  .notifications-list {
+    .glass-card {
+      .notification-item {
+        padding: 1rem;
+        border-bottom: 1px solid #334155;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        
+        &:last-child {
+          border-bottom: none;
+        }
+        
+        &:hover {
+          background: rgba(56, 189, 248, 0.05);
+        }
+        
+        &.unread {
+          background: rgba(56, 189, 248, 0.1);
+          border-left: 3px solid #38bdf8;
+        }
+        
+        .notification-header-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.5rem;
+          
+          .notification-type-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+            
+            &.serp {
+              background: rgba(168, 85, 247, 0.2);
+              color: #a855f7;
+            }
+            
+            &.form-submission {
+              background: rgba(34, 197, 94, 0.2);
+              color: #22c55e;
+            }
+            
+            &.form-detection {
+              background: rgba(245, 158, 11, 0.2);
+              color: #f59e0b;
+            }
+          }
+          
+          .notification-time {
+            font-size: 0.75rem;
+            color: #64748b;
+          }
+        }
+        
+        .notification-message {
+          font-size: 0.9rem;
+          color: #f1f5f9;
+          margin-bottom: 0.5rem;
+          line-height: 1.4;
+        }
+        
+        .notification-stats {
+          display: flex;
+          gap: 1rem;
+          font-size: 0.85rem;
+          color: #94a3b8;
+          
+          .stat {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            
+            i {
+              font-size: 0.75rem;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Notification show page styling
+.notification-show {
+  .glass-card {
+    .notification-detail {
+      .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #334155;
+        
+        .notification-type-badge {
+          font-size: 0.85rem;
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          font-weight: 500;
+          
+          &.serp {
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+          }
+          
+          &.form-submission {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+          }
+          
+          &.form-detection {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+          }
+        }
+        
+        .notification-time {
+          font-size: 0.85rem;
+          color: #64748b;
+        }
+      }
+      
+      .notification-message {
+        font-size: 1.1rem;
+        color: #f1f5f9;
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+      }
+      
+      .notification-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        
+        .stat-card {
+          background: rgba(56, 189, 248, 0.1);
+          border: 1px solid rgba(56, 189, 248, 0.2);
+          border-radius: 8px;
+          padding: 1rem;
+          text-align: center;
+          
+          .stat-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+          }
+          
+          .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #38bdf8;
+          }
+        }
+      }
+      
+      .notification-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        
+        .btn {
+          padding: 0.75rem 1.5rem;
+          border-radius: 6px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          text-decoration: none;
+          transition: all 0.2s ease;
+          
+          &.btn-electric {
+            background: #38bdf8;
+            color: #0f172a;
+            border: none;
+            
+            &:hover {
+              background: #0ea5e9;
+            }
+          }
+          
+          &.btn-outline {
+            background: transparent;
+            color: #38bdf8;
+            border: 1px solid #38bdf8;
+            
+            &:hover {
+              background: rgba(56, 189, 248, 0.1);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+/* 1. 初期状態ではコンテナごと完全に非表示にする */
+.notification-dropdown-container {
+  display: none !important; /* 他のスタイルに負けないよう important を付与 */
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 9999;
+  background: white; /* 背景が透けないように白を設定 */
+}
+
+/* 2. チェックボックスにチェックが入った（クリックされた）ときだけ表示する */
+#notification-toggle:checked ~ .notification-dropdown-container {
+  display: block !important;
+}

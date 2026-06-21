@@ -252,7 +252,14 @@ def draft
     # 1. 期間パラメータのパース
     parse_period_params
 
-    # 2. 権限や業種に応じたベーススコープをモデルから取得
+    # 【根本原因の修正】業種オプションを常に全件保持するために、業種で絞り込む前の共通ベーススコープを別途生成
+    @industry_base_scope = Customer.draft_base_scope(
+      current_client_id: client_signed_in? ? current_client.id : nil,
+      is_admin:          admin_signed_in?,
+      industry_name:     nil # 常に全業種を対象とするため nil を渡す
+    )
+
+    # 2. 権限や業種に応じたベーススコープをモデルから取得（こちらは画面表示・絞り込み用）
     base_scope = Customer.draft_base_scope(
       current_client_id: client_signed_in? ? current_client.id : nil,
       is_admin:          admin_signed_in?,
@@ -315,6 +322,15 @@ def draft
 
     # 7. ダッシュボード統計
     @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
+
+    # 8. 業種オプション生成（SERP補完用）
+    # 【根本原因の修正】絞り込みの入っていない @industry_base_scope から生成することで、選択後も全業種が維持されます
+    @industry_options = @industry_base_scope.where.not(business: [nil, ''])
+                                   .group(:business)
+                                   .count
+                                   .select { |_name, count| count >= 1 }
+                                   .sort_by { |_name, count| -count }
+                                   .map { |name, count| ["#{name}（#{count}件）", name] }
 
     # ビュー側「SERP API START」に渡す上限
     @max_search_limit = admin_signed_in? ? @serp_target_count
@@ -493,6 +509,13 @@ def draft
     daily_limit = ENV.fetch('EXTRACT_DAILY_LIMIT', '500').to_i
     @remaining_extractable = [daily_limit - today_total, 0].max
 
+    # 【根本原因の修正】filter_by_industry でも同様にオプション用の全件ベーススコープを用意
+    @industry_base_scope = Customer.draft_base_scope(
+      current_client_id: client_signed_in? ? current_client.id : nil,
+      is_admin: admin_signed_in?,
+      industry_name: nil
+    )
+
     base_scope = Customer.draft_base_scope(
       current_client_id: client_signed_in? ? current_client.id : nil,
       is_admin: admin_signed_in?,
@@ -508,9 +531,16 @@ def draft
     @serp_target_count = base_scope.serp_extraction_targets(params[:fill_filter]).count
     @dashboard_stats   = Customer.calculate_dashboard_stats(base_scope)
 
+    # 【根本原因の修正】こちらも同様に @industry_base_scope から生成
+    @industry_options = @industry_base_scope.where.not(business: [nil, ''])
+                                   .group(:business)
+                                   .count
+                                   .select { |_name, count| count >= 1 }
+                                   .sort_by { |_name, count| -count }
+                                   .map { |name, count| ["#{name}（#{count}件）", name] }
+
     render :draft
   end
-
   private
 
   # 必要に応じて、parse_period_params や filter_company_query などのプライベートメソッドをここに残してください
