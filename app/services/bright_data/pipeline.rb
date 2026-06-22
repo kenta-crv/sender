@@ -74,7 +74,7 @@ module BrightData
       #   - serp_status IS NULL / '' （未実行）
       #   - かつ tel / url / contact_url のいずれかが空
       # status カラムは取引先環境で別用途に使われているため参照しない。
-selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
+      selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
       if selected_ids.any?
         targets = Customer.serp_extraction_targets
                           .where(id: selected_ids)
@@ -481,14 +481,15 @@ selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
       end
     end
 
+    # 【修正】find_each を update_all に変更し、スコープ汚染による serp_error 誤判定を解消
+    # 旧実装では serp_extraction_targets スコープ（serp_status = ''条件）が混入したまま
+    # find_each が走ることで、serp_queued に更新済みのレコードが取得されず
+    # ensure ブロックで全件 serp_error になるバグがあった。
     def self.mark_serp_status(targets, status)
-      ids = Array(targets).map { |target| target.respond_to?(:id) ? target.id : target }.compact
+      ids = Array(targets).map { |t| t.respond_to?(:id) ? t.id : t.to_i }.reject(&:zero?).uniq
       return if ids.empty?
 
-      now = Time.current
-      Customer.where(id: ids).find_each do |customer|
-        customer.update_columns(serp_status: status, updated_at: now)
-      end
+      Customer.where(id: ids).update_all(serp_status: status, updated_at: Time.current)
     end
 
     def self.web_enricher_timeout_seconds

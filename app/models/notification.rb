@@ -1,4 +1,6 @@
 class Notification < ApplicationRecord
+  self.inheritance_column = nil
+
   belongs_to :client, optional: true
   belongs_to :notifiable, polymorphic: true, optional: true
 
@@ -43,8 +45,8 @@ class Notification < ApplicationRecord
       status: batch.status,
       total_count: batch.total_count,
       success_count: batch.success_count,
-      error_count: batch.failure_count,
-      client_id: client_id,
+      error_count: batch.failure_count,  # ← failure_count に修正
+      client_id: batch.client_id,        # ← client_id も batch から取得するよう統一
       notifiable: batch,
       message: generate_form_detection_message(batch)
     )
@@ -71,10 +73,10 @@ class Notification < ApplicationRecord
   end
 
   def self.generate_form_submission_message(batch)
-    "フォーム送信完了: 実行#{batch.total_count}件, 成功#{batch.success_count}件, エラー#{batch.failure_count}件"
+    "フォーム送信完了: 実行#{batch.total_count}件, 成功#{batch.success_count}件, エラー#{batch.failure_count}件"  # ← 修正
   end
 
   def self.generate_form_detection_message(batch)
-    "フォーム検出完了: 実行#{batch.total_count}件, 成功#{batch.success_count}件, エラー#{batch.failure_count}件"
+    "フォーム検出完了: 実行#{batch.total_count}件, 成功#{batch.success_count}件, エラー#{batch.failure_count}件"  # ← 修正
   end
 end

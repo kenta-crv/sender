@@ -1,172 +1,86 @@
-// Notification button and badge styling
-.notification-wrapper {
-  position: relative;
-  display: inline-block;
-  margin-left: 1rem;
-}
-
-.notification-btn {
-  position: relative;
-  color: #38bdf8;
-  font-size: 1.2rem;
-  padding: 0.5rem;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: rgba(56, 189, 248, 0.1);
-    color: #0ea5e9;
-  }
-  
-  i {
-    margin: 0;
-  }
-}
-
-.notification-badge {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #ef4444;
-  color: white;
-  font-size: 0.7rem;
-  font-weight: bold;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 50%;
+// ==========================================
+// Header Notice Button & Badge (完全に他から干渉させない定義)
+// ==========================================
+.user-meta {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  animation: pulse 2s infinite;
+  gap: 12px;
 }
 
-@keyframes pulse {
+// 他のCSS設定をリセット・オーバーライドして完全にボタンを自立させる
+.notice-header-btn-unique {
+  position: relative !important; // これが数字の基準位置を絶対に固定する
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(30, 41, 59, 0.5) !important;
+  border: 1px solid rgba(56, 189, 248, 0.2) !important;
+  padding: 0.5rem 1.2rem !important;
+  border-radius: 6px !important;
+  color: #38bdf8 !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease !important;
+  margin: 0 4px !important;
+  box-sizing: border-box !important;
+
+  &:hover {
+    background: rgba(56, 189, 248, 0.1) !important;
+    border-color: #38bdf8 !important;
+    color: #38bdf8 !important;
+    text-decoration: none !important;
+  }
+
+  i {
+    font-size: 1rem !important;
+    margin-right: 5px !important;
+    color: #38bdf8 !important;
+  }
+
+  .notice-text {
+    color: #38bdf8 !important;
+  }
+}
+
+// ボタンの右上枠にピン留めするバッジ
+.notice-badge-unique {
+  position: absolute !important;
+  top: -7px !important;
+  right: -7px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #ff5050 !important; // ネオン赤
+  color: #ffffff !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  padding: 0 4px !important;
+  line-height: 1 !important;
+  box-shadow: 0 2px 8px rgba(255, 80, 80, 0.5) !important;
+  z-index: 999 !important; // 他の要素の下に潜り込ませない
+  transform: none !important; // 他のtransform干渉をリセット
+  animation: noticePulse 2s infinite !important;
+}
+
+@keyframes noticePulse {
   0%, 100% {
-    transform: scale(1);
+    transform: scale(1) !important;
   }
   50% {
-    transform: scale(1.1);
+    transform: scale(1.1) !important;
   }
 }
 
-// Notification dropdown styling
-.notification-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  width: 350px;
-  max-height: 400px;
-  overflow-y: auto;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  margin-top: 0.5rem;
-  
-  .notification-header {
-    padding: 1rem;
-    border-bottom: 1px solid #334155;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    
-    h6 {
-      margin: 0;
-      color: #f1f5f9;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    
-    .mark-all-read {
-      color: #38bdf8;
-      font-size: 0.8rem;
-      text-decoration: none;
-      
-      &:hover {
-        color: #0ea5e9;
-        text-decoration: underline;
-      }
-    }
-  }
-  
-  .notification-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    
-    .notification-item {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid #334155;
-      cursor: pointer;
-      transition: background 0.2s ease;
-      
-      &:last-child {
-        border-bottom: none;
-      }
-      
-      &:hover {
-        background: rgba(56, 189, 248, 0.05);
-      }
-      
-      &.unread {
-        background: rgba(56, 189, 248, 0.1);
-        border-left: 3px solid #38bdf8;
-      }
-      
-      .notification-type {
-        font-size: 0.75rem;
-        color: #94a3b8;
-        margin-bottom: 0.25rem;
-        
-        .serp { color: #a855f7; }
-        .form-submission { color: #22c55e; }
-        .form-detection { color: #f59e0b; }
-      }
-      
-      .notification-message {
-        font-size: 0.85rem;
-        color: #f1f5f9;
-        margin-bottom: 0.25rem;
-        line-height: 1.4;
-      }
-      
-      .notification-time {
-        font-size: 0.7rem;
-        color: #64748b;
-      }
-    }
-    
-    .no-notifications {
-      padding: 2rem;
-      text-align: center;
-      color: #64748b;
-      font-size: 0.85rem;
-    }
-  }
-  
-  .notification-footer {
-    padding: 0.75rem 1rem;
-    border-top: 1px solid #334155;
-    text-align: center;
-    
-    a {
-      color: #38bdf8;
-      font-size: 0.85rem;
-      text-decoration: none;
-      
-      &:hover {
-        color: #0ea5e9;
-        text-decoration: underline;
-      }
-    }
-  }
-}
-
-// Notification index page styling
+// ==========================================
+// Notification Index Page (ネオンブルー & 黒基調)
+// ==========================================
 .notifications-index {
+  margin: 1.5rem 2rem;
+
   .notifications-header {
     display: flex;
     justify-content: space-between;
@@ -176,12 +90,16 @@
     h2 {
       margin: 0;
       color: #f1f5f9;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
     }
     
     .mark-all-read-btn {
-      background: #38bdf8;
-      color: #0f172a;
-      border: none;
+      background: transparent;
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
       padding: 0.5rem 1rem;
       border-radius: 6px;
       font-size: 0.85rem;
@@ -190,199 +108,90 @@
       transition: all 0.2s ease;
       
       &:hover {
-        background: #0ea5e9;
+        background: rgba(56, 189, 248, 0.1);
+        border-color: #38bdf8;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
       }
     }
   }
   
   .notifications-list {
-    .glass-card {
-      .notification-item {
-        padding: 1rem;
-        border-bottom: 1px solid #334155;
-        cursor: pointer;
-        transition: background 0.2s ease;
-        
-        &:last-child {
-          border-bottom: none;
-        }
-        
-        &:hover {
-          background: rgba(56, 189, 248, 0.05);
-        }
-        
-        &.unread {
-          background: rgba(56, 189, 248, 0.1);
-          border-left: 3px solid #38bdf8;
-        }
-        
-        .notification-header-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 0.5rem;
-          
-          .notification-type-badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-weight: 500;
-            
-            &.serp {
-              background: rgba(168, 85, 247, 0.2);
-              color: #a855f7;
-            }
-            
-            &.form-submission {
-              background: rgba(34, 197, 94, 0.2);
-              color: #22c55e;
-            }
-            
-            &.form-detection {
-              background: rgba(245, 158, 11, 0.2);
-              color: #f59e0b;
-            }
-          }
-          
-          .notification-time {
-            font-size: 0.75rem;
-            color: #64748b;
-          }
-        }
-        
-        .notification-message {
-          font-size: 0.9rem;
-          color: #f1f5f9;
-          margin-bottom: 0.5rem;
-          line-height: 1.4;
-        }
-        
-        .notification-stats {
-          display: flex;
-          gap: 1rem;
-          font-size: 0.85rem;
-          color: #94a3b8;
-          
-          .stat {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-            
-            i {
-              font-size: 0.75rem;
-            }
-          }
-        }
-      }
+    .notification-link {
+      display: block;
+      text-decoration: none;
+      color: inherit;
     }
-  }
-}
 
-// Notification show page styling
-.notification-show {
-  .glass-card {
-    .notification-detail {
-      .notification-header {
+    .notification-item {
+      padding: 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.2s ease;
+      
+      &:last-child {
+        border-bottom: none;
+      }
+      
+      &:hover {
+        background: rgba(56, 189, 248, 0.02);
+      }
+      
+      &.unread {
+        background: rgba(56, 189, 248, 0.05);
+        border-left: 3px solid #38bdf8;
+        padding-left: calc(1.25rem - 3px);
+      }
+      
+      .notification-header-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid #334155;
+        margin-bottom: 0.75rem;
         
+        // 色展開を完全に廃止しネオンブルー枠に統一
         .notification-type-badge {
-          font-size: 0.85rem;
-          padding: 0.5rem 1rem;
-          border-radius: 6px;
-          font-weight: 500;
+          font-size: 0.75rem;
+          padding: 0.25rem 0.6rem;
+          border-radius: 4px;
+          font-weight: 600;
+          letter-spacing: 0.05em;
+          background: rgba(56, 189, 248, 0.1);
+          color: #38bdf8;
+          border: 1px solid rgba(56, 189, 248, 0.3);
           
-          &.serp {
-            background: rgba(168, 85, 247, 0.2);
-            color: #a855f7;
-          }
-          
-          &.form-submission {
-            background: rgba(34, 197, 94, 0.2);
-            color: #22c55e;
-          }
-          
-          &.form-detection {
-            background: rgba(245, 158, 11, 0.2);
-            color: #f59e0b;
+          &.serp_enrichment, &.form_submission, &.form_detection {
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.3);
           }
         }
         
         .notification-time {
-          font-size: 0.85rem;
+          font-size: 0.8rem;
           color: #64748b;
         }
       }
       
       .notification-message {
-        font-size: 1.1rem;
+        font-size: 0.95rem;
         color: #f1f5f9;
-        margin-bottom: 1.5rem;
-        line-height: 1.6;
+        margin-bottom: 0.75rem;
+        line-height: 1.5;
       }
       
       .notification-stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-        
-        .stat-card {
-          background: rgba(56, 189, 248, 0.1);
-          border: 1px solid rgba(56, 189, 248, 0.2);
-          border-radius: 8px;
-          padding: 1rem;
-          text-align: center;
-          
-          .stat-label {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            margin-bottom: 0.5rem;
-          }
-          
-          .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #38bdf8;
-          }
-        }
-      }
-      
-      .notification-actions {
         display: flex;
-        gap: 1rem;
-        margin-top: 1.5rem;
+        gap: 1.5rem;
+        font-size: 0.8rem;
+        color: #94a3b8;
         
-        .btn {
-          padding: 0.75rem 1.5rem;
-          border-radius: 6px;
-          font-size: 0.9rem;
-          font-weight: 500;
-          text-decoration: none;
-          transition: all 0.2s ease;
+        .stat {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
           
-          &.btn-electric {
-            background: #38bdf8;
-            color: #0f172a;
-            border: none;
-            
-            &:hover {
-              background: #0ea5e9;
-            }
-          }
-          
-          &.btn-outline {
-            background: transparent;
-            color: #38bdf8;
-            border: 1px solid #38bdf8;
-            
-            &:hover {
-              background: rgba(56, 189, 248, 0.1);
-            }
+          i {
+            font-size: 0.8rem;
+            color: rgba(56, 189, 248, 0.7);
           }
         }
       }
@@ -390,18 +199,119 @@
   }
 }
 
+// ==========================================
+// Notification Show Page (ネオンブルー & 黒基調)
+// ==========================================
+.notification-show {
+  margin: 1.5rem 2rem;
 
-/* 1. 初期状態ではコンテナごと完全に非表示にする */
-.notification-dropdown-container {
-  display: none !important; /* 他のスタイルに負けないよう important を付与 */
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 9999;
-  background: white; /* 背景が透けないように白を設定 */
-}
+  .notification-detail {
+    padding: 1.5rem;
 
-/* 2. チェックボックスにチェックが入った（クリックされた）ときだけ表示する */
-#notification-toggle:checked ~ .notification-dropdown-container {
-  display: block !important;
+    .notification-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      
+      .notification-type-badge {
+        font-size: 0.8rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 4px;
+        font-weight: 600;
+        background: rgba(56, 189, 248, 0.1);
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        
+        &.serp_enrichment, &.form_submission, &.form_detection {
+          background: rgba(56, 189, 248, 0.1);
+          color: #38bdf8;
+          border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+      }
+      
+      .notification-time {
+        font-size: 0.85rem;
+        color: #64748b;
+      }
+    }
+    
+    .notification-message {
+      font-size: 1.05rem;
+      color: #f1f5f9;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    
+    .notification-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+      
+      .stat-card {
+        background: rgba(30, 41, 59, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 1.25rem;
+        text-align: center;
+        
+        .stat-label {
+          font-size: 0.75rem;
+          color: #94a3b8;
+          margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+          font-size: 1.35rem;
+          font-weight: 700;
+          color: #38bdf8;
+        }
+      }
+    }
+    
+    .notification-actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+      
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.6rem 1.2rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        
+        &.btn-electric {
+          background: #38bdf8;
+          color: #020617;
+          border: none;
+          
+          &:hover {
+            background: #0ea5e9;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+          }
+        }
+        
+        &.btn-outline {
+          background: transparent;
+          color: #94a3b8;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          
+          &:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #f1f5f9;
+            border-color: rgba(255, 255, 255, 0.3);
+          }
+        }
+      }
+    }
+  }
 }

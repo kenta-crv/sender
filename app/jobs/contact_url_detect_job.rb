@@ -2,12 +2,24 @@ class ContactUrlDetectJob < ApplicationJob
   queue_as :form_submission
   retry_on StandardError, attempts: 0
 
-  # 1顧客のお問い合わせフォームURLを自動検出（並列処理用: 1ジョブ=1顧客）
   def perform(customer_id, batch_id = nil)
+    batch = FormDetectionBatch.find_by(id: batch_id) if batch_id
+
     customer = Customer.find_by(id: customer_id)
-    return unless customer
-    return if customer.contact_url.present?
-    return if customer.url.blank?
+    unless customer
+      batch&.record_result!(customer_id, success: false, message: '顧客が見つかりません')
+      return
+    end
+
+    if customer.contact_url.present?
+      batch&.record_result!(customer_id, success: true)
+      return
+    end
+
+    if customer.url.blank?
+      batch&.record_result!(customer_id, success: false, message: 'URLが未設定です')
+      return
+    end
 
     Rails.logger.info("[ContactUrlDetectJob] 開始: #{customer.company} (ID: #{customer_id})")
 
@@ -32,10 +44,6 @@ class ContactUrlDetectJob < ApplicationJob
       detector&.teardown_driver rescue nil
     end
 
-    # Update batch progress if batch_id is provided
-    if batch_id
-      batch = FormDetectionBatch.find_by(id: batch_id)
-      batch&.record_result!(customer_id, success: success)
-    end
+    batch&.record_result!(customer_id, success: success)
   end
 end

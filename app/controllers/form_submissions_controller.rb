@@ -536,20 +536,13 @@ def import_customers
       status: 'processing',
       started_at: Time.current,
       client: current_client,
-      admin: current_admin
     )
 
     # 並列処理: 各顧客を独立したジョブとしてキューに投入
     customer_ids.each do |cid|
       ContactUrlDetectJob.perform_later(cid, batch.id)
     end
-
-    # ログイン状態に応じて適切なリダイレクト先へ戻す
-    if client_signed_in? && !admin_signed_in?
-      redirect_to dashboard_index_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
-    else
-      redirect_to form_submissions_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
-    end
+    redirect_to dashboard_index_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
   end
   
   private

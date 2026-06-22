@@ -11,11 +11,6 @@ module Dashboard
     def show
     end
 
-    def create
-      # Notifications are typically created by the system, not by users
-      redirect_to dashboard_notifications_path, alert: '通知はシステムにより作成されます'
-    end
-
     def update
       if @notification.update(read_at: Time.current)
         redirect_to dashboard_notifications_path, notice: '通知を既読にしました'
@@ -37,7 +32,7 @@ module Dashboard
     private
 
     def set_notification
-      @notification = Notification.find(params[:id])
+      @notification = notification_scope.find(params[:id])
     end
 
     def notification_scope

@@ -6,27 +6,26 @@ class FormDetectionBatch < ApplicationRecord
     JSON.parse(customer_ids || '[]')
   end
 
-  def record_result!(customer_id, success:, message: nil)
-    if success
-      self.class.where(id: id).update_all(
-        "processed_count = processed_count + 1, success_count = success_count + 1"
-      )
-    else
-      self.class.where(id: id).update_all(
-        "processed_count = processed_count + 1, error_count = error_count + 1"
-      )
-    end
-
-    reload
-    if processed_count >= total_count && status != 'completed'
-      mark_completed!
-    end
+def record_result!(customer_id, success:, message: nil)
+  if success
+    self.class.where(id: id).update_all(
+      "processed_count = COALESCE(processed_count, 0) + 1, success_count = COALESCE(success_count, 0) + 1"
+    )
+  else
+    self.class.where(id: id).update_all(
+      "processed_count = COALESCE(processed_count, 0) + 1, failure_count = COALESCE(failure_count, 0) + 1"
+    )
   end
+
+  reload
+
+  if processed_count.to_i >= total_count.to_i && status != 'completed'  # ← to_i 追加
+    mark_completed!
+  end
+end
 
   def mark_completed!
     update!(status: 'completed', completed_at: Time.current)
-    
-    # Create notification for form detection completion
     Notification.create_for_form_detection!(batch: self)
   end
 

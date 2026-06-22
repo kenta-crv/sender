@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_06_20_114522) do
+ActiveRecord::Schema.define(version: 2026_06_22_053123) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -235,6 +235,7 @@ ActiveRecord::Schema.define(version: 2026_06_20_114522) do
     t.text "customer_ids"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.integer "failure_count", default: 0
   end
 
   create_table "form_submission_batches", force: :cascade do |t|
