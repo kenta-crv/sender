@@ -17,9 +17,9 @@ class Notification < ApplicationRecord
     create!(
       type: 'SerpEnrichment',
       status: run.status,
-      total_count: run.target_count,
-      success_count: run.summary_json['done_count'] || 0,
-      error_count: run.summary_json['error_count'] || 0,
+      total_count: run.target_count.to_i,
+      success_count: run.summary_json['done_count'].to_i,
+      error_count: run.summary_json['error_count'].to_i,
       client_id: client_id,
       notifiable: run,
       message: generate_serp_message(run)
@@ -30,9 +30,9 @@ class Notification < ApplicationRecord
     create!(
       type: 'FormSubmission',
       status: batch.status,
-      total_count: batch.total_count,
-      success_count: batch.success_count,
-      error_count: batch.failure_count,
+      total_count: batch.total_count.to_i,
+      success_count: batch.success_count.to_i,
+      error_count: batch.failure_count.to_i,
       client_id: batch.client_id,
       notifiable: batch,
       message: generate_form_submission_message(batch)
@@ -43,10 +43,10 @@ class Notification < ApplicationRecord
     create!(
       type: 'FormDetection',
       status: batch.status,
-      total_count: batch.total_count,
-      success_count: batch.success_count,
-      error_count: batch.failure_count,  # ← failure_count に修正
-      client_id: batch.client_id,        # ← client_id も batch から取得するよう統一
+      total_count: batch.total_count.to_i,
+      success_count: batch.success_count.to_i,
+      error_count: batch.failure_count.to_i,
+      client_id: batch.client_id,
       notifiable: batch,
       message: generate_form_detection_message(batch)
     )
@@ -67,16 +67,16 @@ class Notification < ApplicationRecord
   private
 
   def self.generate_serp_message(run)
-    done_count = run.summary_json['done_count'] || 0
-    error_count = run.summary_json['error_count'] || 0
+    done_count = run.summary_json['done_count'].to_i
+    error_count = run.summary_json['error_count'].to_i
     "SERP実行完了: 実行#{run.target_count}件, 成功#{done_count}件, エラー#{error_count}件"
   end
 
   def self.generate_form_submission_message(batch)
-    "フォーム送信完了: 実行#{batch.total_count}件, 成功#{batch.success_count}件, エラー#{batch.failure_count}件"  # ← 修正
+    "フォーム送信完了: 実行#{batch.total_count.to_i}件, 成功#{batch.success_count.to_i}件, エラー#{batch.failure_count.to_i}件"
   end
 
   def self.generate_form_detection_message(batch)
-    "フォーム検出完了: 実行#{batch.total_count}件, 成功#{batch.success_count}件, エラー#{batch.failure_count}件"  # ← 修正
+    "フォーム検出完了: 実行#{batch.total_count.to_i}件, 成功#{batch.success_count.to_i}件, エラー#{batch.failure_count.to_i}件"
   end
 end
