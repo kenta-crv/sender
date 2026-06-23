@@ -40,18 +40,10 @@ class FormSubmissionBatch < ApplicationRecord
     end
   end
 
-  def mark_completed!
-    update!(status: 'completed', completed_at: Time.current)
-
-    # Create notification for form submission completion
-    Notification.create_for_form_submission!(batch: self)
-
-    if client.present?
-      ClientMailer.form_submission_result_email(client, self).deliver_now
-    elsif admin.present?
-      ClientMailer.form_submission_result_email(admin, self).deliver_now
-    end
-  end
+def mark_completed!
+  update!(status: 'completed', completed_at: Time.current)
+  Notification.create_for_form_submission!(batch: self)
+end
 
   def cancel!
     update!(status: 'cancelled')

@@ -13,9 +13,4 @@ class ClientMailer < ApplicationMailer
     mail(to: @client.email, subject: "【Okurite】プラン登録完了のお知らせ")
   end
 
-  def form_submission_result_email(client, batch)
-    @client = client
-    @batch = batch
-    mail(to: @client.email, subject: "【Okurite】フォーム送信結果のお知らせ")
-  end
 end

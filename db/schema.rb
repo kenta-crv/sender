@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_06_22_053123) do
+ActiveRecord::Schema.define(version: 2026_06_23_052914) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -373,6 +373,7 @@ ActiveRecord::Schema.define(version: 2026_06_22_053123) do
     t.text "summary_json"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.integer "client_id"
     t.index ["created_at"], name: "index_serp_enrichment_runs_on_created_at"
     t.index ["jid"], name: "index_serp_enrichment_runs_on_jid"
     t.index ["run_id"], name: "index_serp_enrichment_runs_on_run_id", unique: true
