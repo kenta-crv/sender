@@ -389,16 +389,16 @@ def serp_search
     current_client.monthly_usage_log.increment!(:serp_api_used, actual_limit)
   end
 
-  # SerpEnrichmentRunを作成してrun_idを渡す
-  run_id = SecureRandom.uuid
   client_id = client_signed_in? ? current_client.id : nil
 
+  run_id = SecureRandom.uuid
   audit_run = SerpEnrichmentRun.create_for_targets!(
     run_id: run_id,
     industry: industry,
     limit: actual_limit,
     targets: Customer.where(id: customer_ids)
   )
+  audit_run.update!(client_id: client_id)
 
   begin
     SerpPipelineDbWorker.perform_async(industry, actual_limit, customer_ids, run_id)
@@ -422,7 +422,6 @@ def serp_search
     end
   end
 end
-
   # GET /customers/filter_by_industry
   def filter_by_industry
     @crowdworks = Crowdwork.all || []
