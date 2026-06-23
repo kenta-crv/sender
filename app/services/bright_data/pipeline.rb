@@ -222,7 +222,10 @@ module BrightData
                 end
 
                 if group.empty?
-                  result_status = "no_candidate"
+                  # 【修正】候補URLが0件＝抽出物が何もない状態は「no_candidate」(△表示)ではなく
+                  # 「error」(×表示) として扱う。何も抽出できなかった場合はエラーが正しい。
+                  result_status = "error"
+                  error_message ||= "SERP候補URLなし（抽出結果0件）"
                   mutex.synchronize do
                     counters[:no_candidate] += 1
                     puts "  -> 候補URLなし（SERP抽出結果なし） customer ID=#{customer.id}"
@@ -323,8 +326,11 @@ module BrightData
                 end
               ensure
                 if audit_target && customer
+                  # 【修正】candidate_count.zero? のフォールバックも "no_candidate" ではなく
+                  # "error" に統一。result_status が既に上で "error" 設定されているため
+                  # 通常はここを通らないが、フォールバックの整合性のため変更。
                   final_status = result_status ||
-                                 (candidate_count.zero? ? "no_candidate" : nil) ||
+                                 (candidate_count.zero? ? "error" : nil) ||
                                  (error_message.present? ? "error" : nil) ||
                                  (excluded_seen ? "excluded" : "no_update")
 

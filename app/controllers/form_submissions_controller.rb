@@ -66,10 +66,19 @@ def index
                    .page(params[:customers_page])
                    .per(50)
 
-    @detectable_customers = base_customers
-                              .where(contact_url: [nil, ''])
-                              .where.not(url: [nil, ''])
-                              .where(fobbiden: [nil, false, 0])
+    # 【修正】business_filter / genre_filter を検出対象一覧にも適用する。
+    # 旧実装ではこのクエリにフィルタが一切反映されておらず、
+    # 業種・職種を選択しても画面の対象件数・一覧は常に全件のままだった
+    # （POST側の detect_contact_urls アクションにしかフィルタが効いていなかった）。
+    detectable_scope = base_customers
+                          .where(contact_url: [nil, ''])
+                          .where.not(url: [nil, ''])
+                          .where(fobbiden: [nil, false, 0])
+
+    detectable_scope = detectable_scope.where(business: params[:business_filter]) if params[:business_filter].present?
+    detectable_scope = detectable_scope.where(genre: params[:genre_filter]) if params[:genre_filter].present?
+
+    @detectable_customers = detectable_scope
                               .page(params[:detectable_page])
                               .per(50)
 
@@ -489,6 +498,11 @@ def import_customers
     # Apply business filter if provided
     if params[:business_filter].present?
       base_scope = base_scope.where(business: params[:business_filter])
+    end
+
+    # 【追加】職種(genre)フィルタにも対応
+    if params[:genre_filter].present?
+      base_scope = base_scope.where(genre: params[:genre_filter])
     end
 
     customer_ids = if params[:detect_select_all] == '1'

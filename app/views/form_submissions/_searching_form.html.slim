@@ -5,7 +5,7 @@
   .sc-detect__card
     .sc-detect__card-header
       h5.m-0 style="color: #ffffff;" お問い合わせフォームURL 一括自動検出
-    
+
     .sc-detect__card-body
       - if @detectable_customers.any?
         p style="color: rgba(229, 231, 235, 0.8);"
@@ -17,16 +17,25 @@
           | 件
 
         = form_tag dashboard_searching_form_path, method: :get, id: 'filter-form' do
-          .mb-3
-            label.sc-detect__label 業種で絞り込む
-            = select_tag :business_filter, 
-              options_for_select([['全業種', '']] + @business_options, params[:business_filter]),
-              class: 'sc-detect__input',
-              onchange: 'document.getElementById("filter-form").submit()',
-              style: 'width: 100%; max-width: 300px;'
+          .row.g-3.mb-3
+            .col-12.col-md-auto
+              label.sc-detect__label 業種で絞り込む
+              = select_tag :business_filter,
+                options_for_select([['全業種', '']] + @business_options, params[:business_filter]),
+                class: 'sc-detect__input',
+                onchange: 'document.getElementById("filter-form").submit()',
+                style: 'width: 100%; min-width: 240px; max-width: 300px;'
+            .col-12.col-md-auto
+              label.sc-detect__label 職種で絞り込む
+              = select_tag :genre_filter,
+                options_for_select([['全職種', '']] + @genre_options, params[:genre_filter]),
+                class: 'sc-detect__input',
+                onchange: 'document.getElementById("filter-form").submit()',
+                style: 'width: 100%; min-width: 240px; max-width: 300px;'
 
         = form_tag detect_contact_urls_form_submissions_path, method: :post, id: 'detect-form' do
           = hidden_field_tag :business_filter, params[:business_filter]
+          = hidden_field_tag :genre_filter, params[:genre_filter]
           .mb-3.d-flex.align-items-center
             label.d-flex.align-items-center style="cursor: pointer; color: #7dd3fc;"
               = check_box_tag :detect_select_all, '1', false, id: 'detect_select_all', class: 'me-2'
@@ -50,7 +59,7 @@
                     td
                       - if c.url.present?
                         = link_to truncate(c.url, length: 50), c.url, target: '_blank', rel: 'noopener noreferrer', style: "color: #38bdf8; text-decoration: none;"
-          
+
           / --- ページネーション専用ゾーン ---
           .sc-detect__pagination-zone.my-4.d-flex.justify-content-center
             = paginate @detectable_customers, param_name: :detectable_page
@@ -60,7 +69,7 @@
               class: 'sc-detect__btn sc-detect__btn--warning',
               style: "padding: 12px 40px; font-size: 1rem;",
               data: { confirm: '選択した顧客のHPからフォームURLを自動検出しますか？' }
-      
+
       - else
         .py-5.text-center
           p style="color: rgba(229, 231, 235, 0.4);" 自動検出対象の顧客はありません。
@@ -68,7 +77,7 @@
       - if @not_detected_count > 0
         .p-3.rounded-3.mb-3 style="background: rgba(156, 163, 175, 0.1); border: 1px solid rgba(156, 163, 175, 0.2);"
           div style="color: #e5e7eb;"
-            | フォーム検出済み（未検出）: 
+            | フォーム検出済み（未検出）:
             strong.mx-1 style="color: #ffffff;" = @not_detected_count
             | 件
           span.small style="color: rgba(229, 231, 235, 0.5);" ※再検出するには顧客編集画面でcontact_urlを空にしてください
@@ -78,7 +87,7 @@
           .d-flex.justify-content-between.align-items-center
             div style="color: #e5e7eb;"
               i.fas.fa-exclamation-circle.me-2 style="color: #38bdf8;"
-              | HP URL もお問い合わせフォームURLも未設定の顧客が 
+              | HP URL もお問い合わせフォームURLも未設定の顧客が
               strong.mx-1 style="color: #38bdf8;" = @no_url_customers_count
               | 件あります。
             - if @submissions.first.present?
@@ -103,5 +112,5 @@ javascript:
     };
 
     document.addEventListener('turbo:load', setupDetectAll);
-    document.addEventListener('DOMContentLoaded', setupDetectAll);
+    document.addEventListener('DOMContentLoaded', setupSetupDetectAll);
   })();

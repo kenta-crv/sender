@@ -192,37 +192,48 @@ class Dashboard::DashboardsController < ApplicationController
     end
   end
 
-  def searching_form
-    @q = @base_customers.ransack(params[:q])
-    filtered = @q.result(distinct: true)
+def searching_form
+  @q = @base_customers.ransack(params[:q])
+  filtered = @q.result(distinct: true)
 
-    if params[:business_filter].present?
-      filtered = filtered.where(business: params[:business_filter])
-    end
-
-    @detectable_customers = filtered
-                              .where(contact_url: [nil, ''])
-                              .where.not(url: [nil, ''])
-                              .where(fobbiden: [nil, false, 0])
-                              .page(params[:detectable_page]).per(50)
-
-    @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
-    @no_url_customers_count = @base_customers.where(contact_url: [nil, '']).where(url: [nil, '']).count
-
-    detectable_base = @q.result(distinct: true)
-                        .where(contact_url: [nil, ''])
-                        .where.not(url: [nil, ''])
-                        .where(fobbiden: [nil, false, 0])
-
-    @business_options = detectable_base.where.not(business: [nil, ''])
-                                       .group(:business)
-                                       .count
-                                       .select { |_name, count| count >= 1 }
-                                       .sort_by { |_name, count| -count }
-                                       .map { |name, count| ["#{name}（#{count}件）", name] }
-
-    @submissions = admin_signed_in? ? Submission.where(client_id: nil).order(created_at: :desc) : (client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none)
+  if params[:business_filter].present?
+    filtered = filtered.where(business: params[:business_filter])
   end
+
+  if params[:genre_filter].present?
+    filtered = filtered.where(genre: params[:genre_filter])
+  end
+
+  @detectable_customers = filtered
+                            .where(contact_url: [nil, ''])
+                            .where.not(url: [nil, ''])
+                            .where(fobbiden: [nil, false, 0])
+                            .page(params[:detectable_page]).per(50)
+
+  @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
+  @no_url_customers_count = @base_customers.where(contact_url: [nil, '']).where(url: [nil, '']).count
+
+  detectable_base = @q.result(distinct: true)
+                      .where(contact_url: [nil, ''])
+                      .where.not(url: [nil, ''])
+                      .where(fobbiden: [nil, false, 0])
+
+  @business_options = detectable_base.where.not(business: [nil, ''])
+                                     .group(:business)
+                                     .count
+                                     .select { |_name, count| count >= 1 }
+                                     .sort_by { |_name, count| -count }
+                                     .map { |name, count| ["#{name}（#{count}件）", name] }
+
+  @genre_options = detectable_base.where.not(genre: [nil, ''])
+                                  .group(:genre)
+                                  .count
+                                  .select { |_name, count| count >= 1 }
+                                  .sort_by { |_name, count| -count }
+                                  .map { |name, count| ["#{name}（#{count}件）", name] }
+
+  @submissions = admin_signed_in? ? Submission.where(client_id: nil).order(created_at: :desc) : (client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none)
+end
 
   def setting; end
 
