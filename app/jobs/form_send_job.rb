@@ -45,22 +45,42 @@ class FormSendJob < ApplicationJob
 
       success = result[:status] == '自動送信成功'
 
-      batch.record_result!(
-        customer_id,
-        success: success,
-        message: "#{result[:status]}: #{result[:message]}"
-      )
+      retries = 0
+      begin
+        batch.record_result!(
+          customer_id,
+          success: success,
+          message: "#{result[:status]}: #{result[:message]}"
+        )
+      rescue ActiveRecord::StatementInvalid => db_error
+        if db_error.message.include?('database is locked') && retries < 3
+          retries += 1
+          sleep(rand(0.1..0.5))
+          retry
+        end
+        raise
+      end
 
     rescue StandardError => e
       Rails.logger.error(
         "[FormSendJob] customer_id=#{customer_id} エラー: #{e.message}"
       )
 
-      batch.record_result!(
-        customer_id,
-        success: false,
-        message: e.message
-      )
+      retries = 0
+      begin
+        batch.record_result!(
+          customer_id,
+          success: false,
+          message: e.message
+        )
+      rescue ActiveRecord::StatementInvalid => db_error
+        if db_error.message.include?('database is locked') && retries < 3
+          retries += 1
+          sleep(rand(0.1..0.5))
+          retry
+        end
+        raise
+      end
 
     ensure
       sender&.teardown_driver rescue nil

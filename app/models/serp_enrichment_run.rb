@@ -75,10 +75,18 @@ class SerpEnrichmentRun < ApplicationRecord
   end
 
   def complete!(done_count:, error_count:, summary: {})
+    actual_success = targets.where(result_status: %w[updated url_only]).count
+    actual_error = targets.where(result_status: %w[error no_candidate]).count
+
     update!(
       status: "done",
       finished_at: Time.current,
-      summary_json: (summary || {}).merge(done_count: done_count.to_i, error_count: error_count.to_i)
+      summary_json: (summary || {}).merge(
+        done_count: done_count.to_i,
+        error_count: error_count.to_i,
+        actual_success: actual_success,
+        actual_error: actual_error
+      )
     )
     Notification.create_for_serp!(run: self, client_id: client_id)
   end
