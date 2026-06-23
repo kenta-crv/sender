@@ -41,6 +41,7 @@ class TopsController < ApplicationController
   end
   def specific
   end
+  def columns; end
   private
 
 

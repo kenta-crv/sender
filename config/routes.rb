@@ -67,10 +67,8 @@ Rails.application.routes.draw do
   get 'privacy', to: 'tops#privacy'
   get 'tos', to: 'tops#tos'
   get 'specific', to: 'tops#specific'
+  
 
-  scope ':genre', constraints: { genre: /app/ } do
-    resources :columns, only: [:index, :show], as: :nested_columns
-  end
   resources :contracts
 
   get 'draft/progress', to: 'draft#progress'
@@ -147,6 +145,7 @@ Rails.application.routes.draw do
   get '/l/:token', to: 'click_tracking#redirect', as: :click_tracking
 
   resources :problems
+  get 'columns',         to: 'tops#columns'
 
   
 end
