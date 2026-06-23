@@ -3,9 +3,6 @@ class FormSendJob < ApplicationJob
 
   retry_on StandardError, attempts: 0
 
-  # 並列方式: 1ジョブ = 1顧客を独立処理
-  # batch_id: FormSubmissionBatch の ID
-  # customer_id: 処理対象の Customer ID
   def perform(batch_id, customer_id)
     Rails.logger.info(
       "[FormSendJob] 開始: " \
@@ -31,7 +28,6 @@ class FormSendJob < ApplicationJob
       return
     end
 
-    # FormSender で送信実行（Sidekiq 環境ではヘッドレスモード）
     sender = nil
 
     begin
@@ -67,14 +63,12 @@ class FormSendJob < ApplicationJob
       )
 
     ensure
-      # Chromeプロセスの確実な終了（ゾンビプロセス防止）
       sender&.teardown_driver rescue nil
     end
   end
 
   private
 
-  # Submissionデータからsender_infoハッシュを構築
   def build_sender_info(batch, customer)
     submission = batch.submission
 
@@ -82,14 +76,8 @@ class FormSendJob < ApplicationJob
 
     info = {}
 
-    # =====================================================
-    # 会社名
-    # =====================================================
     info[:company] = submission.company if submission.company.present?
 
-    # =====================================================
-    # 担当者名
-    # =====================================================
     if submission.person.present?
       info[:name] = submission.person
 
@@ -101,13 +89,9 @@ class FormSendJob < ApplicationJob
       end
     end
 
-    # =====================================================
-    # 担当者カナ
-    # =====================================================
     if submission.person_kana.present?
       kana = submission.person_kana.strip
 
-      # カタカナ
       info[:name_kana] = kana
 
       parts = kana.split(/[\s　]+/, 2)
@@ -117,7 +101,6 @@ class FormSendJob < ApplicationJob
         info[:name_kana_mei] = parts[1]
       end
 
-      # ひらがな
       hira = kana.tr('ァ-ヶ', 'ぁ-ゖ')
 
       info[:name_hira] = hira
@@ -130,9 +113,6 @@ class FormSendJob < ApplicationJob
       end
     end
 
-    # =====================================================
-    # 電話番号
-    # =====================================================
     if submission.tel.present?
       tel = submission.tel.strip
 
@@ -148,21 +128,16 @@ class FormSendJob < ApplicationJob
       end
     end
 
-    # =====================================================
-    # 住所
-    # =====================================================
     if submission.address.present?
       addr = submission.address.strip
 
       info[:address] = addr
 
-      # 都道府県を正規表現で分割
       if addr =~ /\A((?:北海道|(?:東京|大阪|京都)府|.{2,3}県))(.*)/
         info[:prefecture] = $1
 
         rest = $2
 
-        # 市区町村と番地を分割
         if rest =~ /\A(.+?[市区町村郡])(.*)/
           info[:address_city] = $1
           info[:address_street] = $2
@@ -173,28 +148,10 @@ class FormSendJob < ApplicationJob
       end
     end
 
-    # =====================================================
-    # メール
-    # =====================================================
     info[:email] = submission.email if submission.email.present?
 
-    # =====================================================
-    # 自社メインドメイン（ri-plus.jp）用のURLオプション定義
-    # =====================================================
     ri_plus_options = { host: 'ri-plus.jp', protocol: 'https', port: nil }
 
-    # =====================================================
-    # 配信停止URL（自社メインドメインに固定）
-    # =====================================================
-    unsubscribe_link =
-      Rails.application.routes.url_helpers.unsubscribe_url(
-        customer.unsubscribe_token,
-        ri_plus_options
-      )
-
-    # =====================================================
-    # クリック追跡リンク
-    # =====================================================
     tracking = ClickTrackingLink.create!(
       customer: customer,
       client: batch.client,
@@ -202,33 +159,21 @@ class FormSendJob < ApplicationJob
       target_url: submission.url
     )
 
-    # クリック追跡URL（自社メインドメインに固定）
     tracking_link =
       Rails.application.routes.url_helpers.click_tracking_url(
         tracking.token,
         ri_plus_options
       )
 
-    # =====================================================
-    # メッセージ本文
-    # =====================================================
     if submission.content.present?
       info[:message] = <<~TEXT
         #{submission.content}
 
         詳細はこちら
         #{tracking_link}
-
-        ━━━━━━━━━━━━━━━━━━━━
-        配信停止をご希望の場合
-        #{unsubscribe_link}
-        ━━━━━━━━━━━━━━━━━━━━
       TEXT
     end
 
-    # =====================================================
-    # URL
-    # =====================================================
     info[:url] = submission.url if submission.url.present?
 
     info
