@@ -300,7 +300,90 @@ def draft
   Rails.logger.info("draft action: completed in #{elapsed}ms")
 end
 
+def serp_search
+  self.class.skip_before_action :verify_authenticity_token, only: [:serp_search], raise: false
 
+  industry        = params[:industry].presence
+  genre           = params[:genre].presence
+  limit           = (params[:limit] || 100).to_i
+  company_query   = params[:company_query].presence
+  fill_filter     = params[:fill_filter].presence
+  serp_target_ids = params[:serp_target_ids].presence
+
+  if client_signed_in? && !admin_signed_in?
+    monthly_log = current_client.monthly_usage_log
+    subscription_remaining = [monthly_log.serp_api_limit - monthly_log.serp_api_used, 0].max
+
+    if subscription_remaining <= 0
+      redirect_to draft_customers_path, alert: "今月のSERP API使用上限に達しています（#{monthly_log.serp_api_used}/#{monthly_log.serp_api_limit}）" and return
+    end
+
+    limit = [limit, subscription_remaining].min
+  end
+
+  base_scope = Customer.draft_base_scope(
+    current_client_id: client_signed_in? ? current_client.id : nil,
+    is_admin:          admin_signed_in?,
+    industry_name:     industry
+  ).then { |s| genre.present? ? s.where(genre: genre) : s }
+
+  scope = base_scope.serp_extraction_targets(fill_filter)
+
+  if company_query.present?
+    scope = filter_company_query(scope, company_query)
+  end
+
+  target_count = scope.count
+
+  if target_count == 0
+    redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
+  end
+
+  actual_limit = [limit, target_count].min
+
+  customer_ids = if serp_target_ids.present?
+                   serp_target_ids.split(',').map(&:to_i).take(actual_limit)
+                 else
+                   scope.order(id: :asc).limit(actual_limit).pluck(:id)
+                 end
+
+  if client_signed_in? && !admin_signed_in?
+    current_client.monthly_usage_log.increment!(:serp_api_used, actual_limit)
+  end
+
+  client_id = client_signed_in? ? current_client.id : nil
+
+  run_id = SecureRandom.uuid
+  audit_run = SerpEnrichmentRun.create_for_targets!(
+    run_id: run_id,
+    industry: industry,
+    limit: actual_limit,
+    targets: Customer.where(id: customer_ids)
+  )
+  audit_run.update!(client_id: client_id)
+
+  begin
+    SerpPipelineDbWorker.perform_async(industry, actual_limit, customer_ids, run_id)
+    redirect_to draft_customers_path,
+      notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'} / 職種: #{genre || '全職種'}）"
+  rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
+    Rails.logger.warn("[serp_search] Redis未起動のため同期実行にフォールバック: #{e.message}")
+    begin
+      BrightData::Pipeline.execute_from_db(
+        industry: industry,
+        limit: actual_limit,
+        customer_ids: customer_ids,
+        progress_run_id: run_id,
+        dry_run: false
+      )
+      redirect_to draft_customers_path,
+        notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'} / 職種: #{genre || '全職種'}）"
+    rescue => pipeline_err
+      Rails.logger.error("[serp_search] Pipeline error: #{pipeline_err.message}")
+      redirect_to draft_customers_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
+    end
+  end
+end
   private
 
   def authenticate_admin_or_client!
