@@ -123,14 +123,14 @@
                 .sc-detect__form-group.mb-2
                   label.sc-detect__label 業種で絞り込む
                   = select_tag :industry_select_menu,
-                    options_for_select([['全業種', '']] + (@industry_options || []), params[:industry_name] || params[:industry]),
+                    options_for_select([['全業種', '']] + Array(@industry_options).compact, params[:industry_name] || params[:industry]),
                     class: 'sc-detect__input',
                     id: 'serp-industry-select'
               .col-sm-6
                 .sc-detect__form-group.mb-2
                   label.sc-detect__label 職種で絞り込む
                   = select_tag :genre_select_menu,
-                    options_for_select([['全職種', '']] + (@genre_options || []), params[:genre_name] || params[:genre]),
+                    options_for_select([['全職種', '']] + Array(@genre_options).compact, params[:genre_name] || params[:genre]),
                     class: 'sc-detect__input',
                     id: 'serp-genre-select'
               .col-sm-6
@@ -213,14 +213,14 @@
                 .sc-detect__form-group
                   label.sc-detect__label 業種
                   = select_tag :industry_name,
-                    options_for_select([['全業種', '']] + (@industry_options || []), params[:industry_name]),
+                    options_for_select([['全業種', '']] + Array(@industry_options).compact, params[:industry_name]),
                     class: "sc-detect__input",
                     id: "filter-industry-select"
               .col-md-4
                 .sc-detect__form-group
                   label.sc-detect__label 職種
                   = select_tag :genre_name,
-                    options_for_select([['全職種', '']] + (@genre_options || []), params[:genre_name]),
+                    options_for_select([['全職種', '']] + Array(@genre_options).compact, params[:genre_name]),
                     class: "sc-detect__input",
                     id: "filter-genre-select"
               .col-md-4.d-flex.align-items-center
