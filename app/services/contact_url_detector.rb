@@ -56,8 +56,11 @@ class ContactUrlDetector
     お問合せ お問合わせ ご相談 資料請求
   ].freeze
 
-  # ページ読み込み待機秒数
+  # ページ読み込み後の追加待機秒数（JS描画完了を待つための保険）
   PAGE_LOAD_WAIT = 2
+
+  # document.readyState 完了待ちの最大秒数
+  READY_STATE_TIMEOUT = 10
 
   def initialize(debug: false, headless: true)
     @debug = debug
@@ -220,7 +223,11 @@ class ContactUrlDetector
     navigate_safely(base_url)
 
     # 現在のページからリンクを収集してスコアリング
-    links = collect_scored_links(base_url)
+    # base_url（入力時の文字列）ではなく、navigate_safely 後にブラウザが
+    # 実際に表示しているURL（リダイレクト後）を基準にドメイン一致を判定する。
+    # www付与やhttps化リダイレクトが起きると base_url と実際のホスト名が異なり、
+    # リンクが全て弾かれてしまうため。
+    links = collect_scored_links
     log "  スコア付きリンク: #{links.size}件"
 
     # 上位5件をチェック
@@ -248,7 +255,7 @@ class ContactUrlDetector
   def explore_links_from_page(page_url)
     # 現在のページ（contact関連ページ）に再アクセスしてリンクを収集
     navigate_safely(page_url)
-    links = collect_scored_links(page_url)
+    links = collect_scored_links
     log "  深層探索: #{links.size}件のリンク"
 
     links.first(5).each do |link_info|
@@ -260,8 +267,11 @@ class ContactUrlDetector
     nil
   end
 
-  def collect_scored_links(base_url)
-    base_uri = URI.parse(base_url) rescue nil
+  # 引数を取らず、常に driver.current_url（実際に表示中のURL）からホストを
+  # 取得することで、リダイレクト後でも正しくドメイン一致判定できるようにしている。
+  def collect_scored_links
+    actual_url = current_url
+    base_uri = URI.parse(actual_url) rescue nil
     return [] unless base_uri
 
     scored = []
@@ -272,13 +282,13 @@ class ContactUrlDetector
         href = a.attribute('href').to_s.strip
         next if href.empty? || href.start_with?('javascript:', 'mailto:', 'tel:', '#')
 
-        # 絶対URLに変換
-        full_url = resolve_url(base_url, href)
+        # 絶対URLに変換（base は実際の現在URLを使う）
+        full_url = resolve_url(actual_url, href)
         next unless full_url
 
-        # 同一ドメインのみ対象
+        # 同一ドメインのみ対象（www有無の差異は同一ドメインとみなす）
         link_uri = URI.parse(full_url) rescue nil
-        next unless link_uri && link_uri.host == base_uri.host
+        next unless link_uri && same_domain?(link_uri.host, base_uri.host)
 
         # 除外チェック
         text = a.text.to_s.strip
@@ -370,7 +380,46 @@ class ContactUrlDetector
   # フォーム判定
   # ============================================================
 
+  # メインドキュメント → 見つからなければ各 iframe 内も探索する。
+  # 古い企業サイトでは、メールフォームASP/CGIサービスのフォームを
+  # <iframe> で埋め込んでいるケースが多く、メインドキュメントしか
+  # 見ていないと検出漏れになるため。
   def has_contact_form?
+    return true if form_found_in_context?
+
+    iframes = []
+    begin
+      iframes = driver.find_elements(:tag_name, 'iframe')
+    rescue StandardError => e
+      log "    iframe取得エラー: #{e.message}"
+    end
+
+    iframes.each do |iframe|
+      begin
+        driver.switch_to.frame(iframe)
+        found = form_found_in_context?
+        driver.switch_to.default_content
+        if found
+          log "    フォーム検出: iframe内"
+          return true
+        end
+      rescue StandardError => e
+        log "    iframe内チェックエラー: #{e.message}"
+        driver.switch_to.default_content rescue nil
+        next
+      end
+    end
+
+    false
+  rescue StandardError => e
+    log "    フォーム判定エラー: #{e.message}"
+    driver.switch_to.default_content rescue nil
+    false
+  end
+
+  # 現在のブラウジングコンテキスト（メインドキュメント or 切替済みのiframe）
+  # 内でフォームを判定する。判定パターン自体は変更していない。
+  def form_found_in_context?
     # パターン1: form要素内に input 2個以上 + textarea
     forms = driver.find_elements(:tag_name, 'form')
     forms.each do |form|
@@ -401,7 +450,7 @@ class ContactUrlDetector
 
     false
   rescue StandardError => e
-    log "    フォーム判定エラー: #{e.message}"
+    log "    フォーム判定エラー(context内): #{e.message}"
     false
   end
 
@@ -487,7 +536,7 @@ class ContactUrlDetector
 
   def navigate_safely(url)
     driver.navigate.to(url)
-    sleep PAGE_LOAD_WAIT
+    wait_for_page_ready
     true
   rescue Selenium::WebDriver::Error::TimeoutError
     log "    ページロードタイムアウト: #{url}"
@@ -495,6 +544,24 @@ class ContactUrlDetector
   rescue Selenium::WebDriver::Error::WebDriverError => e
     log "    ナビゲーションエラー: #{e.message}"
     false
+  end
+
+  # document.readyState が 'complete' になるまで明示的に待機し、
+  # その後 JS による動的描画（SPA等）の完了を待つために短い固定待機を追加する。
+  # readyState 待ちがタイムアウトしても処理は継続する（後続の固定待機に委ねる）。
+  def wait_for_page_ready
+    begin
+      Selenium::WebDriver::Wait.new(timeout: READY_STATE_TIMEOUT).until do
+        driver.execute_script('return document.readyState') == 'complete'
+      end
+    rescue Selenium::WebDriver::Error::TimeoutError
+      log "    readyState待機タイムアウト（処理は継続）"
+    rescue StandardError => e
+      log "    readyState待機エラー: #{e.message}（処理は継続）"
+    end
+
+    # JSによる遅延描画（フォームの非同期挿入等）を待つための保険の固定待機
+    sleep PAGE_LOAD_WAIT
   end
 
   def current_url
@@ -522,6 +589,13 @@ class ContactUrlDetector
     URI.join(base, href).to_s
   rescue URI::InvalidURIError, URI::BadURIError
     nil
+  end
+
+  # www有無の差異を吸収したドメイン一致判定
+  def same_domain?(host1, host2)
+    return false if host1.nil? || host2.nil?
+    strip = ->(h) { h.downcase.sub(/\Awww\./, '') }
+    strip.call(host1) == strip.call(host2)
   end
 
   # NGブラックリスト判定（URL部分一致）

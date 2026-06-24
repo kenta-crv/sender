@@ -6,6 +6,15 @@ class Customer < ApplicationRecord
   belongs_to :client, optional: true
   before_create :generate_unsubscribe_token
 
+  # ダッシュ系を含む「実質空値」のSQL断片を生成するユーティリティ
+  # 例: blank_sql("tel") => "(tel IS NULL OR TRIM(tel) IN ('', '-', '－', '−', 'ー') OR tel = ' ')"
+  DASH_VARIANTS = ["'-'", "'－'", "'−'", "'ー'", "'–'"].freeze
+
+  def self.blank_sql(col)
+    dash_list = DASH_VARIANTS.join(", ")
+    "(#{col} IS NULL OR TRIM(#{col}) = '' OR #{col} = ' ' OR #{col} = '　' OR TRIM(#{col}) IN (#{dash_list}))"
+  end
+
   scope :between_created_at, ->(from, to) {
     where(created_at: from..to).where.not(tel: nil)
   }
@@ -22,15 +31,14 @@ class Customer < ApplicationRecord
   # プレビュー（draft画面）と実行（execute_from_db）で同じ条件を使うための共通スコープ。
   scope :serp_extraction_targets, ->(fill_filter = nil) {
     base = where(serp_status: [nil, ''])
-    
+
     if fill_filter.present?
       # 画面で充足フィルタが選択されている場合は、その条件に限定する
       base.apply_fill_filter(fill_filter)
     else
-      # 【修正】SQLite3対応: tel と url の両方が「nil、空文字、半角スペース、全角スペースのみ」である企業を厳密にAND結合で抽出
+      # tel と url の両方が「nil、空文字、半角スペース、全角スペース、ダッシュ系」である企業を抽出
       base.where(
-        "(tel IS NULL OR TRIM(tel) = '' OR tel = ' ') AND " \
-        "(url IS NULL OR TRIM(url) = '' OR url = ' ')"
+        "#{blank_sql('tel')} AND #{blank_sql('url')}"
       )
     end
   }
@@ -105,22 +113,39 @@ class Customer < ApplicationRecord
   def self.apply_fill_filter(fill_filter)
     case fill_filter
     when "missing_tel"
-      where("tel IS NULL OR TRIM(tel) = '' OR tel = ' '")
+      where(blank_sql("tel"))
     when "missing_address"
-      where("address IS NULL OR TRIM(address) = '' OR address = ' '")
+      where(blank_sql("address"))
+    when "partial_address"
+      # address自体は存在するが不十分（スコアが0）な行。Ruby側フィルタ不可のためSQLで近似。
+      # ダッシュ系も含めて「空またはダッシュ」は missing_address 扱いにし、
+      # partial_address は「何か入っているが都道府県+市区町村+番地が揃っていない」行を指す。
+      where.not(blank_sql("address")).where(
+        "address NOT REGEXP '^(#{prefecture_regexp_fragment})'" \
+        " OR address NOT REGEXP '(市|区|町|村|郡)'" \
+        " OR address NOT REGEXP '[0-9０-９]|丁目|番地|番|号'"
+      )
     when "missing_url"
-      where("url IS NULL OR TRIM(url) = '' OR url = ' '")
+      where(blank_sql("url"))
     when "missing_contact_url"
-      where("contact_url IS NULL OR TRIM(contact_url) = '' OR contact_url = ' '")
+      where(blank_sql("contact_url"))
     when "fully_enriched"
-      where.not(tel: [nil, '', ' ', ' '])
-           .where.not(address: [nil, '', ' ', ' '])
-           .where.not(url: [nil, '', ' ', ' '])
-           .where.not(contact_url: [nil, '', ' ', ' '])
+      where("NOT #{blank_sql('tel')}")
+        .where("NOT #{blank_sql('address')}")
+        .where("NOT #{blank_sql('url')}")
+        .where("NOT #{blank_sql('contact_url')}")
     when "done_missing_tel"
-      where(serp_status: "serp_done").where("tel IS NULL OR TRIM(tel) = '' OR tel = ' '")
+      where(serp_status: "serp_done").where(blank_sql("tel"))
     when "done_missing_address"
-      where(serp_status: "serp_done").where("address IS NULL OR TRIM(address) = '' OR address = ' '")
+      where(serp_status: "serp_done").where(blank_sql("address"))
+    when "done_partial_address"
+      where(serp_status: "serp_done")
+        .where.not(blank_sql("address"))
+        .where(
+          "address NOT REGEXP '^(#{prefecture_regexp_fragment})'" \
+          " OR address NOT REGEXP '(市|区|町|村|郡)'" \
+          " OR address NOT REGEXP '[0-9０-９]|丁目|番地|番|号'"
+        )
     else
       all
     end
@@ -175,16 +200,25 @@ class Customer < ApplicationRecord
         error:    status_counts["serp_error"].to_i
       },
       fill: {
-        tel:         base_scope.where.not(tel: [nil, '', ' ', ' ']).count,
-        address:     base_scope.where.not(address: [nil, '', ' ', ' ']).count,
-        url:         base_scope.where.not(url: [nil, '', ' ', ' ']).count,
-        contact_url: base_scope.where.not(contact_url: [nil, '', ' ', ' ']).count,
-        full:        base_scope.where.not(tel: [nil, '', ' ', ' '])
-                               .where.not(address: [nil, '', ' ', ' '])
-                               .where.not(url: [nil, '', ' ', ' '])
-                               .where.not(contact_url: [nil, '', ' ', ' '])
-                               .count
+        tel:         base_scope.where("NOT #{blank_sql('tel')}").count,
+        address:     base_scope.where("NOT #{blank_sql('address')}").count,
+        url:         base_scope.where("NOT #{blank_sql('url')}").count,
+        contact_url: base_scope.where("NOT #{blank_sql('contact_url')}").count,
+        full:        base_scope
+                       .where("NOT #{blank_sql('tel')}")
+                       .where("NOT #{blank_sql('address')}")
+                       .where("NOT #{blank_sql('url')}")
+                       .where("NOT #{blank_sql('contact_url')}")
+                       .count
       }
     }
+  end
+
+  private
+
+  # apply_fill_filter の partial_address 用。DB が MySQL/MariaDB 前提。
+  # SQLite3 では REGEXP が使えないため、必要に応じてアダプタ分岐を追加すること。
+  def self.prefecture_regexp_fragment
+    '東京都|北海道|(?:大阪|京都)府|.+県'
   end
 end
