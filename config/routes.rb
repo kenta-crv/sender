@@ -146,6 +146,5 @@ Rails.application.routes.draw do
 
   resources :problems
   get 'columns',         to: 'tops#columns'
-
   
 end
