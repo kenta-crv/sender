@@ -163,6 +163,8 @@ class CompanyInfoExtractor
     require "selenium-webdriver"
 
     options = Selenium::WebDriver::Chrome::Options.new
+    # 本番環境の Chrome バイナリのパスを明示的に指定
+    options.binary = "/usr/bin/google-chrome"
     options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
@@ -257,7 +259,7 @@ class CompanyInfoExtractor
   end
 
   def clean_company_name(text)
-    value = text.to_s.tr("　", " ").gsub(/\s+/, " ").strip
+    value = text.to_s.tr(" ", " ").gsub(/\s+/, " ").strip
     return nil if value.blank?
 
     value = value.sub(/\A.*の((?:株式会社|有限会社|合同会社|一般社団法人|一般財団法人).*)\z/, "\\1")
@@ -461,7 +463,7 @@ class CompanyInfoExtractor
          アクセス|最寄り?駅|地図|Google\s*(?:MAP|Map|map)|GoogleMapで見る|Googleマップ|MAPを見る|MAP|map|
          代表者|(?<!本社)代表|設立|資本金|従業員|業務内容|事業内容|事業案内|施工計画|会社情報|
          代表挨拶|経営理念|行動指針|拠点一覧|地域社会への貢献|沿革|ホーム|会社紹介|
-         役員|取締役|営業本部|店[\s　]*舗|店舗|
+         役員|取締役|営業本部|店[\s ]*舗|店舗|
          サイトマップ|個人情報保護方針|購入ページ|TOP|Go\s*to\s*top|keyboard_arrow_right|事業一覧|
          荷物積み込み場|稼働期間|現場風景|週休|勤務時間|時間\s*[0-9０-９]|
          ※\s*本社所在地|
@@ -478,33 +480,33 @@ class CompanyInfoExtractor
     s = s.split(/0[0-9０-９]{1,4}[‐‑‒–—―−－ーｰ₋-][0-9０-９]{1,4}[‐‑‒–—―−－ーｰ₋-][0-9０-９]{3,4}/, 2).first.to_s
     s = s.split(/[・、,]\s*(?:本社|本店|法人営業部|[一-龥ァ-ヶA-Za-z]{1,12}(?:本社|本店|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター))\s*〒\s*\d{3}-?\d{4}/, 2).first.to_s
     s = s.split(/(?<=[0-9０-９号番地])\s*(?:本社|本店|法人営業部|[一-龥ァ-ヶA-Za-z]{1,12}(?:本社|本店|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター))\s*〒\s*\d{3}-?\d{4}/, 2).first.to_s
-    s = s.split(/\s+(?:事業所|支店|営業所|出張所|オフィス|工場|倉庫|センター)[：:][\s　]*〒\s*\d{3}-?\d{4}/, 2).first.to_s
-    s = s.split(/\s+[一-龥ァ-ヶA-Za-z]{1,12}(?:支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)[：:][\s　]*〒\s*\d{3}-?\d{4}/, 2).first.to_s
+    s = s.split(/\s+(?:事業所|支店|営業所|出張所|オフィス|工場|倉庫|センター)[：:][\s ]*〒\s*\d{3}-?\d{4}/, 2).first.to_s
+    s = s.split(/\s+[一-龥ァ-ヶA-Za-z]{1,12}(?:支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)[：:][\s ]*〒\s*\d{3}-?\d{4}/, 2).first.to_s
     s = s.split(/\s+(?:本社|第二工場|支店|営業所|工場|倉庫|センター)?\s*〒\s*\d{3}-?\d{4}/, 2).first.to_s
-    s = s.split(/[\s　]*[［\[][\s　]*[一-龥ァ-ヶA-Za-z]{0,12}(?:本社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター|車庫)[\s　]*[］\]][\s　]*〒?[\s　]*\d{3}[-－ー]?\d{4}/, 2).first.to_s
+    s = s.split(/[\s ]*[［\[][\s ]*[一-龥ァ-ヶA-Za-z]{0,12}(?:本社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター|車庫)[\s ]*[］\]][\s ]*〒?[\s ]*\d{3}[-－ー]?\d{4}/, 2).first.to_s
     s = s.split(/[［\[]\s*[一-龥ァ-ヶA-Za-z]{1,12}(?:支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\s*[］\]]\s*(?=#{PREF_PATTERN})/, 2).first.to_s
-    s = s.split(/[／\/][\s　]*(?:工場|支店|営業所|出張所|オフィス|事業所|倉庫|センター)[\s　]*(?=#{PREF_PATTERN})/, 2).first.to_s
-    s = s.split(/\s+[一-龥ァ-ヶA-Za-z]{1,12}(?:本社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)[：:][\s　]*(?=#{PREF_PATTERN})/, 2).first.to_s
+    s = s.split(/[／\/][\s ]*(?:工場|支店|営業所|出張所|オフィス|事業所|倉庫|センター)[\s ]*(?=#{PREF_PATTERN})/, 2).first.to_s
+    s = s.split(/\s+[一-龥ァ-ヶA-Za-z]{1,12}(?:本社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)[：:][\s ]*(?=#{PREF_PATTERN})/, 2).first.to_s
     s = s.split(/\s+\S{1,12}(?:支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\s*(?=#{PREF_PATTERN})/, 2).first.to_s
     s = s.split(/(?<=[0-9０-９号番地])\s*[一-龥ァ-ヶA-Za-z]{1,12}(?:本社|支社|支店|営業所|出張所|オフィス|事務所|事業所|工場|倉庫|センター)\s+[一-龥ァ-ヶ]{1,12}(?:市|区|町|村)/, 2).first.to_s
 
     # 連続する空白・全角空白・特殊記号を1つに圧縮
-    s = s.gsub(/[\t\r\n]+/, " ").gsub(/[ 　]{2,}/, " ")
+    s = s.gsub(/[\t\r\n]+/, " ").gsub(/[  ]{2,}/, " ")
     if s.scan(PREF_PATTERN).size > 1
       first_address = s.match(/\A(#{PREF_PATTERN}.+?)(?=#{PREF_PATTERN})/)
       s = first_address[1] if first_address
     end
     s = s.sub(/\A(#{PREF_PATTERN})\s*〒?\s*\d{3}[-－ー]?\d{4}\s*/, "\\1")
-    s = s.sub(/\A(#{PREF_PATTERN})[ 　]+/, "\\1")
-    s = s.sub(/[\s　]*[［\[][\s　]*[一-龥ァ-ヶA-Za-z]{0,12}(?:本社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター|車庫)[\s　]*[］\]](?:[\s　]*〒?[\s　]*\d{3}[-－ー]?\d{4})?\z/, "")
+    s = s.sub(/\A(#{PREF_PATTERN})[  ]+/, "\\1")
+    s = s.sub(/[\s ]*[［\[][\s ]*[一-龥ァ-ヶA-Za-z]{0,12}(?:本社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター|車庫)[\s ]*[］\]](?:[\s ]*〒?[\s ]*\d{3}[-－ー]?\d{4})\z/, "")
     s = s.sub(/[（(]\s*→?\s*MAPを見る\s*[）)]?\z/i, "")
     s = s.sub(/[（(]\s*→?\s*\z/, "")
     # 末尾の区切り記号・空白を除去
-    s = s.sub(/[\s　、。,.:：;；\-－ー｜|／\/■□◆◇●○◎※＊*]+\z/, "")
+    s = s.sub(/[\s 、。,.:：;；\-－ー｜|／\/■□◆◇●○◎※＊*]+\z/, "")
     s = s.sub(/[（(]\z/, "")
     s = s.sub(/[【［\[]\z/, "")
-    s = s.sub(/[ 　]*[＜<]\s*[一-龥ァ-ヶA-Za-z]{0,12}(?:本社|支社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\s*[＞>]\s*[・、,]*\z/, "")
-    s = s.sub(/[ 　]*(?:建[ 　]*築|土木|内装|配送|運送業?|軽貨物.*|物流.*)\z/, "")
+    s = s.sub(/[  ]*[＜<]\s*[一-龥ァ-ヶA-Za-z]{0,12}(?:本社|支社|支店|営業所|出張所|オフィス|事業所|工場|倉庫|センター)\s*[＞>]\s*[・、,]*\z/, "")
+    s = s.sub(/[  ]*(?:建[  ]*築|土木|内装|配送|運送業?|軽貨物.*|物流.*)\z/, "")
     s = s.sub(/\s+(?:本社|支社|支店|営業所|出張所|オフィス|事務所|事業所|工場|倉庫|センター)\z/, "")
     s = s.sub(/\s+\S{1,12}(?:支社|支店|営業所|出張所|オフィス|事務所|事業所|工場|倉庫|センター)\z/, "")
     s = s.strip.presence
@@ -583,7 +585,7 @@ class CompanyInfoExtractor
 
   def branch_context_tokens
     branch_tokens = @customer&.company.to_s.scan(BRANCH_TOKEN_REGEX).map { |token| token.gsub(/\s+/, "") }
-    @customer&.company.to_s.split(/[\s　／\/・,、()（）\[\]「」【】]+/).each do |part|
+    @customer&.company.to_s.split(/[\s ／\/・,、()（）\[\]「」【】]+/).each do |part|
       normalized = part.gsub(/\s+/, "")
       next if normalized.length < 3
       next unless normalized.match?(/センター|キッチン|オフィス|本社|営業所|支店|倉庫|工場|事業所|配送|カーゴ|施設|店舗|会館|支部|出張所/)
@@ -596,7 +598,7 @@ class CompanyInfoExtractor
     branch_tokens.uniq!
     return [] if branch_tokens.empty?
 
-    address_tokens = @customer&.address.to_s.scan(/[^\s　,、。〒]{1,12}(?:市|区|町|村)/).map { |token| token.gsub(/\s+/, "") }
+    address_tokens = @customer&.address.to_s.scan(/[^\s ,、。〒]{1,12}(?:市|区|町|村)/).map { |token| token.gsub(/\s+/, "") }
     (branch_tokens.map { |token| [token, :company] } + address_tokens.map { |token| [token, :address] }).uniq
   end
 
