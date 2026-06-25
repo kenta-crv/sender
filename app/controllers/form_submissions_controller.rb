@@ -255,8 +255,14 @@ def index
     end
 
     # 並列処理: 各顧客を独立したジョブとしてキューに投入
-    customer_ids.each do |cid|
-      FormSendJob.perform_later(batch.id, cid)
+    # バッチサイズを制限して一度に大量のジョブを投入しない（サーバー保護）
+    batch_size = 100 # 1回のリクエストで投入するジョブ数
+    customer_ids.each_slice(batch_size).with_index do |slice, index|
+      slice.each do |cid|
+        FormSendJob.perform_later(batch.id, cid)
+      end
+      # バッチ間で少し待機してRedisへの負荷を分散
+      sleep(0.1) if index < (customer_ids.size / batch_size)
     end
 
     # 遷移先の判定
@@ -553,8 +559,13 @@ def import_customers
     )
 
     # 並列処理: 各顧客を独立したジョブとしてキューに投入
-    customer_ids.each do |cid|
-      ContactUrlDetectJob.perform_later(cid, batch.id)
+    # バッチサイズを制限して一度に大量のジョブを投入しない（サーバー保護）
+    batch_size = 100
+    customer_ids.each_slice(batch_size).with_index do |slice, index|
+      slice.each do |cid|
+        ContactUrlDetectJob.perform_later(cid, batch.id)
+      end
+      sleep(0.1) if index < (customer_ids.size / batch_size)
     end
     redirect_to dashboard_index_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
   end
