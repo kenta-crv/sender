@@ -1,6 +1,6 @@
-:concurrency: 5
+:concurrency: 4
 :queues:
   - [auto_dial, 5]
-  - [article_generation, 3]
+  - [article_generation, 4]
   - [serp_enrichment, 1]
-  - [form_submission, 3]
+  - [form_submission, 4]
