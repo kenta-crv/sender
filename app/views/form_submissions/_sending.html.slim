@@ -3,8 +3,8 @@
 
   .sc-detect__card.mb-5
     .sc-detect__card-body
-      / ルーティングエラー回避のため URL を form_submissions_path に一元化
-      = search_form_for @q, url: form_submissions_path, method: :get do |f|
+      / 検索後のリダイレクト先を現在の送信画面(自分自身)のパスへ変更
+      = search_form_for @q, url: sending_dashboard_dashboards_path, method: :get do |f|
 
         .row.mb-3
           .col-md-3

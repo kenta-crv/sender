@@ -152,8 +152,6 @@ class Dashboard::DashboardsController < ApplicationController
   end
 
   def sending
-    @base_customers = Customer.all
-
     @q = @base_customers.includes(:last_form_call).ransack(params[:q])
     filtered = @q.result(distinct: true)
 
@@ -171,8 +169,9 @@ class Dashboard::DashboardsController < ApplicationController
                               .where(fobbiden: [nil, false, 0])
                               .page(params[:detectable_page]).per(50)
 
-    @business_options = generate_options(:business)
-    @genre_options = generate_options(:genre)
+    # 修正：オプション生成を、ログイン状態に関わらずマスターの全データ（Customer.unscoped）ベースで統一
+    @business_options = generate_global_options(:business)
+    @genre_options = generate_global_options(:genre)
 
     @customers_count = @customers.total_count
     @detectable_count = @detectable_customers.total_count
@@ -192,48 +191,33 @@ class Dashboard::DashboardsController < ApplicationController
     end
   end
 
-def searching_form
-  @q = @base_customers.ransack(params[:q])
-  filtered = @q.result(distinct: true)
+  def searching_form
+    @q = @base_customers.ransack(params[:q])
+    filtered = @q.result(distinct: true)
 
-  if params[:business_filter].present?
-    filtered = filtered.where(business: params[:business_filter])
+    if params[:business_filter].present?
+      filtered = filtered.where(business: params[:business_filter])
+    end
+
+    if params[:genre_filter].present?
+      filtered = filtered.where(genre: params[:genre_filter])
+    end
+
+    @detectable_customers = filtered
+                              .where(contact_url: [nil, ''])
+                              .where.not(url: [nil, ''])
+                              .where(fobbiden: [nil, false, 0])
+                              .page(params[:detectable_page]).per(50)
+
+    @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
+    @no_url_customers_count = @base_customers.where(contact_url: [nil, '']).where(url: [nil, '']).count
+
+    # 修正：ここもAdmin環境の全データ基準の選択肢生成に統一
+    @business_options = generate_global_options(:business)
+    @genre_options = generate_global_options(:genre)
+
+    @submissions = admin_signed_in? ? Submission.where(client_id: nil).order(created_at: :desc) : (client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none)
   end
-
-  if params[:genre_filter].present?
-    filtered = filtered.where(genre: params[:genre_filter])
-  end
-
-  @detectable_customers = filtered
-                            .where(contact_url: [nil, ''])
-                            .where.not(url: [nil, ''])
-                            .where(fobbiden: [nil, false, 0])
-                            .page(params[:detectable_page]).per(50)
-
-  @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
-  @no_url_customers_count = @base_customers.where(contact_url: [nil, '']).where(url: [nil, '']).count
-
-  detectable_base = @q.result(distinct: true)
-                      .where(contact_url: [nil, ''])
-                      .where.not(url: [nil, ''])
-                      .where(fobbiden: [nil, false, 0])
-
-  @business_options = detectable_base.where.not(business: [nil, ''])
-                                     .group(:business)
-                                     .count
-                                     .select { |_name, count| count >= 1 }
-                                     .sort_by { |_name, count| -count }
-                                     .map { |name, count| ["#{name}（#{count}件）", name] }
-
-  @genre_options = detectable_base.where.not(genre: [nil, ''])
-                                  .group(:genre)
-                                  .count
-                                  .select { |_name, count| count >= 1 }
-                                  .sort_by { |_name, count| -count }
-                                  .map { |name, count| ["#{name}（#{count}件）", name] }
-
-  @submissions = admin_signed_in? ? Submission.where(client_id: nil).order(created_at: :desc) : (client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none)
-end
 
   def setting; end
 
@@ -325,11 +309,19 @@ end
     end
   end
 
+  # 旧メソッドは件数制限やスコープ依存があるため非推奨とし、新メソッドへ移行
   def generate_options(column)
-    @base_customers.where.not(column => [nil, ''])
-                   .group(column).count
-                   .select { |_name, count| count >= 30 }
-                   .sort_by { |_name, count| -count }
-                   .map { |name, count| ["#{name}（#{count}件）", name] }
+    generate_global_options(column)
+  end
+
+  # 追加：Admin/Clientに関わらず、システム全体の全顧客データから共通の選択肢を生成する（件数表示は全件の合算）
+  def generate_global_options(column)
+    Customer.unscoped
+            .where.not(column => [nil, ''])
+            .group(column)
+            .count
+            .select { |_name, count| count >= 1 } # 件数制限を1件以上に緩和し、確実にリストを網羅
+            .sort_by { |_name, count| -count }
+            .map { |name, count| ["#{name}（#{count}件）", name] }
   end
 end
