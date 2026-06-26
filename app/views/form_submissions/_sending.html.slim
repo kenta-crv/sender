@@ -3,7 +3,7 @@
 
   .sc-detect__card.mb-5
     .sc-detect__card-body
-      / 検索後のリダイレクト先を現在の送信画面(自分自身)のパスへ変更
+      / 遷移先を form_submissions_path から自身のアクション（sending）に変更して同一ページで検索結果を表示
       = search_form_for @q, url: sending_dashboard_dashboards_path, method: :get do |f|
 
         .row.mb-3
