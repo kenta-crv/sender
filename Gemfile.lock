@@ -562,6 +562,7 @@ DEPENDENCIES
   mail (~> 2.8)
   meta-tags
   net-imap (~> 0.3.9)
+  nokogiri
   omniauth-twitter
   open_uri_redirections
   openai

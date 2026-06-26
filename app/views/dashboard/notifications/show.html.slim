@@ -42,13 +42,65 @@
                 .stat-value style="font-size: 1.2rem;"
                   = @notification.status
             
-            .notification-actions
+            / 追加：結果の具体的な内容（成功可否、企業情報など）を表示するセクション
+            - if @notification.notifiable.present?
+              .notification-results-section style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem;"
+                h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: #fff;" 処理結果・企業情報
+                
+                / 単一のデータ、または子レコードの集まり（結果一覧など）を想定して対応できるようにしています
+                / もし notifiable 自体に直接カラムがある場合は @notification.notifiable を、
+                / 紐づく複数の結果レコード（例: .results や .items）がある場合はループ処理に変更してください
+                - target_data = @notification.notifiable
+                
+                .glass-card style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px;"
+                  table style="width: 100%; border-collapse: collapse; color: #ccc;"
+                    tr style="border-bottom: 1px solid rgba(255,255,255,0.05);"
+                      td style="padding: 0.75rem 0; font-weight: bold; width: 30%;" 成功可否
+                      td style="padding: 0.75rem 0;"
+                        - if target_data.respond_to?(:success)
+                          - if target_data.success?
+                            span style="color: #28a745;" 成功
+                          - else
+                            span style="color: #dc3545;" 失敗
+                        - elsif target_data.respond_to?(:status)
+                          = target_data.status
+                        - else
+                          | -
+                    tr style="border-bottom: 1px solid rgba(255,255,255,0.05);"
+                      td style="padding: 0.75rem 0; font-weight: bold;" company
+                      td style="padding: 0.75rem 0;" = target_data.respond_to?(:company) ? target_data.company : '-'
+                    tr style="border-bottom: 1px solid rgba(255,255,255,0.05);"
+                      td style="padding: 0.75rem 0; font-weight: bold;" tel
+                      td style="padding: 0.75rem 0;" = target_data.respond_to?(:tel) ? target_data.tel : '-'
+                    tr style="border-bottom: 1px solid rgba(255,255,255,0.05);"
+                      td style="padding: 0.75rem 0; font-weight: bold;" address
+                      td style="padding: 0.75rem 0;" = target_data.respond_to?(:address) ? target_data.address : '-'
+                    tr style="border-bottom: 1px solid rgba(255,255,255,0.05);"
+                      td style="padding: 0.75rem 0; font-weight: bold;" url
+                      td style="padding: 0.75rem 0;"
+                        - if target_data.respond_to?(:url) && target_data.url.present?
+                          = link_to target_data.url, target_data.url, target: '_blank', rel: 'noopener', style: 'color: #38bdf8;'
+                        - else
+                          | -
+                    tr style="border-bottom: 1px solid rgba(255,255,255,0.05);"
+                      td style="padding: 0.75rem 0; font-weight: bold;" contact_url
+                      td style="padding: 0.75rem 0;"
+                        - if target_data.respond_to?(:contact_url) && target_data.contact_url.present?
+                          = link_to target_data.contact_url, target_data.contact_url, target: '_blank', rel: 'noopener', style: 'color: #38bdf8;'
+                        - else
+                          | -
+                    tr
+                      td style="padding: 0.75rem 0; font-weight: bold;" business
+                      td style="padding: 0.75rem 0;" = target_data.respond_to?(:business) ? target_data.business : '-'
+
+            .notification-actions style="margin-top: 2rem;"
               = link_to '一覧に戻る', dashboard_notifications_path, class: 'btn btn-outline'
               - if @notification.notifiable
                 - case @notification.type
                 - when 'SerpEnrichment'
-                  = link_to '詳細を表示', @notification.notifiable, class: 'btn btn-electric'
+                  / 名前空間付きのルーティング（例: [:dashboard, @notification.notifiable]）に修正して安全にリンク
+                  = link_to '詳細を表示', [:dashboard, @notification.notifiable], class: 'btn btn-electric' rescue nil
                 - when 'FormSubmission'
-                  = link_to '詳細を表示', @notification.notifiable, class: 'btn btn-electric'
+                  = link_to '詳細を表示', [:dashboard, @notification.notifiable], class: 'btn btn-electric' rescue nil
                 - when 'FormDetection'
-                  = link_to '詳細を表示', @notification.notifiable, class: 'btn btn-electric'
+                  = link_to '詳細を表示', [:dashboard, @notification.notifiable], class: 'btn btn-electric' rescue nil
