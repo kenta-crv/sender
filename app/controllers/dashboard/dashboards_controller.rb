@@ -152,20 +152,10 @@ class Dashboard::DashboardsController < ApplicationController
   end
 
   def sending
+    @base_customers = Customer.all
+
     @q = @base_customers.includes(:last_form_call).ransack(params[:q])
     filtered = @q.result(distinct: true)
-
-    if params[:last_call].present?
-      if params[:last_call][:status].present?
-        filtered = filtered.joins(:calls).where(calls: { status: params[:last_call][:status] })
-      end
-      if params[:last_call][:created_at_from].present?
-        filtered = filtered.joins(:calls).where("calls.created_at >= ?", params[:last_call][:created_at_from].to_date.beginning_of_day)
-      end
-      if params[:last_call][:created_at_to].present?
-        filtered = filtered.joins(:calls).where("calls.created_at <= ?", params[:last_call][:created_at_to].to_date.end_of_day)
-      end
-    end
 
     excluded_statuses = ['フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected']
 
@@ -173,14 +163,12 @@ class Dashboard::DashboardsController < ApplicationController
                    .where.not(contact_url: [nil, '', 'not_detected'])
                    .left_joins(:calls)
                    .where("calls.status NOT IN (?) OR calls.id IS NULL", excluded_statuses)
-                   .distinct
                    .page(params[:customers_page]).per(50)
 
     @detectable_customers = filtered
                               .where(contact_url: [nil, ''])
                               .where.not(url: [nil, ''])
                               .where(fobbiden: [nil, false, 0])
-                              .distinct
                               .page(params[:detectable_page]).per(50)
 
     @business_options = generate_options(:business)
@@ -191,9 +179,9 @@ class Dashboard::DashboardsController < ApplicationController
 
     query_scope = @base_customers.left_joins(:calls)
     @not_detected_count = query_scope
-                                .where(contact_url: 'not_detected')
-                                .or(query_scope.where(calls: { status: excluded_statuses }))
-                                .distinct.count
+                            .where(contact_url: 'not_detected')
+                            .or(query_scope.where(calls: { status: excluded_statuses }))
+                            .distinct.count
 
     if admin_signed_in?
       @submissions = Submission.where(client_id: nil).order(created_at: :desc)
@@ -204,48 +192,48 @@ class Dashboard::DashboardsController < ApplicationController
     end
   end
 
-  def searching_form
-    @q = @base_customers.ransack(params[:q])
-    filtered = @q.result(distinct: true)
+def searching_form
+  @q = @base_customers.ransack(params[:q])
+  filtered = @q.result(distinct: true)
 
-    if params[:business_filter].present?
-      filtered = filtered.where(business: params[:business_filter])
-    end
-
-    if params[:genre_filter].present?
-      filtered = filtered.where(genre: params[:genre_filter])
-    end
-
-    @detectable_customers = filtered
-                              .where(contact_url: [nil, ''])
-                              .where.not(url: [nil, ''])
-                              .where(fobbiden: [nil, false, 0])
-                              .page(params[:detectable_page]).per(50)
-
-    @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
-    @no_url_customers_count = @base_customers.where(contact_url: [nil, '']).where(url: [nil, '']).count
-
-    detectable_base = @q.result(distinct: true)
-                        .where(contact_url: [nil, ''])
-                        .where.not(url: [nil, ''])
-                        .where(fobbiden: [nil, false, 0])
-
-    @business_options = detectable_base.where.not(business: [nil, ''])
-                                       .group(:business)
-                                       .count
-                                       .select { |_name, count| count >= 1 }
-                                       .sort_by { |_name, count| -count }
-                                       .map { |name, count| ["#{name}（#{count}件）", name] }
-
-    @genre_options = detectable_base.where.not(genre: [nil, ''])
-                                    .group(:genre)
-                                    .count
-                                    .select { |_name, count| count >= 1 }
-                                    .sort_by { |_name, count| -count }
-                                    .map { |name, count| ["#{name}（#{count}件）", name] }
-
-    @submissions = admin_signed_in? ? Submission.where(client_id: nil).order(created_at: :desc) : (client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none)
+  if params[:business_filter].present?
+    filtered = filtered.where(business: params[:business_filter])
   end
+
+  if params[:genre_filter].present?
+    filtered = filtered.where(genre: params[:genre_filter])
+  end
+
+  @detectable_customers = filtered
+                            .where(contact_url: [nil, ''])
+                            .where.not(url: [nil, ''])
+                            .where(fobbiden: [nil, false, 0])
+                            .page(params[:detectable_page]).per(50)
+
+  @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
+  @no_url_customers_count = @base_customers.where(contact_url: [nil, '']).where(url: [nil, '']).count
+
+  detectable_base = @q.result(distinct: true)
+                      .where(contact_url: [nil, ''])
+                      .where.not(url: [nil, ''])
+                      .where(fobbiden: [nil, false, 0])
+
+  @business_options = detectable_base.where.not(business: [nil, ''])
+                                     .group(:business)
+                                     .count
+                                     .select { |_name, count| count >= 1 }
+                                     .sort_by { |_name, count| -count }
+                                     .map { |name, count| ["#{name}（#{count}件）", name] }
+
+  @genre_options = detectable_base.where.not(genre: [nil, ''])
+                                  .group(:genre)
+                                  .count
+                                  .select { |_name, count| count >= 1 }
+                                  .sort_by { |_name, count| -count }
+                                  .map { |name, count| ["#{name}（#{count}件）", name] }
+
+  @submissions = admin_signed_in? ? Submission.where(client_id: nil).order(created_at: :desc) : (client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none)
+end
 
   def setting; end
 
