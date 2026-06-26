@@ -1,6 +1,5 @@
-# 1. 実行時にモデルなどの定数が未定義（NameError）になるのを防ぐため、
-#    Railsアプリケーションの環境を明示的に読み込みます。
-Rails.application.eager_load! if defined?(Rails)
+require 'net/http'
+require 'nokogiri'
 
 SitemapGenerator::Sitemap.default_host = "https://ri-plus.jp"
 
@@ -18,16 +17,33 @@ SitemapGenerator::Sitemap.create do
     add "/#{top}", changefreq: 'monthly', priority: 0.7
   end
 
-  # Column（LP配下）
-  # 念のため定義されているかチェック（安全策）
-  if defined?(Column)
-    Column.find_each do |column|
-      next unless column.code.present?   # code があるものだけ追加
-      
-      add "columns?column=#{column.code}",
-          lastmod: column.updated_at,
-          changefreq: 'weekly',
-          priority: 0.5
-    end
+  # Column一覧ページ
+  add "/columns", changefreq: 'daily', priority: 0.6
+
+  # ---- Column詳細ページをdrafity.pro経由(ri-plus.jp/columns)からスクレイピングして収集 ----
+  column_codes = []
+  page = 1
+
+  loop do
+    uri = URI("https://ri-plus.jp/columns?page=#{page}")
+    res = Net::HTTP.get_response(uri)
+    break unless res.is_a?(Net::HTTPSuccess)
+
+    doc = Nokogiri::HTML(res.body)
+    links = doc.css('a[href^="/columns/"]').map { |a| a['href'] }
+                .reject { |href| href == '/columns' }
+                .map { |href| href.sub('/columns/', '') }
+
+    break if links.empty?
+
+    column_codes.concat(links)
+    page += 1
+    break if page > 100 # 安全装置(無限ループ防止)
+  end
+
+  column_codes.uniq.each do |code|
+    add "/columns/#{code}",
+        changefreq: 'weekly',
+        priority: 0.5
   end
 end

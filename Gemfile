@@ -108,3 +108,5 @@ gem 'payjp'
 gem 'sitemap_generator'
 
 gem 'stripe'
+
+gem 'nokogiri'
