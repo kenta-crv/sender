@@ -207,9 +207,7 @@ class CustomersController < ApplicationController
   end
 
 def draft
-  # 最先頭で初期化し、途中で処理がコケてもビューで nil になるのを防ぐ
   @industry_options = []
-  @genre_options    = []
 
   start_time = Time.current
 
@@ -224,8 +222,8 @@ def draft
   base_scope = Customer.draft_base_scope(
     current_client_id: client_signed_in? ? current_client.id : nil,
     is_admin:          admin_signed_in?,
-    industry_name:     params[:industry_name]
-  ).then { |s| params[:genre_name].present? ? s.where(genre: params[:genre_name]) : s }
+    industry_name:     params[:industry_name].presence
+  )
 
   @company_query = params[:company_query].presence
 
@@ -276,29 +274,18 @@ def draft
 
   @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
 
-  # ★修正：base_scope（業種・職種フィルタ済み）を使う
   serp_pending_scope = base_scope.where(serp_status: [nil, ''])
+
+  selected_industry = params[:industry_name].presence
 
   industry_counts = serp_pending_scope.where.not(business: [nil, ''])
                                       .group(:business)
                                       .count
-  genre_counts    = serp_pending_scope.where.not(genre: [nil, ''])
-                                      .group(:genre)
-                                      .count
-
-  # ★修正：選択中の値は10件未満でも必ず選択肢に含める
-  selected_industry = params[:industry_name].presence
-  selected_genre    = params[:genre_name].presence
 
   @industry_options = industry_counts
                         .select { |name, count| count >= 10 || name == selected_industry }
                         .sort_by { |_name, count| -count }
                         .map { |name, count| ["#{name}（#{count}件）", name] }
-
-  @genre_options = genre_counts
-                     .select { |name, count| count >= 10 || name == selected_genre }
-                     .sort_by { |_name, count| -count }
-                     .map { |name, count| ["#{name}（#{count}件）", name] }
 
   @max_search_limit = admin_signed_in? ? @serp_target_count
                                        : [@serp_target_count, @remaining_extractable].min
@@ -311,7 +298,6 @@ def serp_search
   self.class.skip_before_action :verify_authenticity_token, only: [:serp_search], raise: false
 
   industry        = params[:industry].presence
-  genre           = params[:genre].presence
   limit           = (params[:limit] || 100).to_i
   company_query   = params[:company_query].presence
   fill_filter     = params[:fill_filter].presence
@@ -332,7 +318,7 @@ def serp_search
     current_client_id: client_signed_in? ? current_client.id : nil,
     is_admin:          admin_signed_in?,
     industry_name:     industry
-  ).then { |s| genre.present? ? s.where(genre: genre) : s }
+  )
 
   scope = base_scope.serp_extraction_targets(fill_filter)
 
@@ -372,7 +358,7 @@ def serp_search
   begin
     SerpPipelineDbWorker.perform_async(industry, actual_limit, customer_ids, run_id)
     redirect_to draft_customers_path,
-      notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'} / 職種: #{genre || '全職種'}）"
+      notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
   rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
     Rails.logger.warn("[serp_search] Redis未起動のため同期実行にフォールバック: #{e.message}")
     begin
@@ -384,14 +370,15 @@ def serp_search
         dry_run: false
       )
       redirect_to draft_customers_path,
-        notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'} / 職種: #{genre || '全職種'}）"
+        notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
     rescue => pipeline_err
       Rails.logger.error("[serp_search] Pipeline error: #{pipeline_err.message}")
       redirect_to draft_customers_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
     end
   end
 end
-  private
+
+private
 
   def authenticate_admin_or_client!
     unless admin_signed_in? || client_signed_in?

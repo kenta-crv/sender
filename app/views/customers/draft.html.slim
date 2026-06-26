@@ -115,24 +115,16 @@
             = hidden_field_tag :company_query, @company_query
             = hidden_field_tag :fill_filter, params[:fill_filter]
             = hidden_field_tag :serp_target_ids, @serp_targets.pluck(:id).join(','), id: 'serp-target-ids-hidden'
-            = hidden_field_tag :industry, @selected_industry, id: 'serp-hidden-industry-field'
-            = hidden_field_tag :genre, @selected_genre, id: 'serp-hidden-genre-field'
+            = hidden_field_tag :industry, params[:industry_name] || params[:industry], id: 'serp-hidden-industry-field'
 
             .row.g-2
               .col-sm-6
                 .sc-detect__form-group.mb-2
                   label.sc-detect__label 業種で絞り込む
                   = select_tag :industry_select_menu,
-                    options_for_select([['全業種', '']] + Array(@industry_options).compact, @selected_industry),
+                    options_for_select([['全業種', '']] + Array(@industry_options).compact, params[:industry_name] || params[:industry]),
                     class: 'sc-detect__input',
                     id: 'serp-industry-select'
-              .col-sm-6
-                .sc-detect__form-group.mb-2
-                  label.sc-detect__label 職種で絞り込む
-                  = select_tag :genre_select_menu,
-                    options_for_select([['全職種', '']] + Array(@genre_options).compact, @selected_genre),
-                    class: 'sc-detect__input',
-                    id: 'serp-genre-select'
               .col-sm-6
                 .sc-detect__form-group.mb-2
                   label.sc-detect__label 抽出件数上限
@@ -147,7 +139,6 @@
 
           hr.my-3 style="border-top: 1px solid rgba(56, 189, 248, 0.2);"
 
-          / ── 実行前対象確認エリア（スクロール・20件区切り・統合ページネーション付き） ──
           .d-flex.justify-content-between.align-items-center.mb-2
             h6.sc-detect__label.mb-0 実行前の補完対象企業（直近20件）
             span.small#serp-target-counts-sub style="color: rgba(229, 231, 235, 0.5);" = "対象:#{@serp_target_count || 0}件"
@@ -156,9 +147,8 @@
             table.sc-detect__table.table-sm.mb-0 style="table-layout: fixed; width: 100%;"
               thead style="position: sticky; top: 0; background: #0f172a; z-index: 1;"
                 tr
-                  th style="font-size: 0.8rem; width: 50%;" 会社名
-                  th style="font-size: 0.8rem; width: 25%;" 業種
-                  th style="font-size: 0.8rem; width: 25%;" 職種
+                  th style="font-size: 0.8rem; width: 60%;" 会社名
+                  th style="font-size: 0.8rem; width: 40%;" 業種
               tbody#serp-target-body
                 - if @serp_targets&.any?
                   - @serp_targets.each do |target|
@@ -167,11 +157,9 @@
                         = target.company
                       td style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{target.business}"
                         = target.business.presence || "-"
-                      td style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{target.genre}"
-                        = target.genre.presence || "-"
                 - else
                   tr#serp-target-empty
-                    td colspan="3" style="color: rgba(229, 231, 235, 0.4); text-align: center; font-size: 0.8rem;" 補完対象の企業はありません
+                    td colspan="2" style="color: rgba(229, 231, 235, 0.4); text-align: center; font-size: 0.8rem;" 補完対象の企業はありません
 
           .mt-3.d-flex.justify-content-center.sc-detect__pagination-zone style="font-size: 0.8rem;"
             - if @serp_targets.present?
@@ -213,16 +201,9 @@
                 .sc-detect__form-group
                   label.sc-detect__label 業種
                   = select_tag :industry_name,
-                    options_for_select([['全業種', '']] + Array(@industry_options).compact, @selected_industry),
+                    options_for_select([['全業種', '']] + Array(@industry_options).compact, params[:industry_name]),
                     class: "sc-detect__input",
                     id: "filter-industry-select"
-              .col-md-4
-                .sc-detect__form-group
-                  label.sc-detect__label 職種
-                  = select_tag :genre_name,
-                    options_for_select([['全職種', '']] + Array(@genre_options).compact, @selected_genre),
-                    class: "sc-detect__input",
-                    id: "filter-genre-select"
               .col-md-4.d-flex.align-items-center
                 label.d-flex.align-items-center style="cursor: pointer; color: #7dd3fc;"
                   = check_box_tag :updated_today, "1", params[:updated_today] == "1", class: "me-2"
@@ -247,7 +228,7 @@
           th style="width: 100px;" 進捗
           th style="width: 150px;" 電話番号
           th style="width: 260px;" 住所
-          th style="width: 200px;" 業種 / 職種
+          th style="width: 200px;" 業種
           th style="width: 120px;" リンク
           th style="width: 110px;" 最終更新
           th style="width: 110px;" インポート日
@@ -279,7 +260,7 @@
                   - else
                     span style="color: rgba(229, 231, 235, 0.25);" -
 
-              - industry_filled = [customer&.business, customer&.genre].any? { |v| v.to_s.strip.present? }
+              - industry_filled = customer&.business.to_s.strip.present?
               td style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
                 .d-flex.align-items-center.gap-1.w-100
                   span style="flex-shrink: 0;" = fill_icon(industry_filled ? "1" : nil)
@@ -289,9 +270,6 @@
                         = customer&.business
                     - else
                       div style="color: rgba(229, 231, 235, 0.25);" -
-                    - if customer&.genre.present?
-                      small style="color: rgba(229, 231, 235, 0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="#{customer&.genre}"
-                        = customer&.genre
 
               td
                 .d-flex.gap-2.align-items-center
@@ -340,14 +318,11 @@
           }
 
           const industrySelect = document.getElementById('serp-industry-select');
-          const genreSelect    = document.getElementById('serp-genre-select');
           const industryLabel  = (industrySelect && industrySelect.value) ? industrySelect.value : "全業種";
-          const genreLabel     = (genreSelect    && genreSelect.value)    ? genreSelect.value    : "全職種";
 
           if (!window.confirm(
             "Sidekiqを確認・自動起動してからSERP補完を開始します。\n" +
             "業種: " + industryLabel + "\n" +
-            "職種: " + genreLabel + "\n" +
             "件数上限: " + limit + "件\n\nよろしいですか？"
           )) return;
 
@@ -360,7 +335,6 @@
 
       const initSerpControl = () => {
         const industrySelect = document.getElementById('serp-industry-select');
-        const genreSelect    = document.getElementById('serp-genre-select');
         const panel          = document.getElementById('serp-progress-panel');
 
         const navigateTo = (url) => {
@@ -373,31 +347,18 @@
           }
         };
 
-        // 業種セレクト変更
         if (industrySelect) {
           industrySelect.onchange = function() {
             const url = new URL(window.location.href);
             url.searchParams.set('industry_name', this.value);
             url.searchParams.delete('serp_page');
+            url.searchParams.delete('genre_name');
             const hiddenIndustry = document.getElementById('serp-hidden-industry-field');
             if (hiddenIndustry) hiddenIndustry.value = this.value;
             navigateTo(url.toString());
           };
         }
 
-        // 職種セレクト変更
-        if (genreSelect) {
-          genreSelect.onchange = function() {
-            const url = new URL(window.location.href);
-            url.searchParams.set('genre_name', this.value);
-            url.searchParams.delete('serp_page');
-            const hiddenGenre = document.getElementById('serp-hidden-genre-field');
-            if (hiddenGenre) hiddenGenre.value = this.value;
-            navigateTo(url.toString());
-          };
-        }
-
-        // 進捗ボードのポーリング処理
         if (panel && panel.getAttribute('data-active') === 'true') {
           const progressUrl = panel.getAttribute('data-progress-url');
           if (progressUrl && !pollingInterval) {
@@ -443,19 +404,9 @@
         }
       };
 
-      // filter-form 業種セレクト自動submit
       const filterIndustrySelect = document.getElementById('filter-industry-select');
       if (filterIndustrySelect) {
         filterIndustrySelect.onchange = function() {
-          const form = document.getElementById('filter-form');
-          if (form) form.submit();
-        };
-      }
-
-      // filter-form 職種セレクト自動submit
-      const filterGenreSelect = document.getElementById('filter-genre-select');
-      if (filterGenreSelect) {
-        filterGenreSelect.onchange = function() {
           const form = document.getElementById('filter-form');
           if (form) form.submit();
         };
