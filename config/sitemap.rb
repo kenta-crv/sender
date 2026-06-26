@@ -24,7 +24,7 @@ SitemapGenerator::Sitemap.create do
     Column.find_each do |column|
       next unless column.code.present?   # code があるものだけ追加
       
-      add "columns/#{column.code}",
+      add "columns?column=#{column.code}",
           lastmod: column.updated_at,
           changefreq: 'weekly',
           priority: 0.5

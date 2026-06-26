@@ -115,22 +115,22 @@
             = hidden_field_tag :company_query, @company_query
             = hidden_field_tag :fill_filter, params[:fill_filter]
             = hidden_field_tag :serp_target_ids, @serp_targets.pluck(:id).join(','), id: 'serp-target-ids-hidden'
-            = hidden_field_tag :industry, params[:industry_name] || params[:industry], id: 'serp-hidden-industry-field'
-            = hidden_field_tag :genre, params[:genre_name] || params[:genre], id: 'serp-hidden-genre-field'
+            = hidden_field_tag :industry, @selected_industry, id: 'serp-hidden-industry-field'
+            = hidden_field_tag :genre, @selected_genre, id: 'serp-hidden-genre-field'
 
             .row.g-2
               .col-sm-6
                 .sc-detect__form-group.mb-2
                   label.sc-detect__label 業種で絞り込む
                   = select_tag :industry_select_menu,
-                    options_for_select([['全業種', '']] + Array(@industry_options).compact, params[:industry_name] || params[:industry]),
+                    options_for_select([['全業種', '']] + Array(@industry_options).compact, @selected_industry),
                     class: 'sc-detect__input',
                     id: 'serp-industry-select'
               .col-sm-6
                 .sc-detect__form-group.mb-2
                   label.sc-detect__label 職種で絞り込む
                   = select_tag :genre_select_menu,
-                    options_for_select([['全職種', '']] + Array(@genre_options).compact, params[:genre_name] || params[:genre]),
+                    options_for_select([['全職種', '']] + Array(@genre_options).compact, @selected_genre),
                     class: 'sc-detect__input',
                     id: 'serp-genre-select'
               .col-sm-6
@@ -213,14 +213,14 @@
                 .sc-detect__form-group
                   label.sc-detect__label 業種
                   = select_tag :industry_name,
-                    options_for_select([['全業種', '']] + Array(@industry_options).compact, params[:industry_name]),
+                    options_for_select([['全業種', '']] + Array(@industry_options).compact, @selected_industry),
                     class: "sc-detect__input",
                     id: "filter-industry-select"
               .col-md-4
                 .sc-detect__form-group
                   label.sc-detect__label 職種
                   = select_tag :genre_name,
-                    options_for_select([['全職種', '']] + Array(@genre_options).compact, params[:genre_name]),
+                    options_for_select([['全職種', '']] + Array(@genre_options).compact, @selected_genre),
                     class: "sc-detect__input",
                     id: "filter-genre-select"
               .col-md-4.d-flex.align-items-center
@@ -379,7 +379,6 @@
             const url = new URL(window.location.href);
             url.searchParams.set('industry_name', this.value);
             url.searchParams.delete('serp_page');
-            // hidden fieldも即時同期
             const hiddenIndustry = document.getElementById('serp-hidden-industry-field');
             if (hiddenIndustry) hiddenIndustry.value = this.value;
             navigateTo(url.toString());
@@ -392,7 +391,6 @@
             const url = new URL(window.location.href);
             url.searchParams.set('genre_name', this.value);
             url.searchParams.delete('serp_page');
-            // hidden fieldも即時同期
             const hiddenGenre = document.getElementById('serp-hidden-genre-field');
             if (hiddenGenre) hiddenGenre.value = this.value;
             navigateTo(url.toString());

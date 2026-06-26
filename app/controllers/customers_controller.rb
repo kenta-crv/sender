@@ -215,6 +215,10 @@ def draft
 
   parse_period_params
 
+  # パラメータ名が統一されていない（industry と industry_name など）リスクを回避するため集約
+  @selected_industry = params[:industry_name].presence || params[:industry].presence
+  @selected_genre    = params[:genre_name].presence || params[:genre].presence
+
   @industry_base_scope = Customer.draft_base_scope(
     current_client_id: client_signed_in? ? current_client.id : nil,
     is_admin:          admin_signed_in?,
@@ -224,8 +228,8 @@ def draft
   base_scope = Customer.draft_base_scope(
     current_client_id: client_signed_in? ? current_client.id : nil,
     is_admin:          admin_signed_in?,
-    industry_name:     params[:industry_name]
-  ).then { |s| params[:genre_name].present? ? s.where(genre: params[:genre_name]) : s }
+    industry_name:     @selected_industry
+  ).then { |s| @selected_genre.present? ? s.where(genre: @selected_genre) : s }
 
   @company_query = params[:company_query].presence
 
@@ -276,7 +280,12 @@ def draft
 
   @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
 
-  serp_pending_scope = @industry_base_scope.where(serp_status: [nil, ''])
+  # オプション生成の段階でも、選択された業種や職種の条件が破綻しないようベースを統一
+  serp_pending_scope = Customer.draft_base_scope(
+    current_client_id: client_signed_in? ? current_client.id : nil,
+    is_admin:          admin_signed_in?,
+    industry_name:     nil
+  ).where(serp_status: [nil, ''])
 
   industry_counts = serp_pending_scope.where.not(business: [nil, ''])
                                       .group(:business)
