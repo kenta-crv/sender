@@ -3,8 +3,8 @@
 
   .sc-detect__card.mb-5
     .sc-detect__card-body
-      / ルーティングエラー回避のため URL を form_submissions_path に一元化
-      = search_form_for @q, url: form_submissions_path, method: :get do |f|
+      / 常に「今表示しているページ」(例: /dashboard/sending) に検索結果を返す
+      = search_form_for @q, url: request.path, method: :get do |f|
 
         .row.mb-3
           .col-md-3
@@ -76,6 +76,10 @@
               class: 'sc-detect__input'
 
         .mt-4
+          / admin が client_id 付きでこのページを見ている場合は検索後も保持する
+          - if params[:client_id].present?
+            = hidden_field_tag :client_id, params[:client_id]
+
           = f.submit "検索実行", class: "sc-detect__btn sc-detect__btn--primary"
 
   .sc-detect__card
