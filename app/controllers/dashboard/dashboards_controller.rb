@@ -15,7 +15,7 @@ class Dashboard::DashboardsController < ApplicationController
     @q = @base_customers.ransack(params[:q])
     filtered = @q.result(distinct: true)
 
-    @customers = filtered.where.not(contact_url: [nil, '', 'not_detected']).page(params::customers_page).per(20)
+    @customers = filtered.where.not(contact_url: [nil, '', 'not_detected']).page(params[:customers_page]).per(20)
     @detectable_customers = filtered.where(contact_url: [nil, '']).where.not(url: [nil, '']).where(fobbiden: [nil, false, 0]).page(params[:detectable_page]).per(20)
 
     @business_options = generate_options(:business)
@@ -155,7 +155,6 @@ class Dashboard::DashboardsController < ApplicationController
     @q = @base_customers.includes(:last_form_call).ransack(params[:q])
     filtered = @q.result(distinct: true)
 
-    # 最終送信状態(last_call)によるフィルタリング要件をここで反映
     if params[:last_call].present?
       if params[:last_call][:status].present?
         filtered = filtered.joins(:calls).where(calls: { status: params[:last_call][:status] })
