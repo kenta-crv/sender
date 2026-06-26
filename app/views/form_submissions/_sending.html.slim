@@ -3,8 +3,9 @@
 
   .sc-detect__card.mb-5
     .sc-detect__card-body
-      / 遷移先を確実に対象のアクション（sending）へ向けるためハッシュ形式に修正
-      = search_form_for @q, url: { action: :sending }, method: :get do |f|
+      / コンテキスト（client_id等）を維持しつつ、ページネーションのパラメータのみを除外した現在のURLへGETリクエストを送る
+      - current_url_without_page = url_for(request.query_parameters.except(:customers_page, :detectable_page).merge(only_path: true))
+      = search_form_for @q, url: current_url_without_page, method: :get do |f|
 
         .row.mb-3
           .col-md-3
