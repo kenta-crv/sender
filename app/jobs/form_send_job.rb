@@ -170,7 +170,7 @@ class FormSendJob < ApplicationJob
 
     info[:email] = submission.email if submission.email.present?
 
-    ri_plus_options = { host: 'ri-plus.jp', protocol: 'https', port: nil }
+    ri_plus_options = { host: 'okurite.pro', protocol: 'https', port: nil }
 
     tracking = ClickTrackingLink.create!(
       customer: customer,

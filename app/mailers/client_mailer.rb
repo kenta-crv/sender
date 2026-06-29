@@ -1,5 +1,5 @@
 class ClientMailer < ApplicationMailer
-  default from: 'info@ri-plus.jp'
+  default from: 'info@j-work.jp'
 
   def registration_email(client)
     @client = client

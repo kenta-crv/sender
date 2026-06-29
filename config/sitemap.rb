@@ -1,7 +1,7 @@
 require 'net/http'
 require 'nokogiri'
 
-SitemapGenerator::Sitemap.default_host = "https://ri-plus.jp"
+SitemapGenerator::Sitemap.default_host = "https://okurite.pro"
 
 SitemapGenerator::Sitemap.create do
   # トップページ
@@ -20,12 +20,12 @@ SitemapGenerator::Sitemap.create do
   # Column一覧ページ
   add "/columns", changefreq: 'daily', priority: 0.6
 
-  # ---- Column詳細ページをdrafity.pro経由(ri-plus.jp/columns)からスクレイピングして収集 ----
+  # ---- Column詳細ページをdrafity.pro経由(okurite.pro/columns)からスクレイピングして収集 ----
   column_codes = []
   page = 1
 
   loop do
-    uri = URI("https://ri-plus.jp/columns?page=#{page}")
+    uri = URI("https://okurite.pro/columns?page=#{page}")
     res = Net::HTTP.get_response(uri)
     break unless res.is_a?(Net::HTTPSuccess)
 
