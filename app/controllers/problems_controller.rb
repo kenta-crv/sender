@@ -13,7 +13,7 @@ def create
 
   if @problem.save
     flash[:notice] = "送信完了しました"
-    redirect_to root_path
+    redirect_to dashboard_index_path
     ProblemMailer.report_email(@problem).deliver # 管理者に通知
   else
     render :new
