@@ -34,7 +34,7 @@
 
       / ===== 解約予約中（期間内猶予）の警告バナー =====
       - if current_client.present? && current_client.subscription_status == 'cancelled' && current_client.subscription_plan != 'none'
-        .alert-neon style="margin: 1.5rem 2rem 0; padding: 1rem; background: rgba(255, 80, 80, 0.1); border: 1px solid rgba(255, 80, 80, 0.3); border-radius: 8px; color: #ff8080;"
+        .alert-neon style="margin: 1.5rem 0; padding: 1rem; background: rgba(255, 80, 80, 0.1); border: 1px solid rgba(255, 80, 80, 0.3); border-radius: 8px; color: #ff8080;"
           i.fas.fa-exclamation-triangle.me-2
           | サブスクリプションは解約手続き済みです。現在の契約期間が終了するまでダッシュボードをご利用いただけます。
 
@@ -122,59 +122,60 @@
               | View All
               i.fas.fa-chevron-right.ms-2 style="font-size: 0.75rem;"
 
-          table.okurite-table style="table-layout: fixed; width: 100%;"
-            thead
-              tr
-                th style="width: 12%;" Date
-                th style="width: 35%;" Title
-                th style="width: 10%;" Target
-                th style="width: 10%;" Sender
-                th style="width: 10%;" Sender ID
-                th style="width: 13%;" Progress
-                th style="width: 10%;" Status
-
-            tbody
-              - (@batches || []).first(5).each do |batch|
+          .table-responsive
+            table.okurite-table style="table-layout: fixed; width: 100%;"
+              thead
                 tr
-                  td = batch.created_at.strftime('%Y/%m/%d')
-                  td
-                    .text-ellipsis style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="#{batch.submission&.title || 'Default'}"
-                      = batch.submission&.title || 'Default'
-                  td = number_with_delimiter(batch.total_count)
+                  th style="width: 100px;" Date
+                  th style="width: 250px;" Title
+                  th style="width: 90px;" Target
+                  th style="width: 90px;" Sender
+                  th style="width: 90px;" Sender ID
+                  th style="width: 120px;" Progress
+                  th style="width: 100px;" Status
 
-                  td
-                    - if batch.client.present?
-                      span.text-blue Client
-                    - elsif batch.admin.present?
-                      span.text-green Admin
-                    - else
-                      span.text-muted -
+              tbody
+                - (@batches || []).first(3).each do |batch|
+                  tr
+                    td = batch.created_at.strftime('%Y/%m/%d')
+                    td
+                      .text-ellipsis style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="#{batch.submission&.title || 'Default'}"
+                        = batch.submission&.title || 'Default'
+                    td = number_with_delimiter(batch.total_count)
 
-                  td
-                    - if batch.client.present?
-                      = batch.client.id
-                    - elsif batch.admin.present?
-                      = batch.admin.id
-                    - else
-                      span.text-muted -
+                    td
+                      - if batch.client.present?
+                        span.text-blue Client
+                      - elsif batch.admin.present?
+                        span.text-green Admin
+                      - else
+                        span.text-muted -
 
-                  td
-                    - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round : 0
-                    .custom-progress-bg
-                      .bar-electric style="width: #{percent}%;"
+                    td
+                      - if batch.client.present?
+                        = batch.client.id
+                      - elsif batch.admin.present?
+                        = batch.admin.id
+                      - else
+                        span.text-muted -
 
-                  td
-                    - case batch.status
-                    - when 'processing'
-                      span.text-blue Processing
-                    - when 'completed'
-                      span.text-green Completed
-                    - when 'pending'
-                      span.text-muted Pending
-                    - when 'cancelled'
-                      span.text-warning Cancelled
-                    - else
-                      span.text-muted = batch.status
+                    td
+                      - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round : 0
+                      .custom-progress-bg
+                        .bar-electric style="width: #{percent}%;"
+
+                    td
+                      - case batch.status
+                      - when 'processing'
+                        span.text-blue Processing
+                      - when 'completed'
+                        span.text-green Completed
+                      - when 'pending'
+                        span.text-muted Pending
+                      - when 'cancelled'
+                        span.text-warning Cancelled
+                      - else
+                        span.text-muted = batch.status
 
       / ===== Customer Stats =====
       .history-section.mt-5
@@ -182,24 +183,25 @@
           .card-header-flex
             h5.m-0 Customer Insights
 
-          table.okurite-table
-            thead
-              tr
-                th 指標
-                th 数値
+          .table-responsive
+            table.okurite-table
+              thead
+                tr
+                  th 指標
+                  th 数値
 
-            tbody
-              tr
-                td 送信可能顧客（contact_url有）
-                td = @total_customers_count
+              tbody
+                tr
+                  td 送信可能顧客（contact_url有）
+                  td = @total_customers_count
 
-              tr
-                td フォーム未検出
-                td = number_with_delimiter(@not_detected_count)
+                tr
+                  td フォーム未検出
+                  td = number_with_delimiter(@not_detected_count)
 
-              tr
-                td URL未設定
-                td = number_with_delimiter(@no_url_customers_count)
+                tr
+                  td URL未設定
+                  td = number_with_delimiter(@no_url_customers_count)
 
       / ===== Submission Stats =====
       .history-section.mt-5
@@ -207,49 +209,50 @@
           .card-header-flex
             h5.m-0 Submission Performance
 
-          table.okurite-table style="table-layout: fixed; width: 100%;"
-            thead
-              tr
-                th style="width: 35%;" Submission
-                th style="width: 11%;" Sender
-                th style="width: 11%;" Sender ID
-                th style="width: 11%;" Total
-                th style="width: 11%;" Success
-                th style="width: 11%;" Failure
-                th style="width: 10%;" Rate
-
-            tbody
-              - @submissions.each do |submission|
-                - batches = submission.form_submission_batches
-                - total = batches.sum(:total_count)
-                - success = batches.sum(:success_count)
-                - failure = batches.sum(:failure_count)
-                - rate = total > 0 ? ((success.to_f / total) * 100).round(1) : 0
-                - sender_client = batches.first&.client
-                - sender_admin = batches.first&.admin
-
+          .table-responsive
+            table.okurite-table style="table-layout: fixed; width: 100%;"
+              thead
                 tr
-                  td
-                    .text-ellipsis style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="#{submission.title}"
-                      = submission.title
-                  td
-                    - if sender_client.present?
-                      span.text-blue Client
-                    - elsif sender_admin.present?
-                      span.text-green Admin
-                    - else
-                      span.text-muted -
-                  td
-                    - if sender_client.present?
-                      = sender_client.id
-                    - elsif sender_admin.present?
-                      = sender_admin.id
-                    - else
-                      span.text-muted -
-                  td = total
-                  td = success
-                  td = failure
-                  td = "#{rate}%"
+                  th style="width: 250px;" Submission
+                  th style="width: 90px;" Sender
+                  th style="width: 90px;" Sender ID
+                  th style="width: 90px;" Total
+                  th style="width: 90px;" Success
+                  th style="width: 90px;" Failure
+                  th style="width: 90px;" Rate
+
+              tbody
+                - @submissions.each do |submission|
+                  - batches = submission.form_submission_batches
+                  - total = batches.sum(:total_count)
+                  - success = batches.sum(:success_count)
+                  - failure = batches.sum(:failure_count)
+                  - rate = total > 0 ? ((success.to_f / total) * 100).round(1) : 0
+                  - sender_client = batches.first&.client
+                  - sender_admin = batches.first&.admin
+
+                  tr
+                    td
+                      .text-ellipsis style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="#{submission.title}"
+                        = submission.title
+                    td
+                      - if sender_client.present?
+                        span.text-blue Client
+                      - elsif sender_admin.present?
+                        span.text-green Admin
+                      - else
+                        span.text-muted -
+                    td
+                      - if sender_client.present?
+                        = sender_client.id
+                      - elsif sender_admin.present?
+                        = sender_admin.id
+                      - else
+                        span.text-muted -
+                    td = total
+                    td = success
+                    td = failure
+                    td = "#{rate}%"
 
 - if current_client.present? && current_client.subscription_plan == 'trial'
   .ok-trial-overlay#trialOverlay
