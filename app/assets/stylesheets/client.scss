@@ -38,11 +38,15 @@
       
       .logo-glow {
         filter: drop-shadow(0 0 10px var(--electric-blue));
-        max-width: 240px;
 
-        /* PCでのロゴ表示出し分け */
-        &.pc-logo { display: block; }
-        &.sp-logo { display: none; }
+        /* PCでのロゴ表示出し分けを確実に指定 */
+        &.pc-logo {
+          display: block !important;
+          max-width: 240px;
+        }
+        &.sp-logo {
+          display: none !important;
+        }
       }
 
       /* PC側ではトグルスイッチを完全に非表示 */
@@ -161,8 +165,13 @@
 
         .logo-glow {
           /* スマホでのロゴ表示出し分けとサイズ調整 */
-          &.pc-logo { display: none; }
-          &.sp-logo { display: block; max-width: 120px; }
+          &.pc-logo {
+            display: none !important;
+          }
+          &.sp-logo {
+            display: block !important;
+            max-width: 120px;
+          }
         }
 
         /* ハンバーガーボタンを表示 */
@@ -238,7 +247,6 @@
     }
   }
 }
-
 
 /* ===== Form UI (Settings用) ===== */
 
