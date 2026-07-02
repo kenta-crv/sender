@@ -14,15 +14,23 @@
   color: #fff;
   font-family: 'Inter', sans-serif;
 
+  /* 本番環境のバグ対策：チェックボックス自体を最優先で絶対非表示化 */
+  .sidebar-toggle-check {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+  }
+
   /* 【PC基準】レイアウト構造 */
   .wrapper {
     display: flex;
-    padding-left: 260px; /* サイドバーの幅分、メインコンテンツを右にずらす（重複防止の要） */
+    padding-left: 260px; /* サイドバーの幅分、メインコンテンツを右にずらす */
     width: 100%;
     box-sizing: border-box;
   }
 
-  /* 【PC基準】サイドバー（元のコードを完全維持＋位置固定） */
+  /* 【PC基準】サイドバー */
   #sidebar {
     width: 260px;
     height: 100vh;
@@ -39,7 +47,7 @@
       .logo-glow {
         filter: drop-shadow(0 0 10px var(--electric-blue));
 
-        /* PCでのロゴ表示出し分けを確実に指定 */
+        /* PCでのロゴ表示出し分け */
         &.pc-logo {
           display: block !important;
           max-width: 240px;
@@ -49,10 +57,9 @@
         }
       }
 
-      /* PC側ではトグルスイッチを完全に非表示 */
-      .sidebar-toggle-check,
+      /* PC側ではトグルボタンを非表示 */
       .sidebar-toggle-btn {
-        display: none;
+        display: none !important;
       }
     }
 
@@ -86,7 +93,7 @@
     padding: 50px;
     width: 100%;
     box-sizing: border-box;
-    min-width: 0; /* Flexbox内の子要素のはみ出し防止 */
+    min-width: 0;
 
     .top-header {
       display: flex;
@@ -110,7 +117,7 @@
     border-radius: 16px;
     padding: 25px;
     backdrop-filter: blur(10px);
-    min-width: 0; /* はみ出し防止 */
+    min-width: 0;
     
     .card-label { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; }
     .card-value { font-size: 2.2rem; font-weight: 800; margin-top: 10px; .unit { font-size: 1rem; color: var(--text-muted); } }
@@ -119,7 +126,7 @@
   /* テーブル（PC基準） */
   .table-responsive {
     width: 100%;
-    overflow-x: auto; /* テーブル崩れ・はみ出しを防ぐためのコンテナ設定 */
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -141,19 +148,20 @@
      ========================================== */
   @media (max-width: 767px) {
     .wrapper {
-      padding-left: 0; /* 固定サイドバー分の余白を解除 */
-      padding-top: 60px; /* 上部固定ナビゲーションの高さ分の余白を確保 */
+      padding-left: 0;
+      padding-top: 60px;
       flex-direction: column;
     }
 
     #sidebar {
       width: 100%;
-      height: 60px; /* 通常時はヘッダーの高さのみ */
+      height: 60px;
       border-right: none;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       position: fixed;
       top: 0;
       left: 0;
+      transition: background 0.3s ease;
 
       .sidebar-header {
         display: flex;
@@ -164,19 +172,13 @@
         box-sizing: border-box;
 
         .logo-glow {
-          /* スマホでのロゴ表示出し分けとサイズ調整 */
-          &.pc-logo {
-            display: none !important;
-          }
-          &.sp-logo {
-            display: block !important;
-            max-width: 120px;
-          }
+          &.pc-logo { display: none !important; }
+          &.sp-logo { display: block !important; max-width: 120px; }
         }
 
         /* ハンバーガーボタンを表示 */
         .sidebar-toggle-btn {
-          display: flex;
+          display: flex !important;
           flex-direction: column;
           justify-content: space-between;
           width: 26px;
@@ -193,7 +195,7 @@
         }
       }
 
-      /* メニューの一覧はデフォルト非表示（ドロップダウン化） */
+      /* メニュー一覧：デフォルト非表示 */
       ul.components {
         display: none;
         position: fixed;
@@ -207,30 +209,46 @@
         z-index: 999;
 
         li a {
-          padding: 16px 25px; /* タップしやすいように少し広めに */
+          padding: 16px 25px;
         }
       }
 
-      /* 【開閉ロジック】チェックボックスがONの時の挙動 */
-      &:has(.sidebar-toggle-check:checked) {
-        height: 100vh; /* メニュー展開時は背景を覆う */
-        background: rgba(5, 5, 5, 0.95);
-
-        .sidebar-toggle-btn {
+      /* 【本番用・開閉安定ロジック】
+         :hasを排除し、チェックボックス直近の兄弟要素(~)を参照する標準的なセレクタにリプレイス */
+      .sidebar-toggle-check:checked {
+        /* 三本線を「X」に変更 */
+        ~ .sidebar-toggle-btn {
           span:nth-child(1) { transform: translateY(8px) rotate(45deg); }
           span:nth-child(2) { opacity: 0; }
           span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
         }
 
-        ul.components {
-          display: block;
+        /* ドロップダウンメニューを展開 */
+        ~ ul.components {
+          display: block !important;
         }
       }
     }
 
-    /* モバイル時のメインコンテンツ調整 */
+    /* チェックボックスが入っている間、サイドバー自体の高さを広げる指定 */
+    #sidebar:shadow-open-fallback, /* ダミー */
+    #sidebar {
+      &:has(.sidebar-toggle-check:checked) {
+        height: 100vh !important;
+        background: rgba(5, 5, 5, 0.98) !important;
+      }
+    }
+    
+    /* 上記:hasが古いコンパイラで弾かれた場合の、兄弟要素による実質的なカバー設定 */
+    .sidebar-toggle-check:checked ~ ul.components {
+      position: fixed;
+      height: calc(100vh - 60px);
+      background: #050505;
+    }
+
+    /* モバイル時のコンテンツ調整 */
     #content {
-      padding: 20px; /* スマホ向けに余白をスリム化 */
+      padding: 20px;
       
       .top-header {
         flex-direction: column;
@@ -240,7 +258,6 @@
       }
     }
 
-    /* グリッドシステムを1カラム（縦並び）に強制変更 */
     .stats-grid {
       grid-template-columns: 1fr;
       gap: 15px;

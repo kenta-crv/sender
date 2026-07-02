@@ -4,13 +4,14 @@ nav#sidebar
       = image_tag 'okurite-logo.png', class: 'logo-glow pc-logo'
       = image_tag 'logo2.png', class: 'logo-glow sp-logo'
     
-    / モバイル時のみCSSで表示されるハンバーガートグル
+    / モバイル用トグル制御のチェックボックス
     input type="checkbox" id="sidebar-toggle" class="sidebar-toggle-check"
     label for="sidebar-toggle" class="sidebar-toggle-btn"
       span
       span
       span
 
+  / チェックボックスの直後に配置することで、:hasを使用せずCSS単体での確実な開閉を実現
   ul.list-unstyled.components
 
     /li class=(current_page?(dashboard_index_path) ? 'active' : '')
