@@ -36,10 +36,8 @@ class Customer < ApplicationRecord
       # 画面で充足フィルタが選択されている場合は、その条件に限定する
       base.apply_fill_filter(fill_filter)
     else
-      # ★ AND から OR に修正：tel または url のどちらかが「実質空値」の企業を抽出
-      base.where(
-        "#{blank_sql('tel')} OR #{blank_sql('url')}"
-      )
+      # ★ url が「実質空値」の企業のみを抽出対象とする（telの状態は不問）
+      base.where(blank_sql('url'))
     end
   }
 
@@ -216,7 +214,7 @@ class Customer < ApplicationRecord
 
   private
 
-  # apply_fill_filter の partial_address 用。DB が MySQL/MariaDB 前備。
+  # apply_fill_filter の partial_address 用。DB が MySQL/MariaDB 前提。
   # SQLite3 では REGEXP が使えないため、必要に応じてアダプタ分岐を追加すること。
   def self.prefecture_regexp_fragment
     '東京都|北海道|(?:大阪|京都)府|.+県'
