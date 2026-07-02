@@ -22,38 +22,38 @@ nav#sidebar
     li class=(current_page?(dashboard_import_path) ? 'active' : '')
       = link_to dashboard_import_path do
         i.fas.fa-users
-        span Import List
+        span インポートリスト
 
     li class=(current_page?(draft_customers_path) ? 'active' : '')
       = link_to draft_customers_path do
         i.fas.fa-users
-        span AI SERP List
+        span Googleリスト収集
 
     li class=(current_page?(dashboard_searching_form_path) ? 'active' : '')
       = link_to dashboard_searching_form_path do
         i.fas.fa-users
-        span Auto Form Search
+        span 問い合わせフォーム検出
 
     li class=(current_page?(dashboard_duplication_path) ? 'active' : '')
       = link_to dashboard_duplication_path do
         i.fas.fa-users
-        span Duplication
+        span 重複チェック
 
     / リンク先 (submissions_path) に合わせて、アクティブ判定のパスも submissions_path に修正
     li class=(current_page?(submissions_path) ? 'active' : '')
       = link_to submissions_path do
         i.fas.fa-file-alt
-        span Create Contents
+        span 【必須】送信内容作成
 
     li class=(current_page?(dashboard_sending_path) ? 'active' : '')
       = link_to dashboard_sending_path do
         i.fas.fa-paper-plane
-        span Send Forms
+        span 問い合わせフォーム送信
 
     li class=(current_page?(dashboard_click_tracking_path) ? 'active' : '')
       = link_to dashboard_click_tracking_path do
         i.fas.fa-mouse-pointer
-        span Click Tracking
+        span クリック履歴
 
     - if admin_signed_in?
       li class=(current_page?(dashboard_management_path) ? 'active' : '')
@@ -64,4 +64,4 @@ nav#sidebar
       li class=(current_page?(dashboard_setting_path) ? 'active' : '')
         = link_to dashboard_setting_path do
           i.fas.fa-cog
-          span Settings
+          span 設定
