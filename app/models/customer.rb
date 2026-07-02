@@ -12,7 +12,7 @@ class Customer < ApplicationRecord
 
   def self.blank_sql(col)
     dash_list = DASH_VARIANTS.join(", ")
-    "(#{col} IS NULL OR TRIM(#{col}) = '' OR #{col} = ' ' OR #{col} = '　' OR TRIM(#{col}) IN (#{dash_list}))"
+    "(#{col} IS NULL OR TRIM(#{col}) = '' OR #{col} = ' ' OR #{col} = ' ' OR TRIM(#{col}) IN (#{dash_list}))"
   end
 
   scope :between_created_at, ->(from, to) {
@@ -36,9 +36,9 @@ class Customer < ApplicationRecord
       # 画面で充足フィルタが選択されている場合は、その条件に限定する
       base.apply_fill_filter(fill_filter)
     else
-      # tel と url の両方が「nil、空文字、半角スペース、全角スペース、ダッシュ系」である企業を抽出
+      # ★ AND から OR に修正：tel または url のどちらかが「実質空値」の企業を抽出
       base.where(
-        "#{blank_sql('tel')} AND #{blank_sql('url')}"
+        "#{blank_sql('tel')} OR #{blank_sql('url')}"
       )
     end
   }
@@ -216,7 +216,7 @@ class Customer < ApplicationRecord
 
   private
 
-  # apply_fill_filter の partial_address 用。DB が MySQL/MariaDB 前提。
+  # apply_fill_filter の partial_address 用。DB が MySQL/MariaDB 前備。
   # SQLite3 では REGEXP が使えないため、必要に応じてアダプタ分岐を追加すること。
   def self.prefecture_regexp_fragment
     '東京都|北海道|(?:大阪|京都)府|.+県'
