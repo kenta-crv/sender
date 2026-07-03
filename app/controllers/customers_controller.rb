@@ -307,7 +307,7 @@ def serp_search
     subscription_remaining = [monthly_log.serp_api_limit - monthly_log.serp_api_used, 0].max
 
     if subscription_remaining <= 0
-      redirect_to draft_customers_path, alert: "今月のSERP API使用上限に達しています（#{monthly_log.serp_api_used}/#{monthly_log.serp_api_limit}）" and return
+      redirect_to dashboard_index_path, alert: "今月のSERP API使用上限に達しています（#{monthly_log.serp_api_used}/#{monthly_log.serp_api_limit}）" and return
     end
 
     limit = [limit, subscription_remaining].min
@@ -328,15 +328,11 @@ def serp_search
   target_count = scope.count
 
   if target_count == 0
-    redirect_to draft_customers_path, alert: "SERP補完の対象データが存在しません。" and return
+    redirect_to dashboard_index_path, alert: "SERP補完の対象データが存在しません。" and return
   end
 
   actual_limit = [limit, target_count].min
   customer_ids = scope.order(id: :asc).limit(actual_limit).pluck(:id)
-
-  if client_signed_in? && !admin_signed_in?
-    current_client.monthly_usage_log.increment!(:serp_api_used, customer_ids.size)
-  end
 
   client_id = client_signed_in? ? current_client.id : nil
 
@@ -350,24 +346,19 @@ def serp_search
   audit_run.update!(client_id: client_id)
 
   begin
-    SerpPipelineDbWorker.perform_async(industry, actual_limit, customer_ids, run_id)
-    redirect_to draft_customers_path,
-      notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
+    SerpPipelineDbWorker.perform_async(industry, customer_ids, run_id, 0)
+    batch_size = SerpPipelineDbWorker::BATCH_SIZE
+    redirect_to dashboard_index_path,
+      notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（#{batch_size}件ずつ処理・失敗時は中断 / 業種: #{industry || '全業種'}）"
   rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
     Rails.logger.warn("[serp_search] Redis未起動のため同期実行にフォールバック: #{e.message}")
     begin
-      BrightData::Pipeline.execute_from_db(
-        industry: industry,
-        limit: actual_limit,
-        customer_ids: customer_ids,
-        progress_run_id: run_id,
-        dry_run: false
-      )
-      redirect_to draft_customers_path,
+      SerpPipelineDbWorker.new.perform(industry, customer_ids, run_id, 0)
+      redirect_to dashboard_index_path,
         notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
     rescue => pipeline_err
       Rails.logger.error("[serp_search] Pipeline error: #{pipeline_err.message}")
-      redirect_to draft_customers_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
+      redirect_to dashboard_index_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
     end
   end
 end

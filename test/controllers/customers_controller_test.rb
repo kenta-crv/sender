@@ -47,7 +47,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    assert_redirected_to draft_customers_path
+    assert_redirected_to dashboard_index_path
     assert_includes flash[:alert], "Redis"
   end
 
@@ -62,7 +62,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    assert_redirected_to draft_customers_path
+    assert_redirected_to dashboard_index_path
     assert_includes flash[:alert], "BRIGHT_DATA_API_KEY"
     assert_nil customer.reload.serp_status
   end
@@ -89,11 +89,11 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    assert_redirected_to draft_customers_path
-    assert_equal 2, enqueued_args[1]
-    assert_equal [newer.id, older.id], enqueued_args[2]
-    assert_match(/\A[0-9a-f]{24}\z/, enqueued_args[3])
-    assert_equal enqueued_args[3], progress_args[:run_id]
+    assert_redirected_to dashboard_index_path
+    assert_equal [newer.id, older.id], enqueued_args[1]
+    assert_equal 0, enqueued_args[3]
+    assert_match(/\A[0-9a-f]{24}\z/, enqueued_args[2])
+    assert_equal enqueued_args[2], progress_args[:run_id]
     assert_equal 2, progress_args[:total]
     assert_equal [newer.id, older.id], progress_args[:target_ids]
     audit_run = SerpEnrichmentRun.find_by_run_id(progress_args[:run_id])
@@ -124,9 +124,9 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    assert_redirected_to draft_customers_path
-    assert_equal 1, enqueued_args[1]
-    assert_equal [target.id], enqueued_args[2]
+    assert_redirected_to dashboard_index_path
+    assert_equal [target.id], enqueued_args[1]
+    assert_equal 0, enqueued_args[3]
     assert_equal 1, progress_args[:total]
     assert_equal [target.id], progress_args[:target_ids]
   end
@@ -159,9 +159,9 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    assert_redirected_to draft_customers_path
-    assert_equal 1, enqueued_args[1]
-    assert_equal [target.id], enqueued_args[2]
+    assert_redirected_to dashboard_index_path
+    assert_equal [target.id], enqueued_args[1]
+    assert_equal 0, enqueued_args[3]
     assert_equal 1, progress_args[:total]
     assert_equal [target.id], progress_args[:target_ids]
   end

@@ -18,8 +18,8 @@ class Notification < ApplicationRecord
       type: 'SerpEnrichment',
       status: run.status,
       total_count: run.target_count.to_i,
-      success_count: run.summary_json['actual_success'].to_i,
-      error_count: run.summary_json['actual_error'].to_i,
+      success_count: run.summary_json['done_count'].to_i,
+      error_count: run.summary_json['error_count'].to_i,
       client_id: client_id,
       notifiable: run,
       message: generate_serp_message(run)
@@ -68,9 +68,11 @@ class Notification < ApplicationRecord
 
   def self.generate_serp_message(run)
     total = run.target_count.to_i
-    success = run.summary_json['actual_success'].to_i
-    error = run.summary_json['actual_error'].to_i
-    "SERP実行完了: 実行#{total}件, 成功#{success}件, エラー#{error}件"
+    success = run.summary_json['done_count'].to_i
+    error = run.summary_json['error_count'].to_i
+    updated = run.summary_json['actual_success'].to_i
+    suffix = updated != success ? "（データ更新#{updated}件）" : ""
+    "SERP実行完了: 実行#{total}件, 成功#{success}件, エラー#{error}件#{suffix}"
   end
 
   def self.generate_form_submission_message(batch)

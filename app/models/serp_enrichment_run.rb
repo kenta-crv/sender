@@ -98,4 +98,19 @@ class SerpEnrichmentRun < ApplicationRecord
       finished_at: Time.current
     )
   end
+
+  def bill_serp_api_usage!(count)
+    billed = count.to_i
+    return if billed <= 0
+    return if client_id.blank?
+
+    summary = summary_json.is_a?(Hash) ? summary_json : {}
+    return if summary["serp_api_billed"].to_i.positive?
+
+    client = Client.find_by(id: client_id)
+    return if client.blank?
+
+    client.monthly_usage_log.increment!(:serp_api_used, billed)
+    update!(summary_json: summary.merge("serp_api_billed" => billed))
+  end
 end

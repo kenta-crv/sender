@@ -1,94 +1,92 @@
 - set_meta_tags noindex: true
 
-.management-page.container-fluid.py-4
-  .management-container
-    .management-header
-      h1.management-title
-        | コールリスト
+#okurite-client-portal
+  .wrapper
+    = render 'dashboard/dashboards/sidebar'
 
-    .management-card
-      .management-card__body
-        = form_tag({ controller: :customers}, method: 'delete') do
-          .management-table-wrap
-            table.management-table
-              thead
-                tr
-                  th 会社名
-                  th 電話番号
-                  th 住所
-                  th 業種
-                  th 職種
-                  th URL
-                  th 問い合わせURL
-                  th 操作
-              tbody
-                - @customers.each do |customer|
+    #content
+      header.top-header
+        h2 コールリスト
+
+      .glass-card
+        .card-body
+          = form_tag({ controller: :customers}, method: 'delete') do
+            .table-responsive
+              table.okurite-table style="margin-top: 0;"
+                thead
                   tr
-                    td
-                      .client-company
-                          = link_to customer.company, customer_path(customer, q: params[:q]&.permit!)
-                    td
-                      .client-tel= customer.tel
-                    td
-                      .client-address= customer.address
-                    td
-                      .client-business= customer.business
-                    td
-                      .client-genre= customer.genre
-                    td
-                      .client-url
-                        = link_to customer.url, target: "_blank", rel: "noopener"
-                    td
-                      .client-contact-url
-                          = link_to customer.contact_url, target: "_blank", rel: "noopener"
-                    td
-                      .management-actions
-                        = link_to '編集', edit_customer_path(customer, q: params[:q]&.permit!), class: 'btn btn-sm btn-outline-primary mr-1'
-                        = link_to '削除', customer_path(customer, q: params[:q]&.permit!), method: :delete, class: 'btn btn-sm btn-outline-danger', data: { confirm: '本当に削除しますか？' }
-                tr
-                  th[colspan="9"]
-                    .management-pagination.py-2
-                      = paginate @customers
+                    th 会社名
+                    th 電話番号
+                    th 住所
+                    th 業種
+                    th 職種
+                    th URL
+                    th 問い合わせURL
+                    th 操作
+                tbody
+                  - @customers.each do |customer|
+                    tr
+                      td
+                        = link_to customer.company, customer_path(customer, q: params[:q]&.permit!), style: 'color: var(--electric-blue); text-decoration: none; font-weight: 600;'
+                      td= customer.tel
+                      td= customer.address
+                      td= customer.business
+                      td= customer.genre
+                      td
+                        - if customer.url.present?
+                          = link_to customer.url, customer.url, target: "_blank", rel: "noopener", style: 'color: var(--electric-blue); text-decoration: none;'
+                      td
+                        - if customer.contact_url.present?
+                          = link_to customer.contact_url, customer.contact_url, target: "_blank", rel: "noopener", style: 'color: var(--electric-blue); text-decoration: none;'
+                      td
+                        .okurite-actions
+                          = link_to '編集', edit_customer_path(customer, q: params[:q]&.permit!), class: 'btn-electric-outline', style: 'display: inline-block; margin-right: 8px; text-decoration: none;'
+                          = link_to '削除', customer_path(customer, q: params[:q]&.permit!), method: :delete, class: 'btn-electric-outline btn-electric-outline--danger', data: { confirm: '本当に削除しますか？' }, style: 'display: inline-block; text-decoration: none;'
+                  tr
+                    th[colspan="8"]
+                      .okurite-pagination.py-2
+                        = paginate @customers
 
-#createTicket.modal.fade[tabindex="-1" role="dialog" aria-labelledby="dialogHeader" aria-hidden="true"]
-  .modal-dialog.modal-lg
-    .modal-content
-      .modal-header
-        h5.modal-title 検索条件設定
-        button.close[type="button" data-dismiss="modal" aria-hidden="true"]
-          | ×
-      .modal-body
-        = search_form_for @q do |f|
-          .management-table-wrap
-            table.management-table
-              tbody
-                tr
-                  th[style="width: 20%;"] 会社名
-                  td[colspan="3"]= f.search_field :company_cont, class: "form-control"
-                tr
-                  th[style="width: 20%;"] 電話番号
-                  td[style="width: 30%;"]= f.search_field :tel_cont, class: "form-control"
-                  th[style="width: 20%;"] 住所
-                  td[style="width: 30%;"]= f.collection_select :address_cont_any, JpPrefecture::Prefecture.all, :name, :name, {include_blank: '選択してください'}, {class: 'form-control', id: 'search_prefecture', multiple: true}
-                tr
-                  th 業種
-                  td= f.search_field :business_cont, class: "form-control"
-                  th 職種
-                  td= f.search_field :genre_cont, class: "form-control"
-                tr
-                  th URL
-                  td= f.search_field :url_cont, class: "form-control"
-                  th 問い合わせURL
-                  td= f.search_field :contact_url_cont, class: "form-control"
-          .text-right.mt-3
-            = f.submit '検索', class: 'btn btn-primary px-4'
+      - if admin_signed_in?
+        .glass-card.mt-4
+          .card-body
+            .d-flex.justify-content-between.align-items-center
+              span style="color: var(--text-muted); font-weight: 600;"
+                | CUSTOMER_CSV file Export
+              = link_to 'エクスポート', customers_path(format: :csv, q: params[:q]&.permit!, page: params[:page]), class: 'btn-electric-outline', style: 'text-decoration: none;'
 
-- if admin_signed_in?
-  .management-card.mt-4
-    .management-card__body
-      .d-flex.justify-content-between.align-items-center
-        span.font-weight-bold CUSTOMER_CSV file Export
-        = link_to 'エクスポート', customers_path(format: :csv, q: params[:q]&.permit!, page: params[:page]), class: 'btn btn-success'
+  #createTicket.modal.fade[tabindex="-1" role="dialog" aria-labelledby="dialogHeader" aria-hidden="true"]
+    .modal-dialog.modal-lg
+      .modal-content
+        .modal-header
+          h5.modal-title 検索条件設定
+          button.close[type="button" data-dismiss="modal" aria-hidden="true"]
+            | ×
+        .modal-body
+          = search_form_for @q do |f|
+            .table-responsive
+              table.okurite-table style="margin-top: 0;"
+                tbody
+                  tr
+                    th[style="width: 20%;"] 会社名
+                    td[colspan="3"]= f.search_field :company_cont, class: "form-control"
+                  tr
+                    th[style="width: 20%;"] 電話番号
+                    td[style="width: 30%;"]= f.search_field :tel_cont, class: "form-control"
+                    th[style="width: 20%;"] 住所
+                    td[style="width: 30%;"]= f.collection_select :address_cont_any, JpPrefecture::Prefecture.all, :name, :name, {include_blank: '選択してください'}, {class: 'form-control', id: 'search_prefecture', multiple: true}
+                  tr
+                    th 業種
+                    td= f.search_field :business_cont, class: "form-control"
+                    th 職種
+                    td= f.search_field :genre_cont, class: "form-control"
+                  tr
+                    th URL
+                    td= f.search_field :url_cont, class: "form-control"
+                    th 問い合わせURL
+                    td= f.search_field :contact_url_cont, class: "form-control"
+            .mt-4 style="text-align: right;"
+              = f.submit '検索', class: 'btn-electric-outline'
 
 javascript:
   $(function() {

@@ -40,7 +40,7 @@ module BrightData
       { keywords: keywords.size, extracted: companies.size, registered: reg_stats }
     end
 
-    def self.execute_from_db(industry: nil, limit: 100, customer_ids: nil, progress_run_id: nil, jid: nil, detect_contact: false, dry_run: false)
+    def self.execute_from_db(industry: nil, limit: 100, customer_ids: nil, progress_run_id: nil, jid: nil, detect_contact: false, dry_run: false, finalize_run: true)
       puts "=" * 60
       puts "SERP Pipeline (DB mode) 開始: #{Time.current}"
       puts "=" * 60
@@ -53,19 +53,21 @@ module BrightData
 
       selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
       if selected_ids.any?
-        targets = Customer.serp_extraction_targets
-                          .where(id: selected_ids)
-                          .order(id: :asc)
-                          .first(limit)
+        targets = Customer.where(id: selected_ids).order(id: :asc).limit(limit).to_a
       else
         scope = Customer.serp_extraction_targets
         scope = scope.where(business: industry) if industry.present?
         targets = scope.order(updated_at: :desc, id: :asc).limit(limit).to_a
       end
-      puts "[Pipeline] 対象レコード: #{targets.size}件 (serp_status=NULL かつ tel/url いずれか実質空)"
+      puts "[Pipeline] 対象レコード: #{targets.size}件"
 
       if targets.empty?
-        audit_run&.complete!(done_count: 0, error_count: 0, summary: { targets: 0, extracted: 0 })
+        if selected_ids.any?
+          puts "[Pipeline] 指定IDの対象が取得できませんでした（処理済みまたは不存在）"
+          audit_run&.fail!("指定された対象を処理できませんでした（既に処理済みの可能性があります）")
+        else
+          audit_run&.complete!(done_count: 0, error_count: 0, summary: { targets: 0, extracted: 0 })
+        end
         return { targets: 0, extracted: 0, registered: { skipped_blank: 0 } }
       end
 
@@ -123,6 +125,9 @@ module BrightData
           item["customer_id"] = job[:customer_id]
           item["customer_company"] = job[:company]
         end
+        billable_calls = billable_serp_api_calls(batch)
+        audit_run&.bill_serp_api_usage!(billable_calls) unless dry_run
+        puts "[Pipeline] SERP API課金対象: #{billable_calls}/#{batch.size}件" unless dry_run
         ResultStore.save_batch(batch)
         fatal_error = batch.find { |item| item.dig("result", "fatal") }
         serp_error_customer_ids = if fatal_error
@@ -364,17 +369,22 @@ module BrightData
           mark_serp_status(all_error_ids, "serp_error")
 
           refresh_audit_targets!(audit_run, target_ids)
-          audit_run&.complete!(
-            done_count:  done_ids.size,
-            error_count: all_error_ids.size,
-            summary: {
-              targets:   targets.size,
-              queries:   queries.size,
-              extracted: companies.size
-            }
-          )
+          if finalize_run
+            all_ids = audit_run&.targets&.pluck(:customer_id) || target_ids
+            done_count = Customer.where(id: all_ids, serp_status: "serp_done").count
+            error_count = Customer.where(id: all_ids, serp_status: "serp_error").count
+            audit_run&.complete!(
+              done_count:  done_count,
+              error_count: error_count,
+              summary: {
+                targets:   targets.size,
+                queries:   queries.size,
+                extracted: companies.size
+              }
+            )
+            progress_tracker&.finish(done_count: done_count, error_count: error_count)
+          end
           completion_status_applied = true
-          progress_tracker&.finish(done_count: done_ids.size, error_count: all_error_ids.size)
         end
 
         label = industry.present? ? "serp_db_#{industry}_#{Time.current.strftime('%Y%m%d')}" : "serp_db_#{Time.current.strftime('%Y%m%d')}"
@@ -429,6 +439,13 @@ module BrightData
           mark_serp_status(queued_ids, "serp_error")
           refresh_audit_targets!(audit_run, target_ids)
         end
+      end
+    end
+
+    def self.billable_serp_api_calls(batch)
+      Array(batch).count do |item|
+        result = item["result"]
+        result.is_a?(Hash) && result["error"].blank? && result["fatal"].blank?
       end
     end
 

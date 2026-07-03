@@ -1,59 +1,62 @@
 - set_meta_tags noindex: true
 
 #okurite-client-portal
-  #content
-    .top-header
-      h2 Customer Registration
+  .wrapper
+    = render 'dashboard/dashboards/sidebar'
 
-    .settings-section.mt-4
-      .glass-card
-        .mb-4 style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 15px;"
-          h6 style="color: var(--text-muted); margin: 0; font-size: 0.8rem;"
-            | 『J Work』資料送付のみの場合、黄緑を入力
-          h6 style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.8rem;"
-            | 『J Work』アポ報告＋日程調整URL送信の場合、黄緑＋緑を入力
+    #content
+      header.top-header
+        h2 Customer Registration
 
-        .card-body
-          = form_for @customer do |f|
-            table.okurite-table style="margin-top: 0;"
-              tbody
-                tr
-                  th 会社名
-                  td = f.text_field :company, class: "form-control"
-                tr
-                  th 電話番号
-                  td = f.telephone_field :tel, class: "form-control"
-                tr
-                  th 住所
-                  td = f.text_field :address, class: "form-control"
-                tr
-                  th メールアドレス
-                  td = f.text_field :email, class: "form-control"
-                tr
-                  th URL
-                  td = f.text_field :url, class: "form-control"
-                tr
-                  th 業種
-                  td = f.text_field :business, class: "form-control"
-                /tr
-                  th 問い合わせフォーム
-                  td = f.text_field :contact_url, class: "form-control"
-                tr
-                  th お問い合わせフォームURL
-                  td
-                    = f.text_field :contact_url, placeholder: 'https://example.com/contact', class: "form-control"
-                    - if @customer.contact_url.blank? && @customer.url.blank?
-                      div style="margin-top: 8px; font-size: 0.8rem; color: rgba(255, 80, 80, 0.8);"
-                        | URLが未設定です。HPのURLまたはお問い合わせフォームURLを設定してください。
-                    - elsif @customer.contact_url.blank? && @customer.url.present?
-                      div style="margin-top: 8px; font-size: 0.8rem; color: var(--electric-blue);"
-                        | HPから自動検出可能です（フォーム送信時に自動検出されます）
-                tr
-                  th フォーム送信NG
-                  td style="padding-top: 15px; padding-bottom: 15px;"
-                    label style="display: inline-flex; align-items: center; cursor: pointer; color: var(--text-muted); font-size: 0.9rem;"
-                      = f.check_box :fobbiden, style: "margin-right: 8px; width: 16px; height: 16px; accent-color: var(--electric-blue);"
-                      span 送信を禁止する
+      .settings-section.settings-section--wide.mt-4
+        .glass-card
+          .mb-4 style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 15px;"
+            h6 style="color: var(--text-muted); margin: 0; font-size: 0.8rem;"
+              | 『J Work』資料送付のみの場合、黄緑を入力
+            h6 style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.8rem;"
+              | 『J Work』アポ報告＋日程調整URL送信の場合、黄緑＋緑を入力
 
-            .mt-4 style="text-align: right;"
-              = f.submit '登録', class: "btn-electric-outline"
+          .card-body
+            = form_for @customer do |f|
+              table.okurite-table style="margin-top: 0;"
+                tbody
+                  tr
+                    th 会社名
+                    td = f.text_field :company, class: "form-control"
+                  tr
+                    th 電話番号
+                    td = f.telephone_field :tel, class: "form-control"
+                  tr
+                    th 住所
+                    td = f.text_field :address, class: "form-control"
+                  tr
+                    th メールアドレス
+                    td = f.text_field :email, class: "form-control"
+                  tr
+                    th URL
+                    td = f.text_field :url, class: "form-control"
+                  tr
+                    th 業種
+                    td = f.text_field :business, class: "form-control"
+                  /tr
+                    th 問い合わせフォーム
+                    td = f.text_field :contact_url, class: "form-control"
+                  tr
+                    th お問い合わせフォームURL
+                    td
+                      = f.text_field :contact_url, placeholder: 'https://example.com/contact', class: "form-control"
+                      - if @customer.contact_url.blank? && @customer.url.blank?
+                        div style="margin-top: 8px; font-size: 0.8rem; color: rgba(255, 80, 80, 0.8);"
+                          | URLが未設定です。HPのURLまたはお問い合わせフォームURLを設定してください。
+                      - elsif @customer.contact_url.blank? && @customer.url.present?
+                        div style="margin-top: 8px; font-size: 0.8rem; color: var(--electric-blue);"
+                          | HPから自動検出可能です（フォーム送信時に自動検出されます）
+                  tr
+                    th フォーム送信NG
+                    td style="padding-top: 15px; padding-bottom: 15px;"
+                      label style="display: inline-flex; align-items: center; cursor: pointer; color: var(--text-muted); font-size: 0.9rem;"
+                        = f.check_box :fobbiden, style: "margin-right: 8px; width: 16px; height: 16px; accent-color: var(--electric-blue);"
+                        span 送信を禁止する
+
+              .mt-4 style="text-align: right;"
+                = f.submit '登録', class: "btn-electric-outline"

@@ -274,6 +274,11 @@
     max-width: 700px;
   }
 
+  .settings-section--wide {
+    max-width: none;
+    width: 100%;
+  }
+
   .card-body {
     margin-top: 20px;
   }
@@ -337,6 +342,41 @@
     background: rgba(0, 162, 255, 0.1);
     box-shadow: var(--glow);
     color: #fff;
+  }
+
+  .btn-electric-outline--danger {
+    border-color: rgba(255, 80, 80, 0.6);
+    color: rgba(255, 80, 80, 0.8);
+  }
+
+  .btn-electric-outline--danger:hover {
+    background: rgba(255, 80, 80, 0.1);
+    box-shadow: 0 0 10px rgba(255, 80, 80, 0.4);
+    color: #ff8080;
+  }
+
+  .okurite-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  .okurite-pagination {
+    text-align: center;
+
+    .pagination {
+      margin: 0;
+    }
+
+    a, span {
+      color: var(--text-muted);
+    }
+
+    .page.current {
+      color: var(--electric-blue);
+      font-weight: 700;
+    }
   }
 
   /* Logoutは少し危険操作として視覚差分 */

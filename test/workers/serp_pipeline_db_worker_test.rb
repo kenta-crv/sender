@@ -5,13 +5,10 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
     captured = nil
 
     with_singleton_method(BrightData::Pipeline, :execute_from_db, ->(**kwargs) { captured = kwargs }) do
-      SerpPipelineDbWorker.new.perform("Logistics", 10)
+      SerpPipelineDbWorker.new.perform("Logistics", [], nil, 0)
     end
 
     assert_equal "Logistics", captured[:industry]
-    assert_equal 10, captured[:limit]
-    assert_nil captured[:customer_ids]
-    assert_nil captured[:progress_run_id]
     assert_equal false, captured[:detect_contact]
     assert_equal false, captured[:dry_run]
   end
@@ -29,13 +26,52 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
     worker.define_singleton_method(:jid) { "jid-worker-1" }
 
     with_singleton_method(BrightData::Pipeline, :execute_from_db, ->(**kwargs) { captured = kwargs }) do
-      worker.perform("", 1, [customer.id], run.run_id)
+      worker.perform("", [customer.id], run.run_id, 0)
     end
 
     assert_equal "running", run.reload.status
     assert_equal "jid-worker-1", run.jid
     assert_equal "worker-audit-run", captured[:progress_run_id]
     assert_equal "jid-worker-1", captured[:jid]
+    assert_equal [customer.id], captured[:customer_ids]
+    assert_equal true, captured[:finalize_run]
+  end
+
+  test "perform chains next batch on success and stops on failure" do
+    customers = 3.times.map { |i| Customer.create!(company: "Batch Target #{i}") }
+    ids = customers.map(&:id)
+    run = SerpEnrichmentRun.create_for_targets!(
+      run_id: "batch-chain-run",
+      industry: "",
+      limit: ids.size,
+      targets: customers
+    )
+
+    enqueued = []
+    worker = SerpPipelineDbWorker.new
+    worker.define_singleton_method(:jid) { "jid-batch-1" }
+
+    with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued << args }) do
+      with_singleton_method(BrightData::Pipeline, :execute_from_db, ->(**_kwargs) { true }) do
+        stub_const(SerpPipelineDbWorker, :BATCH_SIZE, 2) do
+          worker.perform("", ids, run.run_id, 0)
+        end
+      end
+    end
+
+    assert_equal 1, enqueued.size
+    assert_equal ["", ids, "batch-chain-run", 2], enqueued.first
+
+    with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued << args }) do
+      with_singleton_method(BrightData::Pipeline, :execute_from_db, ->(**_kwargs) { raise "boom" }) do
+        stub_const(SerpPipelineDbWorker, :BATCH_SIZE, 2) do
+          assert_raises(RuntimeError) { worker.perform("", ids, run.run_id, 2) }
+        end
+      end
+    end
+
+    assert_equal "error", run.reload.status
+    assert_equal 1, enqueued.size, "failed batch must not enqueue another job"
   end
 
   private
@@ -48,5 +84,15 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
     klass.define_singleton_method(method_name) do |*args, **kwargs, &block|
       original.call(*args, **kwargs, &block)
     end
+  end
+
+  def stub_const(klass, name, value)
+    original = klass.const_get(name)
+    klass.send(:remove_const, name)
+    klass.const_set(name, value)
+    yield
+  ensure
+    klass.send(:remove_const, name)
+    klass.const_set(name, original)
   end
 end
