@@ -7,8 +7,9 @@ html lang="ja"
     .hero 
       = render "shared/breadcrumbs" if breadcrumbs.any?
 
+    / 固定ナビゲーション（サイドバー等）がある場合に、横幅を侵食しないように余白を確保した配置
     - if notice.present? || alert.present?
-      .app-flash-container
+      .app-flash-container style="display: block; width: auto; margin-left: var(--sidebar-width, 250px); padding: 0 1.5rem;"
         - if notice.present?
           .app-flash.app-flash-notice
             = notice

@@ -5,7 +5,7 @@ class FormSubmissionsController < ApplicationController
   before_action :ensure_own_batch!, only: [:show, :cancel, :resume, :progress, :destroy]
 
   # GET /form_submissions
-def index
+  def index
     # -------------------------
     # 検索（Ransack）
     # -------------------------
@@ -19,7 +19,6 @@ def index
     # 最新送信条件
     # -------------------------
     if params[:last_call].present?
-
       lc = params[:last_call]
       statuses = Array(lc[:status]).reject(&:blank?)
 
@@ -29,11 +28,9 @@ def index
         lc[:created_at_to].present?
 
       if has_filter
-
         customer_ids = Customer
           .includes(:last_form_call)
           .select do |customer|
-
             call = customer.last_form_call
             next false if call.blank?
 
@@ -67,16 +64,21 @@ def index
                    .per(50)
 
     # 【修正】business_filter / genre_filter を検出対象一覧にも適用する。
-    # 旧実装ではこのクエリにフィルタが一切反映されておらず、
-    # 業種・職種を選択しても画面の対象件数・一覧は常に全件のままだった
-    # （POST側の detect_contact_urls アクションにしかフィルタが効いていなかった）。
+    # 複数選択に対応するため、配列でも単一値でも正しく処理できるように `Array()` で包み、空白を除外します。
     detectable_scope = base_customers
                           .where(contact_url: [nil, ''])
                           .where.not(url: [nil, ''])
                           .where(fobbiden: [nil, false, 0])
 
-    detectable_scope = detectable_scope.where(business: params[:business_filter]) if params[:business_filter].present?
-    detectable_scope = detectable_scope.where(genre: params[:genre_filter]) if params[:genre_filter].present?
+    if params[:business_filter].present?
+      business_filters = Array(params[:business_filter]).reject(&:blank?)
+      detectable_scope = detectable_scope.where(business: business_filters) if business_filters.any?
+    end
+
+    if params[:genre_filter].present?
+      genre_filters = Array(params[:genre_filter]).reject(&:blank?)
+      detectable_scope = detectable_scope.where(genre: genre_filters) if genre_filters.any?
+    end
 
     @detectable_customers = detectable_scope
                               .page(params[:detectable_page])
@@ -104,7 +106,6 @@ def index
 
     @submission_stats =
       @submissions.map do |submission|
-
         batches =
           submission.form_submission_batches
 
@@ -139,6 +140,7 @@ def index
     @business_options = Customer.where.not(business: [nil, '']).order(:business).pluck(:business).uniq
     @genre_options    = Customer.where.not(genre: [nil, '']).order(:genre).pluck(:genre).uniq
   end
+
   # POST /form_submissions
   def create
     # 送信対象のベーススコープ定義
@@ -224,12 +226,10 @@ def index
     # 月次制限チェック
     # Adminは制限なし
     # =========================
-    client = current_client
-
-    if client.present?
-      unless client.can_send_this_month?(customer_ids.size)
-        redirect_to client_signed_in? ? dashboard_index_path : form_submissions_path,
-                    alert: "今月の送信上限に達しています（#{client.monthly_sent_count}/#{client.monthly_limit}）"
+    if client_signed_in? && !admin_signed_in?
+      unless current_client.can_send_this_month?(customer_ids.size)
+        redirect_to dashboard_index_path,
+                    alert: "今月の送信上限に達しています（#{current_client.monthly_sent_count}/#{current_client.monthly_limit}）"
         return
       end
     end
@@ -250,8 +250,8 @@ def index
     # 月次カウント加算
     # Adminは加算しない
     # =========================
-    if client.present?
-      client.increment_monthly_sent!(customer_ids.size)
+    if client_signed_in? && !admin_signed_in?
+      current_client.increment_monthly_sent!(customer_ids.size)
     end
 
     # 並列処理: 各顧客を独立したジョブとしてキューに投入
@@ -275,54 +275,24 @@ def index
 
   def cleanup_duplicates
     attribute = params[:attribute]
-    valid_attributes = %w[company tel url contact_url]
 
-    unless valid_attributes.include?(attribute)
-      if client_signed_in? && !admin_signed_in?
-        return redirect_to dashboard_index_path, alert: "不正な属性指定です。"
-      else
-        return redirect_to form_submissions_path, alert: "不正な属性指定です。"
-      end
+    unless Customer::DUPLICATE_CLEANUP_ATTRIBUTES.include?(attribute)
+      redirect_path = client_signed_in? && !admin_signed_in? ? dashboard_index_path : form_submissions_path
+      return redirect_to redirect_path, alert: "不正な属性指定です。"
     end
 
-    # 1. ログイン状態に応じてベースとなるスコープを決定（ここを徹底します）
-    base_scope = Customer.all
-    if client_signed_in? && !admin_signed_in?
-      base_scope = base_scope.where(client_id: current_client.id)
-    end
+    base_scope = Customer.duplicate_cleanup_scope(
+      client_signed_in: client_signed_in?,
+      admin_signed_in: admin_signed_in?,
+      client_id: current_client&.id
+    )
+    total_deleted = Customer.cleanup_duplicates!(attribute: attribute, scope: base_scope)
 
-    # 2. 決定した base_scope 内で、nil / 空文字 / 空白のみを除外して重複を抽出
-    duplicate_values = base_scope
-      .where.not(attribute => nil)
-      .where.not("TRIM(#{attribute}) = ''")
-      .group(attribute)
-      .having("COUNT(id) > 1")
-      .pluck(attribute)
-
-    total_deleted = 0
-
-    Customer.transaction do
-      duplicate_values.each do |value|
-        # 3. 決定した base_scope 内から、該当する値を持つIDを昇順で取得
-        ids = base_scope.where(attribute => value).order(id: :asc).pluck(:id)
-
-        # 先頭（最古）を残す
-        ids.shift
-
-        # 4. 該当レコードを物理削除（削除対象のID指定なのでここはCustomer全体からで安全です）
-        deleted_records = Customer.where(id: ids).destroy_all
-        total_deleted += deleted_records.size
-      end
-    end
-
-    # 指定されたリダイレクト条件
-    if client_signed_in? && !admin_signed_in?
-      redirect_to dashboard_index_path,
-                  notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
-    else
-      redirect_to form_submissions_path,
-                  notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
-    end
+    redirect_path = client_signed_in? && !admin_signed_in? ? dashboard_index_path : form_submissions_path
+    redirect_to redirect_path, notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
+  rescue ArgumentError => e
+    redirect_path = client_signed_in? && !admin_signed_in? ? dashboard_index_path : form_submissions_path
+    redirect_to redirect_path, alert: e.message
   end
 
   # GET /form_submissions/:id
@@ -393,7 +363,7 @@ def index
     end
   end
 
-def import_customers
+  def import_customers
     file = params[:file]
 
     if file.blank?
@@ -489,7 +459,6 @@ def import_customers
   end
   
   # POST /form_submissions/detect_contact_urls
-# POST /form_submissions/detect_contact_urls
   def detect_contact_urls
     # Build base scope for customer selection
     base_scope = Customer.where(contact_url: [nil, ''])
@@ -502,13 +471,16 @@ def import_customers
     end
     
     # Apply business filter if provided
+    # 複数選択に対応するため、配列形式で条件を指定できるように調整
     if params[:business_filter].present?
-      base_scope = base_scope.where(business: params[:business_filter])
+      business_filters = Array(params[:business_filter]).reject(&:blank?)
+      base_scope = base_scope.where(business: business_filters) if business_filters.any?
     end
 
-    # 【追加】職種(genre)フィルタにも対応
+    # 職種(genre)フィルタにも対応
     if params[:genre_filter].present?
-      base_scope = base_scope.where(genre: params[:genre_filter])
+      genre_filters = Array(params[:genre_filter]).reject(&:blank?)
+      base_scope = base_scope.where(genre: genre_filters) if genre_filters.any?
     end
 
     customer_ids = if params[:detect_select_all] == '1'

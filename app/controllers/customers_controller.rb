@@ -301,7 +301,6 @@ def serp_search
   limit           = (params[:limit] || 100).to_i
   company_query   = params[:company_query].presence
   fill_filter     = params[:fill_filter].presence
-  serp_target_ids = params[:serp_target_ids].presence
 
   if client_signed_in? && !admin_signed_in?
     monthly_log = current_client.monthly_usage_log
@@ -333,15 +332,10 @@ def serp_search
   end
 
   actual_limit = [limit, target_count].min
-
-  customer_ids = if serp_target_ids.present?
-                   serp_target_ids.split(',').map(&:to_i).take(actual_limit)
-                 else
-                   scope.order(id: :asc).limit(actual_limit).pluck(:id)
-                 end
+  customer_ids = scope.order(id: :asc).limit(actual_limit).pluck(:id)
 
   if client_signed_in? && !admin_signed_in?
-    current_client.monthly_usage_log.increment!(:serp_api_used, actual_limit)
+    current_client.monthly_usage_log.increment!(:serp_api_used, customer_ids.size)
   end
 
   client_id = client_signed_in? ? current_client.id : nil
@@ -378,7 +372,7 @@ def serp_search
   end
 end
 
-private
+  private
 
   def authenticate_admin_or_client!
     unless admin_signed_in? || client_signed_in?
@@ -511,6 +505,8 @@ private
     counts
   end
 
+  public
+
   def bulk_action
     if client_signed_in?
       @customers = Customer.where(id: params[:deletes].keys, client_id: current_client.id)
@@ -584,40 +580,25 @@ private
     redirect_to customers_path
   end
 
-  def cleanup_duplicates
+def cleanup_duplicates
     attribute = params[:attribute]
-    valid_attributes = %w[company tel url contact_url]
 
-    unless valid_attributes.include?(attribute)
-      return redirect_to(request.referer || form_submissions_path, alert: "不正な属性指定です。")
+    unless Customer::DUPLICATE_CLEANUP_ATTRIBUTES.include?(attribute)
+      return redirect_to(dashboard_index_path, alert: "不正な属性指定です。")
     end
 
-    base_scope = if client_signed_in?
-                   Customer.where(client_id: current_client.id)
-                 else
-                   Customer.all
-                 end
+    base_scope = Customer.duplicate_cleanup_scope(
+      client_signed_in: client_signed_in?,
+      admin_signed_in: admin_signed_in?,
+      client_id: current_client&.id
+    )
 
-    duplicate_values = base_scope
-      .where.not(attribute => nil)
-      .where.not("TRIM(#{attribute}) = ''")
-      .group(attribute)
-      .having("COUNT(id) > 1")
-      .pluck(attribute)
+    total_deleted = Customer.cleanup_duplicates!(attribute: attribute, scope: base_scope)
 
-    total_deleted = 0
-
-    Customer.transaction do
-      duplicate_values.each do |value|
-        ids = base_scope.where(attribute => value).order(id: :asc).pluck(:id)
-        ids.shift
-        deleted_records = Customer.where(id: ids).destroy_all
-        total_deleted  += deleted_records.size
-      end
-    end
-
-    redirect_to request.referer || form_submissions_path,
+    redirect_to dashboard_index_path,
                 notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
+  rescue ArgumentError => e
+    redirect_to dashboard_index_path, alert: e.message
   end
 
   def extract_company_info
@@ -688,6 +669,8 @@ private
 
     render json: current_serp_progress_payload
   end
+
+  private
 
   def customer_params
     params.require(:customer).permit(

@@ -1,5 +1,9 @@
 class Customer < ApplicationRecord
-  has_many :calls, dependent: :destroy  
+  DUPLICATE_CLEANUP_ATTRIBUTES = %w[company tel url contact_url].freeze
+
+  has_many :calls, dependent: :destroy
+  has_many :click_tracking_links, dependent: :destroy
+  has_many :serp_enrichment_run_targets, dependent: :destroy
   has_one :last_call, -> { order(created_at: :desc) }, class_name: 'Call'
   has_one :last_form_call, -> { where(call_type: 'form').order(created_at: :desc) }, class_name: 'Call'
   belongs_to :worker, optional: true
@@ -183,6 +187,51 @@ class Customer < ApplicationRecord
   def self.calculate_serp_target_count(base_scope, fill_filter = nil)
     base_scope.serp_extraction_targets(fill_filter).count
   end
+
+  def self.duplicate_cleanup_scope(client_signed_in:, admin_signed_in:, client_id: nil)
+    scope = all
+    if client_signed_in && !admin_signed_in && client_id.present?
+      scope = scope.where(client_id: client_id)
+    end
+    scope
+  end
+
+  def self.cleanup_duplicates!(attribute:, scope:)
+    raise ArgumentError, "不正な属性指定です。" unless DUPLICATE_CLEANUP_ATTRIBUTES.include?(attribute)
+
+    duplicate_values = scope
+      .where.not(attribute => nil)
+      .where.not("TRIM(#{attribute}) = ''")
+      .group(attribute)
+      .having("COUNT(id) > 1")
+      .pluck(attribute)
+
+    total_deleted = 0
+    transaction do
+      duplicate_values.each do |value|
+        ids = scope.where(attribute => value).order(id: :asc).pluck(:id)
+        ids.shift
+        next if ids.empty?
+
+        delete_dependents_without_models!(ids)
+        total_deleted += where(id: ids).destroy_all.size
+      end
+    end
+    total_deleted
+  end
+
+  def self.delete_dependents_without_models!(customer_ids)
+    return if customer_ids.blank?
+
+    # モデル未定義テーブル。FAX は現在未使用。
+    connection.delete(
+      sanitize_sql_array(["DELETE FROM customer_update_logs WHERE customer_id IN (?)", customer_ids])
+    )
+    connection.delete(
+      sanitize_sql_array(["DELETE FROM fax_deliveries WHERE customer_id IN (?)", customer_ids])
+    )
+  end
+  private_class_method :delete_dependents_without_models!
 
   def self.calculate_dashboard_stats(base_scope)
     total = base_scope.count

@@ -27,9 +27,9 @@
               - else
                 | Admin
 
-      / ===== フラッシュメッセージ =====
+      / ===== フラッシュメッセージ (コンテンツエリア内に配置し、サイドバーとの衝突を完全回避) =====
       - flash.each do |type, msg|
-        .flash-message class="flash-#{type}"
+        .flash-message class="flash-#{type}" style="margin-top: 1.5rem;"
           = msg
 
       / ===== 解約予約中（期間内猶予）の警告バナー =====

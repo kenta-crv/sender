@@ -77,18 +77,12 @@ class WebhooksController < ApplicationController
         end # <- Subscription.transaction の end が不足していたのを修正
 
       elsif session.mode == 'payment'
-        campaign_id = session.metadata.campaign_id
-        campaign = client.campaigns.find_by(id: campaign_id) if campaign_id.present?
-
         client.payments.create!(
-          campaign: campaign,
           amount: session.amount_total,
           status: 'succeeded',
           stripe_payment_intent_id: session.payment_intent,
-          description: campaign ? "Campaign delivery: #{campaign.title}" : "One-time payment"
+          description: "One-time payment"
         )
-
-        ::PushNotificationSender.deliver(campaign) if campaign
       end
 
     rescue => e

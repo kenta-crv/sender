@@ -23,8 +23,6 @@ class Subscription < ApplicationRecord
     enterprise: 98_000
   }.freeze
 
-  DELIVERY_COST = 50
-
   PLAN_DELIVERY_LIMITS = {
     trial: 1000,
     standard: 15_000,

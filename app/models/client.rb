@@ -4,11 +4,6 @@ class Client < ApplicationRecord
 
   has_many :monthly_usage_logs, dependent: :destroy
 
-  has_one :plan
-  has_many :push_subscriptions, dependent: :destroy
-  has_many :campaigns, dependent: :destroy
-  has_many :campaign_results, through: :campaigns
-  has_one :install_script, dependent: :destroy
   has_many :subscriptions, dependent: :destroy
   has_one :active_subscription, -> { where(status: :active) }, class_name: "Subscription"
   has_many :payments, dependent: :destroy
@@ -35,13 +30,6 @@ class Client < ApplicationRecord
 
   def subscription_active?
     subscription_status == "active"
-  end
-
-  def can_send_campaign?(recipient_count)
-    return false unless subscription_active?
-    sub = current_subscription
-    return false unless sub
-    sub.can_send_delivery?(recipient_count)
   end
 
   def monthly_sent_count
@@ -100,9 +88,8 @@ class Client < ApplicationRecord
         )
 
         payments.create!(
-          campaign_id: nil,
           amount: amount,
-          stripe_charge_id: charge.id, # Stripeの決済IDに変更して記録
+          stripe_payment_intent_id: charge.id,
           status: "succeeded",
           description: "Enterprise Plan subscription (trial upgrade)"
         )

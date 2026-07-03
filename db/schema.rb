@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_06_23_052914) do
+ActiveRecord::Schema.define(version: 2026_07_03_120000) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -115,7 +115,6 @@ ActiveRecord::Schema.define(version: 2026_06_23_052914) do
     t.string "subscription_plan", default: "trial"
     t.string "subscription_status", default: "active"
     t.datetime "trial_ends_at"
-    t.string "payjp_customer_id"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.string "stripe_customer_id"
@@ -307,14 +306,12 @@ ActiveRecord::Schema.define(version: 2026_06_23_052914) do
   create_table "payments", force: :cascade do |t|
     t.integer "client_id", null: false
     t.integer "amount", null: false
-    t.string "payjp_charge_id"
     t.string "status", default: "pending", null: false
     t.text "description"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.string "stripe_payment_intent_id"
     t.index ["client_id"], name: "index_payments_on_client_id"
-    t.index ["payjp_charge_id"], name: "index_payments_on_payjp_charge_id"
     t.index ["status"], name: "index_payments_on_status"
     t.index ["stripe_payment_intent_id"], name: "index_payments_on_stripe_payment_intent_id", unique: true
   end
@@ -404,12 +401,10 @@ ActiveRecord::Schema.define(version: 2026_06_23_052914) do
     t.string "plan_type", null: false
     t.string "status", default: "active", null: false
     t.datetime "trial_ends_at"
-    t.string "payjp_subscription_id"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.string "stripe_subscription_id"
     t.index ["client_id"], name: "index_subscriptions_on_client_id"
-    t.index ["payjp_subscription_id"], name: "index_subscriptions_on_payjp_subscription_id"
     t.index ["plan_type"], name: "index_subscriptions_on_plan_type"
     t.index ["status"], name: "index_subscriptions_on_status"
     t.index ["stripe_subscription_id"], name: "index_subscriptions_on_stripe_subscription_id", unique: true

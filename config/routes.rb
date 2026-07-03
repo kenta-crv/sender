@@ -42,9 +42,7 @@ Rails.application.routes.draw do
     resources :notifications
   end
 
-  resources :clients do
-    resources :push_subscriptions, only: [:index, :create]
-  end
+  resources :clients
 
   get 'checkout/confirmation', to: 'checkout#confirmation', as: :checkout_confirmation
   post 'checkout/create', to: 'checkout#create', as: :checkout_create
