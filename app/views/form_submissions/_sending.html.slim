@@ -89,6 +89,11 @@
       h5 新規バッチ送信
 
     .sc-detect__card-body
+      - if plan_priority_wait_notice.present?
+        .sc-detect__alert.sc-detect__alert--info.mb-4
+          i.fas.fa-info-circle.me-2
+          = plan_priority_wait_notice
+
       = form_tag form_submissions_path, method: :post do
 
         - if params[:q].present?
@@ -139,7 +144,7 @@
           .col-md-4
             label.sc-detect__card-body.p-0.mb-2 送信内容
             = select_tag :submission_id,\
-              options_for_select([['-- 送信内容を選択してください --', '']] + (@submissions || []).map { |s| [(s.title.presence || s.headline.presence || "Submission ##{s.id}"), s.id] }, params[:submission_id]),\
+              options_for_select([['-- 送信内容を選択してください --', '']] + (@submissions || []).map { |s| [(s.headline.presence || s.title.presence || "Submission ##{s.id}"), s.id] }, params[:submission_id]),\
               required: true,\
               class: 'sc-detect__select'
 
@@ -151,46 +156,6 @@
         .sc-detect__check-group.mb-3
           = check_box_tag :select_all, '1', false, id: 'select_all'
           label for="select_all" リストの全顧客を選択
-
-        .sc-detect__table-wrapper
-          table.sc-detect__table
-            thead
-              tr
-                th 選択
-                th ID
-                th 会社名
-                th 問い合わせURL
-                - if admin_signed_in?
-                  th 最終送信
-                  th ステータス
-
-            tbody
-              - if @customers.present?
-                - @customers.each do |c|
-                  tr
-                    td
-                      .sc-detect__check-group
-                        = check_box_tag 'customer_ids[]', c.id, false, class: 'customer-check'
-
-                    td = c.id
-                    td = c.company
-                    td
-                      - if c.contact_url.present?
-                        = link_to truncate(c.contact_url, length: 40), c.contact_url, target: '_blank', rel: 'noopener noreferrer'
-
-                    - if admin_signed_in?
-                      td
-                        - if c.last_form_call
-                          span = c.last_form_call.created_at.strftime('%m/%d %H:%M')
-
-                      td
-                        - if c.last_form_call
-                          - status_class = case c.last_form_call.status
-                          - when '自動送信成功', '送信成功' then 'success'
-                          - when 'CAPTCHA NG' then 'warning'
-                          - when '自動送信失敗', '送信失敗' then 'danger'
-                          - else 'info'
-                          span class="sc-detect__badge sc-detect__badge--#{status_class}" = c.last_form_call.status
 
         .sc-detect__table-wrapper
           table.sc-detect__table

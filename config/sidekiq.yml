@@ -1,6 +1,13 @@
 :concurrency: 4
 :queues:
+  - [form_submission_enterprise, 4]
+  - [form_submission_standard, 3]
+  - [form_submission_trial, 2]
+  - [form_submission_admin, 1]
+  - [form_detection_enterprise, 4]
+  - [form_detection_standard, 3]
+  - [form_detection_trial, 2]
+  - [form_detection_admin, 1]
   - [auto_dial, 5]
   - [article_generation, 4]
-  - [serp_enrichment, 1]
-  - [form_submission, 4]
+  - [form_submission, 1]

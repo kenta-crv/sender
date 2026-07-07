@@ -3,6 +3,7 @@ class Customer < ApplicationRecord
 
   has_many :calls, dependent: :destroy
   has_many :click_tracking_links, dependent: :destroy
+  has_many :delivery_opt_outs, dependent: :destroy
   has_many :serp_enrichment_run_targets, dependent: :destroy
   has_one :last_call, -> { order(created_at: :desc) }, class_name: 'Call'
   has_one :last_form_call, -> { where(call_type: 'form').order(created_at: :desc) }, class_name: 'Call'
@@ -26,6 +27,21 @@ class Customer < ApplicationRecord
   scope :between_called_at, ->(from, to) {
     where(created_at: from..to)
   }
+
+  scope :deliverable_for, ->(client_id = nil) {
+    scope = where(fobbiden: [nil, false, 0])
+    return scope if client_id.blank?
+
+    opted_out_ids = DeliveryOptOut.where(client_id: client_id).select(:customer_id)
+    scope.where.not(id: opted_out_ids)
+  }
+
+  def opted_out_for?(client_id)
+    return true if fobbiden.to_s == "t" || fobbiden.to_s == "true"
+    return false if client_id.blank?
+
+    delivery_opt_outs.exists?(client_id: client_id)
+  end
 
   scope :ltec_calls_count, ->(count) {
     filter_ids = joins(:calls).group("calls.customer_id").having('count(*) <= ?', count).count.keys

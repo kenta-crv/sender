@@ -1,5 +1,5 @@
 class ContactUrlDetectJob < ApplicationJob
-  queue_as :form_submission
+  queue_as :form_detection_standard
   retry_on StandardError, attempts: 0
 
   def perform(customer_id, batch_id = nil)

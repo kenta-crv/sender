@@ -16,7 +16,7 @@ class Dashboard::DashboardsController < ApplicationController
     filtered = @q.result(distinct: true)
 
     @customers = filtered.where.not(contact_url: [nil, '', 'not_detected']).page(params[:customers_page]).per(20)
-    @detectable_customers = filtered.where(contact_url: [nil, '']).where.not(url: [nil, '']).where(fobbiden: [nil, false, 0]).page(params[:detectable_page]).per(20)
+    @detectable_customers = filtered.where(contact_url: [nil, '']).where.not(url: [nil, '']).deliverable_for(delivery_filter_client_id).page(params[:detectable_page]).per(20)
 
     @business_options = generate_options(:business)
     @genre_options = generate_options(:genre)
@@ -168,7 +168,7 @@ class Dashboard::DashboardsController < ApplicationController
     @detectable_customers = filtered
                               .where(contact_url: [nil, ''])
                               .where.not(url: [nil, ''])
-                              .where(fobbiden: [nil, false, 0])
+                              .deliverable_for(delivery_filter_client_id)
                               .page(params[:detectable_page]).per(50)
 
     @business_options = generate_options(:business)
@@ -207,7 +207,7 @@ def searching_form
   @detectable_customers = filtered
                             .where(contact_url: [nil, ''])
                             .where.not(url: [nil, ''])
-                            .where(fobbiden: [nil, false, 0])
+                            .deliverable_for(delivery_filter_client_id)
                             .page(params[:detectable_page]).per(50)
 
   @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
@@ -216,7 +216,7 @@ def searching_form
   detectable_base = @q.result(distinct: true)
                       .where(contact_url: [nil, ''])
                       .where.not(url: [nil, ''])
-                      .where(fobbiden: [nil, false, 0])
+                      .deliverable_for(delivery_filter_client_id)
 
   @business_options = detectable_base.where.not(business: [nil, ''])
                                      .group(:business)
@@ -265,9 +265,24 @@ end
         ClickTrackingLink.none
       end
 
+    click_scope = click_scope.where(submission_id: params[:submission_id]) if params[:submission_id].present?
+
+    @filter_submissions =
+      if admin_signed_in?
+        if params[:client_id].present?
+          Submission.where(client_id: params[:client_id]).order(created_at: :desc)
+        else
+          Submission.order(created_at: :desc)
+        end
+      elsif client_signed_in?
+        current_client.submissions.order(created_at: :desc)
+      else
+        Submission.none
+      end
+
     @clicked_links = click_scope.where.not(clicked_count: nil)
                                 .where("clicked_count > 0")
-                                .includes(:customer, :click_logs)
+                                .includes(:customer, :click_logs, :submission, :form_submission_batch)
                                 .order(last_clicked_at: :desc)
                                 .page(params[:page])
                                 .per(20)

@@ -11,6 +11,7 @@ class Client < ApplicationRecord
   has_many :customers
   has_many :form_submission_batches
   has_many :submissions
+  has_many :delivery_opt_outs, dependent: :destroy
 
   def full_name
     [first_name, last_name].compact.join(" ")

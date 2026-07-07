@@ -11,6 +11,9 @@ class Subscription < ApplicationRecord
             uniqueness: true,
             allow_nil: true
 
+  after_commit :notify_registered, on: :create
+  after_commit :notify_updated, on: :update
+
   PLAN_NAMES = {
     trial: "トライアルプラン",
     standard: "スタンダードプラン",
@@ -107,6 +110,20 @@ class Subscription < ApplicationRecord
         subscription_status: "active",
         trial_ends_at: nil
       )
+    end
+  end
+
+  private
+
+  def notify_registered
+    SubscriptionNotifier.registered(self)
+  end
+
+  def notify_updated
+    if saved_change_to_status? && cancelled?
+      SubscriptionNotifier.cancelled(self)
+    elsif saved_change_to_plan_type?
+      SubscriptionNotifier.changed(self, previous_plan: plan_type_before_last_save)
     end
   end
 end

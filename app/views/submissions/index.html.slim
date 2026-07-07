@@ -17,9 +17,11 @@
           th 担当者
           th メール
           th 電話
+          th クリック
           th 操作
       tbody
         - @submissions.each do |sub|
+          - click_count = @submission_click_counts[sub.id].to_i
           tr
             td = sub.id
             td = sub.headline
@@ -28,13 +30,21 @@
             td = sub.email
             td = sub.tel
             td
-              .d-flex.gap-2
-                / 詳細・編集は定義済みの primary スタイル
+              - if click_count > 0
+                = link_to click_history_submission_path(sub), class: 'sc-detect__badge sc-detect__badge--info' do
+                  = "#{click_count}社"
+              - else
+                span.text-muted 0社
+            td
+              .d-flex.gap-2.flex-wrap
                 = link_to submission_path(sub), class: 'sc-detect__btn sc-detect__btn--primary' do
                   | 詳細
                 
                 = link_to edit_submission_path(sub), class: 'sc-detect__btn sc-detect__btn--primary' do
                   | 編集
+
+                = link_to click_history_submission_path(sub), class: 'sc-detect__btn sc-detect__btn--warning' do
+                  | クリック
                 
                 / 削除は赤色のバッジスタイルを適用して文字色を固定
                 = link_to submission_path(sub), 

@@ -51,7 +51,7 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
     worker = SerpPipelineDbWorker.new
     worker.define_singleton_method(:jid) { "jid-batch-1" }
 
-    with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued << args }) do
+    with_sidekiq_enqueue_stub(enqueued) do
       with_singleton_method(BrightData::Pipeline, :execute_from_db, ->(**_kwargs) { true }) do
         stub_const(SerpPipelineDbWorker, :BATCH_SIZE, 2) do
           worker.perform("", ids, run.run_id, 0)
@@ -60,9 +60,9 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
     end
 
     assert_equal 1, enqueued.size
-    assert_equal ["", ids, "batch-chain-run", 2], enqueued.first
+    assert_equal ["", ids, "batch-chain-run", 2, "serp_enrichment_admin"], enqueued.first
 
-    with_singleton_method(SerpPipelineDbWorker, :perform_async, ->(*args) { enqueued << args }) do
+    with_sidekiq_enqueue_stub(enqueued) do
       with_singleton_method(BrightData::Pipeline, :execute_from_db, ->(**_kwargs) { raise "boom" }) do
         stub_const(SerpPipelineDbWorker, :BATCH_SIZE, 2) do
           assert_raises(RuntimeError) { worker.perform("", ids, run.run_id, 2) }
@@ -75,6 +75,15 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
   end
 
   private
+
+  def with_sidekiq_enqueue_stub(enqueued)
+    chain_target = Object.new
+    chain_target.define_singleton_method(:perform_async) { |*args| enqueued << args }
+
+    with_singleton_method(SerpPipelineDbWorker, :set, ->(**_kwargs) { chain_target }) do
+      yield
+    end
+  end
 
   def with_singleton_method(klass, method_name, replacement)
     original = klass.method(method_name)

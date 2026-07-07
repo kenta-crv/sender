@@ -80,6 +80,7 @@ Rails.application.routes.draw do
     member do
       get :history
       get :manual
+      get :click_history
     end
   end
 

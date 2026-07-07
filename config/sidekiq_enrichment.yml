@@ -3,4 +3,8 @@
 # 起動: bundle exec sidekiq -C config/sidekiq_enrichment.yml
 :concurrency: 3
 :queues:
-  - serp_enrichment
+  - [serp_enrichment_enterprise, 4]
+  - [serp_enrichment_standard, 3]
+  - [serp_enrichment_trial, 2]
+  - [serp_enrichment_admin, 1]
+  - [serp_enrichment, 1]

@@ -1,5 +1,5 @@
 class FormSendJob < ApplicationJob
-  queue_as :form_submission
+  queue_as :form_submission_standard
 
   retry_on StandardError, attempts: 0
 
@@ -172,10 +172,15 @@ class FormSendJob < ApplicationJob
 
     ri_plus_options = { host: 'okurite.pro', protocol: 'https', port: nil }
 
+    customer.generate_unsubscribe_token if customer.unsubscribe_token.blank?
+    customer.save! if customer.changed?
+
     tracking = ClickTrackingLink.create!(
       customer: customer,
       client: batch.client,
       admin: batch.admin,
+      submission: submission,
+      form_submission_batch: batch,
       target_url: submission.url
     )
 
@@ -185,12 +190,23 @@ class FormSendJob < ApplicationJob
         ri_plus_options
       )
 
+    unsubscribe_link =
+      Rails.application.routes.url_helpers.unsubscribe_url(
+        customer.unsubscribe_token,
+        { client_id: batch.client_id }.merge(ri_plus_options)
+      )
+
     if submission.content.present?
       info[:message] = <<~TEXT
         #{submission.content}
 
         詳細はこちら
         #{tracking_link}
+
+        ━━━━━━━━━━━━━━━━━━━━
+        配信停止をご希望の場合
+        #{unsubscribe_link}
+        ━━━━━━━━━━━━━━━━━━━━
       TEXT
     end
 

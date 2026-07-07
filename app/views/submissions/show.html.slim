@@ -41,6 +41,10 @@
               td style="white-space: pre-wrap; line-height: 1.8; color: #ffffff;" = @submission.content
 
   .mt-4.d-flex.gap-3
+    = link_to click_history_submission_path(@submission), class: 'sc-detect__btn sc-detect__btn--warning' do
+      i.fas.fa-mouse-pointer.me-1
+      | クリック履歴
+
     / 編集ボタン（定義済みの .sc-detect__btn--warning を適用）
     = link_to edit_submission_path(@submission), class: 'sc-detect__btn sc-detect__btn--warning' do
       i.fas.fa-edit.me-1

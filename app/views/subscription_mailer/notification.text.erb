@@ -1,0 +1,27 @@
+サブスクリプションに関する通知です。
+
+イベント: <%=
+  case @event
+  when :registered then "登録"
+  when :changed then "変更"
+  when :cancelled then "解約"
+  else @event.to_s
+  end
+%>
+
+クライアントID: <%= @client.id %>
+会社名: <%= @client.company.presence || "-" %>
+メールアドレス: <%= @client.email %>
+プラン: <%= @subscription.plan_name %>
+<% if @event == :changed && @previous_plan.present? %>
+変更前プラン: <%= Subscription::PLAN_NAMES[@previous_plan.to_sym] || @previous_plan %>
+<% end %>
+ステータス: <%= @subscription.status %>
+<% if @subscription.trial_ends_at.present? %>
+トライアル終了日: <%= @subscription.trial_ends_at.strftime("%Y年%m月%d日 %H:%M") %>
+<% end %>
+<% if @client.trial_ends_at.present? %>
+クライアントトライアル終了日: <%= @client.trial_ends_at.strftime("%Y年%m月%d日 %H:%M") %>
+<% end %>
+Stripe Subscription ID: <%= @subscription.stripe_subscription_id.presence || "-" %>
+日時: <%= Time.current.strftime("%Y年%m月%d日 %H:%M") %>

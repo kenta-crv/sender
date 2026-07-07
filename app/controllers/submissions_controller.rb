@@ -1,12 +1,17 @@
 class SubmissionsController < ApplicationController
   before_action :authenticate_admin_or_client!
-  before_action :set_submission, only: [:show, :edit, :update, :destroy, :manual, :history]
+  before_action :set_submission, only: [:show, :edit, :update, :destroy, :manual, :history, :click_history]
 
   def index
     @customers = scoped_customers.where.not(contact_url: [nil, ""])
     @detectable_customers = scoped_customers.where(contact_url: [nil, ""]).where.not(url: [nil, ""])
     @no_url_customers_count = scoped_customers.where(contact_url: [nil, ""], url: [nil, ""]).count
     @submissions = scoped_submissions
+    @submission_click_counts = ClickTrackingLink
+      .where(submission_id: @submissions.select(:id))
+      .where("clicked_count > 0")
+      .group(:submission_id)
+      .count
     @batches = scoped_batches.includes(:submission).order(created_at: :desc).page(params[:page]).per(10)
   end
 
@@ -43,7 +48,7 @@ class SubmissionsController < ApplicationController
   end
 
   def manual
-    customers_scope = scoped_customers.where(contact_url: [nil, ''], url: [nil, ''], fobbiden: [nil, false, 0])
+    customers_scope = scoped_customers.where(contact_url: [nil, ''], url: [nil, '']).deliverable_for(delivery_filter_client_id)
     @display_rows = []
     seen_customer_ids = Set.new
     latest_calls = Call.where(customer_id: customers_scope.pluck(:id)).order(created_at: :desc).group_by(&:customer_id)
@@ -69,7 +74,7 @@ class SubmissionsController < ApplicationController
     batches.order(created_at: :desc).each do |batch|
       customer_ids = batch.customer_ids.present? ? JSON.parse(batch.customer_ids) : []
       error_logs = batch.error_log.present? ? JSON.parse(batch.error_log) : []
-      customers = scoped_customers.where(id: customer_ids, fobbiden: nil).index_by(&:id)
+      customers = scoped_customers.deliverable_for(delivery_filter_client_id).where(id: customer_ids).index_by(&:id)
       latest_calls = Call.where(customer_id: customer_ids).order(created_at: :desc).group_by(&:customer_id)
       customer_ids.each do |c_id|
         next if seen_customer_ids.include?(c_id)
@@ -97,6 +102,21 @@ class SubmissionsController < ApplicationController
       end
     end
     @all_target_ids = @display_rows.map { |row| row[:customer].id }
+  end
+
+  def click_history
+    @click_stats = {
+      total_links: @submission.click_tracking_links.count,
+      clicked_companies: @submission.click_tracking_links.where("clicked_count > 0").count,
+      total_clicks: @submission.click_tracking_links.sum(:clicked_count)
+    }
+
+    @clicked_links = @submission.click_tracking_links
+                                .where("clicked_count > 0")
+                                .includes(:customer, :click_logs, :form_submission_batch)
+                                .order(last_clicked_at: :desc)
+                                .page(params[:page])
+                                .per(20)
   end
 
   private

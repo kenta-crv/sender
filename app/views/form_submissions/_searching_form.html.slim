@@ -7,6 +7,11 @@
       h5.m-0 style="color: #ffffff;" お問い合わせフォームURL 一括自動検出
 
     .sc-detect__card-body
+      - if plan_priority_wait_notice.present?
+        .sc-detect__alert.sc-detect__alert--info.mb-4
+          i.fas.fa-info-circle.me-2
+          = plan_priority_wait_notice
+
       - if @detectable_customers.any?
         p style="color: rgba(229, 231, 235, 0.8);"
           | HP URL が設定されているが contact_url が未設定の顧客に対して、

@@ -118,6 +118,7 @@ class CustomersController < ApplicationController
       saved = @customer.save(validate: false)
     else
       saved = @customer.update(customer_params)
+      sync_client_delivery_opt_out!(@customer) if saved && client_signed_in?
     end
 
     if saved
@@ -346,10 +347,17 @@ def serp_search
   audit_run.update!(client_id: client_id)
 
   begin
-    SerpPipelineDbWorker.perform_async(industry, customer_ids, run_id, 0)
+    serp_queue = PlanPriorityQueue.queue_for(
+      :serp_enrichment,
+      client: current_client,
+      admin: admin_signed_in?
+    )
+    SerpPipelineDbWorker.set(queue: serp_queue).perform_async(industry, customer_ids, run_id, 0, serp_queue.to_s)
     batch_size = SerpPipelineDbWorker::BATCH_SIZE
-    redirect_to dashboard_index_path,
-      notice: "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（#{batch_size}件ずつ処理・失敗時は中断 / 業種: #{industry || '全業種'}）"
+    wait_notice = PlanPriorityQueue.wait_notice_for(client: current_client, admin: admin_signed_in?)
+    notice_message = "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（#{batch_size}件ずつ処理・失敗時は中断 / 業種: #{industry || '全業種'}）"
+    notice_message = "#{notice_message} #{wait_notice}" if wait_notice.present?
+    redirect_to dashboard_index_path, notice: notice_message
   rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
     Rails.logger.warn("[serp_search] Redis未起動のため同期実行にフォールバック: #{e.message}")
     begin
@@ -662,6 +670,16 @@ def cleanup_duplicates
   end
 
   private
+
+  def sync_client_delivery_opt_out!(customer)
+    return unless current_client.present?
+
+    if params[:client_delivery_opt_out] == '1'
+      DeliveryOptOut.find_or_create_by!(customer: customer, client: current_client)
+    else
+      DeliveryOptOut.where(customer: customer, client_id: current_client.id).delete_all
+    end
+  end
 
   def customer_params
     params.require(:customer).permit(

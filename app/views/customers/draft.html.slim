@@ -107,6 +107,11 @@
             i.fas.fa-search-plus.me-2 style="color: #38bdf8;"
             | SERP情報補完
         .sc-detect__card-body.d-flex.flex-column.h-100
+          - if plan_priority_wait_notice.present?
+            .sc-detect__alert.sc-detect__alert--info.mb-3
+              i.fas.fa-info-circle.me-2
+              = plan_priority_wait_notice
+
           .text-center.py-3.mb-3 style="background: rgba(56, 189, 248, 0.05); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.1);"
             .sc-detect__label 補完対象件数（検索反映）
             .h2.fw-bold#serp-target-count-display style="color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);" = "#{@serp_target_count || 0}件"

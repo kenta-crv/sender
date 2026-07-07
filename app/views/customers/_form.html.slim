@@ -52,11 +52,32 @@
                         div style="margin-top: 8px; font-size: 0.8rem; color: var(--electric-blue);"
                           | HPから自動検出可能です（フォーム送信時に自動検出されます）
                   tr
-                    th フォーム送信NG
+                    th フォーム送信の状態
                     td style="padding-top: 15px; padding-bottom: 15px;"
-                      label style="display: inline-flex; align-items: center; cursor: pointer; color: var(--text-muted); font-size: 0.9rem;"
-                        = f.check_box :fobbiden, style: "margin-right: 8px; width: 16px; height: 16px; accent-color: var(--electric-blue);"
-                        span 送信を禁止する
+                      - status = customer_delivery_status(@customer)
+                      span class="delivery-status-badge #{status[:css]}" = status[:label]
+
+                      - if admin_signed_in?
+                        .delivery-status-note
+                          | 下のチェックをオンにすると、
+                          strong 全クライアント共通
+                          | で送信禁止になります（管理者専用）。
+                        label style="display: inline-flex; align-items: center; cursor: pointer; color: var(--text-muted); font-size: 0.9rem; margin-top: 12px;"
+                          = f.check_box :fobbiden, style: "margin-right: 8px; width: 16px; height: 16px; accent-color: var(--electric-blue);"
+                          span 全クライアント共通で送信禁止
+                        - opted_out_labels = customer_opted_out_client_labels(@customer)
+                        - if opted_out_labels.any?
+                          .delivery-status-note
+                            | メール配信停止済みクライアント:
+                            = opted_out_labels.join(' / ')
+                      - elsif client_signed_in?
+                        .delivery-status-note
+                          | チェックをオンにすると、
+                          strong あなたのクライアント（#{current_client.company.presence || current_client.email}）
+                          | からの送信のみ停止します。他クライアントには影響しません。
+                        label style="display: inline-flex; align-items: center; cursor: pointer; color: var(--text-muted); font-size: 0.9rem; margin-top: 12px;"
+                          = check_box_tag :client_delivery_opt_out, '1', @customer.opted_out_for?(current_client.id), style: "margin-right: 8px; width: 16px; height: 16px; accent-color: var(--electric-blue);"
+                          span このクライアントからの送信を禁止
 
               .mt-4 style="text-align: right;"
                 = f.submit '登録', class: "btn-electric-outline"

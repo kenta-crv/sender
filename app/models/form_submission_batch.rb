@@ -2,6 +2,7 @@ class FormSubmissionBatch < ApplicationRecord
   belongs_to :submission, optional: true
   belongs_to :client, optional: true
   belongs_to :admin, optional: true
+  has_many :click_tracking_links, dependent: :destroy
 
   def parsed_customer_ids
     JSON.parse(customer_ids || '[]')

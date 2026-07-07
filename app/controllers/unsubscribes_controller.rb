@@ -11,9 +11,16 @@ class UnsubscribesController < ApplicationController
       return
     end
 
-    customer.update!(
-      fobbiden: 't'
-    )
+    client_id = params[:client_id].presence
+
+    if client_id.present?
+      DeliveryOptOut.find_or_create_by!(
+        customer: customer,
+        client_id: client_id
+      )
+    else
+      customer.update!(fobbiden: 't')
+    end
 
     render inline: <<~HTML
       <!DOCTYPE html>
@@ -54,7 +61,7 @@ class UnsubscribesController < ApplicationController
       <body>
         <div class="box">
           <h1>配信停止しました</h1>
-          <p>今後フォーム送信は行われません。</p>
+          <p>今後この送信元からのフォーム送信は行われません。</p>
         </div>
       </body>
       </html>

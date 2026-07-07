@@ -17,40 +17,79 @@
             h5.m-0 Email Click Tracking
             p.text-muted 企業がメール内のリンクをクリックした履歴
 
-          / 横スクロールを確実に発生させるコンテナ
+          - if @filter_submissions.present?
+            = form_tag dashboard_click_tracking_path, method: :get, class: 'click-filter-form' do
+              - if params[:client_id].present?
+                = hidden_field_tag :client_id, params[:client_id]
+              .row.g-2.align-items-end
+                .col-md-8
+                  label.sc-detect__label 案件で絞り込む
+                  = select_tag :submission_id,
+                    options_for_select([['すべての案件', '']] + @filter_submissions.map { |s| [(s.headline.presence || "Submission ##{s.id}"), s.id] }, params[:submission_id].presence),
+                    class: 'sc-detect__select',
+                    onchange: 'this.form.submit()'
+                .col-md-4
+                  - if params[:submission_id].present?
+                    = link_to '絞り込み解除', dashboard_click_tracking_path(client_id: params[:client_id]), class: 'btn-electric-outline', style: 'text-decoration: none;'
+
           .table-responsive style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;"
-            / table-layout: fixed を維持しつつ、明示的な合計幅（1400px）を持たせます
-            table.okurite-table style="table-layout: fixed; width: 1400px; min-width: 1400px; border-collapse: collapse;"
+            table.okurite-table style="table-layout: fixed; width: 1600px; min-width: 1600px; border-collapse: collapse;"
               thead
                 tr
-                  / パーセンテージではなく、pxで各列の幅を完全に固定します
+                  th style="width: 150px;" 最終クリック日時
+                  th style="width: 90px;" クリック数
+                  th style="width: 200px;" 案件（Submission）
+                  th style="width: 160px;" バッチ送信日時
                   th style="width: 180px;" 会社名
                   th style="width: 130px;" 電話番号
                   th style="width: 220px;" 住所
                   th style="width: 160px;" 業界/ビジネス
                   th style="width: 180px;" 企業URL
                   th style="width: 180px;" 問い合わせURL
-                  th style="width: 200px;" 対象のSubmission / URL
-                  th style="width: 150px;" 最終クリック日時
 
               tbody
                 - @clicked_links.each do |link|
                   tr
-                    / 1. 会社名
+                    td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                      - if link.last_clicked_at.present?
+                        = link.last_clicked_at.strftime('%Y/%m/%d %H:%M')
+                      - else
+                        span.text-muted -
+
+                    td = link.clicked_count
+
+                    td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                      - if link.submission.present?
+                        = link_to truncate(link.submission.headline.presence || "Submission ##{link.submission.id}", length: 25),
+                          click_history_submission_path(link.submission),
+                          title: link.submission.headline,
+                          style: 'display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'
+                      - elsif link.target_url.present?
+                        = link_to truncate(link.target_url, length: 25), link.target_url, target: '_blank', rel: 'noopener', title: link.target_url, style: 'display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'
+                      - else
+                        span.text-muted 不明の送信
+
+                    td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                      - if link.batch_sent_at.present?
+                        span title=(link.batch_sent_at_estimated? ? 'バッチ未紐付けのため、リンク作成日時を表示' : nil)
+                          = link.batch_sent_at.strftime('%Y/%m/%d %H:%M')
+                          - if link.batch_sent_at_estimated?
+                            span.text-muted style="font-size: 0.75rem;" （推定）
+                      - else
+                        span.text-muted -
+
                     td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                       - if link.customer.present?
                         span title="#{link.customer.company}" = link.customer.company
                       - else
                         span.text-muted 顧客情報なし
-                    
-                    / 2. 電話番号
+
                     td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                       - if link.customer&.tel.present?
                         span = link.customer.tel
                       - else
                         span.text-muted -
 
-                    / 3. 住所（25文字で丸め + 枠をはみ出さない制御）
                     td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                       - if link.customer&.address.present?
                         span title="#{link.customer.address}"
@@ -58,7 +97,6 @@
                       - else
                         span.text-muted -
 
-                    / 4. 業界/ビジネス
                     td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                       - if link.customer&.business.present?
                         span title="#{link.customer.business}"
@@ -66,34 +104,15 @@
                       - else
                         span.text-muted -
 
-                    / 5. 企業URL
                     td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                       - if link.customer&.url.present?
                         = link_to truncate(link.customer.url, length: 25), link.customer.url, target: '_blank', rel: 'noopener', title: link.customer.url, style: 'display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'
                       - else
                         span.text-muted -
 
-                    / 6. 問い合わせURL
                     td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                       - if link.customer&.contact_url.present?
                         = link_to truncate(link.customer.contact_url, length: 25), link.customer.contact_url, target: '_blank', rel: 'noopener', title: link.customer.contact_url, style: 'display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'
-                      - else
-                        span.text-muted -
-                    
-                    / 7. 対象のSubmission / URL
-                    td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
-                      - if link.respond_to?(:submission) && link.submission.present?
-                        span title="#{link.submission.title}"
-                          = truncate(link.submission.title, length: 25)
-                      - elsif link.target_url.present?
-                        = link_to truncate(link.target_url, length: 25), link.target_url, target: '_blank', rel: 'noopener', title: link.target_url, style: 'display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'
-                      - else
-                        span.text-muted 不明の送信
-                    
-                    / 8. 最終クリック日時
-                    td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
-                      - if link.last_clicked_at.present?
-                        = link.last_clicked_at.strftime('%Y/%m/%d %H:%M')
                       - else
                         span.text-muted -
 

@@ -48,11 +48,10 @@
               = @batch.completed_at.strftime('%Y/%m/%d %H:%M:%S')
 
         .d-flex.gap-2.mt-4
-          - if admin_signed_in?
-           - if @batch.status.in?(['pending', 'processing'])
-            = link_to cancel_form_submission_path(@batch), method: :patch, class: 'sc-detect__badge sc-detect__badge--danger', style: 'text-decoration: none; padding: 10px 20px;', data: { confirm: 'バッチ送信をキャンセルしますか？' } do
+          - if @batch.status.in?(['pending', 'processing'])
+            = link_to cancel_form_submission_path(@batch), method: :patch, class: 'sc-detect__badge sc-detect__badge--danger', style: 'text-decoration: none; padding: 10px 20px;', data: { confirm: 'バッチ送信を停止しますか？未処理分は送信されません。' } do
               i.fas.fa-stop-circle.me-1
-              | キャンセル
+              | 送信停止
 
           - unless @batch.status == 'processing'
             - unprocessed_count = @batch.unprocessed_customer_ids.size
@@ -79,10 +78,13 @@
           .col-md-4.mb-2
             strong.me-1 style="color: #38bdf8;" メール:
             = @batch.submission.email
-          .col-md-12.mt-2
+          .col-md-12.mt-2.d-flex.gap-2.flex-wrap
             = link_to submission_path(@batch.submission), class: 'sc-detect__btn sc-detect__btn--primary' do
               i.fas.fa-search.me-1
               | 送信内容詳細を表示
+            = link_to click_history_submission_path(@batch.submission), class: 'sc-detect__btn sc-detect__btn--warning' do
+              i.fas.fa-mouse-pointer.me-1
+              | クリック履歴
 
   / --- 送信結果一覧 ---
   h2.sc-detect__title style="font-size: 20px;" 送信結果

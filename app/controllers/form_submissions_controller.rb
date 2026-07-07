@@ -68,7 +68,7 @@ class FormSubmissionsController < ApplicationController
     detectable_scope = base_customers
                           .where(contact_url: [nil, ''])
                           .where.not(url: [nil, ''])
-                          .where(fobbiden: [nil, false, 0])
+                          .deliverable_for(delivery_filter_client_id)
 
     if params[:business_filter].present?
       business_filters = Array(params[:business_filter]).reject(&:blank?)
@@ -155,7 +155,7 @@ class FormSubmissionsController < ApplicationController
 
     # 送信可能な条件（URLが存在し、禁止フラグが立っていないもの）
     eligible_scope = eligible_scope.where.not(contact_url: [nil, '', 'not_detected'])
-                                   .where(fobbiden: [nil, false, 0])
+                                   .deliverable_for(delivery_filter_client_id)
                                    .order(:id)
 
     # 検索条件（Ransack）を適用
@@ -259,17 +259,26 @@ class FormSubmissionsController < ApplicationController
     batch_size = 100 # 1回のリクエストで投入するジョブ数
     customer_ids.each_slice(batch_size).with_index do |slice, index|
       slice.each do |cid|
-        FormSendJob.perform_later(batch.id, cid)
+        PlanPriorityQueue.enqueue_form_send(
+          batch.id,
+          cid,
+          client: batch.client,
+          admin: admin_signed_in?
+        )
       end
       # バッチ間で少し待機してRedisへの負荷を分散
       sleep(0.1) if index < (customer_ids.size / batch_size)
     end
 
     # 遷移先の判定
+    wait_notice = PlanPriorityQueue.wait_notice_for(client: current_client, admin: admin_signed_in?)
+    notice_message = "バッチ送信を開始しました（#{customer_ids.size}件）"
+    notice_message = "#{notice_message} #{wait_notice}" if wait_notice.present?
+
     if client_signed_in? || admin_signed_in?
-      redirect_to dashboard_index_path, notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
+      redirect_to dashboard_index_path, notice: notice_message
     else
-      redirect_to form_submission_path(batch), notice: "バッチ送信を開始しました（#{customer_ids.size}件）"
+      redirect_to form_submission_path(batch), notice: notice_message
     end
   end
 
@@ -328,7 +337,12 @@ class FormSubmissionsController < ApplicationController
 
     # 未処理分のみ再キュー
     unprocessed.each do |cid|
-      FormSendJob.perform_later(@batch.id, cid)
+      PlanPriorityQueue.enqueue_form_send(
+        @batch.id,
+        cid,
+        client: @batch.client,
+        admin: admin_signed_in?
+      )
     end
 
     redirect_to form_submission_path(@batch), notice: "#{unprocessed.size}件の未処理分を再開しました。"
@@ -463,7 +477,7 @@ class FormSubmissionsController < ApplicationController
     # Build base scope for customer selection
     base_scope = Customer.where(contact_url: [nil, ''])
                         .where.not(url: [nil, ''])
-                        .where(fobbiden: [nil, false, 0])
+                        .deliverable_for(delivery_filter_client_id)
     
     # Apply client filtering
     if client_signed_in? && !admin_signed_in?
@@ -535,11 +549,19 @@ class FormSubmissionsController < ApplicationController
     batch_size = 100
     customer_ids.each_slice(batch_size).with_index do |slice, index|
       slice.each do |cid|
-        ContactUrlDetectJob.perform_later(cid, batch.id)
+        PlanPriorityQueue.enqueue_contact_detect(
+          cid,
+          batch.id,
+          client: current_client,
+          admin: admin_signed_in?
+        )
       end
       sleep(0.1) if index < (customer_ids.size / batch_size)
     end
-    redirect_to dashboard_index_path, notice: "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
+    wait_notice = PlanPriorityQueue.wait_notice_for(client: current_client, admin: admin_signed_in?)
+    notice_message = "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
+    notice_message = "#{notice_message} #{wait_notice}" if wait_notice.present?
+    redirect_to dashboard_index_path, notice: notice_message
   end
   
   private

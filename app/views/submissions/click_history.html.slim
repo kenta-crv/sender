@@ -1,0 +1,71 @@
+.sc-detect.container
+  h2.sc-detect__title クリック履歴
+  p.text-muted.mb-4
+    | 案件:
+    strong.mx-2 = @submission.headline.presence || "Submission ##{@submission.id}"
+
+  .row.mb-4.g-3
+    .col-md-4
+      .sc-detect__card
+        .sc-detect__card-body.text-center
+          .sc-detect__label 送信リンク数
+          .h4.mb-0 = number_with_delimiter(@click_stats[:total_links])
+    .col-md-4
+      .sc-detect__card
+        .sc-detect__card-body.text-center
+          .sc-detect__label クリック企業数
+          .h4.mb-0 style="color: #38bdf8;" = number_with_delimiter(@click_stats[:clicked_companies])
+    .col-md-4
+      .sc-detect__card
+        .sc-detect__card-body.text-center
+          .sc-detect__label 総クリック数
+          .h4.mb-0 style="color: #38bdf8;" = number_with_delimiter(@click_stats[:total_clicks])
+
+  .sc-detect__table-wrapper
+    table.sc-detect__table
+      thead
+        tr
+          th 最終クリック日時
+          th クリック回数
+          th バッチ送信日時
+          th 会社名
+          th クリック詳細
+      tbody
+        - if @clicked_links.any?
+          - @clicked_links.each do |link|
+            tr
+              td
+                - if link.last_clicked_at.present?
+                  = link.last_clicked_at.strftime('%Y/%m/%d %H:%M')
+                - else
+                  span.text-muted -
+              td = link.clicked_count
+              td
+                - if link.batch_sent_at.present?
+                  = link.batch_sent_at.strftime('%Y/%m/%d %H:%M')
+                  - if link.batch_sent_at_estimated?
+                    span.text-muted style="font-size: 0.75rem;" （推定）
+                - else
+                  span.text-muted -
+              td = link.customer&.company || '-'
+              td
+                - if link.click_logs.any?
+                  ul.mb-0.ps-3 style="font-size: 0.85rem;"
+                    - link.click_logs.order(created_at: :desc).limit(5).each do |log|
+                      li = log.created_at.strftime('%Y/%m/%d %H:%M')
+                - else
+                  span.text-muted -
+        - else
+          tr
+            td colspan="5" style="text-align: center; color: rgba(229,231,235,0.6);"
+              | この案件に対するクリック履歴はまだありません。
+
+  .mt-4.d-flex.gap-3
+    = link_to submission_path(@submission), class: 'sc-detect__btn sc-detect__btn--primary' do
+      i.fas.fa-arrow-left.me-1
+      | 案件詳細に戻る
+    = link_to dashboard_click_tracking_path(submission_id: @submission.id), class: 'sc-detect__btn sc-detect__btn--warning' do
+      i.fas.fa-mouse-pointer.me-1
+      | 全体のクリック履歴で見る
+
+  = paginate @clicked_links

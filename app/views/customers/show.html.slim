@@ -80,8 +80,19 @@
                     = hidden_field_tag 'customer_ids[]', @customer.id
                     = submit_tag 'フォーム送信', class: 'btn btn-sm btn-outline-primary', data: { confirm: 'この顧客にフォーム送信を実行しますか？' }
             tr
-              th フォーム送信NG
-              td= @customer.fobbiden
+              th フォーム送信の状態
+              td
+                - status = customer_delivery_status(@customer)
+                span class="delivery-status-badge #{status[:css]}" = status[:label]
+                - if admin_signed_in?
+                  - opted_out_labels = customer_opted_out_client_labels(@customer)
+                  - if opted_out_labels.any?
+                    div style="margin-top: 6px; font-size: 0.85rem; color: rgba(148,163,184,0.85);"
+                      | メール配信停止済み:
+                      = opted_out_labels.join(' / ')
+                  - if @customer.fobbiden.to_s.in?(%w[t true])
+                    div style="margin-top: 6px; font-size: 0.85rem; color: rgba(239,68,68,0.9);"
+                      | 管理者設定: 全クライアント共通で送信禁止
 
   .col-md-9
     - iframe_url = @customer.contact_url.presence || @customer.url

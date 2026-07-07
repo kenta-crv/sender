@@ -39,4 +39,12 @@ end
     current_client.check_and_upgrade_expired_trial
   end
 
+  def delivery_filter_client_id
+    return current_client.id if client_signed_in?
+    return params[:client_id].presence if admin_signed_in?
+
+    nil
+  end
+  helper_method :delivery_filter_client_id
+
 end

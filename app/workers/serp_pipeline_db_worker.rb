@@ -2,7 +2,7 @@
 
 class SerpPipelineDbWorker
   include Sidekiq::Worker
-  sidekiq_options queue: :serp_enrichment, retry: 0
+  sidekiq_options queue: :serp_enrichment_admin, retry: 0
 
   BATCH_SIZE = ENV.fetch("SERP_BATCH_SIZE", "100").to_i.clamp(1, 500)
 
@@ -10,7 +10,8 @@ class SerpPipelineDbWorker
   # @param customer_ids [Array<Integer>]
   # @param progress_run_id [String]
   # @param batch_offset [Integer] 全件 ID 配列内の開始位置（100件ずつ処理）
-  def perform(industry = nil, customer_ids = nil, progress_run_id = nil, batch_offset = 0)
+  def perform(industry = nil, customer_ids = nil, progress_run_id = nil, batch_offset = 0, queue_name = nil)
+    queue_name = (queue_name || self.class.sidekiq_options["queue"]).to_s
     ids = Array(customer_ids).map(&:to_i).reject(&:zero?)
     batch_ids = ids.slice(batch_offset.to_i, BATCH_SIZE)
     return if batch_ids.empty?
@@ -51,7 +52,7 @@ class SerpPipelineDbWorker
     next_offset = batch_offset.to_i + batch_ids.size
     return if next_offset >= ids.size
 
-    self.class.perform_async(industry, ids, progress_run_id, next_offset)
+    self.class.set(queue: queue_name).perform_async(industry, ids, progress_run_id, next_offset, queue_name)
   rescue => e
     audit_run&.fail!(e.message)
     raise

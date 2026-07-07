@@ -110,10 +110,20 @@
       background: rgba(56, 189, 248, 0.05);
     }
 
-    a {
+    a:not(.sc-detect__btn):not(.sc-detect__badge) {
       color: #38bdf8;
       text-decoration: none;
       &:hover { text-decoration: underline; }
+    }
+
+    .sc-detect__btn {
+      text-decoration: none;
+      &:hover { text-decoration: none; }
+    }
+
+    .sc-detect__badge {
+      text-decoration: none;
+      &:hover { text-decoration: none; }
     }
   }
 
