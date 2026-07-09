@@ -1,35 +1,46 @@
-# Sidekiq systemd サービスファイル（okurite専用）
+# Sidekiq systemd サービスファイル（okurite 本番）
 # 設置先: /etc/systemd/system/sidekiq-okurite.service
 #
-# 操作コマンド:
-#   sudo systemctl start sidekiq-okurite    （起動）
-#   sudo systemctl stop sidekiq-okurite     （停止）
-#   sudo systemctl restart sidekiq-okurite  （再起動 ※git pull後はこれを実行）
-#   sudo systemctl status sidekiq-okurite   （状態確認）
-#   journalctl -u sidekiq-okurite -f        （ログ確認）
+# 初回セットアップ:
+#   cd /opt/webroot/okurite
+#   sudo cp config/sidekiq-okurite.service /etc/systemd/system/sidekiq-okurite.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable sidekiq-okurite
+#   sudo systemctl start sidekiq-okurite
+#
+# デプロイ後:
+#   sudo systemctl restart sidekiq-okurite
+#
+# 確認:
+#   sudo systemctl status sidekiq-okurite
+#   journalctl -u sidekiq-okurite -f
 
 [Unit]
-Description=sidekiq for okurite
-After=syslog.target network.target redis.target
+Description=sidekiq for okurite (production)
+After=network.target redis-server.service redis.service
+Wants=redis-server.service redis.service
 
 [Service]
 Type=simple
 
-WorkingDirectory=/home/smart/okurite
+WorkingDirectory=/opt/webroot/okurite
 User=smart
 Group=smart
 
+Environment=RAILS_ENV=production
 Environment=MALLOC_ARENA_MAX=2
+EnvironmentFile=-/opt/webroot/okurite/.env
 
-ExecStart=/bin/bash -lc 'bundle exec sidekiq -C config/sidekiq.yml'
-ExecReload=/bin/kill -TSTP $MAINPID
+# rbenv 利用時はログインシェル経由で bundle を解決する
+ExecStart=/bin/bash -lc 'cd /opt/webroot/okurite && bundle exec sidekiq -C config/sidekiq.yml'
+ExecStop=/bin/kill -TERM $MAINPID
 
-RestartSec=1
-Restart=on-failure
+Restart=always
+RestartSec=3
 
 SyslogIdentifier=sidekiq-okurite
-StandardOutput=syslog
-StandardError=syslog
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
