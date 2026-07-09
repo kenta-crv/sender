@@ -6,37 +6,36 @@
         .sc-detect__card-header
           h5.m-0
             i.fas.fa-shield-alt.me-2
-            - if @plan_type.to_s == "setup_card"
-              | お支払い方法の登録
-            - else
-              | お支払い内容の確認
+            | お支払い内容の確認
 
         .sc-detect__card-body.p-4
 
-          - if @plan_type.to_s == "setup_card"
+          / --- トライアル時の注意表示 ---
+          - if @plan_type.to_s.downcase == "trial"
             .sc-detect__alert.sc-detect__alert--info.mb-4 style="justify-content: center;"
               i.fas.fa-info-circle.me-2
-              | 本番実行を開始するには、お支払い方法の登録が必要です。
+              strong style="color: #38bdf8; margin-right: 6px;"
+                | 無料トライアル
+              | の期間は費用発生しません。
 
           / --- 金額表示エリア ---
-          - unless @plan_type.to_s == "setup_card"
-            .sc-detect__table-wrapper.p-4.mb-4 style="background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2);"
-              .d-flex.justify-content-between.mb-2
-                span style="color: rgba(229, 231, 235, 0.6);" 選択プラン
-                span.fw-bold style="color: #7dd3fc; letter-spacing: 0.05em;"
-                  = @plan_type.to_s.upcase
+          .sc-detect__table-wrapper.p-4.mb-4 style="background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2);"
+            .d-flex.justify-content-between.mb-2
+              span style="color: rgba(229, 231, 235, 0.6);" 選択プラン
+              span.fw-bold style="color: #7dd3fc; letter-spacing: 0.05em;"
+                = @plan_type.to_s.upcase
 
-              .d-flex.justify-content-between.align-items-center
-                span style="color: rgba(229, 231, 235, 0.6);" お支払い金額
+            .d-flex.justify-content-between.align-items-center
+              span style="color: rgba(229, 231, 235, 0.6);" お支払い金額
 
-                - amount = Subscription::PLAN_PRICES[@plan_type.to_s.downcase.to_sym] || 0
+              - amount = Subscription::PLAN_PRICES[@plan_type.to_s.downcase.to_sym] || 0
 
-                .text-end
-                  span.h2.fw-bold style="color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);"
-                    = "¥#{amount.to_s(:delimited)}"
+              .text-end
+                span.h2.fw-bold style="color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);"
+                  = @plan_type.to_s.downcase == "trial" ? "¥0" : "¥#{amount.to_s(:delimited)}"
 
-                  span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);"
-                    | (税込)
+                span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);"
+                  | (税込)
 
           hr style="border-color: rgba(56, 189, 248, 0.2); margin: 30px 0;"
 
@@ -45,11 +44,45 @@
             = hidden_field_tag :plan_type, @plan_type
 
             .sc-detect__form-actions
-              - if @plan_type.to_s == "setup_card"
-                = f.submit "お支払い方法を登録する",
-                  class: "sc-detect__btn sc-detect__btn--warning w-100",
-                  style: "justify-content: center; font-size: 1.1rem; padding: 16px;"
-              - else
-                = f.submit "Stripeで決済へ進む",
-                  class: "sc-detect__btn sc-detect__btn--warning w-100",
-                  style: "justify-content: center; font-size: 1.1rem; padding: 16px;"
+              = f.submit "Stripeで決済へ進む",
+                class: "sc-detect__btn sc-detect__btn--warning w-100",
+                style: "justify-content: center; font-size: 1.1rem; padding: 16px;"
+
+javascript:
+  (function () {
+    var startTime = Date.now();
+    var proceeded = false;
+    var sent = false;
+
+    function sendEvent(eventType) {
+      if (sent) return;
+      sent = true;
+      var seconds = Math.round((Date.now() - startTime) / 1000);
+      var ftkn = new URLSearchParams(window.location.search).get('ftkn') || sessionStorage.getItem('ftkn') || '';
+      var data = new FormData();
+      data.append('page', 'checkout_confirmation');
+      data.append('event_type', eventType);
+      data.append('time_spent_seconds', seconds);
+      data.append('ftkn', ftkn);
+      navigator.sendBeacon('/funnel_events', data);
+    }
+
+    sendEvent('visit');
+    sent = false;
+
+    document.addEventListener('submit', function (e) {
+      if (e.target && e.target.action && e.target.action.indexOf('checkout/create') !== -1) {
+        proceeded = true;
+        sendEvent('proceed');
+        sent = false;
+      }
+    });
+
+    window.addEventListener('beforeunload', function () {
+      if (!proceeded) sendEvent('abandon');
+    });
+
+    document.addEventListener('turbolinks:before-visit', function () {
+      if (!proceeded) sendEvent('abandon');
+    });
+  })();

@@ -2,8 +2,7 @@ class Client < ApplicationRecord
   class DuplicateCardError < StandardError; end
 
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable,
-         :confirmable
+         :recoverable, :rememberable, :validatable
 
   has_many :monthly_usage_logs, dependent: :destroy
 
@@ -149,7 +148,11 @@ class Client < ApplicationRecord
   public
 
   def payment_method_registered?
-    stripe_payment_method_id.present? && stripe_customer_id.present?
+    return false unless stripe_customer_id.present?
+
+    return true if stripe_payment_method_id.present?
+
+    subscriptions.where(status: :active).where.not(stripe_subscription_id: [nil, ""]).exists?
   end
 
   def ensure_stripe_customer!

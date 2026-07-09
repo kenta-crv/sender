@@ -24,6 +24,16 @@ class ClickTrackingController < ApplicationController
       user_agent: request.user_agent
     )
 
-    redirect_to tracking.target_url
+    destination = begin
+      uri = URI.parse(tracking.target_url)
+      existing = URI.decode_www_form(uri.query || '')
+      existing << ['ftkn', tracking.token]
+      uri.query = URI.encode_www_form(existing)
+      uri.to_s
+    rescue URI::InvalidURIError
+      tracking.target_url
+    end
+
+    redirect_to destination
   end
 end

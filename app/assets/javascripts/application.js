@@ -366,5 +366,9 @@
     initializeAnimations();
     mountDataTargetNav();
     initTrialOverlay();
+
+    // メールリンク経由のトラッキングトークンを sessionStorage に保存
+    var ftkn = new URLSearchParams(window.location.search).get('ftkn');
+    if (ftkn) sessionStorage.setItem('ftkn', ftkn);
   });
 })();

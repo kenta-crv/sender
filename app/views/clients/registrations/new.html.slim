@@ -48,3 +48,42 @@
           = f.submit "無料で始める", class: "btn btn-primary"
 
       = render "clients/shared/links"
+
+javascript:
+  (function () {
+    var startTime = Date.now();
+    var submitted = false;
+    var sent = false;
+
+    function sendEvent(eventType) {
+      if (sent) return;
+      sent = true;
+      var seconds = Math.round((Date.now() - startTime) / 1000);
+      var ftkn = new URLSearchParams(window.location.search).get('ftkn') || sessionStorage.getItem('ftkn') || '';
+      var data = new FormData();
+      data.append('page', 'registration');
+      data.append('event_type', eventType);
+      data.append('time_spent_seconds', seconds);
+      data.append('ftkn', ftkn);
+      navigator.sendBeacon('/funnel_events', data);
+    }
+
+    sendEvent('visit');
+    sent = false;
+
+    document.addEventListener('submit', function (e) {
+      if (e.target && e.target.action && e.target.action.indexOf('clients') !== -1) {
+        submitted = true;
+        sendEvent('proceed');
+        sent = false;
+      }
+    });
+
+    window.addEventListener('beforeunload', function () {
+      if (!submitted) sendEvent('abandon');
+    });
+
+    document.addEventListener('turbolinks:before-visit', function () {
+      if (!submitted) sendEvent('abandon');
+    });
+  })();

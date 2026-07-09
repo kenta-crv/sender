@@ -1,0 +1,140 @@
+#okurite-client-portal
+  .wrapper
+    = render 'sidebar'
+
+    #content
+      header.top-header
+        h2 Funnel Tracking
+        .user-meta
+          span.badge-electric Admin
+
+      / --- 期間フィルター ---
+      .history-section.mt-4
+        .glass-card
+          .card-header-flex
+            h5.m-0 期間選択
+          = form_tag dashboard_funnel_tracking_path, method: :get, class: 'd-flex align-items-center gap-3 p-3' do
+            label.sc-detect__label.me-2 直近
+            = select_tag :since,
+                options_for_select([['7日', 7], ['30日', 30], ['90日', 90]], @since_days),
+                class: 'sc-detect__select',
+                style: 'width: auto;',
+                onchange: 'this.form.submit()'
+            span.text-muted.ms-1 間のデータ
+
+      / --- ファネルサマリー（数字クリックで下の一覧が切り替わる） ---
+      .history-section.mt-4
+        .glass-card
+          .card-header-flex
+            h5.m-0 ファネル別サマリー
+            p.text-muted 直近 #{@since_days} 日間・数字をクリックすると企業一覧を表示
+
+          .table-responsive
+            - page_labels = { 'top' => 'トップページ', 'registration' => '新規登録', 'checkout_confirmation' => '決済確認' }
+            - event_cols = [['visit', '訪問'], ['abandon', '離脱'], ['proceed', '決済へ進む']]
+            - event_colors = { 'visit' => '#7dd3fc', 'abandon' => '#f87171', 'proceed' => '#34d399' }
+            table.okurite-table style="width: 100%; border-collapse: collapse;"
+              thead
+                tr
+                  th ページ
+                  - event_cols.each do |et, label|
+                    th = label
+                  th 離脱率
+                  th 進行率
+
+              tbody
+                - @pages.each do |page|
+                  - next if page == 'stripe_session_expired'
+                  - s = @stats[page]
+                  - total = s[:visit]
+                  - abandon_rate = total.positive? ? "#{(s[:abandon].to_f / total * 100).round(1)}%" : '-'
+                  - proceed_rate = total.positive? ? "#{(s[:proceed].to_f / total * 100).round(1)}%" : '-'
+                  tr
+                    td = page_labels[page] || page
+                    - event_cols.each do |et, _label|
+                      - count = s[et.to_sym]
+                      - active = (@filter_page == page && @filter_event == et)
+                      - link_params = { since: @since_days, filter_page: page, filter_event: et }
+                      td style="text-align: center; #{active ? 'background: rgba(56,189,248,0.15);' : ''}"
+                        - if count > 0
+                          = link_to count, dashboard_funnel_tracking_path(link_params),
+                              style: "color: #{event_colors[et]}; font-weight: bold; font-size: 1.1rem; text-decoration: none;",
+                              title: "#{page_labels[page]} / #{et} の企業一覧を表示"
+                        - else
+                          span.text-muted 0
+                    td style="color: #f87171;" = abandon_rate
+                    td style="color: #34d399;" = proceed_rate
+
+                tr
+                  td Stripe セッション失効
+                  td.text-muted colspan="2" style="font-size: 0.8rem;" Webhook 経由
+                  - stripe_params = { since: @since_days, filter_page: 'stripe_session_expired', filter_event: 'abandon' }
+                  - stripe_active = (@filter_page == 'stripe_session_expired')
+                  td style="text-align: center; #{stripe_active ? 'background: rgba(56,189,248,0.15);' : ''}"
+                    - if @stripe_expired_count > 0
+                      = link_to @stripe_expired_count, dashboard_funnel_tracking_path(stripe_params),
+                          style: "color: #f87171; font-weight: bold; font-size: 1.1rem; text-decoration: none;"
+                    - else
+                      span.text-muted 0
+                  td colspan="2"
+
+      / --- 企業一覧（フィルター適用済み） ---
+      .history-section.mt-4
+        .glass-card
+          .card-header-flex
+            - if @filter_page.present? || @filter_event.present?
+              - fp_label = { 'top' => 'トップページ', 'registration' => '新規登録', 'checkout_confirmation' => '決済確認', 'stripe_session_expired' => 'Stripe' }
+              - fe_label = { 'visit' => '訪問', 'abandon' => '離脱', 'proceed' => '決済へ進む' }
+              h5.m-0
+                | #{fp_label[@filter_page] || @filter_page} ／ #{fe_label[@filter_event] || @filter_event}
+                span.text-muted.ms-2 style="font-size: 0.85rem;" （最新100件）
+              = link_to 'フィルター解除', dashboard_funnel_tracking_path(since: @since_days),
+                  class: 'btn-electric-outline', style: 'font-size: 0.8rem; text-decoration: none;'
+            - else
+              h5.m-0 全イベント一覧（最新100件）
+
+          .table-responsive
+            table.okurite-table style="width: 100%; border-collapse: collapse;"
+              thead
+                tr
+                  th style="width: 160px;" 日時
+                  th style="width: 180px;" 企業名
+                  th style="width: 180px;" 案件
+                  th style="width: 140px;" ページ
+                  th style="width: 120px;" イベント
+                  th style="width: 100px;" 滞在時間
+
+              tbody
+                - ev_type_labels  = { 'visit' => '訪問', 'abandon' => '離脱', 'proceed' => '決済へ進む' }
+                - ev_type_colors  = { 'visit' => '#7dd3fc', 'abandon' => '#f87171', 'proceed' => '#34d399' }
+                - pg_labels_short = { 'top' => 'トップ', 'registration' => '登録', 'checkout_confirmation' => '決済確認', 'stripe_session_expired' => 'Stripe' }
+                - if @recent_events.empty?
+                  tr
+                    td colspan="6" style="text-align: center; padding: 2rem;"
+                      span.text-muted データなし
+                - else
+                  - @recent_events.each do |ev|
+                    - link      = ev.click_tracking_link
+                    - customer  = link&.customer
+                    - submission = link&.submission
+                    tr
+                      td style="font-size: 0.85rem;" = ev.created_at.strftime('%m/%d %H:%M:%S')
+                      td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                        - if customer.present?
+                          span title="#{customer.company}" = customer.company
+                        - else
+                          span.text-muted 不明
+                      td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem;"
+                        - if submission.present?
+                          = truncate(submission.headline.presence || "Submission ##{submission.id}", length: 25)
+                        - else
+                          span.text-muted -
+                      td = pg_labels_short[ev.page] || ev.page
+                      td
+                        span style="color: #{ev_type_colors[ev.event_type]}; font-weight: bold;"
+                          = ev_type_labels[ev.event_type] || ev.event_type
+                      td
+                        - if ev.time_spent_seconds.present? && ev.time_spent_seconds > 0
+                          = "#{ev.time_spent_seconds}秒"
+                        - else
+                          span.text-muted -

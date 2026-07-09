@@ -8,8 +8,7 @@ Rails.application.routes.draw do
   devise_for :clients, controllers: {
     sessions: "clients/sessions",
     registrations: "clients/registrations",
-    passwords: "clients/passwords",
-    confirmations: "clients/confirmations"
+    passwords: "clients/passwords"
   }
 
   namespace :dashboard do
@@ -22,7 +21,8 @@ Rails.application.routes.draw do
     get 'sending', to: 'dashboards#sending'
     get 'management', to: 'dashboards#management'
     get 'howto', to: 'dashboards#howto'
-    get 'click_tracking', to: 'dashboards#click_tracking'
+    get 'click_tracking',   to: 'dashboards#click_tracking'
+    get 'funnel_tracking',  to: 'dashboards#funnel_tracking'
 
 
     root "dashboards#index"
@@ -44,6 +44,8 @@ Rails.application.routes.draw do
   end
 
   resources :clients
+
+  post '/funnel_events', to: 'funnel_events#create'
 
   get 'checkout/confirmation', to: 'checkout#confirmation', as: :checkout_confirmation
   post 'checkout/create', to: 'checkout#create', as: :checkout_create

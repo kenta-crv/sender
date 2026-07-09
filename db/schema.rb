@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_07_09_120000) do
+ActiveRecord::Schema.define(version: 2026_07_09_140000) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -291,6 +291,21 @@ ActiveRecord::Schema.define(version: 2026_07_09_120000) do
     t.index ["slug", "sluggable_type", "scope"], name: "index_friendly_id_slugs_on_slug_and_sluggable_type_and_scope", unique: true
     t.index ["slug", "sluggable_type"], name: "index_friendly_id_slugs_on_slug_and_sluggable_type"
     t.index ["sluggable_type", "sluggable_id"], name: "index_friendly_id_slugs_on_sluggable_type_and_sluggable_id"
+  end
+
+  create_table "funnel_events", force: :cascade do |t|
+    t.string "page", null: false
+    t.string "event_type", null: false
+    t.integer "time_spent_seconds"
+    t.string "ip"
+    t.text "user_agent"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.integer "click_tracking_link_id"
+    t.index ["click_tracking_link_id"], name: "index_funnel_events_on_click_tracking_link_id"
+    t.index ["created_at"], name: "index_funnel_events_on_created_at"
+    t.index ["event_type"], name: "index_funnel_events_on_event_type"
+    t.index ["page"], name: "index_funnel_events_on_page"
   end
 
   create_table "monthly_usage_logs", force: :cascade do |t|

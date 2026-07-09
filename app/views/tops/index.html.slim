@@ -92,3 +92,39 @@
             .sp-info-label 所在地
             .sp-info-value 
                 span 東京都港区浜松町２丁目２番１５号２Ｆ
+
+javascript:
+  (function () {
+    var startTime = Date.now();
+    var navigating = false;
+    var sent = false;
+
+    function sendEvent(eventType) {
+      if (sent) return;
+      sent = true;
+      var seconds = Math.round((Date.now() - startTime) / 1000);
+      var ftkn = new URLSearchParams(window.location.search).get('ftkn') || sessionStorage.getItem('ftkn') || '';
+      var data = new FormData();
+      data.append('page', 'top');
+      data.append('event_type', eventType);
+      data.append('time_spent_seconds', seconds);
+      data.append('ftkn', ftkn);
+      navigator.sendBeacon('/funnel_events', data);
+    }
+
+    sendEvent('visit');
+    sent = false;
+
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('a[href*="sign_up"], a[href*="clients"]');
+      if (a) { navigating = true; }
+    });
+
+    window.addEventListener('beforeunload', function () {
+      if (!navigating) sendEvent('abandon');
+    });
+
+    document.addEventListener('turbolinks:before-visit', function () {
+      sendEvent('abandon');
+    });
+  })();

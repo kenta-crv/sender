@@ -192,7 +192,7 @@ class FormSubmissionsController < ApplicationController
         end
 
         if lc[:created_at_to].present?
-          eligible_scope = eligible_scope.where('calls.created_at <= ?', lc[:created_at_to])
+          eligible_scope = eligible_scope.where('calls.created_at <= ?', Time.zone.parse(lc[:created_at_to]).end_of_day)
         end
       end
     end

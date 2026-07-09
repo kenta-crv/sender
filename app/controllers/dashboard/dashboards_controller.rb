@@ -2,7 +2,7 @@ class Dashboard::DashboardsController < ApplicationController
   skip_before_action :check_trial_expiration
 
   before_action :authenticate_any!
-  before_action :require_admin!, only: [:management]
+  before_action :require_admin!, only: [:management, :funnel_tracking]
   before_action :check_subscription_active!, unless: :admin_signed_in?
   before_action :set_base_scope, except: [:setting, :management]
 
@@ -157,6 +157,28 @@ class Dashboard::DashboardsController < ApplicationController
     @q = @base_customers.includes(:last_form_call).ransack(params[:q])
     filtered = @q.result(distinct: true)
 
+    if admin_signed_in? && params[:last_call].present?
+      lc = params[:last_call]
+      statuses = Array(lc[:status]).reject(&:blank?)
+      from_date = lc[:created_at_from].presence
+      to_date = lc[:created_at_to].presence
+
+      if statuses.any? || from_date.present? || to_date.present?
+        filtered_ids = filtered.includes(:last_form_call).select do |customer|
+          call = customer.last_form_call
+          next false if call.blank?
+
+          status_ok = statuses.blank? || statuses.include?(call.status)
+          from_ok = from_date.blank? || call.created_at >= Time.zone.parse(from_date)
+          to_ok = to_date.blank? || call.created_at <= Time.zone.parse(to_date).end_of_day
+
+          status_ok && from_ok && to_ok
+        end.map(&:id)
+
+        filtered = filtered.where(id: filtered_ids)
+      end
+    end
+
     excluded_statuses = ['フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected']
 
     @customers = filtered
@@ -250,6 +272,46 @@ end
   end
 
   def howto; end
+
+  def funnel_tracking
+    since = params[:since].present? ? params[:since].to_i.days.ago : 30.days.ago
+
+    raw = FunnelEvent.where(created_at: since..)
+                     .group(:page, :event_type)
+                     .count
+
+    @pages = FunnelEvent::PAGES
+    @since_days = params[:since].present? ? params[:since].to_i : 30
+
+    @stats = @pages.each_with_object({}) do |page, h|
+      h[page] = {
+        visit:   raw[[page, 'visit']].to_i,
+        abandon: raw[[page, 'abandon']].to_i,
+        proceed: raw[[page, 'proceed']].to_i
+      }
+    end
+
+    detail_scope = FunnelEvent.where(created_at: since..)
+                              .includes(click_tracking_link: [:customer, :submission])
+                              .recent
+
+    @filter_page  = params[:filter_page].presence
+    @filter_event = params[:filter_event].presence
+
+    if @filter_page.present? && FunnelEvent::PAGES.include?(@filter_page)
+      detail_scope = detail_scope.where(page: @filter_page)
+    end
+    if @filter_event.present? && FunnelEvent::EVENT_TYPES.include?(@filter_event)
+      detail_scope = detail_scope.where(event_type: @filter_event)
+    end
+
+    @recent_events = detail_scope.limit(100)
+
+    @stripe_expired_count = FunnelEvent.where(
+      page: 'stripe_session_expired',
+      created_at: since..
+    ).count
+  end
 
   def click_tracking
     click_scope =

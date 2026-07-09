@@ -45,11 +45,14 @@
                 | 終了後、#{Subscription::PLAN_NAMES[:enterprise]}へ移行
 
             .mt-auto
-              - if is_trial_active
+              - if is_trial_active && current_client.payment_method_registered?
                 button.sc-detect__btn.w-100 disabled="disabled" style="background: rgba(148, 163, 184, 0.2); color: rgba(229, 231, 235, 0.5); cursor: default; justify-content: center;" 
                   | 現在のプラン
+              - elsif is_trial_active
+                = link_to checkout_confirmation_path(plan_type: "trial"), class: "sc-detect__btn sc-detect__btn--warning w-100", style: "justify-content: center; text-decoration: none;"
+                  | お支払い方法を登録
               - else
-                = link_to select_plan_path(plan_type: "trial"), method: :post, class: "sc-detect__btn sc-detect__btn--warning w-100", style: "justify-content: center; text-decoration: none;"
+                = link_to checkout_confirmation_path(plan_type: "trial"), class: "sc-detect__btn sc-detect__btn--warning w-100", style: "justify-content: center; text-decoration: none;"
                   | このプランを選択
 
     / =========================

@@ -56,6 +56,11 @@ nav#sidebar
         span クリック履歴
 
     - if admin_signed_in?
+      li class=(current_page?(dashboard_funnel_tracking_path) ? 'active' : '')
+        = link_to dashboard_funnel_tracking_path do
+          i.fas.fa-filter
+          span ファネル分析
+
       li class=(current_page?(dashboard_management_path) ? 'active' : '')
         = link_to dashboard_management_path do
           i.fas.fa-user-shield
