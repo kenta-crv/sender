@@ -1,6 +1,9 @@
 class FormSubmissionsController < ApplicationController
+  include RequiresExecutionAccess
+
   before_action :authenticate_admin!, except: [:import_customers, :index, :detect_contact_urls, :create, :show]
-  before_action :authenticate_admin_or_client!, only: [:import_customers, :index, :detect_contact_urls, :create, :show]  
+  before_action :authenticate_admin_or_client!, only: [:import_customers, :index, :detect_contact_urls, :create, :show]
+  require_execution_access! only: [:create, :detect_contact_urls]  
   before_action :set_batch, only: [:show, :cancel, :resume, :progress, :destroy]
   before_action :ensure_own_batch!, only: [:show, :cancel, :resume, :progress, :destroy]
 

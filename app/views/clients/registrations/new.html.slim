@@ -1,8 +1,10 @@
 .auth-wrapper
   .auth-forms
-    / Sign Up Form
     .auth-card
-      h2 Sign up
+      h2 アカウント登録
+
+      p.auth-lead
+        | クレジットカードなしで、送信内容の作成・インポートなど一部機能を体験できます。
 
       = form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f|
         = render "clients/shared/error_messages", resource: resource
@@ -21,7 +23,6 @@
           = f.label :password_confirmation
           = f.password_field :password_confirmation, autocomplete: "new-password", class: "input-field"
 
-        / 追加：会社情報（別枠）
         .extra-fields
           .field
             = f.label :company
@@ -44,6 +45,6 @@
             = f.text_field :url, class: "input-field"
 
         .actions
-          = f.submit "Sign up", class: "btn btn-primary"
+          = f.submit "無料で始める", class: "btn btn-primary"
 
       = render "admins/shared/links"

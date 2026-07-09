@@ -5,7 +5,11 @@ class Clients::RegistrationsController < Devise::RegistrationsController
   before_action :configure_account_update_params, only: [:update]
 
   def create
-    super
+    build_resource(sign_up_params)
+    resource.registration_ip = request.remote_ip
+    super do |client|
+      RegistrationAbuseGuard.track!(client) if client.persisted?
+    end
   end
 
   def configure_sign_up_params
@@ -28,7 +32,11 @@ class Clients::RegistrationsController < Devise::RegistrationsController
     ])
   end
 
-  def after_sign_up_path_for(resource)
-    plans_path
+  def after_sign_up_path_for(_resource)
+    dashboard_index_path
+  end
+
+  def after_inactive_sign_up_path_for(_resource)
+    dashboard_index_path
   end
 end

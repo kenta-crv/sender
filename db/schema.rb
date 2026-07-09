@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_07_06_140000) do
+ActiveRecord::Schema.define(version: 2026_07_09_120000) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -122,7 +122,18 @@ ActiveRecord::Schema.define(version: 2026_07_06_140000) do
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.string "stripe_customer_id"
+    t.string "confirmation_token"
+    t.datetime "confirmed_at"
+    t.datetime "confirmation_sent_at"
+    t.string "unconfirmed_email"
+    t.string "registration_ip"
+    t.boolean "registration_flagged", default: false, null: false
+    t.string "stripe_payment_method_id"
+    t.string "card_fingerprint"
+    t.index ["card_fingerprint"], name: "index_clients_on_card_fingerprint"
+    t.index ["confirmation_token"], name: "index_clients_on_confirmation_token", unique: true
     t.index ["email"], name: "index_clients_on_email", unique: true
+    t.index ["registration_ip"], name: "index_clients_on_registration_ip"
     t.index ["reset_password_token"], name: "index_clients_on_reset_password_token", unique: true
     t.index ["stripe_customer_id"], name: "index_clients_on_stripe_customer_id", unique: true
     t.index ["subscription_plan"], name: "index_clients_on_subscription_plan"

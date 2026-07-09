@@ -44,7 +44,9 @@ class WebhooksController < ApplicationController
     return if client.blank?
 
     begin
-      if session.mode == 'subscription'
+      if session.mode == "setup"
+        handle_setup_session_completed(session, client)
+      elsif session.mode == 'subscription'
         plan_type = session.metadata.plan_type
         trial_ends_at = nil 
 
@@ -92,6 +94,22 @@ class WebhooksController < ApplicationController
       Rails.logger.error e.backtrace.first(5).join("\n")
       Rails.logger.error "===================================================================="
     end
+  end
+
+  def handle_setup_session_completed(session, client)
+    setup_intent_id = session.setup_intent
+    return if setup_intent_id.blank?
+
+    setup_intent = Stripe::SetupIntent.retrieve(setup_intent_id)
+    payment_method_id = setup_intent.payment_method
+    return if payment_method_id.blank?
+
+    client.assign_payment_method!(payment_method_id)
+    Rails.logger.info "[Webhook] Payment method registered client_id=#{client.id}"
+  rescue Client::DuplicateCardError => e
+    Rails.logger.error "[Webhook] Duplicate card client_id=#{client.id}: #{e.message}"
+  rescue => e
+    Rails.logger.error "[Webhook] Setup session error client_id=#{client.id}: #{e.class} #{e.message}"
   end
 
   def handle_subscription_deleted(stripe_subscription)

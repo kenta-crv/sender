@@ -1,6 +1,9 @@
 class Client < ApplicationRecord
+  class DuplicateCardError < StandardError; end
+
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable
+         :recoverable, :rememberable, :validatable,
+         :confirmable
 
   has_many :monthly_usage_logs, dependent: :destroy
 
@@ -144,6 +147,77 @@ class Client < ApplicationRecord
   end
 
   public
+
+  def payment_method_registered?
+    stripe_payment_method_id.present? && stripe_customer_id.present?
+  end
+
+  def ensure_stripe_customer!
+    return stripe_customer_id if stripe_customer_id.present?
+
+    customer = Stripe::Customer.create(
+      email: email,
+      metadata: { client_id: id }
+    )
+    update!(stripe_customer_id: customer.id)
+    customer.id
+  end
+
+  def assign_payment_method!(payment_method_id)
+    ensure_stripe_customer!
+
+    payment_method = Stripe::PaymentMethod.retrieve(payment_method_id)
+    fingerprint = payment_method.card&.fingerprint
+
+    if fingerprint.present? && Client.where.not(id: id).exists?(card_fingerprint: fingerprint)
+      Stripe::PaymentMethod.detach(payment_method_id)
+      raise DuplicateCardError, "このクレジットカードは既に登録されています。"
+    end
+
+    Stripe::PaymentMethod.attach(
+      payment_method_id,
+      { customer: stripe_customer_id }
+    )
+
+    Stripe::Customer.update(
+      stripe_customer_id,
+      invoice_settings: { default_payment_method: payment_method_id }
+    )
+
+    update!(
+      stripe_payment_method_id: payment_method_id,
+      card_fingerprint: fingerprint
+    )
+
+    create_stripe_trial_subscription_if_needed!
+    true
+  end
+
+  def create_stripe_trial_subscription_if_needed!
+    return unless subscription_plan == "trial"
+    return unless trial_ends_at.present? && trial_ends_at > Time.current
+    return if subscriptions.where.not(stripe_subscription_id: [nil, ""]).exists?
+
+    stripe_price_id = ENV["STRIPE_PRICE_ENTERPRISE"]
+    return unless stripe_price_id.present?
+
+    remaining_days = ((trial_ends_at - Time.current) / 1.day).ceil
+    return if remaining_days <= 0
+
+    stripe_subscription = Stripe::Subscription.create(
+      customer: stripe_customer_id,
+      items: [{ price: stripe_price_id }],
+      trial_period_days: remaining_days,
+      metadata: {
+        client_id: id,
+        upgraded_from_trial: true
+      }
+    )
+
+    subscriptions.where(status: :active).where(stripe_subscription_id: [nil, ""]).find_each do |sub|
+      sub.update!(stripe_subscription_id: stripe_subscription.id)
+    end
+  end
 
   def monthly_usage_log
     log = MonthlyUsageLog.find_or_create_by!(

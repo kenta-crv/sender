@@ -1,8 +1,11 @@
 require "securerandom"
 
 class CustomersController < ApplicationController
+  include RequiresExecutionAccess
+
   before_action :set_customers, only: [:update_all_status]
-  before_action :authenticate_admin_or_client!, only: [:draft]
+  before_action :authenticate_admin_or_client!, only: [:draft, :serp_search]
+  require_execution_access! only: [:serp_search]
   protect_from_forgery with: :exception, prepend: true
 
   SERP_CORP_PATTERN = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/.freeze
