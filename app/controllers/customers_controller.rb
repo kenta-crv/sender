@@ -335,6 +335,16 @@ def serp_search
   actual_limit = [limit, target_count].min
   customer_ids = scope.order(id: :asc).limit(actual_limit).pluck(:id)
 
+  if ENV["BRIGHT_DATA_API_KEY"].to_s.strip.blank?
+    redirect_to draft_customers_path,
+      alert: "BRIGHT_DATA_API_KEY が未設定です。.env を確認し、Rails/Sidekiqを再起動してから再実行してください。" and return
+  end
+
+  sidekiq = SerpSidekiqManager.ensure_running
+  unless sidekiq.ready?
+    redirect_to draft_customers_path, alert: sidekiq.message and return
+  end
+
   client_id = client_signed_in? ? current_client.id : nil
 
   run_id = SecureRandom.uuid
@@ -355,19 +365,20 @@ def serp_search
     SerpPipelineDbWorker.set(queue: serp_queue).perform_async(industry, customer_ids, run_id, 0, serp_queue.to_s)
     batch_size = SerpPipelineDbWorker::BATCH_SIZE
     wait_notice = PlanPriorityQueue.wait_notice_for(client: current_client, admin: admin_signed_in?)
-    notice_message = "SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（#{batch_size}件ずつ処理・失敗時は中断 / 業種: #{industry || '全業種'}）"
-    notice_message = "#{notice_message} #{wait_notice}" if wait_notice.present?
-    redirect_to dashboard_index_path, notice: notice_message
-  rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
-    Rails.logger.warn("[serp_search] Redis未起動のため同期実行にフォールバック: #{e.message}")
-    begin
-      SerpPipelineDbWorker.new.perform(industry, customer_ids, run_id, 0)
-      redirect_to dashboard_index_path,
-        notice: "SERP補完が完了しました（同期実行）。対象: #{actual_limit}件（業種: #{industry || '全業種'}）"
-    rescue => pipeline_err
-      Rails.logger.error("[serp_search] Pipeline error: #{pipeline_err.message}")
-      redirect_to dashboard_index_path, alert: "SERP補完中にエラーが発生しました: #{pipeline_err.message}"
+    prefix = if sidekiq.started? && sidekiq.redis_started?
+      "RedisとSERP専用Sidekiqを起動してから"
+    elsif sidekiq.started?
+      "SERP専用Sidekiqを起動してから"
+    else
+      ""
     end
+    notice_message = "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（#{batch_size}件ずつ処理・失敗時は中断 / 業種: #{industry || '全業種'}）"
+    notice_message = "#{notice_message} #{wait_notice}" if wait_notice.present?
+    redirect_to draft_customers_path, notice: notice_message
+  rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
+    Rails.logger.warn("[serp_search] Redis接続不可: #{e.message}")
+    redirect_to draft_customers_path,
+      alert: "Redisに接続できないため、SERP補完を開始できませんでした。Redisを起動してから再実行してください。"
   end
 end
 

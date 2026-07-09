@@ -52,8 +52,9 @@ class SerpEnrichmentRun < ApplicationRecord
 
     require "sidekiq/api"
 
-    queue = Sidekiq::Queue.new(SerpSidekiqManager::QUEUE_NAME)
-    return "queued" if queue.any? { |job| job.jid == jid }
+    SerpSidekiqManager::SERP_QUEUE_NAMES.each do |queue_name|
+      return "queued" if Sidekiq::Queue.new(queue_name).any? { |job| job.jid == jid }
+    end
 
     workers = Sidekiq::Workers.new
     return "working" if workers.any? { |_process_id, _thread_id, work| work.dig("payload", "jid") == jid }

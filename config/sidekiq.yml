@@ -11,3 +11,9 @@
   - [auto_dial, 5]
   - [article_generation, 4]
   - [form_submission, 1]
+  # SERP補完（低優先度・専用プロセス未起動時のフォールバック）
+  - [serp_enrichment_enterprise, 1]
+  - [serp_enrichment_standard, 1]
+  - [serp_enrichment_trial, 1]
+  - [serp_enrichment_admin, 1]
+  - [serp_enrichment, 1]

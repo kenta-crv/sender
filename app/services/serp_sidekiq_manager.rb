@@ -5,6 +5,9 @@ require "uri"
 
 class SerpSidekiqManager
   QUEUE_NAME = "serp_enrichment".freeze
+  SERP_QUEUE_NAMES = (
+    [QUEUE_NAME] + PlanPriorityQueue::TIERS.map { |tier| "serp_enrichment_#{tier}" }
+  ).freeze
   CONFIG_PATH = Rails.root.join("config", "sidekiq_enrichment.yml")
   LOG_PATH = Rails.root.join("log", "sidekiq_serp_enrichment.log")
   PID_PATH = Rails.root.join("tmp", "pids", "sidekiq_serp_enrichment.pid")
@@ -107,7 +110,7 @@ class SerpSidekiqManager
     require "sidekiq/api"
     Sidekiq::ProcessSet.new.any? do |process|
       queues = process["queues"].to_a
-      queues.include?(QUEUE_NAME) || queues.include?("default")
+      (queues & SERP_QUEUE_NAMES).any?
     end
   rescue Redis::CannotConnectError, Errno::ECONNREFUSED, StandardError
     false
@@ -117,7 +120,7 @@ class SerpSidekiqManager
     return nil unless redis_reachable?
 
     require "sidekiq/api"
-    Sidekiq::Queue.new(QUEUE_NAME).size
+    SERP_QUEUE_NAMES.sum { |queue_name| Sidekiq::Queue.new(queue_name).size }
   rescue Redis::CannotConnectError, Errno::ECONNREFUSED, StandardError
     nil
   end
@@ -331,7 +334,7 @@ class SerpSidekiqManager
   end
 
   def manual_start_message
-    "SERP専用Sidekiqを起動できませんでした。別ターミナルで bundle exec sidekiq -C config/sidekiq_enrichment.yml を起動してから再実行してください。"
+    "SERP補完用のSidekiqを起動できませんでした。別ターミナルで bundle exec sidekiq -C config/sidekiq.yml を起動してから再実行してください。"
   end
 
   def manual_redis_start_message

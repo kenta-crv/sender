@@ -126,6 +126,38 @@ class SerpSidekiqManagerTest < ActiveSupport::TestCase
     refute manager.redis_auto_start_possible?
   end
 
+  test "worker_running ignores default-only sidekiq processes" do
+    fake_process_set = Object.new
+    fake_process_set.define_singleton_method(:any?) do |&block|
+      [{ "queues" => ["default", "form_submission"] }].any? do |process|
+        block.call(process)
+      end
+    end
+
+    manager = SerpSidekiqManager.new
+    manager.define_singleton_method(:redis_reachable?) { true }
+
+    Sidekiq::ProcessSet.stub(:new, fake_process_set) do
+      refute manager.worker_running?
+    end
+  end
+
+  test "worker_running detects serp enrichment queues" do
+    fake_process_set = Object.new
+    fake_process_set.define_singleton_method(:any?) do |&block|
+      [{ "queues" => ["default", "serp_enrichment_admin"] }].any? do |process|
+        block.call(process)
+      end
+    end
+
+    manager = SerpSidekiqManager.new
+    manager.define_singleton_method(:redis_reachable?) { true }
+
+    Sidekiq::ProcessSet.stub(:new, fake_process_set) do
+      assert manager.worker_running?
+    end
+  end
+
   test "spawn env passes bright data api key to sidekiq process" do
     original = ENV["BRIGHT_DATA_API_KEY"]
     ENV["BRIGHT_DATA_API_KEY"] = "test-key"

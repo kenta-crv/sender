@@ -37,6 +37,31 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
     assert_equal true, captured[:finalize_run]
   end
 
+  test "perform resolves target ids from audit run for chained batches" do
+    customers = 3.times.map { |i| Customer.create!(company: "Audit ID Target #{i}") }
+    ids = customers.map(&:id)
+    run = SerpEnrichmentRun.create_for_targets!(
+      run_id: "audit-id-run",
+      industry: "Logistics",
+      limit: ids.size,
+      targets: customers
+    )
+
+    captured = nil
+    worker = SerpPipelineDbWorker.new
+    worker.define_singleton_method(:jid) { "jid-audit-ids" }
+
+    with_singleton_method(BrightData::Pipeline, :execute_from_db, ->(**kwargs) { captured = kwargs }) do
+      stub_const(SerpPipelineDbWorker, :BATCH_SIZE, 2) do
+        worker.perform(nil, nil, run.run_id, 2)
+      end
+    end
+
+    assert_equal [customers[2].id], captured[:customer_ids]
+    assert_equal "Logistics", captured[:industry]
+    assert_equal true, captured[:finalize_run]
+  end
+
   test "perform chains next batch on success and stops on failure" do
     customers = 3.times.map { |i| Customer.create!(company: "Batch Target #{i}") }
     ids = customers.map(&:id)
@@ -60,7 +85,7 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
     end
 
     assert_equal 1, enqueued.size
-    assert_equal ["", ids, "batch-chain-run", 2, "serp_enrichment_admin"], enqueued.first
+    assert_equal ["", nil, "batch-chain-run", 2, "serp_enrichment_admin"], enqueued.first
 
     with_sidekiq_enqueue_stub(enqueued) do
       with_singleton_method(BrightData::Pipeline, :execute_from_db, ->(**_kwargs) { raise "boom" }) do
