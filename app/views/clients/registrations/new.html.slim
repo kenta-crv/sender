@@ -4,7 +4,7 @@
       h2 アカウント登録
 
       p.auth-lead
-        | クレジットカードなしで、送信内容の作成・インポートなど一部機能を体験できます。
+        | クレジットカードなし不要で一部機能を利用可能
 
       = form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f|
         = render "clients/shared/error_messages", resource: resource
@@ -47,4 +47,4 @@
         .actions
           = f.submit "無料で始める", class: "btn btn-primary"
 
-      = render "admins/shared/links"
+      = render "clients/shared/links"
