@@ -17,8 +17,19 @@
           
           .col-md-4
             = submit_tag 'インポート実行', class: 'sc-detect__btn sc-detect__btn--primary w-100'
-      
+
+        - if admin_signed_in?
+          .form-check.mt-3
+            = check_box_tag :overwrite_blank, '1', false, class: 'form-check-input', id: 'overwrite_blank'
+            label.form-check-label for="overwrite_blank"
+              | 既存データを空白で上書きする
+            .small.text-muted.mt-1
+              | チェックしない場合、CSVの空白セルは既存値を維持します。
+
       .sc-detect__alert.sc-detect__alert--secondary.mt-3
         div
           i.fas.fa-info-circle.me-2
-          | 同名の会社が存在する場合は情報を上書き（更新）します。
+          - if admin_signed_in?
+            | 同名の会社が存在する場合は情報を更新します。大量データはバックグラウンドで処理され、完了後に通知されます。
+          - else
+            | 同名の会社が存在する場合、CSVに値がある項目のみ更新します。空白セルは既存値を維持します。完了後に通知されます。

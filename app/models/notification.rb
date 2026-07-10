@@ -52,6 +52,40 @@ class Notification < ApplicationRecord
     )
   end
 
+  def self.create_for_customer_import!(import_count:, error_count:, error_samples: [], client_id: nil, fatal_error: nil)
+    if fatal_error.present?
+      create!(
+        type: 'CustomerImport',
+        status: 'failed',
+        total_count: 0,
+        success_count: 0,
+        error_count: 1,
+        client_id: client_id,
+        message: "顧客インポート失敗: #{fatal_error}"
+      )
+      return
+    end
+
+    message = "#{import_count}件の顧客をインポートしました。(失敗: #{error_count}件)"
+    if error_samples.any?
+      detail = error_samples.first(3).map do |sample|
+        label = sample[:company].presence || '（会社名なし）'
+        "[#{label}] #{sample[:errors].join(', ')}"
+      end.join("\n")
+      message = "#{message}\n#{detail}"
+    end
+
+    create!(
+      type: 'CustomerImport',
+      status: error_count.positive? ? 'completed_with_errors' : 'completed',
+      total_count: import_count + error_count,
+      success_count: import_count,
+      error_count: error_count,
+      client_id: client_id,
+      message: message
+    )
+  end
+
   def mark_as_read!
     update!(read_at: Time.current)
   end

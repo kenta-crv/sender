@@ -205,8 +205,16 @@ class CustomersController < ApplicationController
     File.open(temp_file_path, 'wb') do |file|
       file.write(uploaded_file.read)
     end
-    CustomerImportJob.perform_later(temp_file_path.to_s)
-    redirect_to customers_url, notice: 'インポート処理をバックグラウンドで実行しています。完了までしばらくお待ちください。'
+
+    overwrite_blank = admin_signed_in? && params[:overwrite_blank] == '1'
+    client_id = current_client.id if respond_to?(:current_client) && current_client
+
+    CustomerImportJob.perform_later(
+      temp_file_path.to_s,
+      overwrite_blank,
+      client_id
+    )
+    redirect_to customers_url, notice: 'インポート処理をバックグラウンドで実行しています。完了後、通知で結果をお知らせします。'
   end
 
 def draft

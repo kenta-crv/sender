@@ -397,84 +397,35 @@ class FormSubmissionsController < ApplicationController
       return
     end
 
-    import_count = 0
-    error_count = 0
-    error_rows = []
-    
-    # 法人敬称をチェックするための正規表現パターン
-    legal_entity_pattern = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人|(株)|（株）|(有)|（有）|(同)|（同）/
+    temp_file_path = Rails.root.join('tmp', "customer_import_#{SecureRandom.uuid}.csv")
+    FileUtils.cp(file.path, temp_file_path)
 
-    begin
-      # headers: true により1行目をヘッダーとして扱う
-      CSV.foreach(file.path, headers: true) do |row|
-        # CSVのヘッダーが「会社名」か「company」のどちらでも動くように考慮
-        company_name = row['会社名'] || row['company']
-        
-        # 会社名が空の場合はスキップまたはエラー
-        if company_name.blank?
-          error_count += 1
-          error_rows << { row: row.to_h, errors: ["会社名(company)補正エラー"] }
-          next
-        end
+    overwrite_blank = admin_signed_in? && params[:overwrite_blank] == '1'
+    client_id = current_client.id if respond_to?(:current_client) && current_client
 
-        # 法人敬称が含まれているかチェック（含まれていない場合はエラーとしてスキップ）
-        unless company_name.match?(legal_entity_pattern)
-          error_count += 1
-          error_rows << { row: row.to_h, errors: ["法人敬称（株式会社など）が含まれていません"] }
-          next
-        end
+    CustomerImportJob.perform_later(
+      temp_file_path.to_s,
+      overwrite_blank,
+      client_id
+    )
 
-        customer = Customer.find_or_initialize_by(company: company_name)
+    message = 'インポート処理をバックグラウンドで実行しています。完了後、通知で結果をお知らせします。'
 
-        customer.assign_attributes(
-          tel:          row['電話番号'] || row['tel'],
-          address:      row['住所'] || row['address'],
-          url:          row['HP URL'] || row['url'],
-          email:        row['メールアドレス'] || row['email'],
-          business:     row['業種'] || row['business'],
-          genre:        row['職種'] || row['genre'],
-          contact_url:  row['問い合わせURL'] || row['contact_url']
-        )
+    if client_signed_in? && !admin_signed_in?
+      redirect_to dashboard_import_path, notice: message
+    else
+      redirect_to form_submissions_path, notice: message
+    end
+  rescue StandardError => e
+    File.delete(temp_file_path) if defined?(temp_file_path) && temp_file_path && File.exist?(temp_file_path)
+    Rails.logger.error("IMPORT FATAL ERROR: #{e.message}\n#{e.backtrace.join("\n")}")
 
-        # client_id を紐付ける必要がある場合はここでセット
-        customer.client_id = current_client.id if respond_to?(:current_client) && current_client
-
-        if customer.save
-          import_count += 1
-        else
-          error_count += 1
-          error_rows << {
-            row: row.to_h,
-            errors: customer.errors.full_messages
-          }
-          Rails.logger.error("IMPORT ERROR: #{customer.errors.full_messages} | ROW: #{row.to_h}")
-        end
-      end
-
-      message = "#{import_count}件の顧客をインポートしました。(失敗: #{error_count}件)"
-
-      if error_rows.any?
-        # 最初の3件ほどのエラー内容をアラートに表示する
-        detail_errors = error_rows.first(3).map { |e| "[#{e[:row]['会社名'] || e[:row]['company']}] #{e[:errors].join(', ')}" }.join("\n")
-        flash[:alert] = "一部のインポートに失敗しました:\n#{detail_errors}"
-      end
-
-      if client_signed_in? && !admin_signed_in?
-        redirect_to dashboard_index_path, notice: message
-      else
-        redirect_to form_submissions_path, notice: message
-      end
-
-    rescue => e
-      Rails.logger.error("IMPORT FATAL ERROR: #{e.message}\n#{e.backtrace.join("\n")}")
-
-      if client_signed_in? && !admin_signed_in?
-        redirect_to dashboard_index_path,
-                    alert: "エラーが発生しました: #{e.message}"
-      else
-        redirect_to form_submissions_path,
-                    alert: "エラーが発生しました: #{e.message}"
-      end
+    if client_signed_in? && !admin_signed_in?
+      redirect_to dashboard_import_path,
+                  alert: "エラーが発生しました: #{e.message}"
+    else
+      redirect_to form_submissions_path,
+                  alert: "エラーが発生しました: #{e.message}"
     end
   end
   
