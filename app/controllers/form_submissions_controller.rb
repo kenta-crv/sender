@@ -387,13 +387,8 @@ class FormSubmissionsController < ApplicationController
     file = params[:file]
 
     if file.blank?
-      if client_signed_in? && !admin_signed_in?
-        redirect_to dashboard_index_path,
-                    alert: 'CSVファイルを選択してください。'
-      else
-        redirect_to form_submissions_path,
-                    alert: 'CSVファイルを選択してください。'
-      end
+      redirect_to dashboard_import_path,
+                  alert: 'CSVファイルを選択してください。'
       return
     end
 
@@ -410,23 +405,13 @@ class FormSubmissionsController < ApplicationController
     )
 
     message = 'インポート処理をバックグラウンドで実行しています。完了後、通知で結果をお知らせします。'
-
-    if client_signed_in? && !admin_signed_in?
-      redirect_to dashboard_import_path, notice: message
-    else
-      redirect_to form_submissions_path, notice: message
-    end
+    redirect_to dashboard_import_path, notice: message
   rescue StandardError => e
     File.delete(temp_file_path) if defined?(temp_file_path) && temp_file_path && File.exist?(temp_file_path)
     Rails.logger.error("IMPORT FATAL ERROR: #{e.message}\n#{e.backtrace.join("\n")}")
 
-    if client_signed_in? && !admin_signed_in?
-      redirect_to dashboard_import_path,
-                  alert: "エラーが発生しました: #{e.message}"
-    else
-      redirect_to form_submissions_path,
-                  alert: "エラーが発生しました: #{e.message}"
-    end
+    redirect_to dashboard_import_path,
+                alert: "エラーが発生しました: #{e.message}"
   end
   
   # POST /form_submissions/detect_contact_urls
