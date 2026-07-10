@@ -9,7 +9,7 @@ rem → 4つのコマンドプロンプトが開き、Redis / Sidekiq / ngrok / 
 cd /d "%~dp0"
 
 start "Redis" cmd /k "echo === Redis === && redis-server"
-start "Sidekiq" cmd /k "echo === Sidekiq === && bundle exec sidekiq"
+start "Sidekiq" cmd /k "echo === Sidekiq === && bundle exec sidekiq -C config/sidekiq.yml"
 start "ngrok" cmd /k "echo === ngrok === && ngrok http 3000"
 start "Rails" cmd /k "echo === Rails === && bundle exec rails server"
 

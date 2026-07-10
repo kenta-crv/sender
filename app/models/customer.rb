@@ -1,5 +1,9 @@
 class Customer < ApplicationRecord
   DUPLICATE_CLEANUP_ATTRIBUTES = %w[company tel url contact_url].freeze
+  LEGAL_ENTITY_TERMS = %w[
+    株式会社 有限会社 合同会社 一般社団法人 一般財団法人 社会福祉法人 医療法人 学校法人
+  ].freeze
+  LEGAL_ENTITY_PATTERN = /#{LEGAL_ENTITY_TERMS.join('|')}/.freeze
 
   has_many :calls, dependent: :destroy
   has_many :click_tracking_links, dependent: :destroy
@@ -48,9 +52,15 @@ class Customer < ApplicationRecord
     where(id: filter_ids)
   }
 
+  scope :with_legal_entity, -> {
+    conditions = LEGAL_ENTITY_TERMS.map { "company LIKE ?" }.join(" OR ")
+    values = LEGAL_ENTITY_TERMS.map { |term| "%#{term}%" }
+    where(conditions, *values)
+  }
+
   # プレビュー（draft画面）と実行（execute_from_db）で同じ条件を使うための共通スコープ。
   scope :serp_extraction_targets, ->(fill_filter = nil) {
-    base = where(serp_status: [nil, ''])
+    base = where(serp_status: [nil, '']).with_legal_entity
 
     if fill_filter.present?
       # 画面で充足フィルタが選択されている場合は、その条件に限定する

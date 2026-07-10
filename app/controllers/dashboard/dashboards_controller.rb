@@ -16,7 +16,7 @@ class Dashboard::DashboardsController < ApplicationController
     filtered = @q.result(distinct: true)
 
     @customers = filtered.where.not(contact_url: [nil, '', 'not_detected']).page(params[:customers_page]).per(20)
-    @detectable_customers = filtered.where(contact_url: [nil, '']).where.not(url: [nil, '']).deliverable_for(delivery_filter_client_id).page(params[:detectable_page]).per(20)
+    @detectable_customers = filtered.where(contact_url: [nil, '']).where.not(url: [nil, '']).with_legal_entity.deliverable_for(delivery_filter_client_id).page(params[:detectable_page]).per(20)
 
     @business_options = generate_options(:business)
     @genre_options = generate_options(:genre)
@@ -179,7 +179,7 @@ class Dashboard::DashboardsController < ApplicationController
       end
     end
 
-    excluded_statuses = ['フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected']
+    excluded_statuses = ['フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected', 'CAPTCHA NG']
 
     @customers = filtered
                    .where.not(contact_url: [nil, '', 'not_detected'])
@@ -190,6 +190,7 @@ class Dashboard::DashboardsController < ApplicationController
     @detectable_customers = filtered
                               .where(contact_url: [nil, ''])
                               .where.not(url: [nil, ''])
+                              .with_legal_entity
                               .deliverable_for(delivery_filter_client_id)
                               .page(params[:detectable_page]).per(50)
 
@@ -229,6 +230,7 @@ def searching_form
   @detectable_customers = filtered
                             .where(contact_url: [nil, ''])
                             .where.not(url: [nil, ''])
+                            .with_legal_entity
                             .deliverable_for(delivery_filter_client_id)
                             .page(params[:detectable_page]).per(50)
 
@@ -238,6 +240,7 @@ def searching_form
   detectable_base = @q.result(distinct: true)
                       .where(contact_url: [nil, ''])
                       .where.not(url: [nil, ''])
+                      .with_legal_entity
                       .deliverable_for(delivery_filter_client_id)
 
   @business_options = detectable_base.where.not(business: [nil, ''])

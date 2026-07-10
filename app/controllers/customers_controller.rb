@@ -8,7 +8,6 @@ class CustomersController < ApplicationController
   require_execution_access! only: [:serp_search]
   protect_from_forgery with: :exception, prepend: true
 
-  SERP_CORP_PATTERN = /株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人/.freeze
   SERP_PREF_PATTERN = /東京都|大阪府|北海道|神奈川県|愛知県|福岡県|埼玉県|千葉県|兵庫県|静岡県|茨城県|広島県|京都府|宮城県|新潟県|長野県|岐阜県|群馬県|栃木県|岡山県|福島県|三重県|熊本県|鹿児島県|沖縄県|滋賀県|山口県|愛媛県|長崎県|奈良県|青森県|岩手県|大分県|石川県|山形県|宮崎県|富山県|秋田県|香川県|和歌山県|佐賀県|福井県|徳島県|高知県|島根県|鳥取県|山梨県/.freeze
   ADDRESS_MUNICIPALITY_PATTERN = /市|区|町|村|郡/.freeze
   ADDRESS_DETAIL_PATTERN = /[0-9０-９]|丁目|番地|番|号|[-－ー]/.freeze
@@ -278,7 +277,7 @@ def draft
 
   @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
 
-  serp_pending_scope = base_scope.where(serp_status: [nil, ''])
+  serp_pending_scope = @industry_base_scope.where(serp_status: [nil, '']).with_legal_entity
 
   selected_industry = params[:industry_name].presence
 

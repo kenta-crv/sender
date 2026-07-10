@@ -4,7 +4,7 @@ class SubmissionsController < ApplicationController
 
   def index
     @customers = scoped_customers.where.not(contact_url: [nil, ""])
-    @detectable_customers = scoped_customers.where(contact_url: [nil, ""]).where.not(url: [nil, ""])
+    @detectable_customers = scoped_customers.where(contact_url: [nil, ""]).where.not(url: [nil, ""]).with_legal_entity
     @no_url_customers_count = scoped_customers.where(contact_url: [nil, ""], url: [nil, ""]).count
     @submissions = scoped_submissions
     @submission_click_counts = ClickTrackingLink

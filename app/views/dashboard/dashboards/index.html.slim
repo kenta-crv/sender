@@ -27,11 +27,6 @@
               - else
                 | Admin
 
-      / ===== フラッシュメッセージ (コンテンツエリア内に配置し、サイドバーとの衝突を完全回避) =====
-      - flash.each do |type, msg|
-        .flash-message class="flash-#{type}" style="margin-top: 1.5rem;"
-          = msg
-
       / ===== 解約予約中（期間内猶予）の警告バナー =====
       - if current_client.present? && current_client.subscription_status == 'cancelled' && current_client.subscription_plan != 'none'
         .alert-neon style="margin: 1.5rem 0; padding: 1rem; background: rgba(255, 80, 80, 0.1); border: 1px solid rgba(255, 80, 80, 0.3); border-radius: 8px; color: #ff8080;"

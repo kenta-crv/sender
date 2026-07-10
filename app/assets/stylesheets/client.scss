@@ -121,6 +121,27 @@
     
     .card-label { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; }
     .card-value { font-size: 2.2rem; font-weight: 800; margin-top: 10px; .unit { font-size: 1rem; color: var(--text-muted); } }
+    h5 { color: #fff; }
+    p { color: rgba(229, 231, 235, 0.85); }
+  }
+
+  .card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    h5 { color: #fff; margin: 0; }
+    p { color: var(--text-muted); margin: 0; }
+  }
+
+  /* Bootstrapのダーク文字色をダッシュボード用に上書き */
+  .text-muted {
+    color: var(--text-muted) !important;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #fff;
   }
 
   /* テーブル（PC基準） */
@@ -135,7 +156,7 @@
     margin-top: 20px;
     border-spacing: 0;
     th { text-align: left; color: var(--text-muted); padding: 10px; font-size: 0.8rem; white-space: nowrap; }
-    td { padding: 20px 10px; border-top: 1px solid rgba(255, 255, 255, 0.1); white-space: nowrap; }
+    td { padding: 20px 10px; border-top: 1px solid rgba(255, 255, 255, 0.1); white-space: nowrap; color: #e5e7eb; }
   }
 
   /* 固有パーツ */

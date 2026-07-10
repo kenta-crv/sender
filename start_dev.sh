@@ -16,7 +16,7 @@ osascript <<EOF
 tell application "Terminal"
     activate
     do script "echo '=== Redis ==='; redis-server"
-    do script "echo '=== Sidekiq ==='; cd '$PROJECT_DIR' && bundle exec sidekiq"
+    do script "echo '=== Sidekiq ==='; cd '$PROJECT_DIR' && bundle exec sidekiq -C config/sidekiq.yml"
     do script "echo '=== ngrok ==='; ngrok http 3000"
     do script "echo '=== Rails ==='; cd '$PROJECT_DIR' && bundle exec rails server"
 end tell

@@ -71,6 +71,7 @@ class FormSubmissionsController < ApplicationController
     detectable_scope = base_customers
                           .where(contact_url: [nil, ''])
                           .where.not(url: [nil, ''])
+                          .with_legal_entity
                           .deliverable_for(delivery_filter_client_id)
 
     if params[:business_filter].present?
@@ -157,7 +158,9 @@ class FormSubmissionsController < ApplicationController
     end
 
     # 送信可能な条件（URLが存在し、禁止フラグが立っていないもの）
+    captcha_ng_customer_ids = Call.where(call_type: 'form', status: 'CAPTCHA NG').distinct.pluck(:customer_id)
     eligible_scope = eligible_scope.where.not(contact_url: [nil, '', 'not_detected'])
+                                   .where.not(id: captcha_ng_customer_ids)
                                    .deliverable_for(delivery_filter_client_id)
                                    .order(:id)
 
@@ -480,6 +483,7 @@ class FormSubmissionsController < ApplicationController
     # Build base scope for customer selection
     base_scope = Customer.where(contact_url: [nil, ''])
                         .where.not(url: [nil, ''])
+                        .with_legal_entity
                         .deliverable_for(delivery_filter_client_id)
     
     # Apply client filtering

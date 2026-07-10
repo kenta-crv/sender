@@ -69,7 +69,8 @@ class FormSender
     prefecture: %w[prefecture pref 都道府県 todoufuken todofuken ken],
     company: %w[company 会社 御社 貴社 organization 社名 company_name kaisya comname 御社名 会社名 corpname corp 法人],
     address: %w[address 住所 所在地 your-address jusho adr add],
-    message: %w[message body 内容 お問い合わせ内容 inquiry comment お問い合わせ 備考 remarks naiyo toi その他 content contents ques]
+    message: %w[message body 内容 お問い合わせ内容 inquiry comment お問い合わせ 備考 remarks naiyo toi その他 content contents ques
+                本文 メッセージ msg freetext free_text detail 詳細 要望 ご要望 質問 ご質問 自由記入 自由記述 ご連絡 ご意見]
   }.freeze
 
   # 送信ボタン検出用キーワード
@@ -78,7 +79,10 @@ class FormSender
   # 成功判定用キーワード
   SUCCESS_PATTERNS = %w[ありがとう 完了 受付 送信しました 送信完了 thank success
                         受け付けました 受付いたしました 送信いたしました お問い合わせいただき
-                        送信されました].freeze
+                        送信されました 承りました 確認いたします お送りしました
+                        送信を受け付け お問い合わせを受け付け お問合せを受け付け
+                        届きました 担当者より ご連絡いたします いただきました
+                        ご連絡差し上げ 折り返し 拝受 確認の上].freeze
 
   # 営業禁止検出用キーワード（これらを含むページは送信をスキップ）
   NO_SALES_PATTERNS = %w[

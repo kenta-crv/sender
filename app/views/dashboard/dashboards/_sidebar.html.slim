@@ -50,11 +50,6 @@ nav#sidebar
         i.fas.fa-paper-plane
         span 問い合わせフォーム送信
 
-    li class=(current_page?(dashboard_click_tracking_path) ? 'active' : '')
-      = link_to dashboard_click_tracking_path do
-        i.fas.fa-mouse-pointer
-        span クリック履歴
-
     - if admin_signed_in?
       li class=(current_page?(dashboard_funnel_tracking_path) ? 'active' : '')
         = link_to dashboard_funnel_tracking_path do
@@ -66,6 +61,11 @@ nav#sidebar
           i.fas.fa-user-shield
           span Management
     - else
+      li class=(current_page?(dashboard_click_tracking_path) ? 'active' : '')
+        = link_to dashboard_click_tracking_path do
+          i.fas.fa-mouse-pointer
+          span クリック履歴
+
       li class=(current_page?(dashboard_setting_path) ? 'active' : '')
         = link_to dashboard_setting_path do
           i.fas.fa-cog
