@@ -201,16 +201,13 @@ class CustomersController < ApplicationController
 
   def all_import
     uploaded_file = params[:file]
-    temp_file_path = Rails.root.join('tmp', "#{SecureRandom.uuid}_#{uploaded_file.original_filename}")
-    File.open(temp_file_path, 'wb') do |file|
-      file.write(uploaded_file.read)
-    end
+    csv_content = uploaded_file.read
 
     overwrite_blank = admin_signed_in? && params[:overwrite_blank] == '1'
     client_id = current_client.id if respond_to?(:current_client) && current_client
 
     CustomerImportJob.perform_later(
-      temp_file_path.to_s,
+      csv_content,
       overwrite_blank,
       client_id
     )

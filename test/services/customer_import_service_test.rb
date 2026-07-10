@@ -16,7 +16,7 @@ class CustomerImportServiceTest < ActiveSupport::TestCase
     CSV
     path = write_temp_csv(csv)
 
-    result = CustomerImportService.new(overwrite_blank: false).call(path)
+    result = CustomerImportService.new(overwrite_blank: false).call(file_path: path)
 
     @customer.reload
     assert_equal 1, result[:import_count]
@@ -33,7 +33,7 @@ class CustomerImportServiceTest < ActiveSupport::TestCase
     CSV
     path = write_temp_csv(csv)
 
-    CustomerImportService.new(overwrite_blank: true).call(path)
+    CustomerImportService.new(overwrite_blank: true).call(file_path: path)
 
     @customer.reload
     assert_equal "", @customer.tel
@@ -49,7 +49,7 @@ class CustomerImportServiceTest < ActiveSupport::TestCase
     CSV
     path = write_temp_csv(csv)
 
-    CustomerImportService.new(overwrite_blank: true).call(path)
+    CustomerImportService.new(overwrite_blank: true).call(file_path: path)
 
     @customer.reload
     assert_equal "03-1234-5678", @customer.tel

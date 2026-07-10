@@ -20,12 +20,12 @@ class CustomerImportService
     @client_id = client_id
   end
 
-  def call(file_path)
+  def call(file_path: nil, csv_content: nil)
     import_count = 0
     error_count = 0
     error_samples = []
 
-    CSV.foreach(file_path, headers: true) do |row|
+    each_csv_row(file_path: file_path, csv_content: csv_content) do |row|
       company_name = company_name_from(row)
 
       if company_name.blank?
@@ -80,6 +80,19 @@ class CustomerImportService
       elsif value.present?
         attrs[attr] = value
       end
+    end
+  end
+
+  def each_csv_row(file_path:, csv_content:)
+    if csv_content.present?
+      CSV.parse(csv_content, headers: true) do |row|
+        yield row
+      end
+      return
+    end
+
+    CSV.foreach(file_path, headers: true) do |row|
+      yield row
     end
   end
 end

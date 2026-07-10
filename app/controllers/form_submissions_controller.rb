@@ -392,22 +392,20 @@ class FormSubmissionsController < ApplicationController
       return
     end
 
-    temp_file_path = Rails.root.join('tmp', "customer_import_#{SecureRandom.uuid}.csv")
-    FileUtils.cp(file.path, temp_file_path)
+    csv_content = file.read
 
     overwrite_blank = admin_signed_in? && params[:overwrite_blank] == '1'
     client_id = current_client.id if respond_to?(:current_client) && current_client
 
     CustomerImportJob.perform_later(
-      temp_file_path.to_s,
+      csv_content,
       overwrite_blank,
       client_id
     )
 
     message = 'インポート処理をバックグラウンドで実行しています。完了後、通知で結果をお知らせします。'
-    redirect_to dashboard_import_path, notice: message
+    redirect_to dashboard_index_path, notice: message
   rescue StandardError => e
-    File.delete(temp_file_path) if defined?(temp_file_path) && temp_file_path && File.exist?(temp_file_path)
     Rails.logger.error("IMPORT FATAL ERROR: #{e.message}\n#{e.backtrace.join("\n")}")
 
     redirect_to dashboard_import_path,
