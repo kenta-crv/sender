@@ -499,3 +499,13 @@
   font-weight: 700;
   padding: 4px 10px;
 }
+
+.sc-detect--loading {
+  cursor: wait;
+
+  .sc-detect__card,
+  .sc-detect__draft-table {
+    opacity: 0.65;
+    pointer-events: none;
+  }
+}

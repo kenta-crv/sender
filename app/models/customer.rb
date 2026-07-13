@@ -260,29 +260,42 @@ class Customer < ApplicationRecord
   private_class_method :delete_dependents_without_models!
 
   def self.calculate_dashboard_stats(base_scope)
-    total = base_scope.count
-    status_counts = base_scope.group(:serp_status).count
+    blank_tel = blank_sql("tel")
+    blank_address = blank_sql("address")
+    blank_url = blank_sql("url")
+    blank_contact_url = blank_sql("contact_url")
+
+    row = base_scope.pick(
+      Arel.sql("COUNT(*)"),
+      Arel.sql("SUM(CASE WHEN serp_status IS NULL OR serp_status = '' THEN 1 ELSE 0 END)"),
+      Arel.sql("SUM(CASE WHEN serp_status = 'serp_queued' THEN 1 ELSE 0 END)"),
+      Arel.sql("SUM(CASE WHEN serp_status = 'serp_done' THEN 1 ELSE 0 END)"),
+      Arel.sql("SUM(CASE WHEN serp_status = 'serp_imported' THEN 1 ELSE 0 END)"),
+      Arel.sql("SUM(CASE WHEN serp_status = 'serp_error' THEN 1 ELSE 0 END)"),
+      Arel.sql("SUM(CASE WHEN NOT #{blank_tel} THEN 1 ELSE 0 END)"),
+      Arel.sql("SUM(CASE WHEN NOT #{blank_address} THEN 1 ELSE 0 END)"),
+      Arel.sql("SUM(CASE WHEN NOT #{blank_url} THEN 1 ELSE 0 END)"),
+      Arel.sql("SUM(CASE WHEN NOT #{blank_contact_url} THEN 1 ELSE 0 END)"),
+      Arel.sql(
+        "SUM(CASE WHEN NOT #{blank_tel} AND NOT #{blank_address} AND NOT #{blank_url} AND NOT #{blank_contact_url} THEN 1 ELSE 0 END)"
+      )
+    )
 
     {
-      total: total,
+      total: row[0].to_i,
       status: {
-        null:     status_counts[nil].to_i + status_counts[""].to_i,
-        queued:   status_counts["serp_queued"].to_i,
-        done:     status_counts["serp_done"].to_i,
-        imported: status_counts["serp_imported"].to_i,
-        error:    status_counts["serp_error"].to_i
+        null:     row[1].to_i,
+        queued:   row[2].to_i,
+        done:     row[3].to_i,
+        imported: row[4].to_i,
+        error:    row[5].to_i
       },
       fill: {
-        tel:         base_scope.where("NOT #{blank_sql('tel')}").count,
-        address:     base_scope.where("NOT #{blank_sql('address')}").count,
-        url:         base_scope.where("NOT #{blank_sql('url')}").count,
-        contact_url: base_scope.where("NOT #{blank_sql('contact_url')}").count,
-        full:        base_scope
-                       .where("NOT #{blank_sql('tel')}")
-                       .where("NOT #{blank_sql('address')}")
-                       .where("NOT #{blank_sql('url')}")
-                       .where("NOT #{blank_sql('contact_url')}")
-                       .count
+        tel:         row[6].to_i,
+        address:     row[7].to_i,
+        url:         row[8].to_i,
+        contact_url: row[9].to_i,
+        full:        row[10].to_i
       }
     }
   end

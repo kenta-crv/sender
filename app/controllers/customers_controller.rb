@@ -215,30 +215,22 @@ class CustomersController < ApplicationController
   end
 
 def draft
-  @industry_options = []
-
   start_time = Time.current
 
   parse_period_params
 
-  @industry_base_scope = Customer.draft_base_scope(
+  draft_scope_args = {
     current_client_id: client_signed_in? ? current_client.id : nil,
-    is_admin:          admin_signed_in?,
-    industry_name:     nil
-  )
+    is_admin:          admin_signed_in?
+  }
 
-  base_scope = Customer.draft_base_scope(
-    current_client_id: client_signed_in? ? current_client.id : nil,
-    is_admin:          admin_signed_in?,
-    industry_name:     params[:industry_name].presence
-  )
+  @industry_base_scope = Customer.draft_base_scope(**draft_scope_args, industry_name: nil)
+  base_scope = Customer.draft_base_scope(**draft_scope_args, industry_name: params[:industry_name].presence)
 
   @company_query = params[:company_query].presence
 
   serp_target_base = base_scope.serp_extraction_targets(params[:fill_filter])
-  if @company_query.present?
-    serp_target_base = filter_company_query(serp_target_base, @company_query)
-  end
+  serp_target_base = filter_company_query(serp_target_base, @company_query) if @company_query.present?
 
   main_scope = base_scope
   main_scope = filter_company_query(main_scope, @company_query) if @company_query.present?
@@ -259,7 +251,6 @@ def draft
                  )
                  .apply_created_at_range(@range_start, @range_end)
                  .order(updated_at: :desc)
-                 .includes(:worker)
                  .page(params[:page])
                  .per(100)
 
@@ -268,9 +259,9 @@ def draft
   @serp_targets = serp_target_base.order(id: :asc)
                                   .page(params[:serp_page])
                                   .per(20)
+  @serp_target_count = @serp_targets.total_count
 
-  raw_remaining      = ExtractTracking.remaining_extractable_count
-  @serp_target_count = serp_target_base.count
+  raw_remaining = ExtractTracking.remaining_extractable_count
 
   if client_signed_in? && !admin_signed_in?
     monthly_log = current_client.monthly_usage_log
@@ -282,16 +273,19 @@ def draft
 
   @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
 
-  serp_pending_scope = @industry_base_scope.where(serp_status: [nil, '']).with_legal_entity
-
   selected_industry = params[:industry_name].presence
+  industry_scope = @industry_base_scope.where(serp_status: [nil, '']).with_legal_entity
+                                       .where.not(business: [nil, ''])
+                                       .group(:business)
 
-  industry_counts = serp_pending_scope.where.not(business: [nil, ''])
-                                      .group(:business)
-                                      .count
+  industry_counts =
+    if selected_industry.present?
+      industry_scope.having("COUNT(*) >= 10 OR business = ?", selected_industry).count
+    else
+      industry_scope.having("COUNT(*) >= 10").count
+    end
 
   @industry_options = industry_counts
-                        .select { |name, count| count >= 10 || name == selected_industry }
                         .sort_by { |_name, count| -count }
                         .map { |name, count| ["#{name}（#{count}件）", name] }
 
@@ -343,13 +337,13 @@ def serp_search
   customer_ids = scope.order(id: :asc).limit(actual_limit).pluck(:id)
 
   if ENV["BRIGHT_DATA_API_KEY"].to_s.strip.blank?
-    redirect_to draft_customers_path,
+    redirect_to dashboard_index_path,
       alert: "BRIGHT_DATA_API_KEY が未設定です。.env を確認し、Rails/Sidekiqを再起動してから再実行してください。" and return
   end
 
   sidekiq = SerpSidekiqManager.ensure_running
   unless sidekiq.ready?
-    redirect_to draft_customers_path, alert: sidekiq.message and return
+    redirect_to dashboard_index_path, alert: sidekiq.message and return
   end
 
   client_id = client_signed_in? ? current_client.id : nil
@@ -381,10 +375,10 @@ def serp_search
     end
     notice_message = "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（#{batch_size}件ずつ処理・失敗時は中断 / 業種: #{industry || '全業種'}）"
     notice_message = "#{notice_message} #{wait_notice}" if wait_notice.present?
-    redirect_to draft_customers_path, notice: notice_message
+    redirect_to dashboard_index_path, notice: notice_message
   rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
     Rails.logger.warn("[serp_search] Redis接続不可: #{e.message}")
-    redirect_to draft_customers_path,
+    redirect_to dashboard_index_path,
       alert: "Redisに接続できないため、SERP補完を開始できませんでした。Redisを起動してから再実行してください。"
   end
 end

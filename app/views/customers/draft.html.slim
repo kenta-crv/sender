@@ -357,8 +357,12 @@
             url.searchParams.set('industry_name', this.value);
             url.searchParams.delete('serp_page');
             url.searchParams.delete('genre_name');
+            url.searchParams.delete('page');
             const hiddenIndustry = document.getElementById('serp-hidden-industry-field');
             if (hiddenIndustry) hiddenIndustry.value = this.value;
+            const filterIndustry = document.getElementById('filter-industry-select');
+            if (filterIndustry) filterIndustry.value = this.value;
+            document.body.classList.add('sc-detect--loading');
             navigateTo(url.toString());
           };
         }
@@ -411,6 +415,11 @@
       const filterIndustrySelect = document.getElementById('filter-industry-select');
       if (filterIndustrySelect) {
         filterIndustrySelect.onchange = function() {
+          const serpIndustry = document.getElementById('serp-industry-select');
+          if (serpIndustry) serpIndustry.value = this.value;
+          const hiddenIndustry = document.getElementById('serp-hidden-industry-field');
+          if (hiddenIndustry) hiddenIndustry.value = this.value;
+          document.body.classList.add('sc-detect--loading');
           const form = document.getElementById('filter-form');
           if (form) form.submit();
         };
