@@ -83,26 +83,40 @@
         .glass-card
           .card-label SERP API
           .card-value
-            = number_with_delimiter(@serp_api_limit)
+            = number_with_delimiter(@serp_api_used.to_i)
             span.unit 件
 
-          p.resets-in 上限
+          p.resets-in 今月の使用数
 
           .mini-rate
-            - remaining_serp = [@serp_api_limit - @serp_api_used, 0].max
-            = "残り: #{number_with_delimiter(remaining_serp)} 件"
+            - if @usage_unlimited
+              = "上限: 無制限"
+            - else
+              - remaining_serp = [@serp_api_limit.to_i - @serp_api_used.to_i, 0].max
+              = "残り: #{number_with_delimiter(remaining_serp)} 件 / 上限: #{number_with_delimiter(@serp_api_limit.to_i)} 件"
 
         .glass-card
           .card-label Form Detection
           .card-value
-            = number_with_delimiter(@form_detection_limit)
+            = number_with_delimiter(@form_detection_used.to_i)
             span.unit 件
 
-          p.resets-in 上限
+          p.resets-in 今月の使用数
 
           .mini-rate
-            - remaining_form = [@form_detection_limit - @form_detection_used, 0].max
-            = "残り: #{number_with_delimiter(remaining_form)} 件"
+            - if @usage_unlimited
+              = "上限: 無制限"
+            - else
+              - remaining_form = [@form_detection_limit.to_i - @form_detection_used.to_i, 0].max
+              = "残り: #{number_with_delimiter(remaining_form)} 件 / 上限: #{number_with_delimiter(@form_detection_limit.to_i)} 件"
+
+        .glass-card
+          .card-label Import
+          .card-value
+            = number_with_delimiter(@import_count.to_i)
+            span.unit 件
+
+          p.resets-in 今月のインポート数
 
       / ===== Recent Batches =====
       .history-section.mt-5
@@ -130,7 +144,7 @@
                   th style="width: 100px;" Status
 
               tbody
-                - (@batches || []).first(3).each do |batch|
+                - (@batches || []).each do |batch|
                   tr
                     td = batch.created_at.strftime('%Y/%m/%d')
                     td
@@ -217,14 +231,14 @@
                   th style="width: 90px;" Rate
 
               tbody
-                - @submissions.each do |submission|
-                  - batches = submission.form_submission_batches
-                  - total = batches.sum(:total_count)
-                  - success = batches.sum(:success_count)
-                  - failure = batches.sum(:failure_count)
+                - @submission_stats.each do |stat|
+                  - submission = stat[:submission]
+                  - total = stat[:total_sent]
+                  - success = stat[:success_count]
+                  - failure = stat[:failure_count]
                   - rate = total > 0 ? ((success.to_f / total) * 100).round(1) : 0
-                  - sender_client = batches.first&.client
-                  - sender_admin = batches.first&.admin
+                  - sender_client = stat[:sender_client]
+                  - sender_admin = stat[:sender_admin]
 
                   tr
                     td

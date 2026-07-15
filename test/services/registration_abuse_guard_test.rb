@@ -6,6 +6,8 @@ class RegistrationAbuseGuardTest < ActiveSupport::TestCase
       Client.create!(
         email: "ip-test-#{i}@example.com",
         password: "password123",
+        company: "株式会社IPテスト#{i}",
+        tel: "09012345#{i}#{i}",
         registration_ip: "203.0.113.10",
         confirmed_at: Time.current
       )
@@ -14,6 +16,8 @@ class RegistrationAbuseGuardTest < ActiveSupport::TestCase
     third = Client.create!(
       email: "ip-test-3@example.com",
       password: "password123",
+      company: "株式会社IPテスト3",
+      tel: "09012345003",
       registration_ip: "203.0.113.10",
       confirmed_at: Time.current
     )
@@ -27,6 +31,8 @@ class RegistrationAbuseGuardTest < ActiveSupport::TestCase
     client = Client.create!(
       email: "isolated@example.com",
       password: "password123",
+      company: "株式会社孤立テスト",
+      tel: "09012345004",
       registration_ip: "198.51.100.20",
       confirmed_at: Time.current
     )

@@ -1,14 +1,20 @@
 <% if resource.errors.any? %>
   <div id="error_explanation" data-turbo-cache="false">
-    <h2>
-      <%= I18n.t("errors.messages.not_saved",
-                 count: resource.errors.count,
-                 resource: resource.class.model_name.human.downcase)
-       %>
-    </h2>
+    <h2>入力内容に不備があります。内容を確認して再入力してください。</h2>
     <ul>
-      <% resource.errors.full_messages.each do |message| %>
-        <li><%= message %></li>
+      <% attribute_labels = {
+        company: "会社名",
+        tel: "電話番号",
+        email: "メールアドレス",
+        password: "パスワード",
+        password_confirmation: "パスワード確認",
+        name: "氏名",
+        address: "住所",
+        url: "URL"
+      } %>
+      <% resource.errors.each do |error| %>
+        <% label = attribute_labels[error.attribute.to_sym] %>
+        <li><%= label ? "#{label}#{error.message}" : error.full_message %></li>
       <% end %>
     </ul>
   </div>

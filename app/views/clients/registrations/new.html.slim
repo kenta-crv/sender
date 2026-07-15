@@ -27,6 +27,9 @@
           .field
             = f.label :company
             = f.text_field :company, class: "input-field"
+            - if resource.errors[:company].present?
+              .field-error style="margin-top: 4px; color: #f87171; font-size: 0.85rem;"
+                | 会社名#{resource.errors[:company].first}
 
           .field
             = f.label :name
@@ -35,6 +38,9 @@
           .field
             = f.label :tel
             = f.text_field :tel, class: "input-field"
+            - if resource.errors[:tel].present?
+              .field-error style="margin-top: 4px; color: #f87171; font-size: 0.85rem;"
+                | 電話番号#{resource.errors[:tel].first}
 
           .field
             = f.label :address

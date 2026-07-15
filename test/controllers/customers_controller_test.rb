@@ -30,8 +30,22 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     refute_includes @response.body, other.company
   end
 
+  test "draft keeps selected industry visible even when all records are already processed" do
+    Customer.create!(
+      company: "株式会社登録支援機関テスト",
+      status: "draft",
+      serp_status: "serp_done",
+      business: "登録支援機関"
+    )
+
+    get draft_customers_path, params: { industry_name: "登録支援機関" }
+
+    assert_response :success
+    assert_includes @response.body, "登録支援機関（1件）"
+  end
+
   test "serp_search does not fall back to synchronous pipeline when sidekiq is unavailable" do
-    Customer.create!(company: "SERP Sidekiq Guard Test", status: "draft")
+    Customer.create!(company: "株式会社SERP Sidekiq Guard Test", status: "draft")
 
     unavailable = SerpSidekiqManager::Result.new(
       ready: false,
@@ -52,7 +66,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "serp_search stops before enqueue when bright data api key is missing" do
-    customer = Customer.create!(company: "SERP Missing API Key Test", status: "draft")
+    customer = Customer.create!(company: "株式会社SERP Missing API Key Test", status: "draft")
 
     with_env("BRIGHT_DATA_API_KEY", nil) do
       with_singleton_method(SerpSidekiqManager, :ensure_running, ->(*_args, **_kwargs) { flunk "Sidekiq should not start without BrightData API key" }) do
@@ -68,8 +82,8 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "serp_search starts progress tracking and enqueues selected customer ids" do
-    older = Customer.create!(company: "SERP Progress Older", status: "draft")
-    newer = Customer.create!(company: "SERP Progress Newer", status: "draft")
+    older = Customer.create!(company: "株式会社SERP Progress Older", status: "draft")
+    newer = Customer.create!(company: "株式会社SERP Progress Newer", status: "draft")
     older.update_columns(updated_at: 2.hours.ago)
     newer.update_columns(updated_at: 1.hour.ago)
 
@@ -105,8 +119,8 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "serp_search limits queued ids by company query" do
-    target = Customer.create!(company: "SERP Company Query Target", status: "draft")
-    Customer.create!(company: "SERP Company Query Other", status: "draft")
+    target = Customer.create!(company: "株式会社SERP Company Query Target", status: "draft")
+    Customer.create!(company: "株式会社SERP Company Query Other", status: "draft")
 
     ready = SerpSidekiqManager::Result.new(
       ready: true,
@@ -133,7 +147,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
   test "serp_search can requeue done customer when company query is explicit" do
     target = Customer.create!(
-      company: "SERP Explicit Done Target",
+      company: "株式会社SERP Explicit Done Target",
       status: "draft",
       serp_status: "serp_done",
       tel: "090-0000-0000",
@@ -141,7 +155,7 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       url: "https://example.com",
       contact_url: "https://example.com/contact"
     )
-    Customer.create!(company: "SERP Explicit Done Other", status: "draft", serp_status: "serp_done")
+    Customer.create!(company: "株式会社SERP Explicit Done Other", status: "draft", serp_status: "serp_done")
 
     ready = SerpSidekiqManager::Result.new(
       ready: true,

@@ -4,24 +4,15 @@ class Dashboard::DashboardsController < ApplicationController
   before_action :authenticate_any!
   before_action :require_admin!, only: [:management, :funnel_tracking]
   before_action :check_subscription_active!, unless: :admin_signed_in?
-  before_action :set_base_scope, except: [:setting, :management]
+  before_action :set_base_scope, except: [:index, :setting, :management, :funnel_tracking, :click_tracking, :howto]
 
   def index
+    insights_scope = customer_insights_scope
+
     @total_customers_count = Customer.unscoped.where.not(contact_url: [nil, '', 'not_detected']).count
+    @not_detected_count = insights_scope.where(contact_url: 'not_detected').count
+    @no_url_customers_count = insights_scope.where(contact_url: [nil, '']).where(url: [nil, '']).count
 
-    @not_detected_count = @base_customers.unscope(:joins).where(contact_url: 'not_detected').count
-    @no_url_customers_count = @base_customers.unscope(:joins).where(contact_url: [nil, '']).where(url: [nil, '']).count
-
-    @q = @base_customers.ransack(params[:q])
-    filtered = @q.result(distinct: true)
-
-    @customers = filtered.where.not(contact_url: [nil, '', 'not_detected']).page(params[:customers_page]).per(20)
-    @detectable_customers = filtered.where(contact_url: [nil, '']).where.not(url: [nil, '']).with_legal_entity.deliverable_for(delivery_filter_client_id).page(params[:detectable_page]).per(20)
-
-    @business_options = generate_options(:business)
-    @genre_options = generate_options(:genre)
-
-    # Notification data
     notification_scope = if admin_signed_in?
       Notification.all
     elsif client_signed_in?
@@ -30,80 +21,41 @@ class Dashboard::DashboardsController < ApplicationController
       Notification.none
     end
 
-    @unread_notifications = notification_scope.unread.recent.limit(5)
     @unread_notification_count = notification_scope.unread.count
 
-    if admin_signed_in?
-      if params[:client_id].present?
-        client = Client.find(params[:client_id])
-        @submissions = client.submissions.order(created_at: :desc)
-        @batches = client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(10)
-      else
-        @submissions = Submission.all.order(created_at: :desc)
-        @batches = FormSubmissionBatch.all.order(created_at: :desc).page(params[:page]).per(10)
-      end
-    elsif client_signed_in?
-      @submissions = current_client.submissions.order(created_at: :desc)
-      @batches = current_client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(10)
-    else
-      @submissions = Submission.none
-      @batches = FormSubmissionBatch.none
-    end
+    batch_scope = form_batch_scope
+    @batches = batch_scope
+              .includes(:submission, :client, :admin)
+              .order(created_at: :desc)
+              .limit(3)
 
     current_month_range = Time.current.beginning_of_month..Time.current.end_of_month
-
-    scope =
-      if admin_signed_in? && params[:client_id].present?
-        FormSubmissionBatch.where(client_id: params[:client_id])
-      elsif admin_signed_in?
-        FormSubmissionBatch.all
-      elsif client_signed_in?
-        current_client.form_submission_batches
-      else
-        FormSubmissionBatch.none
-      end
-
-    @monthly_batches = scope.where(created_at: current_month_range)
-
-    @total_sent = @monthly_batches.sum(:total_count)
-    @total_success = @monthly_batches.sum(:success_count)
-    @total_failure = @monthly_batches.sum(:failure_count)
+    monthly_scope = batch_scope.where(created_at: current_month_range)
+    @total_sent, @total_success, @total_failure = monthly_scope.pick(
+      Arel.sql('COALESCE(SUM(total_count), 0)'),
+      Arel.sql('COALESCE(SUM(success_count), 0)'),
+      Arel.sql('COALESCE(SUM(failure_count), 0)')
+    )
+    @total_sent = @total_sent.to_i
+    @total_success = @total_success.to_i
+    @total_failure = @total_failure.to_i
 
     @success_rate =
       @total_sent.positive? ? ((@total_success.to_f / @total_sent) * 100).round(1) : 0
 
+    @submission_stats = build_submission_stats(batch_scope)
+
     if admin_signed_in? && params[:client_id].present?
-      client = Client.find(params[:client_id])
-      monthly_log = client.monthly_usage_log
-      @serp_api_limit = monthly_log.serp_api_limit
-      @serp_api_used = monthly_log.serp_api_used
-      @form_detection_limit = monthly_log.form_detection_limit
-      @form_detection_used = monthly_log.form_detection_used
+      assign_monthly_usage_stats!(Client.find(params[:client_id]))
     elsif client_signed_in?
-      monthly_log = current_client.monthly_usage_log
-      @serp_api_limit = monthly_log.serp_api_limit
-      @serp_api_used = monthly_log.serp_api_used
-      @form_detection_limit = monthly_log.form_detection_limit
-      @form_detection_used = monthly_log.form_detection_used
+      assign_monthly_usage_stats!(current_client)
+    elsif admin_signed_in?
+      assign_monthly_usage_stats_for_admin!
     else
-      @serp_api_limit = 0
-      @serp_api_used = 0
-      @form_detection_limit = 0
-      @form_detection_used = 0
+      assign_monthly_usage_stats_empty!
     end
 
-    click_scope =
-      if admin_signed_in? && params[:client_id].present?
-        ClickTrackingLink.where(client_id: params[:client_id])
-      elsif admin_signed_in?
-        ClickTrackingLink.all
-      elsif client_signed_in?
-        ClickTrackingLink.where(client_id: current_client.id)
-      else
-        ClickTrackingLink.none
-      end
-
-    click_scope = click_scope.where(created_at: current_month_range)
+    click_scope = click_tracking_scope.where(created_at: current_month_range)
 
     @total_clicks = click_scope.sum(:clicked_count).to_i
 
@@ -277,6 +229,11 @@ end
   def howto; end
 
   def funnel_tracking
+    unless ActiveRecord::Base.connection.data_source_exists?('funnel_events')
+      redirect_to dashboard_index_path, alert: 'ファネル分析を利用するには db:migrate の実行が必要です。'
+      return
+    end
+
     since = params[:since].present? ? params[:since].to_i.days.ago : 30.days.ago
 
     raw = FunnelEvent.where(created_at: since..)
@@ -294,9 +251,10 @@ end
       }
     end
 
-    detail_scope = FunnelEvent.where(created_at: since..)
-                              .includes(click_tracking_link: [:customer, :submission])
-                              .recent
+    detail_scope = FunnelEvent.where(created_at: since..).recent
+    if FunnelEvent.column_names.include?('click_tracking_link_id')
+      detail_scope = detail_scope.includes(click_tracking_link: [:customer, :submission])
+    end
 
     @filter_page  = params[:filter_page].presence
     @filter_event = params[:filter_event].presence
@@ -354,6 +312,143 @@ end
   end
 
   private
+
+  def assign_monthly_usage_stats!(client)
+    monthly_log = client.monthly_usage_log
+    limits = client.usage_limits
+    @serp_api_used = monthly_log.serp_api_used
+    @form_detection_used = monthly_log.form_detection_used
+    @serp_api_limit = limits[:serp_api_limit]
+    @form_detection_limit = limits[:form_detection_limit]
+    @usage_unlimited = false
+    @import_count = monthly_import_count_for(client.id)
+  end
+
+  def assign_monthly_usage_stats_for_admin!
+    month_key = Time.current.strftime('%Y-%m')
+    logs = MonthlyUsageLog.where(month: month_key)
+    @serp_api_used = logs.sum(:serp_api_used)
+    @form_detection_used = logs.sum(:form_detection_used)
+    @serp_api_limit = nil
+    @form_detection_limit = nil
+    @usage_unlimited = true
+    @import_count = monthly_import_count_for(nil)
+  end
+
+  def assign_monthly_usage_stats_empty!
+    @serp_api_limit = 0
+    @serp_api_used = 0
+    @form_detection_limit = 0
+    @form_detection_used = 0
+    @usage_unlimited = false
+    @import_count = 0
+  end
+
+  def monthly_import_count_for(client_id)
+    scope = Notification.where(
+      type: 'CustomerImport',
+      created_at: Time.current.beginning_of_month..Time.current.end_of_month
+    )
+    scope = scope.where(client_id: client_id) if client_id.present?
+    scope.sum(:success_count)
+  end
+
+  def customer_insights_scope
+    if admin_signed_in? && params[:client_id].present?
+      Customer.where(client_id: params[:client_id])
+    elsif admin_signed_in?
+      Customer.all
+    elsif client_signed_in?
+      Customer.where(client_id: current_client.id)
+    else
+      Customer.none
+    end
+  end
+
+  def form_batch_scope
+    if admin_signed_in? && params[:client_id].present?
+      FormSubmissionBatch.where(client_id: params[:client_id])
+    elsif admin_signed_in?
+      FormSubmissionBatch.all
+    elsif client_signed_in?
+      current_client.form_submission_batches
+    else
+      FormSubmissionBatch.none
+    end
+  end
+
+  def click_tracking_scope
+    if admin_signed_in? && params[:client_id].present?
+      ClickTrackingLink.where(client_id: params[:client_id])
+    elsif admin_signed_in?
+      ClickTrackingLink.all
+    elsif client_signed_in?
+      ClickTrackingLink.where(client_id: current_client.id)
+    else
+      ClickTrackingLink.none
+    end
+  end
+
+  def dashboard_submissions_scope
+    if admin_signed_in? && params[:client_id].present?
+      Submission.where(client_id: params[:client_id]).order(created_at: :desc)
+    elsif admin_signed_in?
+      Submission.order(created_at: :desc)
+    elsif client_signed_in?
+      current_client.submissions.order(created_at: :desc)
+    else
+      Submission.none
+    end
+  end
+
+  def build_submission_stats(batch_scope)
+    submissions = dashboard_submissions_scope.to_a
+    return [] if submissions.empty?
+
+    stats_rows = batch_scope
+      .where.not(submission_id: nil)
+      .group(:submission_id)
+      .pluck(
+        :submission_id,
+        Arel.sql('COALESCE(SUM(total_count), 0)'),
+        Arel.sql('COALESCE(SUM(success_count), 0)'),
+        Arel.sql('COALESCE(SUM(failure_count), 0)')
+      )
+
+    stats_by_submission = stats_rows.each_with_object({}) do |(submission_id, total, success, failure), memo|
+      memo[submission_id] = {
+        total_sent: total.to_i,
+        success_count: success.to_i,
+        failure_count: failure.to_i
+      }
+    end
+
+    sender_batch_ids = batch_scope
+      .where.not(submission_id: nil)
+      .group(:submission_id)
+      .minimum(:id)
+
+    sender_batches =
+      if sender_batch_ids.empty?
+        {}
+      else
+        FormSubmissionBatch
+          .where(id: sender_batch_ids.values)
+          .includes(:client, :admin)
+          .index_by(&:submission_id)
+      end
+
+    submissions.map do |submission|
+      stats = stats_by_submission[submission.id] || { total_sent: 0, success_count: 0, failure_count: 0 }
+      sender_batch = sender_batches[submission.id]
+
+      stats.merge(
+        submission: submission,
+        sender_client: sender_batch&.client,
+        sender_admin: sender_batch&.admin
+      )
+    end
+  end
 
   def authenticate_any!
     redirect_to root_path unless admin_signed_in? || client_signed_in?

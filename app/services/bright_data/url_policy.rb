@@ -14,6 +14,38 @@ module BrightData
       en-gage.net
       rikunabi.com
       mynavi.jp
+      xn--pckua2a7gp15o89zb.com
+      www.mapion.co.jp
+      www.minnanokaigo.co
+      www.jesra.or.jp
+      www.hugedomains.com
+      jinzai.hellowork.mhlw.go.jp
+      www.gurutto-asia.com/
+      www.gai-rou.com
+      support.mid-tenshoku.com
+      www.mapion.co.jp
+      gjapan.biz
+      dictionary.cambridge.org
+      initial.inc
+      www.takagi-plc.co.jp
+      kyoto-kosodatepia.jp
+      kiwa-group.co.jp
+      kawasaki-connect.jp
+      imaizouen.com
+      www.minnanokaigo.com
+      www.jesra.or.jp
+      tsukulink.net
+      atcompany.jp
+      www.hugedomains.com
+      www.grop.co.jp
+      job-gear.net
+      www.readytofashion.jp
+      www.elf-inc.co.jp
+      baseconnect.in
+      prtimes.jp
+      readycrew.jp
+      hospitalsfile.doctorsfile.jp
+      twitter.com
       en-japan.com
       workport.co.jp
       baitoru.com

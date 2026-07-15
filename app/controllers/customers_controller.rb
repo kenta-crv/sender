@@ -274,7 +274,7 @@ def draft
   @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
 
   selected_industry = params[:industry_name].presence
-  industry_scope = @industry_base_scope.where(serp_status: [nil, '']).with_legal_entity
+  industry_scope = @industry_base_scope.with_legal_entity
                                        .where.not(business: [nil, ''])
                                        .group(:business)
 

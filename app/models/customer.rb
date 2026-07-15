@@ -225,9 +225,12 @@ class Customer < ApplicationRecord
   def self.cleanup_duplicates!(attribute:, scope:)
     raise ArgumentError, "不正な属性指定です。" unless DUPLICATE_CLEANUP_ATTRIBUTES.include?(attribute)
 
-    duplicate_values = scope
+    duplicate_scope = scope
       .where.not(attribute => nil)
       .where.not("TRIM(#{attribute}) = ''")
+    duplicate_scope = duplicate_scope.where.not(attribute => ['not_detected', 'メーラー起動リンクのため検出不可']) if attribute == 'contact_url'
+
+    duplicate_values = duplicate_scope
       .group(attribute)
       .having("COUNT(id) > 1")
       .pluck(attribute)

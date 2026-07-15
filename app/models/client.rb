@@ -1,6 +1,9 @@
 class Client < ApplicationRecord
   class DuplicateCardError < StandardError; end
 
+  CORPORATE_TITLE_PATTERN = /(株式会社|有限会社|合同会社|合資会社|合名会社)/.freeze
+  TEL_DIGITS_ONLY_PATTERN = /\A[0-9]+\z/.freeze
+
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable
 
@@ -14,6 +17,11 @@ class Client < ApplicationRecord
   has_many :form_submission_batches
   has_many :submissions
   has_many :delivery_opt_outs, dependent: :destroy
+
+  validates :company, presence: { message: "を入力してください" }, on: :create, if: :registration_ip_present?
+  validate :company_must_include_corporate_title, on: :create, if: :registration_ip_present?
+  validates :tel, presence: { message: "を入力してください" }, on: :create, if: :registration_ip_present?
+  validate :tel_must_be_digits_only, on: :create, if: :registration_ip_present?
 
   def full_name
     [first_name, last_name].compact.join(" ")
@@ -127,6 +135,24 @@ class Client < ApplicationRecord
     self.api_key = SecureRandom.hex(32) if api_key.blank?
   end
 
+  def registration_ip_present?
+    registration_ip.present?
+  end
+
+  def company_must_include_corporate_title
+    return if company.blank?
+    return if company.match?(CORPORATE_TITLE_PATTERN)
+
+    errors.add(:company, "は法人敬称（株式会社、有限会社、合同会社など）を含めてください")
+  end
+
+  def tel_must_be_digits_only
+    return if tel.blank?
+    return if tel.match?(TEL_DIGITS_ONLY_PATTERN)
+
+    errors.add(:tel, "は数字のみで入力してください")
+  end
+
   def initialize_trial_subscription
     subscriptions.create!(
       plan_type: :trial,
@@ -222,23 +248,39 @@ class Client < ApplicationRecord
     end
   end
 
+  def usage_limits
+    plan_usage_limits || { serp_api_limit: 0, form_detection_limit: 0 }
+  end
+
   def monthly_usage_log
     log = MonthlyUsageLog.find_or_create_by!(
       client_id: id,
       month: current_month_key
     )
 
-    # Initialize limits if they are 0 (newly created or not set)
-    if log.serp_api_limit == 0 && log.form_detection_limit == 0
-      subscription = current_subscription
-      if subscription
-        log.update(
-          serp_api_limit: subscription.serp_api_limit,
-          form_detection_limit: subscription.form_detection_limit
-        )
-      end
+    limits = plan_usage_limits
+    if limits && (log.serp_api_limit != limits[:serp_api_limit] || log.form_detection_limit != limits[:form_detection_limit])
+      log.update(limits)
     end
 
     log
+  end
+
+  def plan_usage_limits
+    subscription = current_subscription
+    if subscription
+      return {
+        serp_api_limit: subscription.serp_api_limit,
+        form_detection_limit: subscription.form_detection_limit
+      }
+    end
+
+    plan = subscription_plan.presence&.to_sym
+    return nil unless plan && Subscription::PLAN_SERP_API_LIMITS.key?(plan)
+
+    {
+      serp_api_limit: Subscription::PLAN_SERP_API_LIMITS[plan],
+      form_detection_limit: Subscription::PLAN_FORM_DETECTION_LIMITS[plan]
+    }
   end
 end

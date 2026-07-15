@@ -18,8 +18,10 @@
             - %w[contact_url].each do |attr|
               - base_scope = Customer.duplicate_cleanup_scope(client_signed_in: client_signed_in?, admin_signed_in: admin_signed_in?, client_id: current_client&.id)
               
-              - # nilや空文字を除外した上で、指定スコープ内での重複をカウント
-              - duplicates = base_scope.where.not(attr => [nil, '']).group(attr).having("count(#{attr}) > 1").count
+              - # nilや空文字を除外し、contact_url は not_detected も除外した上で重複をカウント
+              - duplicates = base_scope.where.not(attr => [nil, ''])
+              - duplicates = duplicates.where.not(attr => ['not_detected', 'メーラー起動リンクのため検出不可']) if attr == 'contact_url'
+              - duplicates = duplicates.group(attr).having("count(#{attr}) > 1").count
               - next if duplicates.keys.compact.empty?
               - total_excess = duplicates.values.sum - duplicates.size
               tr

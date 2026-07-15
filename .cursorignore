@@ -1,0 +1,26 @@
+# ビルド生成物・依存パッケージ
+node_modules/
+.next/
+dist/
+build/
+tmp/
+log/
+.git/
+
+# 巨大なアセットやデータ
+*.mp4
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.json
+*.csv
+*.db
+*.sqlite3
+
+# キャッシュやログ
+.sass-cache/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
