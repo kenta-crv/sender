@@ -29,12 +29,11 @@
                 td = "#{duplicates.size} 種類"
                 td.text-danger style="color: #ef4444 !important; font-weight: bold;" = "#{total_excess} 件"
                 td
-                  / 定義済みの .sc-detect__badge--danger をボタンとして適用し、文字色を赤に固定
-                  = link_to cleanup_duplicates_customers_path(attribute: attr),
-                            method: :post,
-                            class: 'sc-detect__badge sc-detect__badge--danger',
-                            style: 'color: #ef4444 !important; text-decoration: none; padding: 6px 12px; display: inline-flex; align-items: center;',
-                            data: { confirm: "【警告】#{attr == 'contact_url' ? '問い合わせURL' : t("activerecord.attributes.customer.#{attr}")}が重複しているデータのうち、最も古い1件を残して他をすべて削除します。よろしいですか？" } do
+                  = button_to cleanup_duplicates_customers_path(attribute: attr),
+                              method: :post,
+                              class: 'sc-detect__badge sc-detect__badge--danger',
+                              style: 'color: #ef4444 !important; text-decoration: none; padding: 6px 12px; display: inline-flex; align-items: center; border: none; background: transparent; cursor: pointer;',
+                              data: { confirm: "【警告】#{attr == 'contact_url' ? '問い合わせURL' : t("activerecord.attributes.customer.#{attr}")}が重複しているデータのうち、最も古い1件を残して他をすべて削除します。よろしいですか？" } do
                     i.fas.fa-broom.me-1
                     | 重複削除 (#{attr})
 

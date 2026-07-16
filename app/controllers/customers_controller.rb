@@ -591,11 +591,12 @@ end
     redirect_to customers_path
   end
 
-def cleanup_duplicates
+  def cleanup_duplicates
     attribute = params[:attribute]
+    redirect_path = dashboard_duplication_path
 
     unless Customer::DUPLICATE_CLEANUP_ATTRIBUTES.include?(attribute)
-      return redirect_to(dashboard_index_path, alert: "不正な属性指定です。")
+      return redirect_to(redirect_path, alert: "不正な属性指定です。")
     end
 
     base_scope = Customer.duplicate_cleanup_scope(
@@ -606,10 +607,13 @@ def cleanup_duplicates
 
     total_deleted = Customer.cleanup_duplicates!(attribute: attribute, scope: base_scope)
 
-    redirect_to dashboard_index_path,
+    redirect_to redirect_path,
                 notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
   rescue ArgumentError => e
-    redirect_to dashboard_index_path, alert: e.message
+    redirect_to redirect_path, alert: e.message
+  rescue StandardError => e
+    Rails.logger.error("[cleanup_duplicates] #{e.class}: #{e.message}\n#{e.backtrace&.first(10)&.join("\n")}")
+    redirect_to redirect_path, alert: "重複削除に失敗しました: #{e.message}"
   end
 
   def extract_company_info

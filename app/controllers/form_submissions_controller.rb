@@ -284,9 +284,9 @@ class FormSubmissionsController < ApplicationController
 
   def cleanup_duplicates
     attribute = params[:attribute]
+    redirect_path = dashboard_duplication_path
 
     unless Customer::DUPLICATE_CLEANUP_ATTRIBUTES.include?(attribute)
-      redirect_path = client_signed_in? && !admin_signed_in? ? dashboard_index_path : form_submissions_path
       return redirect_to redirect_path, alert: "不正な属性指定です。"
     end
 
@@ -297,11 +297,12 @@ class FormSubmissionsController < ApplicationController
     )
     total_deleted = Customer.cleanup_duplicates!(attribute: attribute, scope: base_scope)
 
-    redirect_path = client_signed_in? && !admin_signed_in? ? dashboard_index_path : form_submissions_path
     redirect_to redirect_path, notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
   rescue ArgumentError => e
-    redirect_path = client_signed_in? && !admin_signed_in? ? dashboard_index_path : form_submissions_path
     redirect_to redirect_path, alert: e.message
+  rescue StandardError => e
+    Rails.logger.error("[cleanup_duplicates] #{e.class}: #{e.message}\n#{e.backtrace&.first(10)&.join("\n")}")
+    redirect_to redirect_path, alert: "重複削除に失敗しました: #{e.message}"
   end
 
   # GET /form_submissions/:id

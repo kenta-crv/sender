@@ -235,22 +235,33 @@ class Customer < ApplicationRecord
       .having("COUNT(id) > 1")
       .pluck(attribute)
 
-    total_deleted = 0
-    transaction do
-      duplicate_values.each do |value|
-        ids = scope.where(attribute => value).order(id: :asc).pluck(:id)
-        ids.shift
-        next if ids.empty?
+    ids_to_delete = []
+    duplicate_values.each do |value|
+      ids = scope.where(attribute => value).order(id: :asc).pluck(:id)
+      ids_to_delete.concat(ids.drop(1))
+    end
+    ids_to_delete.uniq!
 
-        delete_dependents_without_models!(ids)
-        total_deleted += where(id: ids).destroy_all.size
+    return 0 if ids_to_delete.empty?
+
+    # destroy_all は関連読み込みでタイムアウトするため、バッチで SQL 削除する
+    ids_to_delete.each_slice(500) do |batch|
+      transaction do
+        delete_customers_and_dependents!(batch)
       end
     end
-    total_deleted
+    ids_to_delete.size
   end
 
-  def self.delete_dependents_without_models!(customer_ids)
+  def self.delete_customers_and_dependents!(customer_ids)
     return if customer_ids.blank?
+
+    link_ids = ClickTrackingLink.where(customer_id: customer_ids).pluck(:id)
+    ClickLog.where(click_tracking_link_id: link_ids).delete_all if link_ids.any?
+    ClickTrackingLink.where(customer_id: customer_ids).delete_all
+    Call.where(customer_id: customer_ids).delete_all
+    DeliveryOptOut.where(customer_id: customer_ids).delete_all
+    SerpEnrichmentRunTarget.where(customer_id: customer_ids).delete_all
 
     # モデル未定義テーブル。FAX は現在未使用。
     connection.delete(
@@ -259,8 +270,9 @@ class Customer < ApplicationRecord
     connection.delete(
       sanitize_sql_array(["DELETE FROM fax_deliveries WHERE customer_id IN (?)", customer_ids])
     )
+    where(id: customer_ids).delete_all
   end
-  private_class_method :delete_dependents_without_models!
+  private_class_method :delete_customers_and_dependents!
 
   def self.calculate_dashboard_stats(base_scope)
     blank_tel = blank_sql("tel")

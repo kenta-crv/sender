@@ -20,4 +20,20 @@ class CustomerTest < ActiveSupport::TestCase
     assert_includes ids, corp.id
     refute_includes ids, sole.id
   end
+
+  test "cleanup_duplicates! keeps lowest id and deletes excess contact_url rows" do
+    url = "https://example.test/contact"
+    keep = Customer.create!(company: "株式会社残す", contact_url: url)
+    drop1 = Customer.create!(company: "株式会社消す1", contact_url: url)
+    drop2 = Customer.create!(company: "株式会社消す2", contact_url: url)
+    other = Customer.create!(company: "株式会社別URL", contact_url: "https://other.test/contact")
+
+    deleted = Customer.cleanup_duplicates!(attribute: "contact_url", scope: Customer.all)
+
+    assert_equal 2, deleted
+    assert Customer.exists?(keep.id)
+    refute Customer.exists?(drop1.id)
+    refute Customer.exists?(drop2.id)
+    assert Customer.exists?(other.id)
+  end
 end
