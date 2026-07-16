@@ -79,6 +79,14 @@
                 params.dig(:last_call, :created_at_to),\
                 class: 'sc-detect__input'
 
+            .col-md-3.d-flex.align-items-end
+              .sc-detect__check-group.mb-2
+                = check_box_tag 'last_call[calls_id_null]',\
+                  'true',\
+                  params.dig(:last_call, :calls_id_null).to_s == 'true',\
+                  id: 'last_call_unsent'
+                label for="last_call_unsent" 未送信
+
         .mt-4
           / admin が client_id 付きでこのページを見ている場合は検索後も保持する
           - if params[:client_id].present?

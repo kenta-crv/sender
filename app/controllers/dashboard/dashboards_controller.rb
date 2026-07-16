@@ -114,11 +114,14 @@ class Dashboard::DashboardsController < ApplicationController
       statuses = Array(lc[:status]).reject(&:blank?)
       from_date = lc[:created_at_from].presence
       to_date = lc[:created_at_to].presence
+      unsent = lc[:calls_id_null].to_s == 'true'
+      has_sent_filters = statuses.any? || from_date.present? || to_date.present?
 
-      if statuses.any? || from_date.present? || to_date.present?
+      if unsent || has_sent_filters
         filtered_ids = filtered.includes(:last_form_call).select do |customer|
           call = customer.last_form_call
-          next false if call.blank?
+          next unsent if call.blank?
+          next false unless has_sent_filters
 
           status_ok = statuses.blank? || statuses.include?(call.status)
           from_ok = from_date.blank? || call.created_at >= Time.zone.parse(from_date)

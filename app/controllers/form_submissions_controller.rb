@@ -24,18 +24,19 @@ class FormSubmissionsController < ApplicationController
     if params[:last_call].present?
       lc = params[:last_call]
       statuses = Array(lc[:status]).reject(&:blank?)
-
-      has_filter =
+      unsent = lc[:calls_id_null].to_s == 'true'
+      has_sent_filters =
         statuses.any? ||
         lc[:created_at_from].present? ||
         lc[:created_at_to].present?
 
-      if has_filter
+      if unsent || has_sent_filters
         customer_ids = Customer
           .includes(:last_form_call)
           .select do |customer|
             call = customer.last_form_call
-            next false if call.blank?
+            next unsent if call.blank?
+            next false unless has_sent_filters
 
             status_ok =
               statuses.blank? ||
@@ -169,34 +170,34 @@ class FormSubmissionsController < ApplicationController
       eligible_scope = eligible_scope.ransack(params[:q]).result
     end
 
-    # 最終送信条件を適用
+    # 最終送信条件を適用（検索画面と同じ last_form_call 基準）
     if params[:last_call].present?
       lc = params[:last_call]
       statuses = Array(lc[:status]).reject(&:blank?)
-      has_filter = lc[:calls_id_null] == "true" ||
-                   statuses.any? ||
-                   lc[:created_at_from].present? ||
-                   lc[:created_at_to].present?
+      unsent = lc[:calls_id_null].to_s == 'true'
+      has_sent_filters =
+        statuses.any? ||
+        lc[:created_at_from].present? ||
+        lc[:created_at_to].present?
 
-      if has_filter
-        eligible_scope = eligible_scope.left_joins(:calls).distinct
-                           .where('calls.call_type IS NULL OR calls.call_type = ?', 'form')
+      if unsent || has_sent_filters
+        matched_ids = eligible_scope.includes(:last_form_call).select do |customer|
+          call = customer.last_form_call
+          next unsent if call.blank?
+          next false unless has_sent_filters
 
-        if lc[:calls_id_null] == "true"
-          eligible_scope = eligible_scope.where(calls: { id: nil })
-        end
+          status_ok = statuses.blank? || statuses.include?(call.status)
+          from_ok =
+            lc[:created_at_from].blank? ||
+            call.created_at >= Time.zone.parse(lc[:created_at_from])
+          to_ok =
+            lc[:created_at_to].blank? ||
+            call.created_at <= Time.zone.parse(lc[:created_at_to]).end_of_day
 
-        if statuses.any?
-          eligible_scope = eligible_scope.where(calls: { status: statuses })
-        end
+          status_ok && from_ok && to_ok
+        end.map(&:id)
 
-        if lc[:created_at_from].present?
-          eligible_scope = eligible_scope.where('calls.created_at >= ?', lc[:created_at_from])
-        end
-
-        if lc[:created_at_to].present?
-          eligible_scope = eligible_scope.where('calls.created_at <= ?', Time.zone.parse(lc[:created_at_to]).end_of_day)
-        end
+        eligible_scope = eligible_scope.where(id: matched_ids)
       end
     end
 
