@@ -31,19 +31,19 @@ pass_count += 1 if assert_test(
 
 pass_count += 1 if assert_test(
   "送信後の待機が動的wait",
-  source.include?('wait_for(min_seconds: 2, max_seconds: 10)') &&
+  source.include?('wait_for(min_seconds: 2, max_seconds: 12)') &&
     source.include?('送信後の待機（URL変更 or 成功パターン検出で早期完了）')
 )
 
 pass_count += 1 if assert_test(
   "確認画面後の待機が動的wait",
-  source.include?('wait_for(min_seconds: 2, max_seconds: 8)') &&
+  source.include?('wait_for(min_seconds: 2, max_seconds: 10)') &&
     source.include?('確認画面後の待機（URL変更 or 成功パターン検出で早期完了）')
 )
 
 pass_count += 1 if assert_test(
-  "再判定前の追加待機が1.5秒",
-  source.include?("sleep 1.5") && source.include?('成功未検出')
+  "再判定前の追加待機が3秒",
+  source.include?("sleep 3") && source.include?('成功未検出')
 )
 
 # === 2. 旧sleep値が残っていないことを確認 ===

@@ -82,7 +82,11 @@ class FormSender
                         送信されました 承りました 確認いたします お送りしました
                         送信を受け付け お問い合わせを受け付け お問合せを受け付け
                         届きました 担当者より ご連絡いたします いただきました
-                        ご連絡差し上げ 折り返し 拝受 確認の上].freeze
+                        ご連絡差し上げ 折り返し 拝受 確認の上
+                        送信を完了 受付完了 お問い合わせ完了 お問合せ完了
+                        正常に送信 送信が完了 受け付け致しました 送信致しました
+                        ご連絡させて 確認次第 ありがとうございました received
+                        submitted successfully message has been sent].freeze
 
   # 営業禁止検出用キーワード（これらを含むページは送信をスキップ）
   NO_SALES_PATTERNS = %w[
@@ -285,10 +289,11 @@ class FormSender
 
             # 送信後の待機（URL変更 or 成功パターン検出で早期完了）
             original_url = driver.current_url rescue ''
-            wait_for(min_seconds: 2, max_seconds: 10) do
+            wait_for(min_seconds: 2, max_seconds: 12) do
               url_changed = (driver.current_url != original_url rescue false)
               ajax_success = check_ajax_success? rescue false
-              url_changed || ajax_success
+              success_msg = success_message_present? rescue false
+              url_changed || ajax_success || success_msg
             end
 
             # 確認画面の場合、もう一度送信ボタンをクリック
@@ -299,10 +304,11 @@ class FormSender
                 handle_alert
                 # 確認画面後の待機（URL変更 or 成功パターン検出で早期完了）
                 confirm_url = driver.current_url rescue ''
-                wait_for(min_seconds: 2, max_seconds: 8) do
+                wait_for(min_seconds: 2, max_seconds: 10) do
                   url_changed = (driver.current_url != confirm_url rescue false)
                   ajax_success = check_ajax_success? rescue false
-                  url_changed || ajax_success
+                  success_msg = success_message_present? rescue false
+                  url_changed || ajax_success || success_msg
                 end
               end
             end
@@ -313,7 +319,7 @@ class FormSender
             else
               # 初回判定で失敗: 追加待機して再判定（AJAX応答やページ遷移の遅延対策）
               log "成功未検出、追加待機後に再判定..."
-              sleep 1.5
+              sleep 3
               if check_success?
                 @result = { status: '自動送信成功', message: '送信が完了しました' }
               elsif page_has_captcha?
@@ -659,13 +665,26 @@ class FormSender
   end
 
   # 同意チェックボックス検出用キーワード
-  CONSENT_PATTERNS = %w[同意 agree 規約 プライバシー privacy policy 承諾 確認しました 了承 confirm 個人情報].freeze
+  CONSENT_PATTERNS = %w[
+    同意 agree 規約 プライバシー privacy policy 承諾 確認しました 了承 confirm 個人情報
+    利用規約 同意する 同意します 上記に同意 acceptance 個人情報の取扱 取扱いに同意
+    プライバシーポリシー に同意 内容に同意 同意のうえ 同意の上
+  ].freeze
 
   # ラジオボタン選択：優先するキーワード
-  RADIO_PREFER_PATTERNS = %w[その他 他 other お問い合わせ ご相談 相談 サービス 一般 general].freeze
+  RADIO_PREFER_PATTERNS = %w[
+    その他 他 other お問い合わせ お問合せ ご相談 相談 サービス 一般 general
+    お客様 企業 法人 会社 業務 資料 見積 お見積 ご案内 お申し込み 申し込み
+  ].freeze
 
   # ラジオボタン選択：避けるキーワード
   RADIO_AVOID_PATTERNS = %w[採用 求人 recruit 個人情報 プライバシー privacy 苦情 クレーム complaint 返品 返金].freeze
+
+  # 必須でなくても選択すべきラジオグループのラベル
+  RADIO_IMPORTANT_LABEL_PATTERNS = %w[
+    お問い合わせ お問合せ ご用件 用件 種別 種類 区分 カテゴリ category
+    お客様 ご希望 希望項目 お問い合わせ項目 お問合せ項目 問い合わせ項目 ご連絡
+  ].freeze
 
   # 必須マーク検出パターン
   REQUIRED_MARKERS = ['*', '※', '必須', 'required', '（必須）', '(必須)'].freeze
@@ -676,6 +695,7 @@ class FormSender
     # 送信前ガード用：本文入力済みフラグ、メアド入力回数カウンタ
     @message_filled = false
     @email_filled_count = 0
+    @email_filled_keys = []
 
     # 電話番号のハイフン有無を事前判定
     @current_tel_value = detect_tel_format
@@ -773,8 +793,19 @@ class FormSender
             log "    → 入力成功: #{value[0..20]}..."
           end
           # 送信前ガード用の入力内容トラッキング
-          @message_filled = true if value == sender_info[:message]
-          @email_filled_count += 1 if value == sender_info[:email]
+          if message_field?(all_text, name_attr, tag_name)
+            @message_filled = true
+          elsif value == sender_info[:message]
+            @message_filled = true
+          end
+
+          if value == sender_info[:email] && !email_confirm_field?(all_text, name_attr)
+            email_key = name_attr.presence || id_attr.presence || "email-#{idx}"
+            unless @email_filled_keys.include?(email_key)
+              @email_filled_keys << email_key
+              @email_filled_count = @email_filled_keys.size
+            end
+          end
         rescue StandardError => e
           log "    → 入力失敗: #{e.message}"
         end
@@ -807,16 +838,24 @@ class FormSender
     # フォーム入力後に同意チェックボックスを再チェック（ページ読み込み遅延対策）
     recheck_consent_boxes
 
+    # 入力後に未選択の必須/重要ラジオが残っていれば再処理
+    handle_radio_buttons
+
     filled_count
   end
 
   # 重要フィールドかどうか判定（必須マークがなくても入力すべき最低限のフィールド）
   def important_field?(text, name_attr, tag_name)
-    # メッセージ欄のtextareaのみ重要（住所等のtextareaは除外）
+    message_like = message_field?(text, name_attr, tag_name)
+
+    # メッセージ欄のtextarea / input（住所等のtextareaは除外）
     if tag_name == 'textarea'
-      return true if FIELD_PATTERNS[:message].any? { |p| text.include?(p) || name_attr.include?(p) }
+      return true if message_like
       return false  # 住所などのtextareaは必須でなければスキップ
     end
+
+    # input[type=text] の本文・お問い合わせ内容欄も重要
+    return true if message_like
 
     # 名前フィールド（部署名は除外）
     if FIELD_PATTERNS[:name].any? { |p| text.include?(p) || name_attr.include?(p) }
@@ -843,6 +882,18 @@ class FormSender
     return true if FIELD_PATTERNS[:address].any? { |p| text.include?(p) || name_attr.include?(p) }
 
     false
+  end
+
+  def message_field?(text, name_attr, tag_name = nil)
+    return false if FIELD_PATTERNS[:address].any? { |p| text.include?(p) || name_attr.include?(p) }
+
+    FIELD_PATTERNS[:message].any? { |p| text.include?(p) || name_attr.include?(p) }
+  end
+
+  def email_confirm_field?(text, name_attr)
+    return true if FIELD_PATTERNS[:email_confirm].any? { |p| text.include?(p) || name_attr.include?(p) }
+
+    text.include?('確認') && FIELD_PATTERNS[:email].any? { |p| text.include?(p) || name_attr.include?(p) }
   end
 
   # 必須フィールドかどうか判定（厳密版：ラベル直後のマークのみ）
@@ -1012,6 +1063,11 @@ class FormSender
       return sender_info[:message]
     end
 
+    # input の本文・お問い合わせ内容欄
+    if message_field?(text, name_attr, tag_name)
+      return sender_info[:message]
+    end
+
     # 部署名はスキップ（または「-」を入力）
     if text.include?('部署') || name_attr.include?('部署')
       return nil
@@ -1126,14 +1182,17 @@ class FormSender
       visible_radios = radios.select(&:displayed?)
       next if visible_radios.empty?
 
-      # このラジオグループが必須かどうか判定
+      # このラジオグループが必須/重要かどうか判定
       group_label = get_radio_group_label(visible_radios.first)
-      is_required = required_field?(group_label, visible_radios.first)
+      is_required = radio_group_required?(visible_radios, group_label)
+      is_important = radio_group_important?(group_label, visible_radios)
 
-      unless is_required
-        log "  ラジオボタン[#{name}]: 必須でないためスキップ"
+      unless is_required || is_important
+        log "  ラジオボタン[#{name}]: 必須/重要でないためスキップ (label=#{group_label.to_s[0..40]})"
         next
       end
+
+      log "  ラジオボタン[#{name}]: #{is_required ? '必須' : '重要'}として選択 (label=#{group_label.to_s[0..40]})"
 
       # 各選択肢のラベルを取得
       options = visible_radios.map do |radio|
@@ -1166,17 +1225,81 @@ class FormSender
           driver.execute_script("arguments[0].click();", selected[:radio])
           log "  → ラジオボタン選択[#{name}]: #{selected[:label]}"
         rescue StandardError => e
-          log "  → ラジオボタン選択失敗[#{name}]: #{e.message}"
+          begin
+            selected[:radio].click
+            log "  → ラジオボタン選択[#{name}]（fallback click）: #{selected[:label]}"
+          rescue StandardError => e2
+            log "  → ラジオボタン選択失敗[#{name}]: #{e.message} / #{e2.message}"
+          end
         end
       end
     end
   end
 
+  def radio_group_required?(radios, group_label)
+    return true if REQUIRED_MARKERS.any? { |marker| group_label.to_s.include?(marker) }
+    return true if radios.any? { |radio| required_field?(group_label, radio) }
+    return true if radios.any? { |radio| required_css_class?(radio.attribute('class')) }
+    return true if control_wrap_required?(radios.first)
+
+    false
+  end
+
+  def radio_group_important?(group_label, radios)
+    label = group_label.to_s
+    return true if RADIO_IMPORTANT_LABEL_PATTERNS.any? { |pattern| label.include?(pattern) }
+
+    option_labels = radios.map { |radio| get_radio_label(radio) }.join(' ')
+    RADIO_PREFER_PATTERNS.any? { |pattern| option_labels.include?(pattern) } && radios.size >= 2
+  end
+
+  def required_css_class?(class_name)
+    class_name.to_s.match?(/required|validates-as-required|is-required/i)
+  end
+
+  def control_wrap_required?(element)
+    return false unless element
+
+    begin
+      wrap = element.find_element(
+        :xpath,
+        './ancestor::*[contains(@class,"wpcf7-form-control-wrap") or contains(@class,"wpcf7-radio") or contains(@class,"wpcf7-checkbox") or contains(@class,"wpforms-field") or contains(@class,"form-group") or contains(@class,"field") or self::dd or self::td][1]'
+      )
+      return true if required_css_class?(wrap.attribute('class'))
+
+      begin
+        prev = wrap.find_element(:xpath, 'preceding-sibling::*[1]')
+        return true if REQUIRED_MARKERS.any? { |marker| prev.text.to_s.include?(marker) }
+      rescue Selenium::WebDriver::Error::NoSuchElementError
+        # 無視
+      end
+
+      wrap_text = wrap.text.to_s[0, 150]
+      REQUIRED_MARKERS.any? { |marker| wrap_text.include?(marker) }
+    rescue Selenium::WebDriver::Error::NoSuchElementError, StandardError
+      false
+    end
+  end
+
   # ラジオボタングループのラベルを取得
   def get_radio_group_label(radio)
-    # 親要素を遡ってラベルを探す
+    # CF7 / WPForms のフィールドラベル
     begin
-      # fieldsetのlegendを探す
+      wrap = radio.find_element(
+        :xpath,
+        './ancestor::*[contains(@class,"wpcf7") or contains(@class,"wpforms-field") or contains(@class,"form-group") or contains(@class,"field")][1]'
+      )
+      label = wrap.find_elements(:css, '.wpforms-field-label, .wpcf7-form-control-wrap + span, label, .label, legend, dt, th, p').find do |el|
+        text = el.text.to_s.strip
+        text.present? && text.length < 80
+      end
+      return label.text.downcase if label
+    rescue Selenium::WebDriver::Error::NoSuchElementError, StandardError
+      # 無視
+    end
+
+    # fieldsetのlegendを探す
+    begin
       fieldset = radio.find_element(:xpath, 'ancestor::fieldset')
       legend = fieldset.find_element(:css, 'legend')
       return legend.text.downcase if legend
@@ -1193,12 +1316,30 @@ class FormSender
       # 無視
     end
 
+    # dl/dt レイアウト
+    begin
+      dd = radio.find_element(:xpath, 'ancestor::dd')
+      dt = dd.find_element(:xpath, 'preceding-sibling::dt[1]')
+      return dt.text.downcase if dt
+    rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
     # 親のdivなどからラベルを探す
     begin
       parent = radio.find_element(:xpath, './ancestor::*[contains(@class, "form-group") or contains(@class, "field")]')
       label = parent.find_element(:css, 'label, .label, dt')
       return label.text.downcase if label
     rescue Selenium::WebDriver::Error::NoSuchElementError
+      # 無視
+    end
+
+    # 直前のテキスト要素
+    begin
+      prev = radio.find_element(:xpath, 'preceding::*[self::label or self::p or self::span or self::th or self::dt][1]')
+      text = prev.text.to_s.downcase.strip
+      return text if text.present? && text.length < 80
+    rescue Selenium::WebDriver::Error::NoSuchElementError, StandardError
       # 無視
     end
 
@@ -1218,9 +1359,12 @@ class FormSender
       end
     end
 
-    # 次の兄弟テキストまたはlabel
+    # 親がlabelの場合
     begin
       parent = radio.find_element(:xpath, '..')
+      if parent.tag_name.downcase == 'label'
+        return parent.text.downcase
+      end
       return parent.text.downcase
     rescue Selenium::WebDriver::Error::NoSuchElementError
       # 無視
@@ -1246,11 +1390,15 @@ class FormSender
       group_label = get_checkbox_group_label(visible_boxes.first)
       log "  チェックボックスグループ[#{name}]: ラベル=「#{group_label}」"
 
-      # 必須マークがあるかチェック
-      is_required = REQUIRED_MARKERS.any? { |marker| group_label.include?(marker) }
+      # 必須マークがあるかチェック（属性・wrapクラスも見る）
+      is_required = REQUIRED_MARKERS.any? { |marker| group_label.include?(marker) } ||
+                    visible_boxes.any? { |box| required_field?(group_label, box) } ||
+                    visible_boxes.any? { |box| required_css_class?(box.attribute('class')) } ||
+                    control_wrap_required?(visible_boxes.first)
 
       # 同意系のチェックボックスは別処理なのでスキップ
-      is_consent = CONSENT_PATTERNS.any? { |p| group_label.include?(p.downcase) }
+      is_consent = CONSENT_PATTERNS.any? { |p| group_label.include?(p.downcase) } ||
+                   visible_boxes.any? { |box| consent_checkbox?(box) }
 
       next unless is_required && !is_consent
 
@@ -1382,62 +1530,72 @@ class FormSender
     checkbox.attribute('value')&.downcase || ''
   end
 
+  # 同意チェックボックスかどうかを周辺テキスト・CF7 acceptance から判定
+  def consent_checkbox?(checkbox)
+    name_attr = checkbox.attribute('name').to_s.downcase
+    id_attr = checkbox.attribute('id').to_s.downcase
+    class_attr = checkbox.attribute('class').to_s.downcase
+
+    return true if class_attr.include?('wpcf7-acceptance') ||
+                   name_attr.include?('acceptance') ||
+                   name_attr.include?('agree') ||
+                   id_attr.include?('acceptance') ||
+                   id_attr.include?('agree')
+
+    begin
+      return true if checkbox.find_elements(:xpath, './ancestor::*[contains(@class,"wpcf7-acceptance")]').any?
+    rescue StandardError
+      # 無視
+    end
+
+    label_text = get_label_text(checkbox)
+    value_attr = checkbox.attribute('value').to_s.downcase
+
+    parent_text = ''
+    begin
+      parent = checkbox.find_element(:xpath, '..')
+      parent_text = parent.text.downcase
+      unless CONSENT_PATTERNS.any? { |p| parent_text.include?(p.downcase) }
+        grandparent = checkbox.find_element(:xpath, 'ancestor::*[3]')
+        gp_text = grandparent.text.downcase rescue ''
+        parent_text = "#{parent_text} #{gp_text}" if gp_text.present?
+      end
+    rescue StandardError
+      # 無視
+    end
+
+    sibling_text = ''
+    begin
+      siblings = checkbox.find_elements(:xpath, 'following-sibling::*[position() <= 2] | preceding-sibling::*[position() <= 2]')
+      siblings.each do |sib|
+        sib_text = sib.text.downcase rescue ''
+        sibling_text = "#{sibling_text} #{sib_text}" if sib_text.present?
+      end
+    rescue StandardError
+      # 無視
+    end
+
+    all_text = "#{name_attr} #{id_attr} #{label_text} #{parent_text} #{value_attr} #{sibling_text}".downcase
+    CONSENT_PATTERNS.any? { |p| all_text.include?(p.downcase) }
+  end
+
   # 同意チェックボックスをチェック
   def check_consent_boxes
     checkboxes = driver.find_elements(:css, 'input[type="checkbox"]')
     checkboxes.each do |checkbox|
       next unless checkbox.displayed?
-      next if checkbox.selected?  # 既にチェック済みならスキップ
+      next if checkbox.selected?
+      next unless consent_checkbox?(checkbox)
 
-      # チェックボックスの周辺テキストを取得
-      name_attr = checkbox.attribute('name')&.downcase || ''
-      id_attr = checkbox.attribute('id')&.downcase || ''
-      label_text = get_label_text(checkbox)
-
-      # 親要素のテキストも確認（2階層上まで探索）
-      parent_text = ''
       begin
-        parent = checkbox.find_element(:xpath, '..')
-        parent_text = parent.text.downcase
-        # 親のテキストで見つからない場合、さらに上の階層も確認
-        if parent_text.blank? || !CONSENT_PATTERNS.any? { |p| parent_text.include?(p.downcase) }
-          grandparent = checkbox.find_element(:xpath, 'ancestor::*[3]')
-          gp_text = grandparent.text.downcase rescue ''
-          parent_text = "#{parent_text} #{gp_text}" if gp_text.present?
-        end
-      rescue StandardError
-        # 無視
-      end
-
-      # value属性もチェック（Salesforce等で同意テキストがvalueに含まれる場合）
-      value_attr = checkbox.attribute('value')&.downcase || ''
-
-      # 前後の兄弟要素のテキストも確認（Salesforce等でラベルが別要素の場合）
-      sibling_text = ''
-      begin
-        siblings = checkbox.find_elements(:xpath, 'following-sibling::*[position() <= 2] | preceding-sibling::*[position() <= 2]')
-        siblings.each do |sib|
-          sib_text = sib.text.downcase rescue ''
-          sibling_text = "#{sibling_text} #{sib_text}" if sib_text.present?
-        end
-      rescue StandardError
-        # 無視
-      end
-
-      all_text = "#{name_attr} #{id_attr} #{label_text} #{parent_text} #{value_attr} #{sibling_text}".downcase
-
-      # 同意系のキーワードが含まれていればチェック
-      if CONSENT_PATTERNS.any? { |p| all_text.include?(p.downcase) }
-        begin
-          # スクロールしてから、JavaScriptでクリック（オーバーレイ回避）
-          scroll_to_element(checkbox)
-          sleep 0.3
-          driver.execute_script("arguments[0].click();", checkbox)
-          consent_label = label_text.to_s.strip.empty? ? name_attr : label_text
-          log "  → 同意チェックボックスをチェック: #{consent_label}"
-        rescue StandardError => e
-          log "  → 同意チェックボックスのクリック失敗: #{e.message}"
-        end
+        scroll_to_element(checkbox)
+        sleep 0.3
+        driver.execute_script("arguments[0].click();", checkbox)
+        consent_label = get_label_text(checkbox).to_s.strip
+        consent_label = checkbox.attribute('name') if consent_label.empty?
+        log "  → 同意チェックボックスをチェック: #{consent_label}"
+      rescue StandardError => e
+        log "  → 同意チェックボックスのクリック失敗: #{e.message}"
       end
     end
 
@@ -1467,32 +1625,17 @@ class FormSender
     return if unchecked.empty?
 
     unchecked.each do |cb|
-      name_attr = cb.attribute('name')&.downcase || ''
-      label_text = get_label_text(cb)
-      parent_text = ''
-      begin
-        # 3階層上までテキストを取得（CF7のネスト構造対策）
-        parent = cb.find_element(:xpath, '..')
-        parent_text = parent.text.downcase
-        unless CONSENT_PATTERNS.any? { |p| parent_text.include?(p.downcase) }
-          grandparent = cb.find_element(:xpath, 'ancestor::*[3]')
-          gp_text = grandparent.text.downcase rescue ''
-          parent_text = "#{parent_text} #{gp_text}"
-        end
-      rescue StandardError
-      end
+      next unless consent_checkbox?(cb)
 
-      all_text = "#{name_attr} #{label_text} #{parent_text}".downcase
-      if CONSENT_PATTERNS.any? { |p| all_text.include?(p.downcase) }
-        begin
-          driver.execute_script("arguments[0].click();", cb)
-          consent_label = label_text.to_s.strip.empty? ? name_attr : label_text
-          log "  → 同意チェックボックスをチェック（入力後再検出）: #{consent_label}"
-        rescue StandardError => e
-          log "  → 同意チェックボックス再チェック失敗: #{e.message}"
-        end
-        return
+      begin
+        driver.execute_script("arguments[0].click();", cb)
+        consent_label = get_label_text(cb).to_s.strip
+        consent_label = cb.attribute('name') if consent_label.empty?
+        log "  → 同意チェックボックスをチェック（入力後再検出）: #{consent_label}"
+      rescue StandardError => e
+        log "  → 同意チェックボックス再チェック失敗: #{e.message}"
       end
+      return
     end
 
     # フォールバック: 未チェックが1つでページに同意キーワードがあれば
@@ -1740,19 +1883,12 @@ class FormSender
     # AJAX送信の成功検出（CF7 / WPForms 等）
     return true if check_ajax_success?
 
-    page_source = (driver.page_source.downcase rescue '')
-    current_url = (driver.current_url rescue '')
-
-    # 成功メッセージの検出（最優先）
-    has_success_message = false
-    SUCCESS_PATTERNS.each do |pattern|
-      if page_source.include?(pattern.downcase)
-        log "成功メッセージ検出: #{pattern}"
-        has_success_message = true
-        break
-      end
+    # 成功メッセージの検出（最優先・表示テキスト基準）
+    if success_message_present?
+      return true
     end
-    return true if has_success_message
+
+    current_url = (driver.current_url rescue '')
 
     # ページ内エラーチェック（URL変更があってもエラーなら失敗）
     has_page_error = false
@@ -1868,6 +2004,24 @@ class FormSender
     false
   end
 
+  # 表示中テキストから成功メッセージを検出（hidden HTMLの偽陽性を避ける）
+  def success_message_present?
+    body_text = ''
+    begin
+      body_text = driver.find_element(:css, 'body').text.to_s.downcase
+    rescue StandardError
+      body_text = (driver.page_source.downcase rescue '')
+    end
+
+    SUCCESS_PATTERNS.each do |pattern|
+      if body_text.include?(pattern.downcase)
+        log "成功メッセージ検出: #{pattern}"
+        return true
+      end
+    end
+    false
+  end
+
   # AJAX送信（CF7 / WPForms 等）の成功をDOM要素で判定
   def check_ajax_success?
     # --- Contact Form 7 ---
@@ -1914,13 +2068,38 @@ class FormSender
 
     # --- WPForms ---
     begin
-      wpforms_confirm = driver.find_elements(:css, '.wpforms-confirmation-container')
+      wpforms_confirm = driver.find_elements(:css, '.wpforms-confirmation-container, .wpforms-confirmation-container-full')
       if wpforms_confirm.any?(&:displayed?)
-        log "AJAX成功検出: WPForms .wpforms-confirmation-container"
+        log "AJAX成功検出: WPForms confirmation"
         return true
       end
     rescue StandardError => e
       log "WPForms判定中にエラー: #{e.message}"
+    end
+
+    # --- MW WP Form ---
+    begin
+      mw_complete = driver.find_elements(:css, '.mw_wp_form_complete, .mw_wp_form .complete_message')
+      if mw_complete.any?(&:displayed?)
+        log "AJAX成功検出: MW WP Form complete"
+        return true
+      end
+    rescue StandardError => e
+      log "MW WP Form判定中にエラー: #{e.message}"
+    end
+
+    # --- Forminator / Ninja Forms / Gravity Forms ---
+    begin
+      other_success = driver.find_elements(
+        :css,
+        '.forminator-success, .forminator-success-message, .nf-response-msg, #gform_confirmation_message, .gform_confirmation_message'
+      )
+      if other_success.any?(&:displayed?)
+        log "AJAX成功検出: Forminator/Ninja/Gravity confirmation"
+        return true
+      end
+    rescue StandardError => e
+      log "その他フォーム成功判定中にエラー: #{e.message}"
     end
 
     false
