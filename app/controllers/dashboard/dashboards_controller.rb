@@ -32,17 +32,13 @@ class Dashboard::DashboardsController < ApplicationController
     current_month_range = Time.current.beginning_of_month..Time.current.end_of_month
     monthly_scope = batch_scope.where(created_at: current_month_range)
     # 送信枠表示用: 実行総数は従来どおり全バッチ合計
-    @total_sent, @total_success, @total_failure = monthly_scope.pick(
-      Arel.sql('COALESCE(SUM(total_count), 0)'),
-      Arel.sql('COALESCE(SUM(success_count), 0)'),
-      Arel.sql('COALESCE(SUM(failure_count), 0)')
-    )
-    @total_sent = @total_sent.to_i
-    @total_success = @total_success.to_i
-    @total_failure = @total_failure.to_i
+    @total_sent = monthly_scope.sum(:total_count).to_i
 
-    # 成功率: 完了バッチのみ + 根本送信不可を分母から除外
-    @success_rate = FormSubmissionBatch.aggregate_rate_stats(monthly_scope)[:rate]
+    # 成功率・CTR共通: 完了バッチのみ + 根本送信不可を分母から除外
+    rate_stats = FormSubmissionBatch.aggregate_rate_stats(monthly_scope)
+    @total_success = rate_stats[:success_count]
+    @total_failure = rate_stats[:failure_count]
+    @success_rate = rate_stats[:rate]
 
     @submission_stats = build_submission_stats(batch_scope)
 
@@ -56,7 +52,10 @@ class Dashboard::DashboardsController < ApplicationController
       assign_monthly_usage_stats_empty!
     end
 
-    click_scope = click_tracking_scope.where(created_at: current_month_range)
+    completed_batch_ids = monthly_scope.completed_batches.pluck(:id)
+    click_scope = click_tracking_scope
+      .where(created_at: current_month_range)
+      .where(form_submission_batch_id: completed_batch_ids)
 
     @total_clicks = click_scope.sum(:clicked_count).to_i
 
@@ -67,6 +66,7 @@ class Dashboard::DashboardsController < ApplicationController
       .where("last_clicked_at <= ?", Time.current)
       .count
 
+    # CTR = クリックユーザー数 / 到達成功数（Success と同一定義）
     @click_rate =
       @total_success.positive? ? ((@clicked_users_count.to_f / @total_success) * 100).round(1) : 0
   end
