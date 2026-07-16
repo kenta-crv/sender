@@ -31,6 +31,7 @@ class Dashboard::DashboardsController < ApplicationController
 
     current_month_range = Time.current.beginning_of_month..Time.current.end_of_month
     monthly_scope = batch_scope.where(created_at: current_month_range)
+    # 送信枠表示用: 実行総数は従来どおり全バッチ合計
     @total_sent, @total_success, @total_failure = monthly_scope.pick(
       Arel.sql('COALESCE(SUM(total_count), 0)'),
       Arel.sql('COALESCE(SUM(success_count), 0)'),
@@ -40,8 +41,8 @@ class Dashboard::DashboardsController < ApplicationController
     @total_success = @total_success.to_i
     @total_failure = @total_failure.to_i
 
-    @success_rate =
-      @total_sent.positive? ? ((@total_success.to_f / @total_sent) * 100).round(1) : 0
+    # 成功率: 完了バッチのみ + 根本送信不可を分母から除外
+    @success_rate = FormSubmissionBatch.aggregate_rate_stats(monthly_scope)[:rate]
 
     @submission_stats = build_submission_stats(batch_scope)
 
@@ -92,13 +93,16 @@ class Dashboard::DashboardsController < ApplicationController
     @submission_stats = @submissions.map do |submission|
       batches = submission.form_submission_batches
       batches = batches.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
+      rate_stats = FormSubmissionBatch.aggregate_rate_stats(batches)
 
       {
         submission: submission,
-        total_sent: batches.sum(:total_count),
-        success_count: batches.sum(:success_count),
-        failure_count: batches.sum(:failure_count),
-        last_sent_at: batches.order(started_at: :desc).pluck(:started_at).first
+        total_sent: rate_stats[:total_count],
+        success_count: rate_stats[:success_count],
+        failure_count: rate_stats[:failure_count],
+        excluded_count: rate_stats[:excluded_count],
+        rate: rate_stats[:rate],
+        last_sent_at: batches.order(started_at: :desc).limit(1).pluck(:started_at).first
       }
     end
   end
@@ -408,22 +412,32 @@ end
     submissions = dashboard_submissions_scope.to_a
     return [] if submissions.empty?
 
-    stats_rows = batch_scope
-      .where.not(submission_id: nil)
-      .group(:submission_id)
-      .pluck(
-        :submission_id,
-        Arel.sql('COALESCE(SUM(total_count), 0)'),
-        Arel.sql('COALESCE(SUM(success_count), 0)'),
-        Arel.sql('COALESCE(SUM(failure_count), 0)')
-      )
-
-    stats_by_submission = stats_rows.each_with_object({}) do |(submission_id, total, success, failure), memo|
-      memo[submission_id] = {
-        total_sent: total.to_i,
-        success_count: success.to_i,
-        failure_count: failure.to_i
+    stats_by_submission = Hash.new do |hash, key|
+      hash[key] = {
+        total_sent: 0,
+        success_count: 0,
+        failure_count: 0,
+        excluded_count: 0,
+        rate: 0.0
       }
+    end
+
+    batch_scope
+      .completed_batches
+      .where.not(submission_id: nil)
+      .select(:id, :submission_id, :status, :success_count, :failure_count, :error_log)
+      .find_each do |batch|
+        rate_stats = batch.rate_stats
+        row = stats_by_submission[batch.submission_id]
+        row[:success_count] += rate_stats[:success_count]
+        row[:failure_count] += rate_stats[:failure_count]
+        row[:total_sent] += rate_stats[:total_count]
+        row[:excluded_count] += rate_stats[:excluded_count]
+      end
+
+    stats_by_submission.each_value do |row|
+      total = row[:total_sent]
+      row[:rate] = total.positive? ? ((row[:success_count].to_f / total) * 100).round(1) : 0.0
     end
 
     sender_batch_ids = batch_scope
@@ -442,7 +456,13 @@ end
       end
 
     submissions.map do |submission|
-      stats = stats_by_submission[submission.id] || { total_sent: 0, success_count: 0, failure_count: 0 }
+      stats = stats_by_submission[submission.id] || {
+        total_sent: 0,
+        success_count: 0,
+        failure_count: 0,
+        excluded_count: 0,
+        rate: 0.0
+      }
       sender_batch = sender_batches[submission.id]
 
       stats.merge(

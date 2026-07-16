@@ -17,6 +17,7 @@
           th 開始日時
           th 操作
       tbody
+        / 送信率: 完了バッチのみ。フォーム未検出・CAPTCHA NG等は分母から除外
         - @batches.each do |batch|
           tr
             td = batch.id
@@ -33,9 +34,12 @@
             td = batch.total_count
             td.text-success = batch.success_count
             td.text-danger = batch.failure_count
-            td 
-               - rate = batch.total_count.to_i > 0 ? ((batch.success_count.to_f / batch.total_count) * 100).round(1) : 0
-               | #{rate}%
+            td
+              - if batch.status == 'completed'
+                - rate_stats = batch.rate_stats
+                | #{rate_stats[:rate]}%
+              - else
+                span.text-muted -
             td style="min-width: 150px;"
               - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round(1) : 0
               span.sc-detect__progress-label = "#{percent}%"
@@ -80,7 +84,7 @@
           - total = stat[:total_sent]
           - success = stat[:success_count]
           - failure = stat[:failure_count]
-          - rate = total.positive? ? ((success.to_f / total) * 100).round(1) : 0
+          - rate = stat[:rate] || (total.positive? ? ((success.to_f / total) * 100).round(1) : 0)
           - submission = stat[:submission]
 
           tr

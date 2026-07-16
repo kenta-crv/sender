@@ -111,17 +111,8 @@ class FormSubmissionsController < ApplicationController
 
     @submission_stats =
       @submissions.map do |submission|
-        batches =
-          submission.form_submission_batches
-
-        total_sent =
-          batches.sum(:total_count)
-
-        success_count =
-          batches.sum(:success_count)
-
-        failure_count =
-          batches.sum(:failure_count)
+        batches = submission.form_submission_batches
+        rate_stats = FormSubmissionBatch.aggregate_rate_stats(batches)
 
         last_sent_at =
           batches
@@ -132,9 +123,11 @@ class FormSubmissionsController < ApplicationController
 
         {
           submission: submission,
-          total_sent: total_sent,
-          success_count: success_count,
-          failure_count: failure_count,
+          total_sent: rate_stats[:total_count],
+          success_count: rate_stats[:success_count],
+          failure_count: rate_stats[:failure_count],
+          excluded_count: rate_stats[:excluded_count],
+          rate: rate_stats[:rate],
           last_sent_at: last_sent_at
         }
       end

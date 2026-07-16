@@ -229,14 +229,14 @@
                   th style="width: 90px;" Success
                   th style="width: 90px;" Failure
                   th style="width: 90px;" Rate
-
               tbody
+                / Rate = 完了バッチのみ / 送信不可(フォーム未検出・CAPTCHA等)除外
                 - @submission_stats.each do |stat|
                   - submission = stat[:submission]
                   - total = stat[:total_sent]
                   - success = stat[:success_count]
                   - failure = stat[:failure_count]
-                  - rate = total > 0 ? ((success.to_f / total) * 100).round(1) : 0
+                  - rate = stat[:rate] || (total > 0 ? ((success.to_f / total) * 100).round(1) : 0)
                   - sender_client = stat[:sender_client]
                   - sender_admin = stat[:sender_admin]
 
