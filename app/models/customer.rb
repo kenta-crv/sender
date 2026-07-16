@@ -230,21 +230,21 @@ class Customer < ApplicationRecord
       .where.not("TRIM(#{attribute}) = ''")
     duplicate_scope = duplicate_scope.where.not(attribute => ['not_detected', 'メーラー起動リンクのため検出不可']) if attribute == 'contact_url'
 
-    duplicate_values = duplicate_scope
-      .group(attribute)
-      .having("COUNT(id) > 1")
-      .pluck(attribute)
+    # 重複値ごとの最小ID（残す側）を一括取得
+    keepers_by_value = duplicate_scope.group(attribute).having("COUNT(id) > 1").minimum(:id)
+    return 0 if keepers_by_value.empty?
 
     ids_to_delete = []
-    duplicate_values.each do |value|
-      ids = scope.where(attribute => value).order(id: :asc).pluck(:id)
-      ids_to_delete.concat(ids.drop(1))
+    keepers_by_value.each_slice(100) do |slice|
+      values = slice.map(&:first)
+      keep_ids = slice.map(&:last)
+      ids_to_delete.concat(
+        scope.where(attribute => values).where.not(id: keep_ids).pluck(:id)
+      )
     end
     ids_to_delete.uniq!
-
     return 0 if ids_to_delete.empty?
 
-    # destroy_all は関連読み込みでタイムアウトするため、バッチで SQL 削除する
     ids_to_delete.each_slice(500) do |batch|
       transaction do
         delete_customers_and_dependents!(batch)
@@ -263,7 +263,6 @@ class Customer < ApplicationRecord
     DeliveryOptOut.where(customer_id: customer_ids).delete_all
     SerpEnrichmentRunTarget.where(customer_id: customer_ids).delete_all
 
-    # モデル未定義テーブル。FAX は現在未使用。
     connection.delete(
       sanitize_sql_array(["DELETE FROM customer_update_logs WHERE customer_id IN (?)", customer_ids])
     )

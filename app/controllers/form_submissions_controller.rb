@@ -290,19 +290,17 @@ class FormSubmissionsController < ApplicationController
       return redirect_to redirect_path, alert: "不正な属性指定です。"
     end
 
-    base_scope = Customer.duplicate_cleanup_scope(
-      client_signed_in: client_signed_in?,
-      admin_signed_in: admin_signed_in?,
-      client_id: current_client&.id
+    CustomerDuplicateCleanupJob.perform_later(
+      attribute,
+      client_signed_in?,
+      admin_signed_in?,
+      current_client&.id
     )
-    total_deleted = Customer.cleanup_duplicates!(attribute: attribute, scope: base_scope)
 
-    redirect_to redirect_path, notice: "#{attribute}の重複分 #{total_deleted} 件を削除しました。"
-  rescue ArgumentError => e
-    redirect_to redirect_path, alert: e.message
+    redirect_to redirect_path, notice: "重複削除をバックグラウンドで開始しました。完了後に通知します。"
   rescue StandardError => e
     Rails.logger.error("[cleanup_duplicates] #{e.class}: #{e.message}\n#{e.backtrace&.first(10)&.join("\n")}")
-    redirect_to redirect_path, alert: "重複削除に失敗しました: #{e.message}"
+    redirect_to redirect_path, alert: "重複削除の開始に失敗しました: #{e.message}"
   end
 
   # GET /form_submissions/:id

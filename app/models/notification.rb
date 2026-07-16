@@ -86,6 +86,33 @@ class Notification < ApplicationRecord
     )
   end
 
+  def self.create_for_duplicate_cleanup!(attribute:, total_deleted:, client_id: nil, fatal_error: nil)
+    label = attribute == 'contact_url' ? '問い合わせURL' : attribute
+
+    if fatal_error.present?
+      create!(
+        type: 'DuplicateCleanup',
+        status: 'failed',
+        total_count: 0,
+        success_count: 0,
+        error_count: 1,
+        client_id: client_id,
+        message: "#{label}の重複削除に失敗しました: #{fatal_error}"
+      )
+      return
+    end
+
+    create!(
+      type: 'DuplicateCleanup',
+      status: 'completed',
+      total_count: total_deleted,
+      success_count: total_deleted,
+      error_count: 0,
+      client_id: client_id,
+      message: "#{label}の重複分 #{total_deleted} 件を削除しました。"
+    )
+  end
+
   def mark_as_read!
     update!(read_at: Time.current)
   end
