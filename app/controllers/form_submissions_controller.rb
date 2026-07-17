@@ -284,7 +284,7 @@ class FormSubmissionsController < ApplicationController
 
   def cleanup_duplicates
     attribute = params[:attribute]
-    redirect_path = dashboard_duplication_path
+    redirect_path = dashboard_index_path
 
     unless Customer::DUPLICATE_CLEANUP_ATTRIBUTES.include?(attribute)
       return redirect_to redirect_path, alert: "不正な属性指定です。"

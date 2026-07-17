@@ -263,12 +263,14 @@ class Customer < ApplicationRecord
     DeliveryOptOut.where(customer_id: customer_ids).delete_all
     SerpEnrichmentRunTarget.where(customer_id: customer_ids).delete_all
 
-    connection.delete(
-      sanitize_sql_array(["DELETE FROM customer_update_logs WHERE customer_id IN (?)", customer_ids])
-    )
-    connection.delete(
-      sanitize_sql_array(["DELETE FROM fax_deliveries WHERE customer_id IN (?)", customer_ids])
-    )
+    # モデル未定義テーブルは存在する場合のみ削除（本番に無い環境がある）
+    %w[customer_update_logs fax_deliveries].each do |table|
+      next unless connection.data_source_exists?(table)
+
+      connection.delete(
+        sanitize_sql_array(["DELETE FROM #{table} WHERE customer_id IN (?)", customer_ids])
+      )
+    end
     where(id: customer_ids).delete_all
   end
   private_class_method :delete_customers_and_dependents!
