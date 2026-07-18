@@ -96,6 +96,22 @@ class CustomerImportServiceTest < ActiveSupport::TestCase
     File.delete(path)
   end
 
+  test "備考をインポートできる" do
+    csv = <<~CSV
+      company,remarks
+      テスト株式会社,フォロー済み
+    CSV
+    path = write_temp_csv(csv)
+
+    result = CustomerImportService.new.call(file_path: path)
+
+    @customer.reload
+    assert_equal 1, result[:import_count]
+    assert_equal "フォロー済み", @customer.remarks
+  ensure
+    File.delete(path)
+  end
+
   private
 
   def write_temp_csv(content)

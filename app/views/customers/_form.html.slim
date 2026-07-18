@@ -50,6 +50,9 @@
                   tr
                     th 従業員数
                     td = f.text_field :people, class: "form-control"
+                  tr
+                    th 備考
+                    td = f.text_area :remarks, class: "form-control", rows: 3
                   /tr
                     th 問い合わせフォーム
                     td = f.text_field :contact_url, class: "form-control"

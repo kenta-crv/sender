@@ -14,7 +14,8 @@ class CustomerImportService
     capital:     %w[資本金 capital],
     establish:   %w[設立 establish],
     ceo:         %w[代表者 ceo],
-    people:      %w[従業員数 people]
+    people:      %w[従業員数 people],
+    remarks:     %w[備考 履歴 remarks]
   }.freeze
 
   COMPANY_KEYS = %w[会社名 company].freeze

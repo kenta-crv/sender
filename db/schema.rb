@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_07_18_082724) do
+ActiveRecord::Schema.define(version: 2026_07_18_084736) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -203,6 +203,7 @@ ActiveRecord::Schema.define(version: 2026_07_18_082724) do
     t.string "establish"
     t.string "ceo"
     t.string "people"
+    t.text "remarks"
     t.index ["client_id"], name: "index_customers_on_client_id"
     t.index ["unsubscribe_token"], name: "index_customers_on_unsubscribe_token", unique: true
   end
