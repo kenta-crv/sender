@@ -10,7 +10,11 @@ class CustomerImportService
     email:       %w[メールアドレス email],
     business:    %w[業種 business],
     genre:       %w[職種 genre],
-    contact_url: %w[問い合わせURL contact_url]
+    contact_url: %w[問い合わせURL contact_url],
+    capital:     %w[資本金 capital],
+    establish:   %w[設立 establish],
+    ceo:         %w[代表者 ceo],
+    people:      %w[従業員数 people]
   }.freeze
 
   COMPANY_KEYS = %w[会社名 company].freeze

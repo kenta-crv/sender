@@ -708,6 +708,10 @@ end
       :genre,
       :contact_form,
       :contact_url,
+      :capital,
+      :establish,
+      :ceo,
+      :people,
       :fobbiden,
       :remarks,
     )
