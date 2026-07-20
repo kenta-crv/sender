@@ -8,6 +8,10 @@ Bundler.require(*Rails.groups)
 
 module Smart
   class Application < Rails::Application
+    # development/test は database.yml の SQLite を使う。
+    # .env に DATABASE_URL があっても production 以外では無視する。
+    ENV.delete('DATABASE_URL') unless Rails.env.production?
+
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 5.2
     config.active_job.queue_adapter = :sidekiq

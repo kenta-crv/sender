@@ -5,6 +5,9 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 gem 'rails', '~> 6.1.7'
 
 # Database
+# PostgreSQL（本番）
+gem 'pg', '~> 1.5'
+# SQLite（開発・既存データ移行時に本番から読む用途でも使用）
 gem 'sqlite3', '~> 1.6'
 
 # Web server
