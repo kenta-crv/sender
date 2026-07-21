@@ -1,8 +1,15 @@
-nav.breadcrumbs
- - breadcrumbs.each_with_index do |crumb, i|
-  - if crumb[:path].present?
-    = link_to crumb[:label], crumb[:path]
-  - else
-    = crumb[:label]
-  - unless i == breadcrumbs.size - 1
-    |  /
+- unless @_bc_pos_css
+  - @_bc_pos_css = true
+  style#breadcrumb-position-fix
+    | nav.breadcrumbs,.breadcrumbs{position:relative!important;top:auto!important;left:auto!important;right:auto!important;z-index:2!important;display:block!important;margin:0!important;padding:8px 16px!important;font-size:14px!important;line-height:1.5!important;background:#fff!important;border-bottom:1px solid #e5e7eb!important;pointer-events:auto!important}
+    | body>.hero:has(.breadcrumbs){position:static!important;height:auto!important;overflow:visible!important;pointer-events:auto!important}
+    | .breadcrumbs a{color:#111!important;text-decoration:underline!important;text-underline-offset:2px!important;pointer-events:auto!important}
+
+nav.breadcrumbs aria-label="パンくず"
+  - breadcrumbs.each_with_index do |crumb, i|
+    - if crumb[:path].present?
+      = link_to crumb[:label], crumb[:path]
+    - else
+      = crumb[:label]
+    - unless i == breadcrumbs.size - 1
+      |  /
