@@ -7,7 +7,9 @@ footer.custom-footer.bg-dark.text-white.py-4.mt-5
         nav.footer-nav
           ul.d-flex.flex-wrap.justify-content-center.list-unstyled.mb-0.gap-4
             li = link_to "トップ", "/", class: "footer-link"
-            li = link_to "ブログ", "https://okurite.pro/columns", target: "_blank", rel: "noopener noreferrer", class: "footer-link"
+            li = link_to "お役立ち記事", "/columns", class: "footer-link"
+            li = link_to "Okurite", okurite_path, class: "footer-link"
+            li = link_to "Ri-Plus", sales_path, class: "footer-link"
 
             li
               - if client_signed_in? || admin_signed_in?

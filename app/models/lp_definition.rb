@@ -1,6 +1,9 @@
 # app/models/lp_definition.rb
 module LpDefinition
   MAP = {
+    'okurite'      => 'Okurite',
+    'sales'        => 'Ri-Plus',
+    'columns'      => 'お役立ち記事',
     'cargo'        => '軽貨物',
     'security'     => '警備業',
     'construction' => '建設業',
@@ -12,6 +15,6 @@ module LpDefinition
   }.freeze
 
   def self.label(key)
-    MAP[key]
+    MAP[key.to_s]
   end
 end

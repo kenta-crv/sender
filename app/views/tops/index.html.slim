@@ -63,6 +63,16 @@
             = link_to okurite_path, class: 'btn sp-btn-modern' do
                 span View Detail 
 
+    section.sp-columns-seo
+      .sp-section-header
+        span.en-sub RESOURCES
+        h2 お役立ち記事
+        p.desc 営業代行・フォーム営業に関する解説記事
+      ul.sp-columns-seo__list
+        - featured_columns_for(:top).each do |item|
+          li = link_to item[:title], item[:path]
+      p.sp-columns-seo__more
+        = link_to "記事一覧を見る", "/columns"
 
     .sp-company
       .sp-company-inner

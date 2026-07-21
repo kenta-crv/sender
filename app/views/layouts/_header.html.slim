@@ -10,6 +10,8 @@
           li
             = link_to "トップページ", "/" , class: "nav-link-custom"   
           li
+            = link_to "お役立ち記事", "/columns", class: "nav-link-custom"
+          li
             a.nav-link-custom href="javascript:void(0)" data-target="service" サービス
           li
             a.nav-link-custom href="javascript:void(0)" data-target="business" 事業内容
@@ -28,6 +30,8 @@
           ul.mobile-nav-list
             li
               = link_to "トップページ", "/" , class: "nav-link-custom"
+            li
+              = link_to "お役立ち記事", "/columns", class: "nav-link-custom"
             li
               - if client_signed_in?
                 = link_to "ログアウト", destroy_client_session_path, method: :delete, class: "nav-link-custom"

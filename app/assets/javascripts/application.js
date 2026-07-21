@@ -372,3 +372,16 @@
     if (ftkn) sessionStorage.setItem('ftkn', ftkn);
   });
 })();
+
+window.scrollJapNottoCards = function (direction) {
+  window.scrollLpCards('.jap-notto-grid', direction);
+};
+
+window.scrollLpCards = function (selector, direction) {
+  const grid = document.querySelector(selector);
+  if (!grid) return;
+  const card = grid.querySelector('.jap-notto-card, .ser-mos-card, .pricing-cards-card, .cards-moos-card, .lp-scroll-item');
+  const gap = parseFloat(getComputedStyle(grid).gap) || 16;
+  const step = card ? card.offsetWidth + gap : 280;
+  grid.scrollBy({ left: direction * step, behavior: 'smooth' });
+};

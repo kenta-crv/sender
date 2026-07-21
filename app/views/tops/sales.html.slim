@@ -47,53 +47,111 @@ section.japan-notyo-section
       = image_tag "company-logo.png", class: "japan-notyo-image", alt: "Tool illustration", loading: 'lazy', decoding: 'async'
 
 section.jap-notto-section
- .sp-company
-  .sp-company-inner
-    .sp-section-header
-      span.en-sub CCURRENT CHALLENGES
-      h2 営業の最大化はできていますか？
-      p.desc 成果を最大化するために、今解決すべきボトルネック
   .jap-notto-container
-    .jap-notto-grid
-      / カード 1
-      .jap-notto-card
-        .card-inner
-          .card-icon
-            = image_tag "ser-ai1.png", class: "card-img", alt: "営業リスト作成", loading: 'lazy', decoding: 'async'
-          p.card-text 営業リスト作成
-          span.card-sub が効率的に作成出来ていない
+    .sp-section-header
+      span.en-sub こんなお悩みありませんか？
+      h2
+        | 営業活動で、こんな
+        span.jap-notto-highlight 壁
+        | にぶつかっていませんか？
+      p.desc 成果を最大化するために、今解決すべきボトルネック
+    .jap-notto-scroll-wrap
+      button.jap-notto-scroll-btn.jap-notto-scroll-prev type="button" aria-label="前へ" onclick="scrollJapNottoCards(-1)"
+        svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
+          path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      .jap-notto-grid
+        - problems = [ \
+            { icon: "list", title: "営業リスト作成が<br>効率的にできていない", desc: "リスト作成に時間がかかり、アプローチの前段階で手が止まってしまう。" }, \
+            { icon: "send", title: "問い合わせフォームへの<br>アプローチができていない", desc: "一件ずつ手作業で送る余裕がなく、フォーム営業そのものが止まっている。" }, \
+            { icon: "chart", title: "フォームアプローチの<br>データ収集ができていない", desc: "開封や反応が見えず、何が効いているのか判断できない。" }, \
+            { icon: "phone", title: "テレアポの効果が<br>以前より下がっている", desc: "架電だけでは限界が見え始め、新しいチャネルが必要になっている。" }, \
+            { icon: "trend", title: "アプローチや商談の<br>絶対数を伸ばしきれていない", desc: "工数がボトルネックになり、件数を増やせず成果が頭打ちになっている。" } \
+          ]
+        - problems.each do |p|
+          .jap-notto-card
+            .jap-notto-card__icon class="is-#{p[:icon]}"
+              svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                - if p[:icon] == "list"
+                  line x1="8" y1="6" x2="21" y2="6"
+                  line x1="8" y1="12" x2="21" y2="12"
+                  line x1="8" y1="18" x2="21" y2="18"
+                  line x1="3" y1="6" x2="3.01" y2="6"
+                  line x1="3" y1="12" x2="3.01" y2="12"
+                  line x1="3" y1="18" x2="3.01" y2="18"
+                - elsif p[:icon] == "send"
+                  line x1="22" y1="2" x2="11" y2="13"
+                  polygon points="22 2 15 22 11 13 2 9 22 2"
+                - elsif p[:icon] == "chart"
+                  path d="M3 3v18h18"
+                  path d="M7 14l4-4 4 4 5-6"
+                - elsif p[:icon] == "phone"
+                  path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"
+                - elsif p[:icon] == "trend"
+                  polyline points="23 6 13.5 15.5 8.5 10.5 1 18"
+                  polyline points="17 6 23 6 23 12"
+            .jap-notto-card__body
+              .jap-notto-card__check-line
+                span.jap-notto-card__check aria-hidden="true"
+                p.jap-notto-card__title == p[:title]
+              p.jap-notto-card__desc = p[:desc]
+      button.jap-notto-scroll-btn.jap-notto-scroll-next type="button" aria-label="次へ" onclick="scrollJapNottoCards(1)"
+        svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
+          path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
 
-      / カード 2
-      .jap-notto-card
-        .card-inner
-          .card-icon
-            = image_tag "ser-ai2.png", class: "card-img", alt: "送信作業", loading: 'lazy', decoding: 'async'
-          p.card-text 問い合わせフォーム
-          span.card-sub のアプローチが行えていない
+    .jap-notto-arrow aria-hidden="true"
+      svg viewBox="0 0 24 24" fill="currentColor"
+        path d="M12 21l-12-18h24z"
 
-      / カード 3
-      .jap-notto-card
-        .card-inner
-          .card-icon
-            = image_tag "ser-ai3.png", class: "card-img", alt: "フォーム対応", loading: 'lazy', decoding: 'async'
-          p.card-text フォームアプローチデータ
-          span.card-sub からのデータ収集が出来ていない
+    .jap-notto-solution
+      .jap-notto-solution__copy
+        .jap-notto-solution__lead
+          span そのお悩み、
+          span.jap-notto-solution__badge AI営業代行の一気通貫
+        .jap-notto-solution__brand
+          span.jap-notto-solution__mark aria-hidden="true"
+            svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              line x1="22" y1="2" x2="11" y2="13"
+              polygon points="22 2 15 22 11 13 2 9 22 2"
+          strong.jap-notto-solution__name Okurite
+          span.jap-notto-solution__suffix に
+          span.jap-notto-solution__action お任せください！
+      .jap-notto-solution__visual aria-hidden="true"
+        .jap-notto-solution__mock
+          .jap-notto-solution__mock-head
+            span
+            span
+            span
+          .jap-notto-solution__mock-row
+            svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              line x1="8" y1="6" x2="21" y2="6"
+              line x1="8" y1="12" x2="21" y2="12"
+              line x1="8" y1="18" x2="21" y2="18"
+              line x1="3" y1="6" x2="3.01" y2="6"
+              line x1="3" y1="12" x2="3.01" y2="12"
+              line x1="3" y1="18" x2="3.01" y2="18"
+            span リスト抽出
+          .jap-notto-solution__mock-row
+            svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              line x1="22" y1="2" x2="11" y2="13"
+              polygon points="22 2 15 22 11 13 2 9 22 2"
+            span フォーム送信
+          .jap-notto-solution__mock-row
+            svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              path d="M3 3v18h18"
+              path d="M7 14l4-4 4 4 5-6"
+            span データ可視化
+        .jap-notto-solution__deco.jap-notto-solution__deco--sparkle
+          svg viewBox="0 0 24 24" fill="currentColor"
+            path d="M12 0l3 9 9 3-9 3-3 9-3-9-9-3 9-3z"
+        .jap-notto-solution__deco.jap-notto-solution__deco--chat
+          svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+        .jap-notto-solution__deco.jap-notto-solution__deco--chart
+          svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+            line x1="18" y1="20" x2="18" y2="10"
+            line x1="12" y1="20" x2="12" y2="4"
+            line x1="6" y1="20" x2="6" y2="14"
 
-      / カード 4 (下段配置用クラス)
-      .jap-notto-card.card-4
-        .card-inner
-          .card-icon
-            = image_tag "ser-ai4.png", class: "card-img", alt: "成果", loading: 'lazy', decoding: 'async'
-          p.card-text テレフォンアポイント
-          span.card-sub の効果が確実に以前より下がっている
-
-      / カード 5 (下段配置用クラス)
-      .jap-notto-card.card-5
-        .card-inner
-          .card-icon
-            = image_tag "ser-ai5.png", class: "card-img", alt: "コスト", loading: 'lazy', decoding: 'async'
-          p.card-text アプローチや商談
-          span.card-sub の絶対数自体を伸ばしきれていない
 section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
  .sp-company
   .sp-company-inner
@@ -101,75 +159,28 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
       span.en-sub AI Sales Agent Package
       h2 AI営業代行パッケージ全貌
       p.desc 営業を成功に導く動線設計
-    .ser-mos-panel.mx-auto.p-4.rounded-4
-      .row.g-4
-        .col-lg-6
+    .lp-scroll-wrap
+      button.lp-scroll-btn.lp-scroll-prev type="button" aria-label="前へ" onclick="scrollLpCards('.ser-mos-grid', -1)"
+        svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
+          path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      .ser-mos-grid.lp-scroll-grid
+        - services = [ \
+            { img: "ser-app1.png", title: "AIによる高精度リスト抽出", desc: "独自のAIアルゴリズムを用いて、Web上の膨大なデータから貴社商材に最適なターゲット企業を自動でリストアップ。常に最新の鮮度を保ちます。" }, \
+            { img: "ser-app2.png", title: "フォーム情報の自動検出", desc: "AIが企業HPの問い合わせフォームを自動で特定。手作業で探す必要がなく、AIが高確率でフォーム情報を取得します。" }, \
+            { img: "ser-app0.png", title: "AI自動問い合わせフォーム送信", desc: "事前に用意したリストに対してAIが24時間365日あなたの代わりに問い合わせフォームに送信を行い、アプローチを行います。" }, \
+            { img: "ser-app9.png", title: "開封データの可視化と行動解析", desc: "メールや資料の閲覧状況をリアルタイムで可視化し、開封・未開封に応じた最適なアプローチを実現します。" }, \
+            { img: "ser-app3.png", title: "AIによるフロントテレアポ対応", desc: "テレアポのフロント対応をAIが担うことで、人では不可能な圧倒的な架電量を実現。見込み度の高いリードを確実にキャッチアップし、テレアポクローザーがアポイントを獲得" }, \
+            { img: "ser-app8.png", title: "全データをリアルタイム解析", desc: "アプローチ結果による興味関心におけるそれぞれのデータをリアルタイムで保持・解析し、次回の営業アプローチデータに活かします。" } \
+          ]
+        - services.each do |s|
           article.ser-mos-card
             .ser-mos-card-media
-              = image_tag "ser-app1.png", class: "ser-mos-card-img", alt: "Service 1", loading: 'lazy', decoding: 'async'
-            h3.ser-mos-card-title
-              | AIによる高精度リスト抽出
-            p.ser-mos-card-desc
-              |  独自のAIアルゴリズムを用いて、Web上の膨大なデータから貴社商材に最適なターゲット企業を自動でリストアップ。常に最新の鮮度を保ちます。
-            /button.ser-mos-card-btn
-              | 詳しく見る 
-              = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
-        .col-lg-6
-          article.ser-mos-card
-            .ser-mos-card-media
-              = image_tag "ser-app2.png", class: "ser-mos-card-img", alt: "Service 2", loading: 'lazy', decoding: 'async'
-            h3.ser-mos-card-title
-              | フォーム情報の自動検出
-            p.ser-mos-card-desc
-              |  AIが企業HPの問い合わせフォームを自動で特定。手作業で探す必要がなく、AIが高確率でフォーム情報を取得します。
-            /button.ser-mos-card-btn
-              | 詳しく見る 
-              = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
-        .col-lg-6
-          article.ser-mos-card
-            .ser-mos-card-media
-              = image_tag "ser-app0.png", class: "ser-mos-card-img", alt: "Service 1", loading: 'lazy', decoding: 'async'
-            h3.ser-mos-card-title
-              | AI自動問い合わせフォーム送信
-            p.ser-mos-card-desc
-              | 事前に用意したリストに対してAIが24時間365日あなたの代わりに問い合わせフォームに送信を行い、アプローチを行います。
-            /button.ser-mos-card-btn
-              | 詳しく見る 
-              = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
-        .col-lg-6
-          article.ser-mos-card
-            .ser-mos-card-media
-              = image_tag "ser-app9.png", class: "ser-mos-card-img", alt: "Service 5", loading: 'lazy', decoding: 'async'
-            h3.ser-mos-card-title
-              | 開封データの可視化と行動解析
-            p.ser-mos-card-desc
-              |  メールや資料の閲覧状況をリアルタイムで可視化し、開封・未開封に応じた最適なアプローチを実現します。
-            /button.ser-mos-card-btn
-              | 詳しく見る 
-              = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
-        .col-lg-6
-          article.ser-mos-card
-            .ser-mos-card-media
-              = image_tag "ser-app3.png", class: "ser-mos-card-img", alt: "Service 3", loading: 'lazy', decoding: 'async'
-            h3.ser-mos-card-title
-              | AIによるフロントテレアポ対応
-            p.ser-mos-card-desc
-              |  テレアポのフロント対応をAIが担うことで、人では不可能な圧倒的な架電量を実現。見込み度の高いリードを確実にキャッチアップし、テレアポクローザーがアポイントを獲得
-            /button.ser-mos-card-btn
-              | 詳しく見る 
-              = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
-        .col-lg-6
-          article.ser-mos-card
-            .ser-mos-card-media
-              = image_tag "ser-app8.png", class: "ser-mos-card-img", alt: "Service 4", loading: 'lazy', decoding: 'async'
-            h3.ser-mos-card-title
-              | 全データをリアルタイム解析
-            p.ser-mos-card-desc
-              |  アプローチ結果による興味関心におけるそれぞれのデータをリアルタイムで保持・解析し、次回の営業アプローチデータに活かします。
-            /button.ser-mos-card-btn
-              | 詳しく見る 
-              = image_tag "left-icon.png", class: "ser-mos-btn-ic", alt: "arrow"
-
+              = image_tag s[:img], class: "ser-mos-card-img", alt: s[:title], loading: 'lazy', decoding: 'async'
+            h3.ser-mos-card-title = s[:title]
+            p.ser-mos-card-desc = s[:desc]
+      button.lp-scroll-btn.lp-scroll-next type="button" aria-label="次へ" onclick="scrollLpCards('.ser-mos-grid', 1)"
+        svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
+          path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
 
 
 section.main-moss-section
@@ -215,7 +226,6 @@ section.main-moss-section
           | 安心のパッケージ料金モデル
         p.main-moss-block-desc
           |  リスト抽出からフォーム営業、AI架電までをパッケージ化。透明性の高い料金体系で、リスクを抑えた営業活動の加速をサポートします。
-
 
 
 section.admin-preview-section
@@ -288,9 +298,12 @@ section.pricing-cards-section
       span.en-sub 料金のご案内
       h2 Service Price
       p.desc フォーム送信特化型から営業代行パッケージプランまでご用意
-    .row.justify-content-center.g-4
-      - plans.each do |plan|
-        .col-lg-4.col-md-6
+    .lp-scroll-wrap
+      button.lp-scroll-btn.lp-scroll-prev type="button" aria-label="前へ" onclick="scrollLpCards('.pricing-cards-grid', -1)"
+        svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
+          path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      .pricing-cards-grid.lp-scroll-grid
+        - plans.each do |plan|
           .pricing-cards-card
             h3.pricing-cards-plan-title = plan[:title]
             p.pricing-cards-plan-sub = plan[:sub]
@@ -307,11 +320,9 @@ section.pricing-cards-section
             br
             a.pricing-cards-main-btn class=plan[:btn_class] href="javascript:void(0)" data-target="inquiry"
               = plan[:cta]
-
-
-
-
-
+      button.lp-scroll-btn.lp-scroll-next type="button" aria-label="次へ" onclick="scrollLpCards('.pricing-cards-grid', 1)"
+        svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
+          path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
 
 
 section.compare-fixed
@@ -524,7 +535,17 @@ section.service-compare
             p.text-detail 専用管理画面から問い合わせフォーム送信を自由自在に実行。新規開拓の機動力を最大化するサブスクリプション型サービス。
             = link_to okurite_path, class: 'btn sp-btn-modern' do
                 span View Detail 
-      
+
+section.sp-columns-seo
+  .sp-section-header
+    span.en-sub RESOURCES
+    h2 お役立ち記事
+    p.desc 営業マネジメント・KPI・トレーニングの解説
+  ul.sp-columns-seo__list
+    - featured_columns_for(:sales).each do |item|
+      li = link_to item[:title], item[:path]
+  p.sp-columns-seo__more
+    = link_to "記事一覧を見る", "/columns"
 
 - faqs = [ \
   ["AI営業代行での商談提供の定義を教えてください。", "『Okurite』では、AIアプローチに対して顧客が主体的に問い合わせや返信を行い、商談の合意が取れた状態を「有効商談」と基本定義しています。しかし、成功報酬会社ではないため、具体的な商談定義は、取引企業様毎に決定しております。"], \
@@ -563,28 +584,25 @@ section.cards-moos-section.py-5
       span.en-sub Package
       h2 AI営業代行パッケージ
       p.desc Okuriteの獲得手法
-    .row.g-4.cards-moos-row.d-none.d-md-flex
-      .col-lg-4.col-md-6
-        .cards-moos-card
-          = image_tag "image-app1.png", class: "cards-moos-img", alt: "Case Study 1", loading: 'lazy', decoding: 'async'
-          h3.cards-moos-heading
-            | ソフトウェア開発業
-          p.cards-moos-desc
-            |  Okuriteを導入しAIリスト抽出とフォーム営業を自動化。導入初月から毎月平均15件の有効商談を獲得し、営業マンの架電時間をゼロに削減。
-      .col-lg-4.col-md-6
-        .cards-moos-card
-          = image_tag "image-app2.png", class: "cards-moos-img", alt: "Case Study 2", loading: 'lazy', decoding: 'async'
-          h3.cards-moos-heading
-            | 人材紹介・登録支援業
-          p.cards-moos-desc
-            |  AI架電フロント対応を活用し、全国の製造業へ圧倒的な量をアプローチ。従来の3倍のスピードでリード獲得を実現しました。
-      .col-lg-4.col-md-6
-        .cards-moos-card
-          = image_tag "image-app3.png", class: "cards-moos-img", alt: "Case Study 3", loading: 'lazy', decoding: 'async'
-          h3.cards-moos-heading
-            | Webマーケティング代理店
-          p.cards-moos-desc
-            |  人手によるテレアポからOkuriteに切り替え。AIがニーズを検出し、最適なタイミングでアプローチすることで、成約率の高い有効商談を安定確保。
+    .lp-scroll-wrap
+      button.lp-scroll-btn.lp-scroll-prev type="button" aria-label="前へ" onclick="scrollLpCards('.cards-moos-grid', -1)"
+        svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
+          path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      .cards-moos-grid.lp-scroll-grid
+        - reviews = [ \
+            { img: "image-app1.png", title: "ソフトウェア開発業", desc: "Okuriteを導入しAIリスト抽出とフォーム営業を自動化。導入初月から毎月平均15件の有効商談を獲得し、営業マンの架電時間をゼロに削減。" }, \
+            { img: "image-app2.png", title: "人材紹介・登録支援業", desc: "AI架電フロント対応を活用し、全国の製造業へ圧倒的な量をアプローチ。従来の3倍のスピードでリード獲得を実現しました。" }, \
+            { img: "image-app3.png", title: "Webマーケティング代理店", desc: "人手によるテレアポからOkuriteに切り替え。AIがニーズを検出し、最適なタイミングでアプローチすることで、成約率の高い有効商談を安定確保。" } \
+          ]
+        - reviews.each do |r|
+          .cards-moos-card
+            = image_tag r[:img], class: "cards-moos-img", alt: r[:title], loading: 'lazy', decoding: 'async'
+            h3.cards-moos-heading = r[:title]
+            p.cards-moos-desc = r[:desc]
+      button.lp-scroll-btn.lp-scroll-next type="button" aria-label="次へ" onclick="scrollLpCards('.cards-moos-grid', 1)"
+        svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
+          path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+
 
 section
  .sp-company

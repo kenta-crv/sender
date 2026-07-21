@@ -799,7 +799,8 @@ body {
   z-index: 0;
 }
 
-.ser-mos-section .container {
+.ser-mos-section .container,
+.ser-mos-section .sp-company {
   position: relative;
   z-index: 1;
 }
@@ -1760,188 +1761,1037 @@ body {
 
 .jap-notto-section {
   background-color: #00050a;
-  background-image: 
-    linear-gradient(rgba(0, 163, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 163, 255, 0.08) 1px, transparent 1px);
+  background-image:
+    linear-gradient(rgba(0, 163, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 163, 255, 0.07) 1px, transparent 1px);
   background-size: 40px 40px;
-  padding: 80px 20px; /* 上下余白をPC基準で調整 */
+  padding: 90px 20px 70px;
   color: #fff;
   font-family: "Hiragino Sans", "Meiryo", sans-serif;
+  position: relative;
 }
 
 .jap-notto-container {
-  max-width: 1200px;
+  max-width: 1160px;
   margin: 0 auto;
-}
-
-/* ヘッダー周りの調整（追加） */
-.sp-section-header {
-  text-align: center;
-  margin-bottom: 60px;
-  .en-sub {
-    color: #00a3ff;
-    font-size: 14px;
-    letter-spacing: 0.2em;
-    display: block;
-    margin-bottom: 10px;
-  }
-  h2 {
-    font-size: clamp(24px, 4vw, 36px);
-    font-weight: 800;
-    margin-bottom: 15px;
-  }
-  .desc {
-    font-size: 16px;
-    color: #ccc;
-  }
-}
-
-/* グリッド配置 */
-.jap-notto-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 30px;
-}
-
-.jap-notto-card {
-  grid-column: span 2;
   position: relative;
-  border-radius: 12px;
-  padding: 2px;
-  background: linear-gradient(135deg, #444 0%, #222 50%, #555 100%);
-  box-shadow: 
-    0 0 20px 2px rgba(0, 163, 255, 0.2),
-    inset 0 1px 1px rgba(255, 255, 255, 0.4),
-    0 20px 40px rgba(0, 0, 0, 0.6);
-  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), 
-              box-shadow 0.4s ease;
-
-  &.card-4 { grid-column: 2 / 4; }
-  &.card-5 { grid-column: 4 / 6; }
+  z-index: 2;
 }
 
-.card-inner {
-  background: linear-gradient(135deg, #1a1d20 0%, #111416 45%, #0a0c0e 50%, #111416 55%, #1a1d20 100%);
-  border-radius: 10px;
-  padding: 40px 25px; /* 上下の余白を増やして高級感を出す */
-  height: 100%;
+.jap-notto-section .sp-section-header {
+  text-align: center;
+  margin-bottom: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  box-sizing: border-box;
 
-  &::before {
+  .en-sub {
+    display: block;
+    background: none;
+    color: #00a3ff;
+    padding: 0;
+    border-radius: 0;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    margin-bottom: 12px;
+    box-shadow: none;
+  }
+
+  h2 {
+    font-size: clamp(24px, 3.2vw, 36px);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.4;
+    margin-bottom: 14px;
+  }
+
+  .desc {
+    font-size: 15px;
+    color: #a8b3c4;
+    line-height: 1.6;
+  }
+}
+
+.jap-notto-highlight {
+  color: #00a3ff;
+  font-weight: 900;
+  text-shadow: 0 0 18px rgba(0, 163, 255, 0.45);
+}
+
+.jap-notto-scroll-wrap {
+  position: relative;
+  margin: 0 -8px;
+  padding: 0 8px;
+}
+
+.jap-notto-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.jap-notto-card {
+  position: relative;
+  border-radius: 16px;
+  padding: 24px 22px;
+  background:
+    linear-gradient(145deg, rgba(14, 24, 38, 0.96) 0%, rgba(6, 12, 22, 0.98) 100%);
+  border: 1px solid rgba(0, 163, 255, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(0, 163, 255, 0.08),
+    0 0 18px rgba(0, 163, 255, 0.18),
+    0 16px 32px rgba(0, 0, 0, 0.35);
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    border-color: rgba(0, 196, 255, 0.7);
+    box-shadow:
+      0 0 0 1px rgba(0, 196, 255, 0.18),
+      0 0 28px rgba(0, 163, 255, 0.32),
+      0 20px 40px rgba(0, 0, 0, 0.45);
+  }
+}
+
+.jap-notto-card__icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 163, 255, 0.12);
+  border: 1px solid rgba(0, 163, 255, 0.35);
+  color: #4dc4ff;
+  box-shadow: 0 0 14px rgba(0, 163, 255, 0.22);
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  &.is-list { color: #4dc4ff; }
+  &.is-send { color: #38bdf8; }
+  &.is-chart { color: #60a5fa; }
+  &.is-phone { color: #22d3ee; }
+  &.is-trend { color: #67e8f9; }
+}
+
+.jap-notto-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.jap-notto-card__check-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.jap-notto-card__check {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #0077cc 0%, #00a3ff 100%);
+  box-shadow: 0 0 10px rgba(0, 163, 255, 0.45);
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 3px;
+
+  &::after {
     content: "";
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(circle at center, rgba(0, 163, 255, 0.1) 0%, transparent 70%);
-    pointer-events: none;
+    left: 6px;
+    top: 3px;
+    width: 4px;
+    height: 8px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
   }
 }
 
-.jap-notto-card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 0 40px 5px rgba(0, 163, 255, 0.5), 0 30px 60px rgba(0, 0, 0, 0.9);
-}
-
-.card-icon {
-  margin-bottom: 20px;
-  .card-img {
-    width: 140px; /* 少しサイズを絞ってバランスを調整 */
-    height: auto;
-    filter: drop-shadow(0 0 8px rgba(0, 163, 255, 0.6));
-  }
-}
-
-.card-text {
-  font-size: 18px;
+.jap-notto-card__title {
+  margin: 0;
+  font-size: 15px;
   font-weight: 700;
-  margin-bottom: 10px;
-  text-align: center;
+  color: #f1f5f9;
+  line-height: 1.45;
 }
 
-.card-sub {
+.jap-notto-card__desc {
+  margin: 0;
   font-size: 13px;
-  color: #aaa;
-  text-align: center;
-  line-height: 1.5;
+  color: #94a3b8;
+  line-height: 1.65;
+  border-top: 1px dashed rgba(148, 163, 184, 0.28);
+  padding-top: 12px;
 }
 
-/* --- レスポンシブバランスの最適化 --- */
+.jap-notto-scroll-btn {
+  display: none;
+}
+
 @media (max-width: 1024px) {
   .jap-notto-grid {
-    gap: 20px;
+    grid-template-columns: repeat(2, 1fr);
   }
-  .jap-notto-card.card-4,
-  .jap-notto-card.card-5 {
-    grid-column: span 3; /* タブレットサイズでは下段も均等に */
+}
+
+@media (max-width: 960px) {
+  .jap-notto-section {
+    overflow: visible;
+  }
+
+  .jap-notto-container {
+    overflow: visible;
+  }
+
+  .jap-notto-scroll-wrap {
+    margin: 0;
+    padding: 0 40px;
+    overflow: visible;
+  }
+
+  .jap-notto-grid {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    /* 上下にネオン余白。左右はカード幅100%で枠全体を見せる */
+    padding: 14px 0 26px;
+    grid-template-columns: unset;
+    scrollbar-width: none;
+    align-items: stretch;
+    scroll-padding-inline: 0;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .jap-notto-card {
+    /* スクロール領域の幅いっぱいで枠が切れない */
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: none;
+    min-height: 300px;
+    height: auto;
+    box-sizing: border-box;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    padding: 28px 22px 26px;
+    border: 1.5px solid rgba(0, 196, 255, 0.6);
+    box-shadow:
+      0 0 0 1px rgba(0, 163, 255, 0.16),
+      0 0 16px rgba(0, 163, 255, 0.32),
+      0 12px 28px rgba(0, 0, 0, 0.42);
+  }
+
+  .jap-notto-card__icon {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+
+    svg {
+      width: 34px;
+      height: 34px;
+    }
+  }
+
+  .jap-notto-card__body {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+  }
+
+  .jap-notto-card__check-line {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .jap-notto-card__title {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .jap-notto-card__title br {
+    display: none;
+  }
+
+  .jap-notto-card__desc {
+    text-align: center;
+    margin-top: 0;
+    padding-top: 14px;
+    line-height: 1.7;
+  }
+
+  .jap-notto-scroll-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(calc(-50% - 6px));
+    z-index: 3;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 163, 255, 0.55);
+    background: rgba(5, 14, 28, 0.96);
+    color: #7dd3ff;
+    box-shadow: 0 0 14px rgba(0, 163, 255, 0.28);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+
+    svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    &:hover {
+      border-color: #00a3ff;
+      color: #fff;
+      box-shadow: 0 0 20px rgba(0, 163, 255, 0.45);
+    }
+  }
+
+  .jap-notto-scroll-prev {
+    left: 2px;
+  }
+
+  .jap-notto-scroll-next {
+    right: 2px;
   }
 }
 
 @media (max-width: 768px) {
   .jap-notto-section {
-    padding: 60px 15px;
-  }
-  
-  .sp-section-header {
-    margin-bottom: 40px;
-    h2 { font-size: 24px; }
-    .desc { font-size: 14px; }
+    padding: 64px 15px 56px;
   }
 
-  .jap-notto-grid {
-    grid-template-columns: repeat(2, 1fr); /* 2カラム維持 */
-    gap: 15px;
-  }
-  
-  .jap-notto-card,
-  .jap-notto-card.card-4,
-  .jap-notto-card.card-5 {
-    grid-column: span 1 !important; /* 全て1カラム幅（実質2個並び） */
-  }
+  .jap-notto-section .sp-section-header {
+    margin-bottom: 28px;
 
-  .card-inner {
-    padding: 30px 15px;
-  }
+    h2 {
+      font-size: 24px;
+    }
 
-  .card-icon .card-img {
-    width: 100px; /* スマホではアイコンを適切に縮小 */
-  }
-
-  .card-text {
-    font-size: 16px;
+    .desc {
+      font-size: 14px;
+    }
   }
 }
 
 @media (max-width: 480px) {
-  .jap-notto-grid {
-    grid-template-columns: 1fr; /* 完全1カラム */
-  }
-  
-  .card-inner {
-    padding: 25px 20px;
-    flex-direction: row; /* 横並びレイアウトに変更して縦長すぎるのを防ぐ */
-    justify-content: flex-start;
-    text-align: left;
+  .jap-notto-scroll-wrap {
+    padding: 0 36px;
   }
 
-  .card-icon {
-    margin-bottom: 0;
-    margin-right: 20px;
-    .card-img {
-      width: 80px;
+  .jap-notto-grid {
+    padding: 16px 0 28px;
+    gap: 14px;
+  }
+
+  .jap-notto-card {
+    min-height: 320px;
+    height: auto;
+    padding: 30px 18px 28px;
+  }
+
+  .jap-notto-card__icon {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 14px;
+
+    svg {
+      width: 38px;
+      height: 38px;
     }
   }
 
-  .card-text, .card-sub {
-    text-align: left;
+  .jap-notto-scroll-btn {
+    width: 32px;
+    height: 32px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
   }
-  
-  .card-text {
-    margin-bottom: 4px;
+}
+
+
+/* ===========================================================
+   LP共通: シンプル青見出し + ネオン枠カード
+=========================================================== */
+.sp-section-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sp-section-header .en-sub,
+.sp-company .sp-section-header .en-sub,
+.sp-solutions .sp-section-header .en-sub,
+.jap-notto-section .sp-section-header .en-sub {
+  display: block !important;
+  background: none !important;
+  color: #00aaff !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.2em !important;
+  margin-bottom: 12px !important;
+  box-shadow: none !important;
+  -webkit-text-fill-color: #00aaff !important;
+}
+
+.lp-neon-frame,
+.ser-mos-card,
+.pricing-cards-card,
+.cards-moos-card {
+  border: 1.5px solid rgba(0, 196, 255, 0.55) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 163, 255, 0.14),
+    0 0 16px rgba(0, 163, 255, 0.28),
+    0 12px 28px rgba(0, 0, 0, 0.42) !important;
+  background: linear-gradient(145deg, rgba(14, 24, 38, 0.96) 0%, rgba(6, 12, 22, 0.98) 100%) !important;
+  border-radius: 16px !important;
+}
+
+.ser-mos-card:hover,
+.pricing-cards-card:hover,
+.cards-moos-card:hover {
+  border-color: rgba(0, 196, 255, 0.75) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 196, 255, 0.18),
+    0 0 28px rgba(0, 163, 255, 0.35),
+    0 20px 40px rgba(0, 0, 0, 0.45) !important;
+}
+
+.cards-moos-card::before,
+.cards-moos-card::after,
+.ser-mos-card::before {
+  display: none !important;
+}
+
+/* 共通横スライドラッパー */
+.lp-scroll-wrap {
+  position: relative;
+  margin: 0;
+  padding: 0 8px;
+  overflow: visible;
+}
+
+.lp-scroll-btn {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .lp-scroll-wrap {
+    padding: 0 36px;
+  }
+
+  .lp-scroll-grid {
+    display: flex !important;
+    gap: 14px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px 0 26px;
+    scrollbar-width: none;
+    align-items: stretch;
+  }
+
+  .lp-scroll-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .lp-scroll-grid > .ser-mos-card,
+  .lp-scroll-grid > .pricing-cards-card,
+  .lp-scroll-grid > .cards-moos-card,
+  .lp-scroll-grid > .lp-scroll-item {
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: none;
+    min-height: 300px;
+    height: auto;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    box-sizing: border-box;
+  }
+
+  .lp-scroll-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(calc(-50% - 6px));
+    z-index: 3;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 163, 255, 0.55);
+    background: rgba(5, 14, 28, 0.96);
+    color: #7dd3ff;
+    box-shadow: 0 0 14px rgba(0, 163, 255, 0.28);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lp-scroll-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .lp-scroll-btn:hover {
+    border-color: #00a3ff;
+    color: #fff;
+  }
+
+  .lp-scroll-prev { left: 2px; }
+  .lp-scroll-next { right: 2px; }
+}
+
+@media (max-width: 480px) {
+  .lp-scroll-wrap { padding: 0 34px; }
+  .lp-scroll-btn { width: 32px; height: 32px; }
+  .lp-scroll-btn svg { width: 16px; height: 16px; }
+}
+
+/* ===========================================================
+   LP共通: レスポンシブ余白の圧縮（セクション間・セクション内）
+=========================================================== */
+@media (max-width: 768px) {
+  /* セクション前後（間） */
+  .japan-notyo-section,
+  .jap-notto-section,
+  .ser-mos-section,
+  .main-moss-section,
+  .admin-preview-section,
+  .pricing-cards-section,
+  .compare-fixed,
+  .service-compare,
+  .faq-japan-section,
+  .cards-moos-section,
+  .section-trial-cta,
+  .sp-content-container,
+  .sp-company,
+  .sp-solutions {
+    padding-top: 48px !important;
+    padding-bottom: 48px !important;
+  }
+
+  .jap-notto-section {
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+  }
+
+  .japan-notyo-section {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .sp-company,
+  .sp-solutions {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .ser-mos-section,
+  .main-moss-section,
+  .pricing-cards-section,
+  .faq-japan-section,
+  .cards-moos-section,
+  .admin-preview-section {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .cards-moos-section.py-5,
+  .faq-japan-section.py-5 {
+    padding-top: 48px !important;
+    padding-bottom: 48px !important;
+  }
+
+  /* セクション内: 見出し下余白 */
+  .sp-section-header,
+  .sp-company .sp-section-header,
+  .sp-solutions .sp-section-header,
+  .jap-notto-section .sp-section-header {
+    margin-bottom: 24px !important;
+  }
+
+  .sp-section-header .en-sub,
+  .sp-company .sp-section-header .en-sub,
+  .sp-solutions .sp-section-header .en-sub,
+  .jap-notto-section .sp-section-header .en-sub {
+    margin-bottom: 8px !important;
+  }
+
+  .sp-section-header h2,
+  .sp-company .sp-section-header h2,
+  .sp-solutions .sp-section-header h2,
+  .jap-notto-section .sp-section-header h2 {
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+    font-size: clamp(22px, 6vw, 28px) !important;
+  }
+
+  .sp-section-header .desc,
+  .sp-company .sp-section-header .desc,
+  .sp-solutions .sp-section-header .desc,
+  .jap-notto-section .sp-section-header .desc {
+    margin-bottom: 0 !important;
+    font-size: 13px !important;
+  }
+
+  /* セクション内: カード・ブロック余白 */
+  .main-moss-block {
+    padding: 28px 16px !important;
+    margin: 16px auto !important;
+  }
+
+  .ser-mos-card,
+  .pricing-cards-card,
+  .cards-moos-card {
+    padding: 22px 16px !important;
+  }
+
+  .jap-notto-card {
+    padding: 24px 16px 22px !important;
+    min-height: 280px !important;
+  }
+
+  .jap-notto-arrow {
+    margin: 24px 0 12px !important;
+  }
+
+  .jap-notto-solution {
+    padding: 28px 18px !important;
+    gap: 24px !important;
+  }
+
+  .jap-notto-scroll-wrap,
+  .lp-scroll-wrap {
+    margin-top: 0 !important;
+  }
+
+  .jap-notto-grid,
+  .lp-scroll-grid {
+    padding-top: 8px !important;
+    padding-bottom: 16px !important;
+    gap: 12px !important;
+  }
+
+  .sp-company .sp-info-card,
+  .sp-solutions .sp-card {
+    padding: 22px 18px !important;
+  }
+
+  .sp-company .sp-company-grid,
+  .sp-solutions .sp-grid {
+    gap: 14px !important;
+    margin-top: 20px !important;
+  }
+
+  .faq-japan-item {
+    margin-bottom: 10px !important;
+  }
+
+  .japan-notyo-heading {
+    margin-bottom: 12px !important;
+  }
+
+  .japan-notyo-description {
+    margin-bottom: 0 !important;
+  }
+
+  .admin-preview-section .container {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .pricing-cards-title {
+    margin-bottom: 24px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .japan-notyo-section,
+  .jap-notto-section,
+  .ser-mos-section,
+  .main-moss-section,
+  .admin-preview-section,
+  .pricing-cards-section,
+  .compare-fixed,
+  .service-compare,
+  .faq-japan-section,
+  .cards-moos-section,
+  .section-trial-cta,
+  .sp-content-container,
+  .sp-company,
+  .sp-solutions,
+  .cards-moos-section.py-5,
+  .faq-japan-section.py-5 {
+    padding-top: 40px !important;
+    padding-bottom: 40px !important;
+  }
+
+  .sp-section-header,
+  .sp-company .sp-section-header,
+  .sp-solutions .sp-section-header,
+  .jap-notto-section .sp-section-header {
+    margin-bottom: 18px !important;
+  }
+
+  .main-moss-block {
+    padding: 22px 14px !important;
+    margin: 12px auto !important;
+  }
+
+  .jap-notto-card {
+    min-height: 260px !important;
+    padding: 22px 14px 20px !important;
+  }
+
+  .jap-notto-card__icon {
+    margin-bottom: 8px !important;
+  }
+
+  .ser-mos-card,
+  .pricing-cards-card,
+  .cards-moos-card {
+    padding: 18px 14px !important;
+  }
+}
+
+/* ser-mos desktop grid when using lp-scroll-grid */
+.ser-mos-grid.lp-scroll-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.pricing-cards-grid.lp-scroll-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.cards-moos-grid.lp-scroll-grid,
+.main-moss-grid.lp-scroll-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .ser-mos-grid.lp-scroll-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pricing-cards-grid.lp-scroll-grid,
+  .cards-moos-grid.lp-scroll-grid,
+  .main-moss-grid.lp-scroll-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 960px) {
+  .ser-mos-grid.lp-scroll-grid,
+  .pricing-cards-grid.lp-scroll-grid,
+  .cards-moos-grid.lp-scroll-grid,
+  .main-moss-grid.lp-scroll-grid {
+    display: flex !important;
+    grid-template-columns: unset;
+  }
+}
+
+.jap-notto-arrow {
+  display: flex;
+  justify-content: center;
+  margin: 36px 0 18px;
+  color: #00a3ff;
+  filter: drop-shadow(0 0 10px rgba(0, 163, 255, 0.45));
+
+  svg {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+.jap-notto-solution {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 36px;
+  padding: 40px 48px;
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(14, 24, 38, 0.96) 0%, rgba(6, 12, 22, 0.98) 100%);
+  border: 1px solid rgba(0, 163, 255, 0.38);
+  box-shadow:
+    0 0 0 1px rgba(0, 163, 255, 0.08),
+    0 0 28px rgba(0, 163, 255, 0.2),
+    0 20px 44px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 240px;
+    height: 120px;
+    background: linear-gradient(135deg, transparent 45%, rgba(0, 163, 255, 0.08) 100%);
+    border-bottom-right-radius: 24px;
+    pointer-events: none;
+  }
+}
+
+.jap-notto-solution__copy {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.jap-notto-solution__lead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: clamp(1.2rem, 2.2vw, 1.5rem);
+  font-weight: 800;
+  color: #f1f5f9;
+  line-height: 1.4;
+}
+
+.jap-notto-solution__badge {
+  display: inline-block;
+  background: linear-gradient(90deg, #0056b3 0%, #00a3ff 100%);
+  color: #fff;
+  padding: 5px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 0 14px rgba(0, 163, 255, 0.35);
+}
+
+.jap-notto-solution__brand {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: clamp(1.25rem, 2.6vw, 1.75rem);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.35;
+}
+
+.jap-notto-solution__mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0056b3 0%, #00a3ff 100%);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 163, 255, 0.4);
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.jap-notto-solution__name {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.jap-notto-solution__suffix {
+  font-weight: 800;
+  color: #e2e8f0;
+}
+
+.jap-notto-solution__action {
+  font-size: clamp(1.4rem, 2.8vw, 2rem);
+  font-weight: 900;
+  background: linear-gradient(90deg, #00a3ff 0%, #38bdf8 45%, #67e8f9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 12px rgba(0, 163, 255, 0.35));
+}
+
+.jap-notto-solution__visual {
+  position: relative;
+  flex: 0 0 280px;
+  z-index: 1;
+}
+
+.jap-notto-solution__mock {
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(5, 14, 28, 0.9);
+  border: 1px solid rgba(0, 163, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 163, 255, 0.18);
+  padding: 14px 16px 16px;
+}
+
+.jap-notto-solution__mock-head {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+
+  span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(0, 163, 255, 0.45);
+
+    &:first-child { background: #00a3ff; }
+    &:nth-child(2) { background: #38bdf8; }
+  }
+}
+
+.jap-notto-solution__mock-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  background: rgba(0, 163, 255, 0.08);
+  border: 1px solid rgba(0, 163, 255, 0.18);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+    color: #4dc4ff;
+    flex-shrink: 0;
+  }
+}
+
+.jap-notto-solution__deco {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 18, 32, 0.95);
+  border: 1px solid rgba(0, 163, 255, 0.35);
+  box-shadow: 0 0 14px rgba(0, 163, 255, 0.25);
+  color: #4dc4ff;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.jap-notto-solution__deco--sparkle {
+  top: -12px;
+  left: -12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.jap-notto-solution__deco--chat {
+  top: 10px;
+  right: -10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.jap-notto-solution__deco--chart {
+  bottom: 16px;
+  right: -18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 960px) {
+  .jap-notto-solution {
+    flex-direction: column;
+    padding: 36px 24px;
+    gap: 32px;
+    text-align: center;
+  }
+
+  .jap-notto-solution__lead,
+  .jap-notto-solution__brand {
+    justify-content: center;
+  }
+
+  .jap-notto-solution__visual {
+    flex: none;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .jap-notto-solution {
+    padding: 28px 18px;
+  }
+
+  .jap-notto-solution__badge {
+    font-size: 12px;
+    padding: 4px 12px;
+  }
+
+  .jap-notto-solution__deco--chat,
+  .jap-notto-solution__deco--chart {
+    right: -6px;
   }
 }
 
@@ -2314,13 +3164,8 @@ body {
     }
 
 .admin-main-img {
-    /* スマホ専用の画像パスを指定して差し替え */
-    content: url('dashboard-capture-sp.png'); 
-    
     width: 100%;
-    height: 220px;       /* 表示したい高さを固定 */
-    object-fit: cover;    /* 中央を基準にフィットさせる */
-    object-position: center;
+    height: auto;
     border-radius: 12px;
   }
 
@@ -3990,6 +4835,52 @@ h2::after {
     display: inline;
   }
 }
+
+/* SEO: お役立ち記事セクション（トップ / LP） */
+.sp-columns-seo {
+  max-width: 920px;
+  margin: 64px auto;
+  padding: 0 24px;
+}
+
+.sp-columns-seo__list {
+  list-style: none;
+  padding: 0;
+  margin: 28px 0 16px;
+}
+
+.sp-columns-seo__list li {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sp-columns-seo__list a {
+  display: block;
+  padding: 14px 0;
+  color: #e8f6ff;
+  text-decoration: none;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.sp-columns-seo__list a:hover {
+  color: #00aaff;
+}
+
+.sp-columns-seo__more {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.sp-columns-seo__more a {
+  color: #00aaff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sp-columns-seo__more a:hover {
+  text-decoration: underline;
+}
+
 
 
 

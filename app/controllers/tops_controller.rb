@@ -46,7 +46,9 @@ class TopsController < ApplicationController
 
 
   def set_breadcrumbs
-    add_breadcrumb 'トップ', root_path
+    return if action_name == "index"
+
+    add_breadcrumb "トップ", root_path
 
     label = LpDefinition.label(action_name)
     add_breadcrumb label, request.path if label
