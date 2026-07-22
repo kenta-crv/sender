@@ -110,12 +110,17 @@ javascript:
     const setupDetectAll = function() {
       const selectAll = document.getElementById('detect_select_all');
       if (!selectAll) return;
-      selectAll.addEventListener('change', function() {
-        const checks = document.querySelectorAll('.detect-check');
-        checks.forEach(c => c.checked = selectAll.checked);
-      });
+      selectAll.onchange = function() {
+        document.querySelectorAll('.detect-check').forEach(function(c) {
+          c.checked = selectAll.checked;
+        });
+      };
     };
 
-    document.addEventListener('turbo:load', setupDetectAll);
-    document.addEventListener('DOMContentLoaded', setupSetupDetectAll);
+    if (document.readyState !== 'loading') {
+      setupDetectAll();
+    } else {
+      document.addEventListener('DOMContentLoaded', setupDetectAll);
+    }
+    document.addEventListener('turbolinks:load', setupDetectAll);
   })();
