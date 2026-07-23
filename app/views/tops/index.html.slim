@@ -135,6 +135,6 @@ javascript:
     });
 
     document.addEventListener('turbolinks:before-visit', function () {
-      sendEvent('abandon');
+      if (!navigating) sendEvent('abandon');
     });
   })();

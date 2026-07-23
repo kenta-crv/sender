@@ -361,15 +361,29 @@
     }
   };
 
+  // 別タブCTAでも企業紐付けが切れないよう、sign_up リンクに ftkn を付与
+  function appendFtknToSignUpLinks() {
+    var ftkn = new URLSearchParams(window.location.search).get('ftkn') || sessionStorage.getItem('ftkn');
+    if (!ftkn) return;
+
+    sessionStorage.setItem('ftkn', ftkn);
+
+    document.querySelectorAll('a[href*="sign_up"]').forEach(function (a) {
+      try {
+        var url = new URL(a.getAttribute('href'), window.location.origin);
+        if (url.searchParams.get('ftkn')) return;
+        url.searchParams.set('ftkn', ftkn);
+        a.setAttribute('href', url.pathname + url.search + url.hash);
+      } catch (e) {}
+    });
+  }
+
   // Turbolinks環境における最適なイベント発火の統合制御
   document.addEventListener('turbolinks:load', () => {
     initializeAnimations();
     mountDataTargetNav();
     initTrialOverlay();
-
-    // メールリンク経由のトラッキングトークンを sessionStorage に保存
-    var ftkn = new URLSearchParams(window.location.search).get('ftkn');
-    if (ftkn) sessionStorage.setItem('ftkn', ftkn);
+    appendFtknToSignUpLinks();
   });
 })();
 
