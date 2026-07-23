@@ -15,7 +15,8 @@ link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&displ
 = favicon_link_tag "favicon.ico"
 
 - if defined?(breadcrumbs) && breadcrumbs.present?
-  - breadcrumb_items = breadcrumbs.each_with_index.map { |crumb, i|
+  ruby:
+    breadcrumb_items = breadcrumbs.each_with_index.map do |crumb, i|
       item = {
         "@type" => "ListItem",
         "position" => i + 1,
@@ -23,13 +24,14 @@ link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&displ
       }
       item["item"] = crumb[:path].present? ? "#{request.base_url}#{crumb[:path]}" : request.original_url
       item
-    }
-  script type="application/ld+json"
-    = raw({
+    end
+    breadcrumb_ld_json = {
       "@context" => "https://schema.org",
       "@type" => "BreadcrumbList",
       "itemListElement" => breadcrumb_items
-    }.to_json)
+    }.to_json
+  script type="application/ld+json"
+    = raw(breadcrumb_ld_json)
 
 / Google tag (gtag.js)
 script async=true src="https://www.googletagmanager.com/gtag/js?id=G-KKJH6MHMBK"
