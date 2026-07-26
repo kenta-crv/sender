@@ -271,7 +271,7 @@ end
       detail_scope = detail_scope.where(event_type: @filter_event)
     end
 
-    @recent_events = detail_scope.limit(100)
+    @recent_events = detail_scope.page(params[:page]).per(100)
 
     @stripe_expired_count = FunnelEvent.where(
       page: 'stripe_session_expired',

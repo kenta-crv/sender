@@ -31,8 +31,10 @@
 
           .table-responsive
             - page_labels = { 'top' => 'トップページ', 'registration' => '新規登録', 'checkout_confirmation' => '決済確認' }
-            - event_cols = [['visit', '訪問'], ['abandon', '離脱'], ['proceed', '決済へ進む']]
+            - event_cols = [['visit', '訪問'], ['abandon', '離脱'], ['proceed', '進行']]
             - event_colors = { 'visit' => '#7dd3fc', 'abandon' => '#f87171', 'proceed' => '#34d399' }
+            p.text-muted.px-3.mb-2 style="font-size: 0.8rem;"
+              | ※訪問＝ページ表示回数（ユニーク人数ではない）／離脱・進行は計測できた件数のみ／トップの進行は未計測のため常に0
             table.okurite-table style="width: 100%; border-collapse: collapse;"
               thead
                 tr
@@ -82,16 +84,26 @@
       .history-section.mt-4
         .glass-card
           .card-header-flex
+            - list_params = { since: @since_days, filter_page: @filter_page, filter_event: @filter_event }.compact
+            - range_label = if @recent_events.total_count.zero?
+                '（0件）'
+              else
+                from = @recent_events.offset_value + 1
+                to   = [@recent_events.offset_value + @recent_events.length, @recent_events.total_count].min
+                "（#{@recent_events.total_count}件中 #{from}–#{to}件）"
+              end
             - if @filter_page.present? || @filter_event.present?
               - fp_label = { 'top' => 'トップページ', 'registration' => '新規登録', 'checkout_confirmation' => '決済確認', 'stripe_session_expired' => 'Stripe' }
-              - fe_label = { 'visit' => '訪問', 'abandon' => '離脱', 'proceed' => '決済へ進む' }
+              - fe_label = { 'visit' => '訪問', 'abandon' => '離脱', 'proceed' => '進行' }
               h5.m-0
                 | #{fp_label[@filter_page] || @filter_page} ／ #{fe_label[@filter_event] || @filter_event}
-                span.text-muted.ms-2 style="font-size: 0.85rem;" （最新100件）
+                span.text-muted.ms-2 style="font-size: 0.85rem;" = range_label
               = link_to 'フィルター解除', dashboard_funnel_tracking_path(since: @since_days),
                   class: 'btn-electric-outline', style: 'font-size: 0.8rem; text-decoration: none;'
             - else
-              h5.m-0 全イベント一覧（最新100件）
+              h5.m-0
+                | 全イベント一覧
+                span.text-muted.ms-2 style="font-size: 0.85rem;" = range_label
 
           .table-responsive
             table.okurite-table style="width: 100%; border-collapse: collapse;"
@@ -105,7 +117,7 @@
                   th style="width: 100px;" 滞在時間
 
               tbody
-                - ev_type_labels  = { 'visit' => '訪問', 'abandon' => '離脱', 'proceed' => '決済へ進む' }
+                - ev_type_labels  = { 'visit' => '訪問', 'abandon' => '離脱', 'proceed' => '進行' }
                 - ev_type_colors  = { 'visit' => '#7dd3fc', 'abandon' => '#f87171', 'proceed' => '#34d399' }
                 - pg_labels_short = { 'top' => 'トップ', 'registration' => '登録', 'checkout_confirmation' => '決済確認', 'stripe_session_expired' => 'Stripe' }
                 - if @recent_events.empty?
@@ -138,3 +150,7 @@
                           = "#{ev.time_spent_seconds}秒"
                         - else
                           span.text-muted -
+
+          - if @recent_events.total_pages > 1
+            .p-3
+              = paginate @recent_events, params: list_params

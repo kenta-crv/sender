@@ -33,6 +33,18 @@ link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&displ
   script type="application/ld+json"
     = raw(breadcrumb_ld_json)
 
+- if controller_name == "tops" && action_name == "index"
+  script type="application/ld+json"
+    = raw(organization_json_ld)
+  script type="application/ld+json"
+    = raw(website_json_ld)
+
+- if controller_name == "tops" && %w[okurite sales].include?(action_name)
+  - faq_ld = faq_page_json_ld(lp_faqs_for_current_page)
+  - if faq_ld.present?
+    script type="application/ld+json"
+      = raw(faq_ld)
+
 / Google tag (gtag.js)
 script async=true src="https://www.googletagmanager.com/gtag/js?id=G-KKJH6MHMBK"
 script
