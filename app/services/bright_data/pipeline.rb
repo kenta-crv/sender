@@ -8,6 +8,9 @@ require "uri"
 module BrightData
   class Pipeline
     DASH_PATTERN = /\A[\-－−ー–　\s]*\z/
+    # 1バッチの SERP API エラー率がこの値以上なら run を止めて次バッチへ進まない（費用停止）
+    SERP_API_ERROR_STOP_RATE = ENV.fetch("SERP_API_ERROR_STOP_RATE", "0.5").to_f.clamp(0.1, 1.0)
+    SHUTDOWN_ERRORS = [Sidekiq::Shutdown, Interrupt, SignalException].freeze
 
     def self.presence_or_nil(value)
       v = value.to_s.strip
@@ -53,7 +56,12 @@ module BrightData
 
       selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
       if selected_ids.any?
-        targets = Customer.where(id: selected_ids).order(id: :asc).limit(limit).to_a
+        # 再開時の二重課金防止: 送信済み（done/error）はスキップ
+        already_finished = Customer.where(id: selected_ids, serp_status: %w[serp_done serp_error]).pluck(:id)
+        pending_ids = selected_ids - already_finished
+        puts "[Pipeline] 指定ID #{selected_ids.size}件中 送信済みスキップ #{already_finished.size}件 / 残 #{pending_ids.size}件" if already_finished.any?
+        ordered = pending_ids.first(limit)
+        targets = Customer.where(id: ordered).to_a.sort_by { |c| ordered.index(c.id) || 0 }
       else
         scope = Customer.serp_extraction_targets
         scope = scope.where(business: industry) if industry.present?
@@ -63,8 +71,9 @@ module BrightData
 
       if targets.empty?
         if selected_ids.any?
-          puts "[Pipeline] 指定IDの対象が取得できませんでした（処理済みまたは不存在）"
-          audit_run&.fail!("指定された対象を処理できませんでした（既に処理済みの可能性があります）")
+          # このバッチ枠は全て処理済み → 失敗にせず次バッチへ進める
+          puts "[Pipeline] 指定IDは全て送信済みのためスキップします"
+          return { targets: 0, extracted: 0, registered: { skipped_blank: 0 }, skipped_done: true }
         else
           audit_run&.complete!(done_count: 0, error_count: 0, summary: { targets: 0, extracted: 0 })
         end
@@ -105,16 +114,28 @@ module BrightData
       web_error_customer_ids = []
       web_error_mutex = Mutex.new
       completion_status_applied = false
+      api_completed_ids = []
+      stop_run_reason = nil
 
       begin
         client = SerpClient.new
         batch = client.batch_search(queries, delay_between: 1) do |event|
+          idx = event["index"].to_i
+          job = query_jobs[idx]
+          customer_id = job && job[:customer_id]
+          if customer_id
+            api_completed_ids << customer_id
+            # APIエラーは即確定（再開時の再送・再課金を防ぐ）
+            if !dry_run && event.dig("result", "error").present?
+              mark_serp_status([customer_id], "serp_error")
+            end
+          end
           progress_tracker&.serp_progress(
-            completed: event["index"].to_i + 1,
+            completed: idx + 1,
             total: event["total"].to_i
           )
           audit_run&.update_columns(
-            serp_completed: event["index"].to_i + 1,
+            serp_completed: idx + 1,
             serp_total: event["total"].to_i,
             updated_at: Time.current
           )
@@ -130,15 +151,20 @@ module BrightData
         puts "[Pipeline] SERP API課金対象: #{billable_calls}/#{batch.size}件" unless dry_run
         ResultStore.save_batch(batch)
         fatal_error = batch.find { |item| item.dig("result", "fatal") }
-        serp_error_customer_ids = if fatal_error
-          target_ids
-        else
-          batch.filter_map do |item|
-            next if item.dig("result", "error").blank?
-            item["customer_id"]
-          end.uniq
-        end
+        # fatal / 個別APIエラーは「実際にAPIまで行った分」だけ error にする（未送信は ensure で null に戻す）
+        serp_error_customer_ids = batch.filter_map do |item|
+          next if item.dig("result", "error").blank?
+          item["customer_id"]
+        end.uniq
         puts "[Pipeline] SERP APIエラー: #{serp_error_customer_ids.size}件（対象はserp_errorにします）" if serp_error_customer_ids.any?
+
+        if fatal_error
+          stop_run_reason = "SERP API fatal: #{fatal_error.dig('result', 'error')}"
+        elsif serp_api_error_rate_exceeded?(batch)
+          rate = (serp_error_customer_ids.size.to_f / batch.size * 100).round(1)
+          stop_run_reason = "SERP API error rate #{rate}% (>= #{(SERP_API_ERROR_STOP_RATE * 100).to_i}%)"
+        end
+        puts "[Pipeline] 費用停止: #{stop_run_reason}" if stop_run_reason
 
         companies = batch.flat_map do |item|
           CompanyExtractor.extract(item["result"], query: item["query"]).map do |company|
@@ -156,7 +182,9 @@ module BrightData
           concurrency = ENV.fetch("WEB_ENRICHER_CONCURRENCY", "3").to_i.clamp(1, 10)
           web_timeout = web_enricher_timeout_seconds
           web_enricher = WebEnricher
-          puts "[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件 / 並列度 #{concurrency}"
+          # API未到達・APIエラー分は Web しない（未送信を error 化しない／無駄クロール防止）
+          web_target_ids = api_completed_ids.uniq - serp_error_customer_ids
+          puts "[WebEnricher] 開始: SERP抽出 #{companies.size}件 / URLあり #{with_url}件 / Web対象 #{web_target_ids.size}件 / 並列度 #{concurrency}"
 
           groups = companies.each_with_index.group_by { |c, _| c[:customer_id] }
           counters[:no_customer] = (groups[nil] || []).size
@@ -164,13 +192,14 @@ module BrightData
             puts "[WebEnricher] SERP候補 #{idx + 1}/#{companies.size}: customer未マッチ query='#{c[:query]}' url=#{c[:url]} → SKIP"
           end
           groups.delete(nil)
-          audit_run&.mark_status!("web", web_total: target_ids.size, web_completed: 0)
-          progress_tracker&.web_started(total: target_ids.size)
+          audit_run&.mark_status!("web", web_total: web_target_ids.size, web_completed: 0)
+          progress_tracker&.web_started(total: web_target_ids.size)
 
+          if web_target_ids.any?
           pool = Concurrent::FixedThreadPool.new(concurrency)
           audit_targets = audit_run ? audit_run.targets.index_by(&:customer_id) : {}
 
-          futures = target_ids.map do |customer_id|
+          futures = web_target_ids.map do |customer_id|
             Concurrent::Promises.future_on(pool) do
               customer = Customer.find_by(id: customer_id)
               group = groups[customer_id] || []
@@ -319,7 +348,23 @@ module BrightData
                     update_keys: update_keys,
                     error_message: error_message
                   )
+                else
+                  final_status = result_status ||
+                                 (candidate_count.zero? ? "error" : nil) ||
+                                 (error_message.present? ? "error" : nil) ||
+                                 (excluded_seen ? "excluded" : "no_update")
                 end
+
+                # Web完了時点でステータス確定（Shutdown時の再課金・成功分のerror化を防ぐ）
+                unless dry_run
+                  case final_status.to_s
+                  when "updated", "url_only", "excluded", "no_update"
+                    mark_serp_status([customer_id], "serp_done")
+                  when "error"
+                    mark_serp_status([customer_id], "serp_error")
+                  end
+                end
+
                 audit_run&.increment!(:web_completed) if audit_run
                 progress_tracker&.increment_web(message: customer ? "対象完了: #{customer.company}" : "対象完了: 対象なし")
               end
@@ -333,10 +378,10 @@ module BrightData
           begin
             company_by_customer = companies.group_by { |c| c[:customer_id] }
             classify_count = 0
-            Customer.where(id: target_ids, business: [nil, ""]).find_each do |customer|
+            Customer.where(id: web_target_ids, business: [nil, ""]).find_each do |customer|
               group = company_by_customer[customer.id] || []
               best = group.find { |c| c[:industry].present? } || group.first
-              IndustryClassifier.classify_and_save!(customer, best || {})
+              ::IndustryClassifier.classify_and_save!(customer, best || {})
               classify_count += 1
             end
             puts "[Pipeline] 業種自動分類 完了: #{classify_count}件を business カラムに保存"
@@ -345,6 +390,7 @@ module BrightData
           end
 
           puts "[Pipeline] Web補完 完了: #{counters[:enriched]}件更新 / URLのみ保存 #{counters[:url_fallback]}件 / SERP直接更新 #{counters[:serp_direct]}件 / スキップ(URL無) #{counters[:no_url]}件 / スキップ(URL除外) #{counters[:excluded_url]}件 / 候補URLなし(エラー) #{counters[:no_candidate]}件 / データなし(エラー) #{counters[:no_data]}件 / スキップ(顧客未マッチ) #{counters[:no_customer]}件"
+          end # web_target_ids.any?
         end
 
         if detect_contact
@@ -362,14 +408,23 @@ module BrightData
 
         unless dry_run
           # ★ SERPエラー と Webエラー を合算してステータスを確定する
-          all_error_ids = (serp_error_customer_ids + web_error_customer_ids).uniq
-          done_ids      = target_ids - all_error_ids
+          # 未送信（API未到達）は done/error にせず、後で null に戻す
+          api_touched_ids = api_completed_ids.uniq
+          untouched_ids = target_ids - api_touched_ids
+
+          all_error_ids = (serp_error_customer_ids + web_error_customer_ids).uniq & api_touched_ids
+          done_ids      = api_touched_ids - all_error_ids
 
           mark_serp_status(done_ids,      "serp_done")
           mark_serp_status(all_error_ids, "serp_error")
+          # 未送信分は補完対象に残す（二重課金なし・再実行可能）
+          mark_serp_status_null(untouched_ids) if untouched_ids.any?
 
           refresh_audit_targets!(audit_run, target_ids)
-          if finalize_run
+          if stop_run_reason
+            audit_run&.fail!(stop_run_reason)
+            progress_tracker&.fail(message: stop_run_reason)
+          elsif finalize_run
             all_ids = audit_run&.targets&.pluck(:customer_id) || target_ids
             done_count = Customer.where(id: all_ids, serp_status: "serp_done").count
             error_count = Customer.where(id: all_ids, serp_status: "serp_error").count
@@ -419,13 +474,15 @@ module BrightData
         end
 
         puts "[Pipeline] 完了: #{targets.size}件対象 / #{companies.size}件抽出"
-        { targets: targets.size, queries: queries.size, extracted: companies.size, registered: reg_stats }
+        result = { targets: targets.size, queries: queries.size, extracted: companies.size, registered: reg_stats }
+        result[:stop_chaining] = true if stop_run_reason
+        result
 
-      rescue Interrupt => e
-        Rails.logger.warn("[Pipeline] execute_from_db interrupted: #{e.class} #{e.message}")
-        puts "[Pipeline] INTERRUPTED: #{e.message}"
-        audit_run&.fail!(e.message)
-        progress_tracker&.fail(message: e.message)
+      rescue *SHUTDOWN_ERRORS => e
+        # Sidekiq 再起動など: run を永久 error にしない（worker が同 offset を再enqueue）
+        Rails.logger.warn("[Pipeline] execute_from_db interrupted for resume: #{e.class} #{e.message}")
+        puts "[Pipeline] INTERRUPTED (resume): #{e.class} #{e.message}"
+        progress_tracker&.fail(message: "interrupted: #{e.class}")
         raise
       rescue => e
         Rails.logger.error("[Pipeline] execute_from_db 例外: #{e.class} #{e.message}\n#{e.backtrace.first(5).join("\n")}")
@@ -435,11 +492,35 @@ module BrightData
         raise
       ensure
         unless dry_run || completion_status_applied
-          queued_ids = Customer.where(id: target_ids, serp_status: "serp_queued").pluck(:id)
-          mark_serp_status(queued_ids, "serp_error")
-          refresh_audit_targets!(audit_run, target_ids)
+          finalize_interrupted_batch_statuses!(
+            target_ids: target_ids,
+            api_completed_ids: api_completed_ids,
+            audit_run: audit_run
+          )
         end
       end
+    end
+
+    def self.serp_api_error_rate_exceeded?(batch)
+      items = Array(batch)
+      return false if items.empty?
+
+      error_count = items.count { |item| item.dig("result", "error").present? }
+      error_count.to_f / items.size >= SERP_API_ERROR_STOP_RATE
+    end
+
+    # Shutdown 時: 未完了（queued）はすべて未処理に戻す。
+    # 実行されなかった／完了しなかったものを error に残さない。
+    # （APIエラーで既に serp_error になった分はそのまま＝実エラー）
+    def self.finalize_interrupted_batch_statuses!(target_ids:, api_completed_ids:, audit_run:)
+      ids = Array(target_ids).map(&:to_i).reject(&:zero?).uniq
+      return if ids.empty?
+
+      still_queued = Customer.where(id: ids, serp_status: "serp_queued").pluck(:id)
+      mark_serp_status_null(still_queued) if still_queued.any?
+
+      refresh_audit_targets!(audit_run, ids)
+      puts "[Pipeline] interrupted cleanup: queued→null #{still_queued.size} (api_touched=#{Array(api_completed_ids).size})"
     end
 
     def self.billable_serp_api_calls(batch)
@@ -472,6 +553,12 @@ module BrightData
       ids = Array(targets).map { |t| t.respond_to?(:id) ? t.id : t.to_i }.reject(&:zero?).uniq
       return if ids.empty?
       Customer.where(id: ids).update_all(serp_status: status, updated_at: Time.current)
+    end
+
+    def self.mark_serp_status_null(targets)
+      ids = Array(targets).map { |t| t.respond_to?(:id) ? t.id : t.to_i }.reject(&:zero?).uniq
+      return if ids.empty?
+      Customer.where(id: ids).update_all(serp_status: nil, updated_at: Time.current)
     end
 
     def self.web_enricher_timeout_seconds

@@ -670,8 +670,8 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
   end
 
   test "execute_from_db selects most recently reset targets first" do
-    Customer.create!(company: "Old Target", address: "Osaka", updated_at: 2.days.ago)
-    Customer.create!(company: "New Reset Target", address: "Osaka", updated_at: 1.minute.ago)
+    Customer.create!(company: "株式会社Old Target", address: "Osaka", updated_at: 2.days.ago)
+    Customer.create!(company: "株式会社New Reset Target", address: "Osaka", updated_at: 1.minute.ago)
 
     captured_queries = []
     fake_client = Object.new
@@ -687,7 +687,7 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     end
 
     assert_equal 1, captured_queries.size
-    assert_match(/\ANew Reset Target/, captured_queries.first)
+    assert_match(/\A株式会社New Reset Target/, captured_queries.first)
   end
 
   test "execute_from_db normalizes noisy department names in search query" do
@@ -726,7 +726,7 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     end
   end
 
-  test "execute_from_db honors explicit customer ids even when already complete" do
+  test "execute_from_db skips explicit customer ids that are already complete" do
     customer = Customer.create!(
       company: "Complete Explicit Target",
       tel: "090-0000-0000",
@@ -743,22 +743,36 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
       queries.map { |query| { "query" => query, "result" => {}, "timestamp" => Time.current.iso8601 } }
     end
 
+    result = nil
     with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
       with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
-        BrightData::Pipeline.execute_from_db(limit: 1, customer_ids: [customer.id], dry_run: true)
+        result = BrightData::Pipeline.execute_from_db(limit: 1, customer_ids: [customer.id], dry_run: true)
       end
     end
 
-    assert_equal 1, captured_queries.size
-    assert_match(/\AComplete Explicit Target/, captured_queries.first)
+    assert_equal 0, captured_queries.size
+    assert_equal true, result[:skipped_done]
+    assert_equal "serp_done", customer.reload.serp_status
   end
 
-  test "execute_from_db marks all selected rows as error when SERP client returns fatal error" do
+  test "execute_from_db marks only API-touched rows as error on fatal and leaves unsent as null" do
     first = Customer.create!(company: "Fatal First Target", address: "Tokyo")
     second = Customer.create!(company: "Fatal Second Target", address: "Osaka")
+    run = SerpEnrichmentRun.create_for_targets!(
+      run_id: "fatal-stop-run",
+      industry: "",
+      limit: 2,
+      targets: [first, second]
+    )
 
     fake_client = Object.new
-    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1|
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1, &progress|
+      progress&.call(
+        "index" => 0,
+        "total" => queries.size,
+        "result" => { "error" => "HTTP 401: Bright Data authentication failed", "fatal" => true },
+        "query" => queries.first
+      )
       [
         {
           "query" => queries.first,
@@ -768,14 +782,103 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
       ]
     end
 
+    result = nil
     with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
       with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
-        BrightData::Pipeline.execute_from_db(limit: 2, customer_ids: [first.id, second.id], dry_run: false)
+        with_singleton_method(BrightData::ResultExporter, :to_csv, ->(_companies) {}) do
+          with_singleton_method(BrightData::ExtractionStats, :record, ->(*_args, **_kwargs) {}) do
+            result = BrightData::Pipeline.execute_from_db(
+              limit: 2,
+              customer_ids: [first.id, second.id],
+              progress_run_id: run.run_id,
+              dry_run: false
+            )
+          end
+        end
       end
     end
 
     assert_equal "serp_error", first.reload.serp_status
-    assert_equal "serp_error", second.reload.serp_status
+    assert_nil second.reload.serp_status
+    assert_equal "error", run.reload.status
+    assert_equal true, result[:stop_chaining]
+  end
+
+  test "execute_from_db resets all unfinished queued to null on interrupt" do
+    first = Customer.create!(company: "Interrupt First", address: "Tokyo")
+    second = Customer.create!(company: "Interrupt Second", address: "Osaka")
+
+    fake_client = Object.new
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1, &progress|
+      progress&.call(
+        "index" => 0,
+        "total" => queries.size,
+        "result" => { "organic_results" => [] },
+        "query" => queries.first
+      )
+      raise Interrupt, "simulated shutdown"
+    end
+
+    assert_raises(Interrupt) do
+      with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
+        with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
+          BrightData::Pipeline.execute_from_db(
+            limit: 2,
+            customer_ids: [first.id, second.id],
+            dry_run: false
+          )
+        end
+      end
+    end
+
+    assert_nil first.reload.serp_status, "未完了は error に残さず未処理へ戻す"
+    assert_nil second.reload.serp_status, "未送信も未処理へ戻す"
+  end
+
+  test "execute_from_db stops run when SERP API error rate is high" do
+    customers = 2.times.map { |i| Customer.create!(company: "Error Rate #{i}", address: "Tokyo") }
+    run = SerpEnrichmentRun.create_for_targets!(
+      run_id: "error-rate-run",
+      industry: "",
+      limit: 2,
+      targets: customers
+    )
+
+    fake_client = Object.new
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1, &progress|
+      queries.each_with_index do |query, idx|
+        progress&.call(
+          "index" => idx,
+          "total" => queries.size,
+          "result" => { "error" => "timeout" },
+          "query" => query
+        )
+      end
+      queries.map do |query|
+        { "query" => query, "result" => { "error" => "timeout" }, "timestamp" => Time.current.iso8601 }
+      end
+    end
+
+    result = nil
+    with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
+      with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
+        with_singleton_method(BrightData::ResultExporter, :to_csv, ->(_companies) {}) do
+          with_singleton_method(BrightData::ExtractionStats, :record, ->(*_args, **_kwargs) {}) do
+            result = BrightData::Pipeline.execute_from_db(
+              limit: 2,
+              customer_ids: customers.map(&:id),
+              progress_run_id: run.run_id,
+              dry_run: false
+            )
+          end
+        end
+      end
+    end
+
+    assert_equal true, result[:stop_chaining]
+    assert_equal "error", run.reload.status
+    assert_match(/error rate/i, run.error_message.to_s)
+    customers.each { |c| assert_equal "serp_error", c.reload.serp_status }
   end
 
   test "execute_from_db logs target companies separately from candidate urls" do

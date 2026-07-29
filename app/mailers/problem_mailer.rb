@@ -6,7 +6,7 @@ class ProblemMailer < ApplicationMailer
     mail(
       to: "info@j-work.jp",
       from: @problem.email,
-      subject: "【問題報告】#{@problem.company}様より"
+      subject: "【Okurite問題報告】#{@problem.company}様より"
     )
   end
 end
