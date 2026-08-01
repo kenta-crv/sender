@@ -173,7 +173,7 @@ class FormSendJob < ApplicationJob
     link_options = link_url_options(submission)
 
     customer.generate_unsubscribe_token if customer.unsubscribe_token.blank?
-    customer.save! if customer.changed!
+    customer.save! if customer.changed?
 
     tracking = ClickTrackingLink.create!(
       customer: customer,
