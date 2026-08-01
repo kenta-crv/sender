@@ -170,10 +170,10 @@ class FormSendJob < ApplicationJob
 
     info[:email] = submission.email if submission.email.present?
 
-    ri_plus_options = { host: 'okurite.pro', protocol: 'https', port: nil }
+    link_options = link_url_options(submission)
 
     customer.generate_unsubscribe_token if customer.unsubscribe_token.blank?
-    customer.save! if customer.changed?
+    customer.save! if customer.changed!
 
     tracking = ClickTrackingLink.create!(
       customer: customer,
@@ -187,13 +187,13 @@ class FormSendJob < ApplicationJob
     tracking_link =
       Rails.application.routes.url_helpers.click_tracking_url(
         tracking.token,
-        ri_plus_options
+        link_options
       )
 
     unsubscribe_link =
       Rails.application.routes.url_helpers.unsubscribe_url(
         customer.unsubscribe_token,
-        { client_id: batch.client_id }.merge(ri_plus_options)
+        { client_id: batch.client_id }.merge(link_options)
       )
 
     if submission.content.present?
@@ -213,5 +213,24 @@ class FormSendJob < ApplicationJob
     info[:url] = submission.url if submission.url.present?
 
     info
+  end
+
+  # 追跡・配信停止リンクの表示ホストは Submission#url に合わせる。
+  # 例: https://meetia.pro/lp → https://meetia.pro/l/:token
+  # URL未設定・不正時は okurite.pro にフォールバックする。
+  def link_url_options(submission)
+    defaults = { host: 'okurite.pro', protocol: 'https', port: nil }
+    return defaults if submission.url.blank?
+
+    uri = URI.parse(submission.url)
+    return defaults if uri.host.blank?
+
+    {
+      host: uri.host,
+      protocol: uri.scheme.presence || 'https',
+      port: nil
+    }
+  rescue URI::InvalidURIError
+    defaults
   end
 end
