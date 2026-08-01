@@ -143,6 +143,7 @@ Rails.application.routes.draw do
     resources :calls
   end
   get '/unsubscribe/:token', to: 'unsubscribes#show', as: :unsubscribe
+  get '/u/:token', to: 'unsubscribes#show', as: :short_unsubscribe
   post '/webhooks/stripe', to: 'webhooks#stripe'
   get '/l/:token', to: 'click_tracking#redirect', as: :click_tracking
 

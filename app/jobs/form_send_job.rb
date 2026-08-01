@@ -186,8 +186,10 @@ class FormSendJob < ApplicationJob
 
     detail_link = detail_link_for(submission, tracking, link_options)
 
+    # ブランド表示は Submission.url のホストのまま、短い /u/:token を使う。
+    # drafity.pro / meetia.pro は nginx で Okurite にプロキシする。
     unsubscribe_link =
-      Rails.application.routes.url_helpers.unsubscribe_url(
+      Rails.application.routes.url_helpers.short_unsubscribe_url(
         customer.unsubscribe_token,
         { client_id: batch.client_id }.merge(link_options)
       )
@@ -235,7 +237,7 @@ class FormSendJob < ApplicationJob
     url
   end
 
-  # 配信停止リンクのホストは Submission#url に合わせる。
+  # 配信停止リンクのホストは Submission#url に合わせる（例: drafity.pro/u/...）。
   # URL未設定・不正時は okurite.pro にフォールバックする。
   def link_url_options(submission)
     defaults = { host: 'okurite.pro', protocol: 'https', port: nil }
