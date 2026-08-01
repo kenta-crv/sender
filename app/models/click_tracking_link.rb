@@ -23,6 +23,12 @@ class ClickTrackingLink < ApplicationRecord
     form_submission_batch.blank?
   end
 
+  def record_click!(ip:, user_agent:)
+    increment!(:clicked_count)
+    update!(last_clicked_at: Time.current)
+    click_logs.create!(ip: ip, user_agent: user_agent)
+  end
+
   private
 
   def generate_token

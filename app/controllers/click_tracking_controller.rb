@@ -1,5 +1,6 @@
 class ClickTrackingController < ApplicationController
   skip_before_action :verify_authenticity_token
+  skip_before_action :record_ftkn_landing_click
 
   def redirect
     tracking = ClickTrackingLink.find_by(
@@ -12,17 +13,11 @@ class ClickTrackingController < ApplicationController
       return
     end
 
-    tracking.increment!(:clicked_count)
-
-    tracking.update!(
-      last_clicked_at: Time.current
-    )
-
-    ClickLog.create!(
-      click_tracking_link: tracking,
+    tracking.record_click!(
       ip: request.remote_ip,
       user_agent: request.user_agent
     )
+    session[ftkn_click_session_key(tracking.token)] = true
 
     destination = begin
       uri = URI.parse(tracking.target_url)

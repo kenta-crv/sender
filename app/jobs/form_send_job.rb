@@ -184,11 +184,7 @@ class FormSendJob < ApplicationJob
       target_url: submission.url
     )
 
-    tracking_link =
-      Rails.application.routes.url_helpers.click_tracking_url(
-        tracking.token,
-        link_options
-      )
+    detail_link = detail_link_for(submission, tracking, link_options)
 
     unsubscribe_link =
       Rails.application.routes.url_helpers.unsubscribe_url(
@@ -201,7 +197,7 @@ class FormSendJob < ApplicationJob
         #{submission.content}
 
         詳細はこちら
-        #{tracking_link}
+        #{detail_link}
 
         ━━━━━━━━━━━━━━━━━━━━
         配信停止をご希望の場合
@@ -215,8 +211,31 @@ class FormSendJob < ApplicationJob
     info
   end
 
-  # 追跡・配信停止リンクの表示ホストは Submission#url に合わせる。
-  # 例: https://meetia.pro/lp → https://meetia.pro/l/:token
+  # 詳細リンクは Submission#url を表示し、計測用に ftkn を付与する。
+  # URL未設定時は従来どおり /l/:token にフォールバックする。
+  def detail_link_for(submission, tracking, link_options)
+    if submission.url.blank?
+      return Rails.application.routes.url_helpers.click_tracking_url(
+        tracking.token,
+        link_options
+      )
+    end
+
+    append_ftkn(submission.url, tracking.token)
+  end
+
+  def append_ftkn(url, token)
+    uri = URI.parse(url)
+    existing = URI.decode_www_form(uri.query || '')
+    existing.reject! { |key, _| key == 'ftkn' }
+    existing << ['ftkn', token]
+    uri.query = URI.encode_www_form(existing)
+    uri.to_s
+  rescue URI::InvalidURIError
+    url
+  end
+
+  # 配信停止リンクのホストは Submission#url に合わせる。
   # URL未設定・不正時は okurite.pro にフォールバックする。
   def link_url_options(submission)
     defaults = { host: 'okurite.pro', protocol: 'https', port: nil }
