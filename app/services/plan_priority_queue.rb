@@ -46,9 +46,20 @@ module PlanPriorityQueue
       FormSendJob.set(queue: queue).perform_later(batch_id, customer_id)
     end
 
+    # Webリクエスト内で数万件 enqueue すると 504 になるため、ファンアウト自体をジョブ化する
+    def enqueue_form_send_batch(batch_id, client:, admin: false)
+      queue = queue_for(:form_submission, client: client, admin: admin)
+      FormSendJob.set(queue: queue).perform_later(batch_id, nil)
+    end
+
     def enqueue_contact_detect(customer_id, batch_id, client:, admin: false)
       queue = queue_for(:form_detection, client: client, admin: admin)
       ContactUrlDetectJob.set(queue: queue).perform_later(customer_id, batch_id)
+    end
+
+    def enqueue_contact_detect_batch(batch_id, client:, admin: false)
+      queue = queue_for(:form_detection, client: client, admin: admin)
+      ContactUrlDetectJob.set(queue: queue).perform_later(nil, batch_id)
     end
   end
 end

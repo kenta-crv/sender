@@ -254,21 +254,12 @@ class FormSubmissionsController < ApplicationController
       current_client.increment_monthly_sent!(customer_ids.size)
     end
 
-    # 並列処理: 各顧客を独立したジョブとしてキューに投入
-    # バッチサイズを制限して一度に大量のジョブを投入しない（サーバー保護）
-    batch_size = 100 # 1回のリクエストで投入するジョブ数
-    customer_ids.each_slice(batch_size).with_index do |slice, index|
-      slice.each do |cid|
-        PlanPriorityQueue.enqueue_form_send(
-          batch.id,
-          cid,
-          client: batch.client,
-          admin: admin_signed_in?
-        )
-      end
-      # バッチ間で少し待機してRedisへの負荷を分散
-      sleep(0.1) if index < (customer_ids.size / batch_size)
-    end
+    # 並列処理: ファンアウト自体をジョブ化し、HTTPリクエストのタイムアウト（504）を回避
+    PlanPriorityQueue.enqueue_form_send_batch(
+      batch.id,
+      client: batch.client,
+      admin: admin_signed_in?
+    )
 
     # 遷移先の判定
     wait_notice = PlanPriorityQueue.wait_notice_for(client: current_client, admin: admin_signed_in?)
@@ -334,15 +325,12 @@ class FormSubmissionsController < ApplicationController
       completed_at: nil
     )
 
-    # 未処理分のみ再キュー
-    unprocessed.each do |cid|
-      PlanPriorityQueue.enqueue_form_send(
-        @batch.id,
-        cid,
-        client: @batch.client,
-        admin: admin_signed_in?
-      )
-    end
+    # 未処理分のみ再キュー（ファンアウトはジョブ側）
+    PlanPriorityQueue.enqueue_form_send_batch(
+      @batch.id,
+      client: @batch.client,
+      admin: admin_signed_in?
+    )
 
     redirect_to form_submission_path(@batch), notice: "#{unprocessed.size}件の未処理分を再開しました。"
   end
@@ -478,20 +466,12 @@ class FormSubmissionsController < ApplicationController
       client: current_client,
     )
 
-    # 並列処理: 各顧客を独立したジョブとしてキューに投入
-    # バッチサイズを制限して一度に大量のジョブを投入しない（サーバー保護）
-    batch_size = 100
-    customer_ids.each_slice(batch_size).with_index do |slice, index|
-      slice.each do |cid|
-        PlanPriorityQueue.enqueue_contact_detect(
-          cid,
-          batch.id,
-          client: current_client,
-          admin: admin_signed_in?
-        )
-      end
-      sleep(0.1) if index < (customer_ids.size / batch_size)
-    end
+    # ファンアウト自体をジョブ化し、HTTPリクエストのタイムアウト（504）を回避
+    PlanPriorityQueue.enqueue_contact_detect_batch(
+      batch.id,
+      client: current_client,
+      admin: admin_signed_in?
+    )
     wait_notice = PlanPriorityQueue.wait_notice_for(client: current_client, admin: admin_signed_in?)
     notice_message = "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
     notice_message = "#{notice_message} #{wait_notice}" if wait_notice.present?

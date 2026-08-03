@@ -3,7 +3,13 @@ class FormSendJob < ApplicationJob
 
   retry_on StandardError, attempts: 0
 
-  def perform(batch_id, customer_id)
+  # customer_id が nil のときは未処理分を子ジョブとしてファンアウトする（HTTP 内の大量 enqueue による 504 回避）
+  def perform(batch_id, customer_id = nil)
+    if customer_id.nil?
+      enqueue_unprocessed(batch_id)
+      return
+    end
+
     Rails.logger.info(
       "[FormSendJob] 開始: " \
       "batch_id=#{batch_id}, " \
@@ -88,6 +94,41 @@ class FormSendJob < ApplicationJob
   end
 
   private
+
+  def enqueue_unprocessed(batch_id)
+    batch = FormSubmissionBatch.find_by(id: batch_id)
+    return unless batch
+    return if batch.status == 'cancelled'
+
+    # 新規バッチは Call の巨大 IN 検索を避け、再開時のみ未処理差分を取る
+    customer_ids =
+      if batch.processed_count.to_i.zero?
+        batch.parsed_customer_ids
+      else
+        batch.unprocessed_customer_ids
+      end
+    return if customer_ids.empty?
+
+    admin = batch.admin_id.present?
+    batch_size = 100
+    slice_count = (customer_ids.size.to_f / batch_size).ceil
+
+    Rails.logger.info(
+      "[FormSendJob] ファンアウト開始: batch_id=#{batch_id}, count=#{customer_ids.size}"
+    )
+
+    customer_ids.each_slice(batch_size).with_index do |slice, index|
+      slice.each do |cid|
+        PlanPriorityQueue.enqueue_form_send(
+          batch.id,
+          cid,
+          client: batch.client,
+          admin: admin
+        )
+      end
+      sleep(0.1) if index < slice_count - 1
+    end
+  end
 
   def build_sender_info(batch, customer)
     submission = batch.submission
@@ -184,10 +225,16 @@ class FormSendJob < ApplicationJob
       target_url: submission.url
     )
 
-    detail_link = detail_link_for(submission, tracking, link_options)
+    # 詳細リンクは必ず /l/:token 経由（クリック計測 → target_url へリダイレクト）。
+    # 表示ホストは Submission.url に合わせる（例: drafity.pro/l/...）。
+    # drafity.pro / meetia.pro は nginx で Okurite にプロキシする。
+    detail_link =
+      Rails.application.routes.url_helpers.click_tracking_url(
+        tracking.token,
+        link_options
+      )
 
     # ブランド表示は Submission.url のホストのまま、短い /u/:token を使う。
-    # drafity.pro / meetia.pro は nginx で Okurite にプロキシする。
     unsubscribe_link =
       Rails.application.routes.url_helpers.short_unsubscribe_url(
         customer.unsubscribe_token,
@@ -213,31 +260,7 @@ class FormSendJob < ApplicationJob
     info
   end
 
-  # 詳細リンクは Submission#url を表示し、計測用に ftkn を付与する。
-  # URL未設定時は従来どおり /l/:token にフォールバックする。
-  def detail_link_for(submission, tracking, link_options)
-    if submission.url.blank?
-      return Rails.application.routes.url_helpers.click_tracking_url(
-        tracking.token,
-        link_options
-      )
-    end
-
-    append_ftkn(submission.url, tracking.token)
-  end
-
-  def append_ftkn(url, token)
-    uri = URI.parse(url)
-    existing = URI.decode_www_form(uri.query || '')
-    existing.reject! { |key, _| key == 'ftkn' }
-    existing << ['ftkn', token]
-    uri.query = URI.encode_www_form(existing)
-    uri.to_s
-  rescue URI::InvalidURIError
-    url
-  end
-
-  # 配信停止リンクのホストは Submission#url に合わせる（例: drafity.pro/u/...）。
+  # 追跡・配信停止リンクの表示ホストは Submission#url に合わせる（例: drafity.pro/l/...）。
   # URL未設定・不正時は okurite.pro にフォールバックする。
   def link_url_options(submission)
     defaults = { host: 'okurite.pro', protocol: 'https', port: nil }
