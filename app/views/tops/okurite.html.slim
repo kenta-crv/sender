@@ -520,9 +520,9 @@ section.faq-japan-section.py-5
   .sp-company
     .sp-company-inner
       .sp-section-header
-        span.en-sub Package
-        h2 AI問い合わせフォーム送信パッケージ
-        p.desc Okuriteの獲得手法
+        span.en-sub FAQ
+        h2 よくある質問
+        p.desc AI問い合わせフォーム送信に関するFAQ
 
       .faq-japan-container
         - faqs.each do |q, a|
@@ -560,15 +560,16 @@ section.cards-moos-section.py-5
           path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
 
 section.sp-columns-seo
-  .sp-section-header
-    span.en-sub RESOURCES
-    h2 お役立ち記事
-    p.desc フォーム営業・営業改善に役立つ解説
-  ul.sp-columns-seo__list
-    - featured_columns_for(:okurite).each do |item|
-      li = link_to item[:title], item[:path]
-  p.sp-columns-seo__more
-    = link_to "記事一覧を見る", "/columns"
+  .sp-solutions
+    .sp-section-header
+      span.en-sub RESOURCES
+      h2 お役立ち記事
+      p.desc フォーム営業・営業改善に役立つ解説
+    ul.sp-columns-seo__list
+      - featured_columns_for(:okurite).each do |item|
+        li = link_to item[:title], item[:path]
+    p.sp-columns-seo__more
+      = link_to "記事一覧を見る", "/columns"
 
 .section-trial-cta
   .trial-cta-glow

@@ -4,7 +4,26 @@
     
     #content
       header.top-header
-        h2 Dashboard
+        .header-title-row
+          h2 Dashboard
+          .month-switcher
+            = link_to dashboard_index_path(dashboard_month_params(@prev_month)),
+              class: 'month-switcher__btn',
+              title: '前月',
+              aria: { label: '前月' } do
+              | ‹
+            span.month-switcher__label
+              = @selected_month.strftime('%Y年%-m月')
+            - if @is_current_month
+              span.month-switcher__btn.is-disabled aria-disabled="true"
+                | ›
+            - else
+              = link_to dashboard_index_path(dashboard_month_params(@next_month)),
+                class: 'month-switcher__btn',
+                title: '翌月',
+                aria: { label: '翌月' } do
+                | ›
+
         .user-meta
           / ===== HowToボタン =====
           = link_to dashboard_howto_path, class: 'notice-header-btn-unique' do
@@ -86,7 +105,7 @@
             = number_with_delimiter(@serp_api_used.to_i)
             span.unit 件
 
-          p.resets-in 今月の使用数
+          p.resets-in 使用数
 
           .mini-rate
             - if @usage_unlimited
@@ -101,7 +120,7 @@
             = number_with_delimiter(@form_detection_used.to_i)
             span.unit 件
 
-          p.resets-in 今月の使用数
+          p.resets-in 使用数
 
           .mini-rate
             - if @usage_unlimited
@@ -116,7 +135,7 @@
             = number_with_delimiter(@import_count.to_i)
             span.unit 件
 
-          p.resets-in 今月のインポート数
+          p.resets-in インポート数
 
       / ===== Recent Batches =====
       .history-section.mt-5
@@ -124,7 +143,7 @@
           .card-header-flex style="display: flex; justify-content: space-between; align-items: center; width: 100%;"
             h5.m-0 Recent Send Forms
 
-            = link_to dashboard_history_path,
+            = link_to dashboard_history_path(dashboard_month_params),
               class: 'btn-electric-outline',
               style: 'display: inline-flex; align-items: center; padding: 0.6rem 1.2rem; font-size: 0.9rem; text-decoration: none; line-height: 1; border-radius: 6px; font-weight: 500;' do
 
@@ -144,6 +163,10 @@
                   th style="width: 100px;" Status
 
               tbody
+                - if (@batches || []).blank?
+                  tr
+                    td colspan="7" style="text-align: center; color: #94a3b8; padding: 1.5rem;"
+                      = "#{@selected_month.strftime('%Y年%-m月')}の送信履歴はありません"
                 - (@batches || []).each do |batch|
                   tr
                     td = batch.created_at.strftime('%Y/%m/%d')

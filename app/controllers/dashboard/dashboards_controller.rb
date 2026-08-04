@@ -8,6 +8,7 @@ class Dashboard::DashboardsController < ApplicationController
 
   def index
     insights_scope = customer_insights_scope
+    assign_selected_month!
 
     @total_customers_count = Customer.unscoped.where.not(contact_url: [nil, '', 'not_detected']).count
     @not_detected_count = insights_scope.where(contact_url: 'not_detected').count
@@ -24,14 +25,13 @@ class Dashboard::DashboardsController < ApplicationController
     @unread_notification_count = notification_scope.unread.count
 
     batch_scope = form_batch_scope
-    @batches = batch_scope
+    monthly_scope = batch_scope.where(created_at: @month_range)
+    @batches = monthly_scope
               .includes(:submission, :client, :admin)
               .order(created_at: :desc)
               .limit(3)
 
-    current_month_range = Time.current.beginning_of_month..Time.current.end_of_month
-    monthly_scope = batch_scope.where(created_at: current_month_range)
-    # 送信枠表示用: 実行総数は従来どおり全バッチ合計
+    # 送信枠表示用: 実行総数は選択月の全バッチ合計
     @total_sent = monthly_scope.sum(:total_count).to_i
     # 実Success: 未完了バッチも含む到達成功数（CTR分母・Successカード）
     @total_success = monthly_scope.sum(:success_count).to_i
@@ -40,7 +40,7 @@ class Dashboard::DashboardsController < ApplicationController
     # Success Rate: 完了バッチのみ + 根本送信不可を分母から除外
     @success_rate = FormSubmissionBatch.aggregate_rate_stats(monthly_scope)[:rate]
 
-    @submission_stats = build_submission_stats(batch_scope)
+    @submission_stats = build_submission_stats(monthly_scope)
 
     if admin_signed_in? && params[:client_id].present?
       assign_monthly_usage_stats!(Client.find(params[:client_id]))
@@ -52,8 +52,8 @@ class Dashboard::DashboardsController < ApplicationController
       assign_monthly_usage_stats_empty!
     end
 
-    # クリックは全体。CTR分母は実Success（未完了含む）
-    click_scope = click_tracking_scope.where(created_at: current_month_range)
+    # クリックは選択月。CTR分母は実Success（未完了含む）
+    click_scope = click_tracking_scope.where(created_at: @month_range)
 
     @total_clicks = click_scope.sum(:clicked_count).to_i
 
@@ -64,32 +64,36 @@ class Dashboard::DashboardsController < ApplicationController
       .where("last_clicked_at <= ?", Time.current)
       .count
 
-    # CTR = クリックユーザー数 / 実Success（全バッチ）
+    # CTR = クリックユーザー数 / 実Success（選択月のバッチ）
     @click_rate =
       @total_success.positive? ? ((@clicked_users_count.to_f / @total_success) * 100).round(1) : 0
   end
 
   def history
+    assign_selected_month!
     @q = @base_customers.ransack(params[:q])
 
     if admin_signed_in?
       if params[:client_id].present?
-        @batches = FormSubmissionBatch.where(client_id: params[:client_id]).order(created_at: :desc).page(params[:page]).per(20)
+        batch_scope = FormSubmissionBatch.where(client_id: params[:client_id])
         @submissions = Submission.where(client_id: params[:client_id]).order(created_at: :desc)
       else
-        @batches = FormSubmissionBatch.order(created_at: :desc).page(params[:page]).per(20)
+        batch_scope = FormSubmissionBatch.all
         @submissions = Submission.order(created_at: :desc)
       end
     elsif client_signed_in?
-      @batches = current_client.form_submission_batches.order(created_at: :desc).page(params[:page]).per(20)
+      batch_scope = current_client.form_submission_batches
       @submissions = current_client.submissions.order(created_at: :desc)
     else
-      @batches = FormSubmissionBatch.none
+      batch_scope = FormSubmissionBatch.none
       @submissions = Submission.none
     end
 
+    monthly_batches = batch_scope.where(created_at: @month_range)
+    @batches = monthly_batches.order(created_at: :desc).page(params[:page]).per(20)
+
     @submission_stats = @submissions.map do |submission|
-      batches = submission.form_submission_batches
+      batches = submission.form_submission_batches.where(created_at: @month_range)
       batches = batches.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
       rate_stats = FormSubmissionBatch.aggregate_rate_stats(batches)
 
@@ -102,7 +106,7 @@ class Dashboard::DashboardsController < ApplicationController
         rate: rate_stats[:rate],
         last_sent_at: batches.order(started_at: :desc).limit(1).pluck(:started_at).first
       }
-    end
+    end.reject { |stat| stat[:total_sent].to_i.zero? && stat[:last_sent_at].blank? }
   end
 
   def sending
@@ -318,11 +322,45 @@ end
 
   private
 
+  def assign_selected_month!
+    @selected_month =
+      begin
+        if params[:month].present?
+          Date.strptime(params[:month].to_s, '%Y-%m').beginning_of_month
+        else
+          Time.current.to_date.beginning_of_month
+        end
+      rescue ArgumentError, TypeError
+        Time.current.to_date.beginning_of_month
+      end
+
+    current_month = Time.current.to_date.beginning_of_month
+    @selected_month = current_month if @selected_month > current_month
+
+    @month_range = @selected_month.in_time_zone.beginning_of_month..@selected_month.in_time_zone.end_of_month
+    @prev_month = @selected_month.prev_month
+    @next_month = @selected_month.next_month
+    @month_key = @selected_month.strftime('%Y-%m')
+    @is_current_month = @selected_month == current_month
+  end
+
+  def dashboard_month_params(month = @selected_month)
+    query = { month: month.strftime('%Y-%m') }
+    query[:client_id] = params[:client_id] if params[:client_id].present?
+    query
+  end
+  helper_method :dashboard_month_params
+
   def assign_monthly_usage_stats!(client)
-    monthly_log = client.monthly_usage_log
+    monthly_log =
+      if @is_current_month
+        client.monthly_usage_log
+      else
+        client.monthly_usage_logs.find_by(month: @month_key)
+      end
     limits = client.usage_limits
-    @serp_api_used = monthly_log.serp_api_used
-    @form_detection_used = monthly_log.form_detection_used
+    @serp_api_used = monthly_log&.serp_api_used.to_i
+    @form_detection_used = monthly_log&.form_detection_used.to_i
     @serp_api_limit = limits[:serp_api_limit]
     @form_detection_limit = limits[:form_detection_limit]
     @usage_unlimited = false
@@ -330,8 +368,7 @@ end
   end
 
   def assign_monthly_usage_stats_for_admin!
-    month_key = Time.current.strftime('%Y-%m')
-    logs = MonthlyUsageLog.where(month: month_key)
+    logs = MonthlyUsageLog.where(month: @month_key)
     @serp_api_used = logs.sum(:serp_api_used)
     @form_detection_used = logs.sum(:form_detection_used)
     @serp_api_limit = nil
@@ -352,7 +389,7 @@ end
   def monthly_import_count_for(client_id)
     scope = Notification.where(
       type: 'CustomerImport',
-      created_at: Time.current.beginning_of_month..Time.current.end_of_month
+      created_at: @month_range
     )
     scope = scope.where(client_id: client_id) if client_id.present?
     scope.sum(:success_count)
@@ -407,7 +444,8 @@ end
   end
 
   def build_submission_stats(batch_scope)
-    submissions = dashboard_submissions_scope.to_a
+    submission_ids = batch_scope.where.not(submission_id: nil).distinct.pluck(:submission_id)
+    submissions = dashboard_submissions_scope.where(id: submission_ids).to_a
     return [] if submissions.empty?
 
     stats_by_submission = Hash.new do |hash, key|

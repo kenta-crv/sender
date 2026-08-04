@@ -8,6 +8,93 @@
 /* ========================================
    FORM DETECTION SECTION (DARK & NEON)
 ======================================== */
+
+/* Dashboard history 月切り替え */
+.history-month-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 32px auto 8px;
+  padding: 0 15px;
+  box-sizing: border-box;
+}
+
+.history-month-bar + .sc-detect.container {
+  margin-top: 16px;
+}
+
+.history-month-bar__back {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: #38bdf8;
+  }
+}
+
+.month-switcher {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  background: rgba(30, 41, 59, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 999px !important;
+  padding: 4px !important;
+  height: 38px !important;
+  box-sizing: border-box !important;
+  box-shadow: none !important;
+
+  &__btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    border: none !important;
+    color: #94a3b8 !important;
+    text-decoration: none !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    transition: color 0.15s ease, background 0.15s ease !important;
+    flex-shrink: 0 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08) !important;
+      color: #ffffff !important;
+      box-shadow: none !important;
+    }
+
+    &.is-disabled {
+      background: transparent !important;
+      border: none !important;
+      color: rgba(148, 163, 184, 0.35) !important;
+      pointer-events: none !important;
+      cursor: default !important;
+    }
+  }
+
+  &__label {
+    min-width: 7.5rem !important;
+    text-align: center !important;
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    color: #ffffff !important;
+    padding: 0 8px !important;
+    white-space: nowrap !important;
+    text-shadow: none !important;
+  }
+}
+
 .sc-detect {
   &.container {
     max-width: 1200px;

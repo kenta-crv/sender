@@ -260,9 +260,11 @@ class FormSendJob < ApplicationJob
     info
   end
 
-  # 追跡・配信停止リンクの表示ホストは Submission#url に合わせる（例: drafity.pro/l/...）。
-  # URL未設定・不正時は okurite.pro にフォールバックする。
+  # 開発時は localhost（トークンはローカルDBにあるため本番ドメインだと Invalid になる）。
+  # 本番は Submission#url のホストに合わせる（例: drafity.pro/l/...）。
   def link_url_options(submission)
+    return development_link_url_options if Rails.env.development? || Rails.env.test?
+
     defaults = { host: 'okurite.pro', protocol: 'https', port: nil }
     return defaults if submission.url.blank?
 
@@ -276,5 +278,16 @@ class FormSendJob < ApplicationJob
     }
   rescue URI::InvalidURIError
     defaults
+  end
+
+  def development_link_url_options
+    mailer = Rails.application.config.action_mailer.default_url_options || {}
+    host_with_port = mailer[:host].presence || 'localhost:3000'
+    host, port = host_with_port.split(':', 2)
+    {
+      host: host,
+      port: (mailer[:port] || port).presence,
+      protocol: mailer[:protocol].presence || 'http'
+    }
   end
 end

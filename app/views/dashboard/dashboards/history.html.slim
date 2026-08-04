@@ -1,1 +1,21 @@
+.history-month-bar
+  .month-switcher
+    = link_to dashboard_history_path(dashboard_month_params(@prev_month)),
+      class: 'month-switcher__btn',
+      title: '前月',
+      aria: { label: '前月' } do
+      | ‹
+    span.month-switcher__label
+      = @selected_month.strftime('%Y年%-m月')
+    - if @is_current_month
+      span.month-switcher__btn.is-disabled aria-disabled="true"
+        | ›
+    - else
+      = link_to dashboard_history_path(dashboard_month_params(@next_month)),
+        class: 'month-switcher__btn',
+        title: '翌月',
+        aria: { label: '翌月' } do
+        | ›
+  = link_to '← Dashboard', dashboard_index_path(dashboard_month_params), class: 'history-month-bar__back'
+
 = render 'form_submissions/history'
