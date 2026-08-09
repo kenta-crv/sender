@@ -23,13 +23,15 @@ class CheckoutController < ApplicationController
     if @plan_type == "trial"
       @description = "無料トライアル (#{Subscription::TRIAL_DAYS}日間)"
       @amount = 0
+      @intro_discount = false
 
-      if current_client.payment_method_registered?
-        redirect_to plans_path, alert: "お支払い方法は既に登録されています。"
+      if current_client.subscriptions.where(plan_type: :trial).exists?
+        redirect_to plans_path, alert: "トライアルは新規アカウントのみ利用できます。"
         return
       end
     else
-      @description = "#{@plan_type.capitalize} Plan"
+      @description = Subscription::PLAN_NAMES[@plan_type.to_sym] || "#{@plan_type.capitalize} Plan"
+      @intro_discount = (@plan_type.to_s == "standard")
     end
 
     @subscription = Subscription.new(plan_type: @plan_type)
@@ -45,8 +47,8 @@ class CheckoutController < ApplicationController
       return
     end
 
-    if plan_type == "trial" && current_client.payment_method_registered?
-      redirect_to plans_path, alert: "お支払い方法は既に登録されています。"
+    if plan_type == "trial"
+      process_trial_checkout!
       return
     end
 
@@ -98,10 +100,11 @@ class CheckoutController < ApplicationController
             sub = current_client.subscriptions.find_or_initialize_by(stripe_subscription_id: @session.subscription)
             current_client.subscriptions.where.not(id: sub.id).update_all(status: :cancelled)
 
-            sub.update!(plan_type: @plan_type, status: :active)
+            sub.update!(plan_type: @plan_type, status: :active, trial_ends_at: nil)
             current_client.update!(
               subscription_plan: @plan_type,
-              subscription_status: "active"
+              subscription_status: "active",
+              trial_ends_at: nil
             )
           end
 
@@ -130,16 +133,43 @@ class CheckoutController < ApplicationController
 
   private
 
+  def process_trial_checkout!
+    if current_client.subscriptions.where(plan_type: :trial).exists?
+      redirect_to plans_path, alert: "トライアルは新規アカウントのみ利用できます。"
+      return
+    end
+
+    trial_end = Subscription::TRIAL_DAYS.days.from_now
+    current_client.subscriptions.where(status: :active).update_all(status: :cancelled)
+    current_client.subscriptions.create!(
+      plan_type: :trial,
+      status: :active,
+      trial_ends_at: trial_end
+    )
+    current_client.update!(
+      subscription_plan: "trial",
+      subscription_status: "active",
+      trial_ends_at: trial_end
+    )
+
+    redirect_to plans_path, notice: "#{Subscription::TRIAL_DAYS}日間の無料トライアルを開始しました。"
+  end
+
   def process_subscription_payment(plan_type)
     unless Subscription::PLAN_PRICES.key?(plan_type.to_sym)
       redirect_to plans_path, alert: "無効なプランです。"
       return
     end
 
+    if plan_type == "trial"
+      redirect_to plans_path, alert: "トライアルはカード不要です。"
+      return
+    end
+
     stripe_price_id = case plan_type
                       when "standard"
                         ENV["STRIPE_PRICE_STANDARD"]
-                      when "trial", "enterprise"
+                      when "enterprise"
                         ENV["STRIPE_PRICE_ENTERPRISE"]
                       else
                         nil
@@ -167,13 +197,9 @@ class CheckoutController < ApplicationController
       cancel_url: checkout_cancel_url
     }
 
-    if plan_type == "trial"
-      remaining_days = if current_client.trial_ends_at.present? && current_client.trial_ends_at > Time.current
-                         ((current_client.trial_ends_at - Time.current) / 1.day).ceil
-                       else
-                         Subscription::TRIAL_DAYS
-                       end
-      session_params[:subscription_data] = { trial_period_days: remaining_days }
+    if plan_type.to_s == "standard"
+      coupon_id = Subscription.intro_coupon_id_for(:standard)
+      session_params[:discounts] = [{ coupon: coupon_id }] if coupon_id.present?
     end
 
     session = Stripe::Checkout::Session.create(session_params)

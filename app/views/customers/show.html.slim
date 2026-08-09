@@ -110,9 +110,6 @@
                     div style="margin-top: 6px; font-size: 0.85rem; color: rgba(148,163,184,0.85);"
                       | メール配信停止済み:
                       = opted_out_labels.join(' / ')
-                  - if @customer.fobbiden.to_s.in?(%w[t true])
-                    div style="margin-top: 6px; font-size: 0.85rem; color: rgba(239,68,68,0.9);"
-                      | 管理者設定: 全クライアント共通で送信禁止
 
   .col-md-9
     - iframe_url = @customer.contact_url.presence || @customer.url

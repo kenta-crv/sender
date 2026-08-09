@@ -8,7 +8,8 @@ Rails.application.routes.draw do
   devise_for :clients, controllers: {
     sessions: "clients/sessions",
     registrations: "clients/registrations",
-    passwords: "clients/passwords"
+    passwords: "clients/passwords",
+    omniauth_callbacks: "clients/omniauth_callbacks"
   }
 
   namespace :dashboard do

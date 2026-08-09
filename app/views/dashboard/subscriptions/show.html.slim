@@ -40,7 +40,7 @@
                   - else
                     = @subscription.status.capitalize
 
-              / --- 修正ポイント（10日固定） ---
+              / --- トライアル終了日（TRIAL_DAYS基準） ---
               - current_trial_ends_at = nil
               - if is_trial && @subscription.present?
                 - current_trial_ends_at = @subscription.created_at + Subscription::TRIAL_DAYS.days

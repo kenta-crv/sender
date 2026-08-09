@@ -1,30 +1,41 @@
 # frozen_string_literal: true
 
 class Clients::OmniauthCallbacksController < Devise::OmniauthCallbacksController
-  # You should configure your model like this:
-  # devise :omniauthable, omniauth_providers: [:twitter]
+  def google_oauth2
+    handle_auth("Google")
+  end
 
-  # You should also create an action method in this controller like this:
-  # def twitter
-  # end
+  def microsoft_graph
+    handle_auth("Microsoft")
+  end
 
-  # More info at:
-  # https://github.com/heartcombo/devise#omniauth
+  def failure
+    redirect_to after_omniauth_failure_path_for(:client),
+                alert: t("okurite.auth.oauth_failure", default: "外部アカウントでのログインに失敗しました。")
+  end
 
-  # GET|POST /resource/auth/twitter
-  # def passthru
-  #   super
-  # end
+  private
 
-  # GET|POST /clients/auth/twitter/callback
-  # def failure
-  #   super
-  # end
+  def handle_auth(kind)
+    auth = request.env["omniauth.auth"]
+    @client = Client.from_omniauth(auth)
 
-  # protected
+    if @client.persisted?
+      @client.ensure_trial_subscription!
+      sign_in_and_redirect @client, event: :authentication
+      set_flash_message(:notice, :success, kind: kind) if is_navigational_format?
+    else
+      session["devise.#{auth.provider}_data"] = auth.except("extra")
+      redirect_to new_client_registration_path,
+                  alert: @client.errors.full_messages.to_sentence.presence ||
+                         t("okurite.auth.oauth_failure", default: "外部アカウントでのログインに失敗しました。")
+    end
+  rescue ArgumentError => e
+    redirect_to new_client_session_path,
+                alert: e.message.presence || t("okurite.auth.oauth_failure", default: "外部アカウントでのログインに失敗しました。")
+  end
 
-  # The path used when OmniAuth fails
-  # def after_omniauth_failure_path_for(scope)
-  #   super(scope)
-  # end
+  def after_sign_in_path_for(_resource)
+    dashboard_index_path
+  end
 end

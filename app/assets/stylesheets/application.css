@@ -1306,6 +1306,25 @@ body {
   padding: 8px 0;
 }
 
+.pricing-cards-feature-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  text-align: right;
+}
+
+.pricing-cards-feature-original {
+  color: rgba(207, 239, 255, 0.55);
+  text-decoration: line-through;
+  font-weight: 500;
+}
+
+.pricing-cards-feature-sale {
+  color: #ff6b6b;
+  font-weight: 800;
+  font-size: 120%;
+}
+
 .pricing-cards-features hr {
   border: 0;
   height: 1px;
@@ -3724,6 +3743,89 @@ body {
           transform: translateY(0);
         }
       }
+    }
+
+    /* ========================================
+       OAuth (Google / Microsoft)
+    ======================================== */
+    .auth-oauth {
+      margin: 0 0 18px;
+    }
+
+    .auth-oauth__stack {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .auth-oauth__form {
+      margin: 0;
+      width: 100%;
+    }
+
+    .auth-oauth__btn {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 46px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: rgba(2, 6, 23, 0.6);
+      color: #e5e7eb;
+      font-weight: 600;
+      font-size: 0.92rem;
+      line-height: 1.2;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .auth-oauth__icon {
+      display: inline-flex;
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+    }
+
+    .auth-oauth__icon svg {
+      display: block;
+      width: 18px;
+      height: 18px;
+    }
+
+    .auth-oauth__label {
+      white-space: nowrap;
+    }
+
+    .auth-oauth__btn:hover {
+      background: rgba(2, 6, 23, 0.85);
+      border-color: #38bdf8;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.35);
+      color: #ffffff;
+    }
+
+    .auth-oauth__btn--google,
+    .auth-oauth__btn--microsoft {
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+
+    .auth-oauth__divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 16px 0 4px;
+      color: rgba(229, 231, 235, 0.45);
+      font-size: 0.82rem;
+    }
+
+    .auth-oauth__divider::before,
+    .auth-oauth__divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: rgba(148, 163, 184, 0.25);
     }
 
     /* リンク（パスワード忘れた方など） */

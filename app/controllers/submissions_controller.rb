@@ -48,7 +48,7 @@ class SubmissionsController < ApplicationController
   end
 
   def manual
-    customers_scope = scoped_customers.where(contact_url: [nil, ''], url: [nil, '']).deliverable_for(delivery_filter_client_id)
+    customers_scope = scoped_customers.where(contact_url: [nil, ''], url: [nil, '']).deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
     @display_rows = []
     seen_customer_ids = Set.new
     latest_calls = Call.where(customer_id: customers_scope.pluck(:id)).order(created_at: :desc).group_by(&:customer_id)
@@ -74,7 +74,7 @@ class SubmissionsController < ApplicationController
     batches.order(created_at: :desc).each do |batch|
       customer_ids = batch.customer_ids.present? ? JSON.parse(batch.customer_ids) : []
       error_logs = batch.error_log.present? ? JSON.parse(batch.error_log) : []
-      customers = scoped_customers.deliverable_for(delivery_filter_client_id).where(id: customer_ids).index_by(&:id)
+      customers = scoped_customers.deliverable_for(delivery_filter_client_id, delivery_filter_admin_id).where(id: customer_ids).index_by(&:id)
       latest_calls = Call.where(customer_id: customer_ids).order(created_at: :desc).group_by(&:customer_id)
       customer_ids.each do |c_id|
         next if seen_customer_ids.include?(c_id)
@@ -165,7 +165,7 @@ class SubmissionsController < ApplicationController
     params.require(:submission).permit(
       :headline, :company, :person, :person_kana,
       :tel, :fax, :address, :email, :url,
-      :title, :content, :manual
+      :title, :content, :manual, :include_unsubscribe_link
     )
   end
 end

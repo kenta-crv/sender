@@ -73,7 +73,7 @@ class FormSubmissionsController < ApplicationController
                           .where(contact_url: [nil, ''])
                           .where.not(url: [nil, ''])
                           .with_legal_entity
-                          .deliverable_for(delivery_filter_client_id)
+                          .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
 
     if params[:business_filter].present?
       business_filters = Array(params[:business_filter]).reject(&:blank?)
@@ -155,7 +155,7 @@ class FormSubmissionsController < ApplicationController
     captcha_ng_customer_ids = Call.where(call_type: 'form', status: 'CAPTCHA NG').distinct.pluck(:customer_id)
     eligible_scope = eligible_scope.where.not(contact_url: [nil, '', 'not_detected'])
                                    .where.not(id: captcha_ng_customer_ids)
-                                   .deliverable_for(delivery_filter_client_id)
+                                   .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
                                    .order(:id)
 
     # 検索条件（Ransack）を適用
@@ -399,7 +399,7 @@ class FormSubmissionsController < ApplicationController
     base_scope = Customer.where(contact_url: [nil, ''])
                         .where.not(url: [nil, ''])
                         .with_legal_entity
-                        .deliverable_for(delivery_filter_client_id)
+                        .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
     
     # Apply client filtering
     if client_signed_in? && !admin_signed_in?

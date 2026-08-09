@@ -156,6 +156,60 @@
       }
     });
 
+    (function initFaqPanel() {
+      var root = document.querySelector("[data-faq-root]");
+      var searchInput = document.querySelector("[data-faq-search]");
+      var items = document.querySelectorAll(".faq-panel__item");
+      if (!searchInput || !items.length) return;
+
+      var categoryBtns = root ? root.querySelectorAll("[data-faq-category]") : [];
+      var activeCategory = "";
+
+      function applyFilters() {
+        var q = searchInput.value.trim().toLowerCase();
+        items.forEach(function (item) {
+          var category = item.getAttribute("data-faq-item") || "";
+          var text = item.textContent.toLowerCase();
+          var matchCategory = !activeCategory || category === activeCategory;
+          var matchSearch = !q || text.indexOf(q) !== -1;
+          var show = matchCategory && matchSearch;
+          item.classList.toggle("is-hidden", !show);
+          item.style.display = show ? "" : "none";
+        });
+      }
+
+      function setCategory(category) {
+        activeCategory = category;
+        categoryBtns.forEach(function (btn) {
+          btn.classList.toggle("is-active", btn.getAttribute("data-faq-category") === category);
+        });
+        applyFilters();
+      }
+
+      categoryBtns.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          setCategory(btn.getAttribute("data-faq-category"));
+        });
+      });
+
+      searchInput.addEventListener("input", applyFilters);
+
+      items.forEach(function (item) {
+        item.addEventListener("toggle", function () {
+          if (!item.open) return;
+          items.forEach(function (other) {
+            if (other !== item) other.open = false;
+          });
+        });
+      });
+
+      if (categoryBtns.length) {
+        setCategory(categoryBtns[0].getAttribute("data-faq-category"));
+      } else {
+        applyFilters();
+      }
+    })();
+
     if (typeof gsap !== "undefined") {
       gsap.utils.toArray(".faq-japan-item").forEach((el, i) => {
         gsap.from(el, {
@@ -166,6 +220,19 @@
           scrollTrigger: {
             trigger: el,
             start: "top 90%",
+          },
+        });
+      });
+
+      gsap.utils.toArray(".faq-panel__item").forEach((el, i) => {
+        gsap.from(el, {
+          opacity: 0,
+          y: 30,
+          duration: 0.6,
+          delay: Math.min(i, 6) * 0.05,
+          scrollTrigger: {
+            trigger: el,
+            start: "top 92%",
           },
         });
       });

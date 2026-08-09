@@ -5,7 +5,8 @@ class Client < ApplicationRecord
   TEL_DIGITS_ONLY_PATTERN = /\A[0-9]+\z/.freeze
 
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable
+         :recoverable, :rememberable, :validatable,
+         :omniauthable, omniauth_providers: %i[google_oauth2 microsoft_graph]
 
   has_many :monthly_usage_logs, dependent: :destroy
 
@@ -22,6 +23,36 @@ class Client < ApplicationRecord
   validate :company_must_include_corporate_title, on: :create, if: :registration_ip_present?
   validates :tel, presence: { message: "を入力してください" }, on: :create, if: :registration_ip_present?
   validate :tel_must_be_digits_only, on: :create, if: :registration_ip_present?
+
+  def self.from_omniauth(auth)
+    email = auth.info.email.to_s.downcase.presence
+    raise ArgumentError, "OAuth email missing" if email.blank?
+
+    client = find_by(provider: auth.provider, uid: auth.uid)
+    return client if client
+
+    client = find_by(email: email)
+    if client
+      client.update!(provider: auth.provider, uid: auth.uid)
+      client.name = auth.info.name if client.name.blank? && auth.info.name.present?
+      client.save! if client.changed?
+      return client
+    end
+
+    create!(
+      email: email,
+      password: Devise.friendly_token[0, 20],
+      name: auth.info.name,
+      provider: auth.provider,
+      uid: auth.uid
+    )
+  end
+
+  def password_required?
+    return false if provider.present?
+
+    super
+  end
 
   def full_name
     [first_name, last_name].compact.join(" ")
@@ -60,74 +91,21 @@ class Client < ApplicationRecord
     monthly_usage_log.increment!(:sent_count, count)
   end
 
-  # トライアル終了時の自動アップグレードロジック（Stripe・エンタープライズプラン仕様に修正）
+  # トライアル終了時は自動課金せず期限切れにする（継続はスタンダード等を Checkout）
   def check_and_upgrade_expired_trial
     return unless subscription_plan == "trial"
     return unless trial_ends_at.present?
     return if trial_ends_at > Time.current
 
-    unless stripe_customer_id.present?
-      Rails.logger.error "Client #{id} trial expired but no Stripe customer ID found"
-      return nil
-    end
-
-    begin
-      amount = Subscription::PLAN_PRICES[:enterprise] # 98,000円
-
-      # Stripeでの決済実行
-      charge = Stripe::Charge.create(
-        amount: amount,
-        currency: "jpy",
-        customer: stripe_customer_id,
-        description: "Enterprise Plan subscription (trial upgrade)"
-      )
-
-      if charge.status == "succeeded"
-        subscriptions.where(status: :active).update_all(status: :cancelled)
-
-        subscription = subscriptions.create!(
-          plan_type: :enterprise,
-          status: :active,
-          stripe_subscription_id: charge.id, # 決済IDを保持
-          trial_ends_at: nil
-        )
-
-        update!(
-          subscription_plan: "enterprise",
-          subscription_status: "active",
-          trial_ends_at: nil
-        )
-
-        payments.create!(
-          amount: amount,
-          stripe_payment_intent_id: charge.id,
-          status: "succeeded",
-          description: "Enterprise Plan subscription (trial upgrade)"
-        )
-
-        Rails.logger.info "Client #{id} trial expired, charged 98,000 JPY via Stripe and upgraded to enterprise plan"
-        subscription
-      else
-        Rails.logger.error "Client #{id} trial expired but Stripe charge failed: #{charge.failure_message}"
-
-        subscriptions.where(status: :active).update_all(status: :cancelled)
-
-        update!(
-          subscription_plan: "enterprise",
-          subscription_status: "active",
-          trial_ends_at: nil
-        )
-
-        nil
-      end
-    rescue => e
-      Rails.logger.error "Error upgrading trial via Stripe for client #{id}: #{e.message}"
-      nil
-    end
+    current_subscription&.expire_trial_without_charge!
   end
 
-  after_create :initialize_trial_subscription, if: :new_record?
+  after_create :initialize_trial_subscription
   before_create :generate_api_key_if_blank
+
+  def ensure_trial_subscription!
+    initialize_trial_subscription
+  end
 
   private
 
@@ -154,16 +132,19 @@ class Client < ApplicationRecord
   end
 
   def initialize_trial_subscription
+    return if subscriptions.where(plan_type: :trial).exists?
+
+    ends_at = Subscription::TRIAL_DAYS.days.from_now
     subscriptions.create!(
       plan_type: :trial,
       status: :active,
-      trial_ends_at: Subscription::TRIAL_DAYS.days.from_now
+      trial_ends_at: ends_at
     )
 
-    update(
+    update_columns(
       subscription_plan: "trial",
       subscription_status: "active",
-      trial_ends_at: Subscription::TRIAL_DAYS.days.from_now
+      trial_ends_at: ends_at
     )
   end
 
@@ -222,30 +203,9 @@ class Client < ApplicationRecord
     true
   end
 
+  # カード登録だけでは有料プランを開始しない（トライアル終了後の自動課金なし）
   def create_stripe_trial_subscription_if_needed!
-    return unless subscription_plan == "trial"
-    return unless trial_ends_at.present? && trial_ends_at > Time.current
-    return if subscriptions.where.not(stripe_subscription_id: [nil, ""]).exists?
-
-    stripe_price_id = ENV["STRIPE_PRICE_ENTERPRISE"]
-    return unless stripe_price_id.present?
-
-    remaining_days = ((trial_ends_at - Time.current) / 1.day).ceil
-    return if remaining_days <= 0
-
-    stripe_subscription = Stripe::Subscription.create(
-      customer: stripe_customer_id,
-      items: [{ price: stripe_price_id }],
-      trial_period_days: remaining_days,
-      metadata: {
-        client_id: id,
-        upgraded_from_trial: true
-      }
-    )
-
-    subscriptions.where(status: :active).where(stripe_subscription_id: [nil, ""]).find_each do |sub|
-      sub.update!(stripe_subscription_id: stripe_subscription.id)
-    end
+    nil
   end
 
   def usage_limits

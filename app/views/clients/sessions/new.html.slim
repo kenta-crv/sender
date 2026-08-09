@@ -1,6 +1,8 @@
 .auth-wrapper
   .auth-forms
     .auth-card
+      = render "clients/shared/oauth_buttons"
+
       = form_for(resource, as: resource_name, url: session_path(resource_name)) do |f|
         .field
           = f.label :email
@@ -18,4 +20,5 @@
         .actions
           = f.submit "Log in", class: "btn btn-primary"
 
-      = render "admins/shared/links"
+      .shared-links
+        = render "clients/shared/links"

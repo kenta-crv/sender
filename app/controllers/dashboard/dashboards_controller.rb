@@ -152,7 +152,7 @@ class Dashboard::DashboardsController < ApplicationController
                               .where(contact_url: [nil, ''])
                               .where.not(url: [nil, ''])
                               .with_legal_entity
-                              .deliverable_for(delivery_filter_client_id)
+                              .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
                               .page(params[:detectable_page]).per(50)
 
     @business_options = generate_options(:business)
@@ -192,7 +192,7 @@ def searching_form
                             .where(contact_url: [nil, ''])
                             .where.not(url: [nil, ''])
                             .with_legal_entity
-                            .deliverable_for(delivery_filter_client_id)
+                            .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
                             .page(params[:detectable_page]).per(50)
 
   @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
@@ -202,7 +202,7 @@ def searching_form
                       .where(contact_url: [nil, ''])
                       .where.not(url: [nil, ''])
                       .with_legal_entity
-                      .deliverable_for(delivery_filter_client_id)
+                      .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
 
   @business_options = detectable_base.where.not(business: [nil, ''])
                                      .group(:business)

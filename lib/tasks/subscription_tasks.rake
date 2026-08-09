@@ -1,6 +1,6 @@
 namespace :subscription do
-  desc "Expire trial subscriptions and upgrade them"
+  desc "Expire trial subscriptions without auto-charging"
   task expire_trials: :environment do
-    Subscription::TrialExpirer.call
+    Subscription::TrialProcessor.run
   end
 end

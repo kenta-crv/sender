@@ -70,17 +70,18 @@ class WebhooksController < ApplicationController
           
           client.subscriptions.where.not(id: sub.id).update_all(status: :cancelled)
 
-          final_plan_type = (plan_type == "trial") ? "enterprise" : plan_type
+          final_plan_type = plan_type.presence || "standard"
           
           sub.update!(
             plan_type: final_plan_type,
             status: :active,
-            trial_ends_at: trial_ends_at
+            trial_ends_at: (final_plan_type.to_s == "trial" ? trial_ends_at : nil)
           )
             
           client.update!(
             subscription_plan: final_plan_type,
-            subscription_status: 'active'
+            subscription_status: 'active',
+            trial_ends_at: (final_plan_type.to_s == "trial" ? trial_ends_at : nil)
           )
         end # <- Subscription.transaction の end が不足していたのを修正
 

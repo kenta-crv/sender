@@ -16,35 +16,56 @@
               i.fas.fa-info-circle.me-2
               strong style="color: #38bdf8; margin-right: 6px;"
                 | 無料トライアル
-              | の期間は費用発生しません。
+              | はカード不要です。費用は発生しません。
+
+          - if @intro_discount
+            .sc-detect__alert.sc-detect__alert--info.mb-4 style="justify-content: center;"
+              i.fas.fa-info-circle.me-2
+              div
+                strong style="color: #38bdf8;"
+                  | 初回#{Subscription::STANDARD_INTRO_MONTHS}ヶ月 #{Subscription::STANDARD_INTRO_PERCENT_OFF}% OFF
+                span style="margin-left: 6px;"
+                  | 月額 ¥#{Subscription.standard_intro_price.to_s(:delimited)}（通常 ¥#{(Subscription::PLAN_PRICES[:standard]).to_s(:delimited)}）になります。
 
           / --- 金額表示エリア ---
           .sc-detect__table-wrapper.p-4.mb-4 style="background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2);"
             .d-flex.justify-content-between.mb-2
               span style="color: rgba(229, 231, 235, 0.6);" 選択プラン
               span.fw-bold style="color: #7dd3fc; letter-spacing: 0.05em;"
-                = @plan_type.to_s.upcase
+                = Subscription::PLAN_NAMES[@plan_type.to_s.downcase.to_sym] || @plan_type.to_s.upcase
 
             .d-flex.justify-content-between.align-items-center
               span style="color: rgba(229, 231, 235, 0.6);" お支払い金額
 
               - amount = Subscription::PLAN_PRICES[@plan_type.to_s.downcase.to_sym] || 0
+              - intro_amount = @intro_discount ? Subscription.standard_intro_price : nil
 
               .text-end
-                span.h2.fw-bold style="color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);"
-                  = @plan_type.to_s.downcase == "trial" ? "¥0" : "¥#{amount.to_s(:delimited)}"
-
-                span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);"
-                  | (税込)
+                - if @plan_type.to_s.downcase == "trial"
+                  span.h2.fw-bold style="color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);"
+                    | ¥0
+                - elsif intro_amount
+                  div
+                    s style="color: rgba(229, 231, 235, 0.45); font-size: 1rem; margin-right: 8px;" = "¥#{amount.to_s(:delimited)}"
+                    span.h2.fw-bold style="color: #ff6b6b; text-shadow: 0 0 10px rgba(255, 107, 107, 0.25);"
+                      = "¥#{intro_amount.to_s(:delimited)}"
+                  div.small style="color: rgba(229, 231, 235, 0.5); margin-top: 4px;"
+                    | 初回#{Subscription::STANDARD_INTRO_MONTHS}ヶ月（税込）
+                - else
+                  span.h2.fw-bold style="color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);"
+                    = "¥#{amount.to_s(:delimited)}"
+                  span.small.ms-1 style="color: rgba(229, 231, 235, 0.5);"
+                    | (税込)
 
           hr style="border-color: rgba(56, 189, 248, 0.2); margin: 30px 0;"
 
-          / --- Stripe Checkout ---
+          / --- Stripe Checkout / トライアル開始 ---
           = form_with url: checkout_create_path, method: :post, local: true do |f|
             = hidden_field_tag :plan_type, @plan_type
 
             .sc-detect__form-actions
-              = f.submit "Stripeで決済へ進む",
+              - submit_label = @plan_type.to_s.downcase == "trial" ? "トライアルを開始する" : "Stripeで決済へ進む"
+              = f.submit submit_label,
                 class: "sc-detect__btn sc-detect__btn--warning w-100",
                 style: "justify-content: center; font-size: 1.1rem; padding: 16px;"
 

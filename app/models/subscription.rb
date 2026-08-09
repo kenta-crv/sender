@@ -27,24 +27,36 @@ class Subscription < ApplicationRecord
   }.freeze
 
   PLAN_DELIVERY_LIMITS = {
-    trial: 1000,
+    trial: 500,
     standard: 15_000,
     enterprise: 40_000
   }.freeze
 
   PLAN_SERP_API_LIMITS = {
-    trial: 10,
+    trial: 15,
     standard: 1000,
     enterprise: 3000
   }.freeze
 
   PLAN_FORM_DETECTION_LIMITS = {
-    trial: 100,
+    trial: 50,
     standard: 15_000,
     enterprise: 40_000
   }.freeze
 
-  TRIAL_DAYS = 10
+  TRIAL_DAYS = 14
+  STANDARD_INTRO_PERCENT_OFF = 15
+  STANDARD_INTRO_MONTHS = 3
+
+  def self.intro_coupon_id_for(plan_type)
+    return ENV["STRIPE_COUPON_STANDARD_INTRO"].presence if plan_type.to_s == "standard"
+
+    nil
+  end
+
+  def self.standard_intro_price
+    (PLAN_PRICES[:standard] * (100 - STANDARD_INTRO_PERCENT_OFF) / 100.0).round
+  end
 
   def plan_name
     PLAN_NAMES[plan_type.to_sym]
@@ -70,7 +82,7 @@ class Subscription < ApplicationRecord
     delivery_limit == Float::INFINITY
   end
 
-  # 今月これまでに送信した累積件数を含めて、上限（トライアルなら1000件）を超えないか正しく検証
+  # 今月これまでに送信した累積件数を含めて、上限（トライアルなら500件）を超えないか正しく検証
   def can_send_delivery?(count)
     return true if unlimited?
     (client.monthly_sent_count + count) <= delivery_limit
@@ -88,29 +100,19 @@ class Subscription < ApplicationRecord
     trial? && trial_ends_at.present? && trial_ends_at <= Time.current
   end
 
-  # トライアル期間終了時のアップグレード先を「enterprise（98,000円）」に完全統一
-  def expire_trial_and_upgrade!
+  # 自動課金せず期限切れにする（継続はスタンダード等を Checkout で契約）
+  def expire_trial_without_charge!
     return unless trial?
     return if trial_ends_at.blank?
     return if trial_ends_at > Time.current
     return if status != "active"
 
-    transaction do
-      update!(status: :expired)
+    update!(status: :expired)
+    client.update_columns(subscription_status: "expired") if client.has_attribute?(:subscription_status)
+  end
 
-      client.subscriptions.where(status: :active).update_all(status: :cancelled)
-
-      client.subscriptions.create!(
-        plan_type: :enterprise,
-        status: :active
-      )
-
-      client.update!(
-        subscription_plan: "enterprise",
-        subscription_status: "active",
-        trial_ends_at: nil
-      )
-    end
+  def expire_trial_and_upgrade!
+    expire_trial_without_charge!
   end
 
   private

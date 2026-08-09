@@ -1,0 +1,7 @@
+ja:
+  okurite:
+    auth:
+      oauth_google: "Google"
+      oauth_microsoft: "Microsoft"
+      oauth_or: "または"
+      oauth_failure: "外部アカウントでのログインに失敗しました。"

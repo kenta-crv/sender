@@ -32,16 +32,20 @@ class Customer < ApplicationRecord
     where(created_at: from..to)
   }
 
-  scope :deliverable_for, ->(client_id = nil) {
-    scope = where(fobbiden: [nil, false, 0])
-    return scope if client_id.blank?
-
-    opted_out_ids = DeliveryOptOut.where(client_id: client_id).select(:customer_id)
-    scope.where.not(id: opted_out_ids)
+  scope :deliverable_for, ->(client_id = nil, admin_id = nil) {
+    scope = all
+    if client_id.present?
+      opted_out_ids = DeliveryOptOut.where(client_id: client_id).select(:customer_id)
+      scope = scope.where.not(id: opted_out_ids)
+    end
+    if admin_id.present?
+      admin_opted_out_ids = DeliveryOptOut.where(admin_id: admin_id).select(:customer_id)
+      scope = scope.where.not(id: admin_opted_out_ids)
+    end
+    scope
   }
 
   def opted_out_for?(client_id)
-    return true if fobbiden.to_s == "t" || fobbiden.to_s == "true"
     return false if client_id.blank?
 
     delivery_opt_outs.exists?(client_id: client_id)

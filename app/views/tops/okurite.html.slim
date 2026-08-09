@@ -243,6 +243,8 @@ section.admin-preview-section
 
 
 
+- standard_price = Subscription::PLAN_PRICES[:standard]
+- standard_intro_price = Subscription.standard_intro_price
 - plans = [ \
   { title: "トライアルプラン", sub: "Trial Plan", btn: "10日間無料トライアル", btn_class: "btn-gray", desc: "問い合わせフォームからのAI自動営業送信に特化した、手軽に始められるプラン", features: [ \
     ["初期費用","0円"], \
@@ -254,7 +256,8 @@ section.admin-preview-section
   ], cta: "トライアル 〉" }, \
   { title: "スタンダードプラン", sub: "Standard Plan", btn: "全体機能を満遍なく使用可能", btn_class: "btn-blue", desc: "問い合わせフォームからのAI自動営業送信に特化した、手軽に始められるプラン", features: [ \
     ["初期費用","0円"], \
-    ["月額費用","49,800円"], \
+    ["月額費用", { original: "#{standard_price.to_s(:delimited)}円", sale: "#{standard_intro_price.to_s(:delimited)}円" }], \
+    ["初回特典", { sale: "#{Subscription::STANDARD_INTRO_MONTHS}ヶ月#{Subscription::STANDARD_INTRO_PERCENT_OFF}%OFF" }], \
     ["AIリスト制作","1,000件"], \
     ["フォーム自動検出","15,000件"], \
     ["自動フォーム営業実行","15,000件"], \
@@ -294,7 +297,13 @@ section.pricing-cards-section
                 - plan[:features].each do |label, value|
                   .pricing-cards-feature
                     span = label
-                    span = value
+                    - if value.is_a?(Hash)
+                      span.pricing-cards-feature-price
+                        - if value[:original].present?
+                          s.pricing-cards-feature-original = value[:original]
+                        span.pricing-cards-feature-sale = value[:sale]
+                    - else
+                      span = value
                   hr
 
               br

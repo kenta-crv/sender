@@ -50,6 +50,13 @@ end
   end
   helper_method :delivery_filter_client_id
 
+  def delivery_filter_admin_id
+    return current_admin.id if admin_signed_in?
+
+    nil
+  end
+  helper_method :delivery_filter_admin_id
+
   # Submission.url?ftkn=... 着地時にクリック履歴を記録する。
   # /l/:token 経由と二重にならないよう session で抑止する。
   def record_ftkn_landing_click

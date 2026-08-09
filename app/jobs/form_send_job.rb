@@ -226,33 +226,46 @@ class FormSendJob < ApplicationJob
     )
 
     # 詳細リンクは必ず /l/:token 経由（クリック計測 → target_url へリダイレクト）。
-    # 表示ホストは Submission.url に合わせる（例: drafity.pro/l/...）。
-    # drafity.pro / meetia.pro は nginx で Okurite にプロキシする。
+    # 表示ホストは Submission.url に合わせる（例: j-work.jp/l/...）。
+    # そのホストで /l/ /u/ が Okurite に届くこと（TrackingLinkHost）。
     detail_link =
       Rails.application.routes.url_helpers.click_tracking_url(
         tracking.token,
         link_options
       )
 
-    # ブランド表示は Submission.url のホストのまま、短い /u/:token を使う。
+    unsubscribe_params = {}
+    unsubscribe_params[:client_id] = batch.client_id if batch.client_id.present?
+    unsubscribe_params[:admin_id] = batch.admin_id if batch.admin_id.present?
+
     unsubscribe_link =
       Rails.application.routes.url_helpers.short_unsubscribe_url(
         customer.unsubscribe_token,
-        { client_id: batch.client_id }.merge(link_options)
+        unsubscribe_params.merge(link_options)
       )
 
+    include_unsubscribe_link = submission.respond_to?(:include_unsubscribe_link) ? submission.include_unsubscribe_link : true
+
     if submission.content.present?
-      info[:message] = <<~TEXT
+      message = <<~TEXT
         #{submission.content}
 
         詳細はこちら
         #{detail_link}
-
-        ━━━━━━━━━━━━━━━━━━━━
-        配信停止をご希望の場合
-        #{unsubscribe_link}
-        ━━━━━━━━━━━━━━━━━━━━
       TEXT
+
+      if include_unsubscribe_link
+        message = <<~TEXT
+          #{message}
+
+          ━━━━━━━━━━━━━━━━━━━━
+          配信停止をご希望の場合
+          #{unsubscribe_link}
+          ━━━━━━━━━━━━━━━━━━━━
+        TEXT
+      end
+
+      info[:message] = message
     end
 
     info[:url] = submission.url if submission.url.present?
@@ -261,7 +274,7 @@ class FormSendJob < ApplicationJob
   end
 
   # 開発時は localhost（トークンはローカルDBにあるため本番ドメインだと Invalid になる）。
-  # 本番は Submission#url のホストに合わせる（例: drafity.pro/l/...）。
+  # 本番は Submission#url のホストに合わせる。未対応ホストは送らず落とす。
   def link_url_options(submission)
     return development_link_url_options if Rails.env.development? || Rails.env.test?
 
@@ -270,6 +283,8 @@ class FormSendJob < ApplicationJob
 
     uri = URI.parse(submission.url)
     return defaults if uri.host.blank?
+
+    TrackingLinkHost.assert_allowed!(uri.host)
 
     {
       host: uri.host,

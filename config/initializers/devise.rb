@@ -272,6 +272,20 @@ Devise.setup do |config|
   # Add a new OmniAuth provider. Check the wiki for more information on setting
   # up on your models and hooks.
   # config.omniauth :github, 'APP_ID', 'APP_SECRET', scope: 'user,public_repo'
+  if ENV["GOOGLE_CLIENT_ID"].present? && ENV["GOOGLE_CLIENT_SECRET"].present?
+    config.omniauth :google_oauth2,
+                    ENV["GOOGLE_CLIENT_ID"],
+                    ENV["GOOGLE_CLIENT_SECRET"],
+                    scope: "email,profile",
+                    prompt: "select_account"
+  end
+
+  if ENV["MICROSOFT_CLIENT_ID"].present? && ENV["MICROSOFT_CLIENT_SECRET"].present?
+    config.omniauth :microsoft_graph,
+                    ENV["MICROSOFT_CLIENT_ID"],
+                    ENV["MICROSOFT_CLIENT_SECRET"],
+                    scope: "openid email profile User.Read"
+  end
 
   # ==> Warden configuration
   # If you want to use other strategies, that are not supported by Devise, or

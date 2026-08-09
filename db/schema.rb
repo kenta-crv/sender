@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_07_18_084736) do
+ActiveRecord::Schema.define(version: 2026_08_08_000001) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -130,9 +130,12 @@ ActiveRecord::Schema.define(version: 2026_07_18_084736) do
     t.boolean "registration_flagged", default: false, null: false
     t.string "stripe_payment_method_id"
     t.string "card_fingerprint"
+    t.string "provider"
+    t.string "uid"
     t.index ["card_fingerprint"], name: "index_clients_on_card_fingerprint"
     t.index ["confirmation_token"], name: "index_clients_on_confirmation_token", unique: true
     t.index ["email"], name: "index_clients_on_email", unique: true
+    t.index ["provider", "uid"], name: "index_clients_on_provider_and_uid", unique: true
     t.index ["registration_ip"], name: "index_clients_on_registration_ip"
     t.index ["reset_password_token"], name: "index_clients_on_reset_password_token", unique: true
     t.index ["stripe_customer_id"], name: "index_clients_on_stripe_customer_id", unique: true
@@ -210,10 +213,13 @@ ActiveRecord::Schema.define(version: 2026_07_18_084736) do
 
   create_table "delivery_opt_outs", force: :cascade do |t|
     t.integer "customer_id", null: false
-    t.integer "client_id", null: false
+    t.integer "client_id"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.integer "admin_id"
+    t.index ["admin_id"], name: "index_delivery_opt_outs_on_admin_id"
     t.index ["client_id"], name: "index_delivery_opt_outs_on_client_id"
+    t.index ["customer_id", "admin_id"], name: "index_delivery_opt_outs_on_customer_id_and_admin_id", unique: true
     t.index ["customer_id", "client_id"], name: "index_delivery_opt_outs_on_customer_id_and_client_id", unique: true
     t.index ["customer_id"], name: "index_delivery_opt_outs_on_customer_id"
   end
@@ -438,6 +444,7 @@ ActiveRecord::Schema.define(version: 2026_07_18_084736) do
     t.datetime "updated_at", precision: 6, null: false
     t.boolean "manual"
     t.integer "client_id"
+    t.boolean "include_unsubscribe_link", default: true, null: false
     t.index ["client_id"], name: "index_submissions_on_client_id"
   end
 
@@ -501,6 +508,7 @@ ActiveRecord::Schema.define(version: 2026_07_18_084736) do
   add_foreign_key "customer_update_logs", "customers"
   add_foreign_key "customer_update_logs", "workers"
   add_foreign_key "customers", "clients"
+  add_foreign_key "delivery_opt_outs", "admins"
   add_foreign_key "delivery_opt_outs", "clients"
   add_foreign_key "delivery_opt_outs", "customers"
   add_foreign_key "fax_deliveries", "customers"

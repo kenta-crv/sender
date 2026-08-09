@@ -12,14 +12,18 @@ class UnsubscribesController < ApplicationController
     end
 
     client_id = params[:client_id].presence
+    admin_id = params[:admin_id].presence
 
     if client_id.present?
       DeliveryOptOut.find_or_create_by!(
         customer: customer,
         client_id: client_id
       )
-    else
-      customer.update!(fobbiden: 't')
+    elsif admin_id.present?
+      DeliveryOptOut.find_or_create_by!(
+        customer: customer,
+        admin_id: admin_id
+      )
     end
 
     render inline: <<~HTML

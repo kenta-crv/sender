@@ -1,0 +1,63 @@
+section#faq.faq-japan-section.py-5
+  .sp-company
+    .sp-company-inner
+      .sp-section-header
+        span.en-sub FAQ
+        h2 = local_assigns.fetch(:title, "よくあるご質問")
+        p.desc = local_assigns.fetch(:lead, "Okuriteに関してよくいただくご質問にお答えします。")
+
+      .faq-search
+        input.faq-search__input type="search" placeholder=local_assigns.fetch(:search_ph, "キーワードで検索（例：料金、リスト、送信上限など）") data-faq-search=""
+        svg.faq-search__icon viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+          circle cx="11" cy="11" r="8"
+          line x1="21" y1="21" x2="16.65" y2="16.65"
+
+      .faq-layout data-faq-root=""
+        nav.faq-categories aria-label="FAQカテゴリ"
+          h3 カテゴリ
+          - categories.each_with_index do |(key, label, icon_type), idx|
+            button.faq-categories__btn type="button" class=("is-active" if idx.zero?) data-faq-category=key
+              span.faq-cat-icon
+                svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  - if icon_type == "comments"
+                    path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                  - elsif icon_type == "list"
+                    line x1="8" y1="6" x2="21" y2="6"
+                    line x1="8" y1="12" x2="21" y2="12"
+                    line x1="8" y1="18" x2="21" y2="18"
+                    line x1="3" y1="6" x2="3.01" y2="6"
+                    line x1="3" y1="12" x2="3.01" y2="12"
+                    line x1="3" y1="18" x2="3.01" y2="18"
+                  - elsif icon_type == "yen"
+                    line x1="12" y1="2" x2="12" y2="22"
+                    path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
+                  - elsif icon_type == "rocket"
+                    path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"
+                    path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"
+                    path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"
+                    path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"
+                  - elsif icon_type == "chart"
+                    line x1="18" y1="20" x2="18" y2="10"
+                    line x1="12" y1="20" x2="12" y2="4"
+                    line x1="6" y1="20" x2="6" y2="14"
+                  - elsif icon_type == "shield"
+                    path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                  - else
+                    path d="M3 18v-6a9 9 0 0 1 18 0v6"
+                    path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"
+              span = label
+              svg.faq-cat-chevron viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                polyline points="9 18 15 12 9 6"
+
+        .faq-panel
+          - items.each_with_index do |item, idx|
+            details.faq-panel__item class=("is-open-default" if idx.zero?) data-faq-item=item[:category] open=(idx.zero? || nil)
+              summary.faq-panel__q = item[:q]
+              p.faq-panel__a = item[:a]
+
+      .faq-contact
+        p 解決しない場合は、お気軽にお問い合わせください。
+        = link_to contact_href, class: "ok-btn-primary faq-contact__btn", **contact_opts do
+          span = contact_label
+          svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+            polyline points="9 18 15 12 9 6"

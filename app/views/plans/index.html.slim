@@ -60,6 +60,7 @@
     / =========================
     - is_standard = subscription&.plan_type == 'standard' && subscription&.active?
     - standard = Subscription.new(plan_type: :standard)
+    - standard_intro_price = Subscription.standard_intro_price
 
     .col
       .sc-detect__card.h-100 style=(is_standard ? "border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);" : "")
@@ -68,17 +69,22 @@
 
         .sc-detect__card-body.d-flex.flex-column.text-center
           .mb-4
-            span.display-5.fw-bold style="color: #ffffff;" = "¥#{standard.price}"
-            span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;" 
-              |  / 月
+            div style="margin-bottom: 4px;"
+              s style="color: rgba(229, 231, 235, 0.45); font-size: 1.1rem; margin-right: 8px;" = "¥#{standard.price.to_s(:delimited)}"
+              span.display-5.fw-bold style="color: #ff6b6b;" = "¥#{standard_intro_price.to_s(:delimited)}"
+            span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;"
+              |  / 月（初回#{Subscription::STANDARD_INTRO_MONTHS}ヶ月#{Subscription::STANDARD_INTRO_PERCENT_OFF}%OFF）
 
           ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
             li.mb-2
               i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 最大#{standard.delivery_limit}回実行可能
+              | 最大#{standard.delivery_limit.to_s(:delimited)}回実行可能
             li.mb-2
               i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 月#{standard.price}円
+              | 通常月額 ¥#{standard.price.to_s(:delimited)}
+            li.mb-2
+              i.fas.fa-check-circle.me-2 style="color: #10b981;"
+              | 初回#{Subscription::STANDARD_INTRO_MONTHS}ヶ月は ¥#{standard_intro_price.to_s(:delimited)}（#{Subscription::STANDARD_INTRO_PERCENT_OFF}%OFF）
             li.mb-2
               i.fas.fa-check-circle.me-2 style="color: #10b981;"
               | 解約はいつでも可能
