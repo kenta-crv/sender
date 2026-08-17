@@ -15,6 +15,15 @@
 //= require turbolinks
 
 (function() {
+  if (window.Turbolinks && typeof window.Turbolinks.pagesCached === 'function') {
+    window.Turbolinks.pagesCached(0);
+  }
+  document.addEventListener('turbolinks:before-cache', function() {
+    document.body.style.overflow = '';
+  });
+})();
+
+(function() {
   'use strict';
 
   // スコープを隔離し、同名関数との衝突を防止
