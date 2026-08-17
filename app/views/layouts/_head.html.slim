@@ -40,6 +40,7 @@ link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&displ
     = raw(website_json_ld)
 
 - if controller_name == "tops" && %w[okurite sales].include?(action_name)
+  link rel="preload" as="image" href=asset_path("generated.webp") fetchpriority="high"
   - faq_ld = faq_page_json_ld(lp_faqs_for_current_page)
   - if faq_ld.present?
     script type="application/ld+json"

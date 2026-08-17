@@ -44,7 +44,7 @@ section.japan-notyo-section
         |  効率的な営業クロージングによりアポイントの最大化を行います。
         br
     .japan-notyo-column.japan-notyo-image-column
-      = image_tag "company-logo.png", class: "japan-notyo-image", alt: "Tool illustration", loading: 'lazy', decoding: 'async'
+      = image_tag "company-logo.webp", class: "japan-notyo-image", alt: "Tool illustration", loading: 'eager', decoding: 'async', fetchpriority: 'high'
 
 section.jap-notto-section
   .jap-notto-container
@@ -152,7 +152,7 @@ section.jap-notto-section
             line x1="12" y1="20" x2="12" y2="4"
             line x1="6" y1="20" x2="6" y2="14"
 
-section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.png')}');"]
+section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.webp')}');"]
  .sp-company
   .sp-company-inner
     .sp-section-header
@@ -165,12 +165,12 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
           path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
       .ser-mos-grid.lp-scroll-grid
         - services = [ \
-            { img: "ser-app1.png", title: "AIによる高精度リスト抽出", desc: "独自のAIアルゴリズムを用いて、Web上の膨大なデータから貴社商材に最適なターゲット企業を自動でリストアップ。常に最新の鮮度を保ちます。" }, \
-            { img: "ser-app2.png", title: "フォーム情報の自動検出", desc: "AIが企業HPの問い合わせフォームを自動で特定。手作業で探す必要がなく、AIが高確率でフォーム情報を取得します。" }, \
-            { img: "ser-app0.png", title: "AI自動問い合わせフォーム送信", desc: "事前に用意したリストに対してAIが24時間365日あなたの代わりに問い合わせフォームに送信を行い、アプローチを行います。" }, \
-            { img: "ser-app9.png", title: "開封データの可視化と行動解析", desc: "メールや資料の閲覧状況をリアルタイムで可視化し、開封・未開封に応じた最適なアプローチを実現します。" }, \
-            { img: "ser-app3.png", title: "AIによるフロントテレアポ対応", desc: "テレアポのフロント対応をAIが担うことで、人では不可能な圧倒的な架電量を実現。見込み度の高いリードを確実にキャッチアップし、テレアポクローザーがアポイントを獲得" }, \
-            { img: "ser-app8.png", title: "全データをリアルタイム解析", desc: "アプローチ結果による興味関心におけるそれぞれのデータをリアルタイムで保持・解析し、次回の営業アプローチデータに活かします。" } \
+            { img: "ser-app1.webp", title: "AIによる高精度リスト抽出", desc: "独自のAIアルゴリズムを用いて、Web上の膨大なデータから貴社商材に最適なターゲット企業を自動でリストアップ。常に最新の鮮度を保ちます。" }, \
+            { img: "ser-app2.webp", title: "フォーム情報の自動検出", desc: "AIが企業HPの問い合わせフォームを自動で特定。手作業で探す必要がなく、AIが高確率でフォーム情報を取得します。" }, \
+            { img: "ser-app0.webp", title: "AI自動問い合わせフォーム送信", desc: "事前に用意したリストに対してAIが24時間365日あなたの代わりに問い合わせフォームに送信を行い、アプローチを行います。" }, \
+            { img: "ser-app9.webp", title: "開封データの可視化と行動解析", desc: "メールや資料の閲覧状況をリアルタイムで可視化し、開封・未開封に応じた最適なアプローチを実現します。" }, \
+            { img: "ser-app3.webp", title: "AIによるフロントテレアポ対応", desc: "テレアポのフロント対応をAIが担うことで、人では不可能な圧倒的な架電量を実現。見込み度の高いリードを確実にキャッチアップし、テレアポクローザーがアポイントを獲得" }, \
+            { img: "ser-app8.webp", title: "全データをリアルタイム解析", desc: "アプローチ結果による興味関心におけるそれぞれのデータをリアルタイムで保持・解析し、次回の営業アプローチデータに活かします。" } \
           ]
         - services.each do |s|
           article.ser-mos-card
@@ -193,7 +193,7 @@ section.main-moss-section
   .container-fluid.main-moss-block
     .row.align-items-center
       .col-lg-6.text-center
-        = image_tag "main-app5.png", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
+        = image_tag "main-app5.webp", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
           | AIによる検索エンジンからの最新リスト取得
@@ -202,7 +202,7 @@ section.main-moss-section
   .container-fluid.main-moss-block
     .row.align-items-center.flex-row-reverse
       .col-lg-6.text-center
-        = image_tag "main-app6.png", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
+        = image_tag "main-app6.webp", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
           | 24時間稼働するAI問い合わせフォーム送信
@@ -211,7 +211,7 @@ section.main-moss-section
   .container-fluid.main-moss-block
     .row.align-items-center
       .col-lg-6.text-center
-        = image_tag "main-app7.png", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
+        = image_tag "main-app7.webp", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
           | テクノロジーによる大量架電の実現
@@ -220,7 +220,7 @@ section.main-moss-section
   .container-fluid.main-moss-block
     .row.align-items-center.flex-row-reverse
       .col-lg-6.text-center
-        = image_tag "main-cargo3.png", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
+        = image_tag "main-cargo3.webp", class: "main-moss-img img-fluid", alt: "Feature Image", loading: 'lazy', decoding: 'async'
       .col-lg-6.text-center.main-moss-content
         h3.main-moss-block-title
           | 安心のパッケージ料金モデル
@@ -238,7 +238,7 @@ section.admin-preview-section
     .admin-visual-container
       / メインのノートPCモックアップ風画像
       .main-device-wrapper
-        = image_tag "dashboard-capture.png", class: "admin-main-img", alt: "Okurite Dashboard", loading: 'lazy', decoding: 'async'
+        = image_tag "dashboard-capture.webp", class: "admin-main-img", alt: "Okurite Dashboard", loading: 'lazy', decoding: 'async'
         
         / 画像に重なる、あるいは周辺に配置する注釈
         .admin-pointer.p-1 style="top: 40%; left: 10%;"
@@ -333,7 +333,7 @@ section.compare-fixed
       p.desc 成果につながるプロセスと結果を、定量データで比較
 
   .compare-fixed__bg
-    = image_tag "ai_vs_human_bg.png", alt: "Human vs AI Background", loading: 'lazy', decoding: 'async'
+    = image_tag "ai_vs_human_bg.webp", alt: "Human vs AI Background", loading: 'lazy', decoding: 'async'
 
   .compare-fixed__overlay
 
@@ -555,7 +555,7 @@ section.sp-columns-seo
   search_ph: "キーワードで検索（例：商談定義、成果報酬、報告など）",
   contact_href: "/clients/sign_up",
   contact_label: "お問い合わせ・資料請求",
-  contact_opts: { target: "_blank", rel: "noopener noreferrer" }
+  contact_opts: {}
 
 section.cards-moos-section.py-5
  .sp-company
@@ -570,9 +570,9 @@ section.cards-moos-section.py-5
           path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
       .cards-moos-grid.lp-scroll-grid
         - reviews = [ \
-            { img: "image-app1.png", title: "ソフトウェア開発業", desc: "Okuriteを導入しAIリスト抽出とフォーム営業を自動化。導入初月から毎月平均15件の有効商談を獲得し、営業マンの架電時間をゼロに削減。" }, \
-            { img: "image-app2.png", title: "人材紹介・登録支援業", desc: "AI架電フロント対応を活用し、全国の製造業へ圧倒的な量をアプローチ。従来の3倍のスピードでリード獲得を実現しました。" }, \
-            { img: "image-app3.png", title: "Webマーケティング代理店", desc: "人手によるテレアポからOkuriteに切り替え。AIがニーズを検出し、最適なタイミングでアプローチすることで、成約率の高い有効商談を安定確保。" } \
+            { img: "image-app1.webp", title: "ソフトウェア開発業", desc: "Okuriteを導入しAIリスト抽出とフォーム営業を自動化。導入初月から毎月平均15件の有効商談を獲得し、営業マンの架電時間をゼロに削減。" }, \
+            { img: "image-app2.webp", title: "人材紹介・登録支援業", desc: "AI架電フロント対応を活用し、全国の製造業へ圧倒的な量をアプローチ。従来の3倍のスピードでリード獲得を実現しました。" }, \
+            { img: "image-app3.webp", title: "Webマーケティング代理店", desc: "人手によるテレアポからOkuriteに切り替え。AIがニーズを検出し、最適なタイミングでアプローチすることで、成約率の高い有効商談を安定確保。" } \
           ]
         - reviews.each do |r|
           .cards-moos-card

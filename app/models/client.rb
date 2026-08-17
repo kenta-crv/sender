@@ -1,9 +1,6 @@
 class Client < ApplicationRecord
   class DuplicateCardError < StandardError; end
 
-  CORPORATE_TITLE_PATTERN = /(株式会社|有限会社|合同会社|合資会社|合名会社)/.freeze
-  TEL_DIGITS_ONLY_PATTERN = /\A[0-9]+\z/.freeze
-
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable,
          :omniauthable, omniauth_providers: %i[google_oauth2 microsoft_graph]
@@ -18,11 +15,6 @@ class Client < ApplicationRecord
   has_many :form_submission_batches
   has_many :submissions
   has_many :delivery_opt_outs, dependent: :destroy
-
-  validates :company, presence: { message: "を入力してください" }, on: :create, if: :registration_ip_present?
-  validate :company_must_include_corporate_title, on: :create, if: :registration_ip_present?
-  validates :tel, presence: { message: "を入力してください" }, on: :create, if: :registration_ip_present?
-  validate :tel_must_be_digits_only, on: :create, if: :registration_ip_present?
 
   def self.from_omniauth(auth)
     email = auth.info.email.to_s.downcase.presence
@@ -111,24 +103,6 @@ class Client < ApplicationRecord
 
   def generate_api_key_if_blank
     self.api_key = SecureRandom.hex(32) if api_key.blank?
-  end
-
-  def registration_ip_present?
-    registration_ip.present?
-  end
-
-  def company_must_include_corporate_title
-    return if company.blank?
-    return if company.match?(CORPORATE_TITLE_PATTERN)
-
-    errors.add(:company, "は法人敬称（株式会社、有限会社、合同会社など）を含めてください")
-  end
-
-  def tel_must_be_digits_only
-    return if tel.blank?
-    return if tel.match?(TEL_DIGITS_ONLY_PATTERN)
-
-    errors.add(:tel, "は数字のみで入力してください")
   end
 
   def initialize_trial_subscription
