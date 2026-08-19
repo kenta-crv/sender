@@ -4,74 +4,74 @@
 
     #content
       header.top-header
-        h2 Settings
+        h2 設定
 
       .settings-section.mt-4
         .glass-card
           .card-header-flex
-            h5 Account Settings
+            h5 アカウント設定
 
           .card-body
 
             / ===== メール変更 =====
-            h6.mt-3 Email Address
+            h6.mt-3 メールアドレス
             = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
               .form-group
                 = f.email_field :email, class: 'form-control', value: current_client.email
               .form-group.mt-2
-                = f.password_field :current_password, placeholder: 'Current Password (Required to update)', class: 'form-control'
+                = f.password_field :current_password, placeholder: '現在のパスワード（変更時は必須）', class: 'form-control'
               .mt-2
-                = f.submit 'Update Email', class: 'btn-electric-outline'
+                = f.submit 'メールアドレスを更新', class: 'btn-electric-outline'
 
             hr
 
             / ===== パスワード変更 =====
-            h6.mt-4 Change Password
+            h6.mt-4 パスワード変更
             = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
               .form-group
-                = f.password_field :current_password, placeholder: 'Current Password', class: 'form-control'
+                = f.password_field :current_password, placeholder: '現在のパスワード', class: 'form-control'
               .form-group.mt-2
-                = f.password_field :password, placeholder: 'New Password', class: 'form-control'
+                = f.password_field :password, placeholder: '新しいパスワード', class: 'form-control'
               .form-group.mt-2
-                = f.password_field :password_confirmation, placeholder: 'Confirm Password', class: 'form-control'
+                = f.password_field :password_confirmation, placeholder: '新しいパスワード（確認）', class: 'form-control'
               .mt-2
-                = f.submit 'Change Password', class: 'btn-electric-outline'
+                = f.submit 'パスワードを変更', class: 'btn-electric-outline'
 
             hr
 
             / ===== 会社情報 =====
-            h6.mt-4 Company Information
+            h6.mt-4 会社情報
             = form_for(current_client, url: registration_path(:client), html: { method: :put }) do |f|
               .form-group
-                = f.text_field :company, placeholder: 'Company', class: 'form-control'
+                = f.text_field :company, placeholder: '会社名', class: 'form-control'
 
               .form-group.mt-2
-                = f.text_field :name, placeholder: 'Name', class: 'form-control'
+                = f.text_field :name, placeholder: '氏名', class: 'form-control'
 
               .form-group.mt-2
-                = f.text_field :tel, placeholder: 'Tel', class: 'form-control'
+                = f.text_field :tel, placeholder: '電話番号', class: 'form-control'
 
               .form-group.mt-2
-                = f.text_field :address, placeholder: 'Address', class: 'form-control'
+                = f.text_field :address, placeholder: '住所', class: 'form-control'
 
               .form-group.mt-2
                 = f.text_field :url, placeholder: 'URL', class: 'form-control'
 
               .form-group.mt-2
-                = f.password_field :current_password, placeholder: 'Current Password (Required to update)', class: 'form-control'
+                = f.password_field :current_password, placeholder: '現在のパスワード（変更時は必須）', class: 'form-control'
 
               .mt-2
-                = f.submit 'Update Company Info', class: 'btn-electric-outline'
+                = f.submit '会社情報を更新', class: 'btn-electric-outline'
 
             hr
 
             / ===== プラン変更 =====
-            h6.mt-4 Subscription
+            h6.mt-4 サブスクリプション
             p 現在のプランを変更・管理できます
-            = link_to 'Manage Plan', dashboard_subscription_path, class: 'btn-electric-outline'
+            = link_to 'プランを管理', dashboard_subscription_path, class: 'btn-electric-outline'
 
             hr
 
             / ===== ログアウト =====
-            h6.mt-4 Logout
-            = link_to 'Logout', destroy_client_session_path, method: :delete, class: 'btn-electric-outline'
+            h6.mt-4 ログアウト
+            = link_to 'ログアウト', destroy_client_session_path, method: :delete, class: 'btn-electric-outline'

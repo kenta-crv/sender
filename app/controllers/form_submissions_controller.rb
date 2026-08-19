@@ -1,8 +1,8 @@
 class FormSubmissionsController < ApplicationController
   include RequiresExecutionAccess
 
-  before_action :authenticate_admin!, except: [:import_customers, :index, :detect_contact_urls, :create, :show]
-  before_action :authenticate_admin_or_client!, only: [:import_customers, :index, :detect_contact_urls, :create, :show]
+  before_action :authenticate_admin!, except: [:import_customers, :import_template, :index, :detect_contact_urls, :create, :show]
+  before_action :authenticate_admin_or_client!, only: [:import_customers, :import_template, :index, :detect_contact_urls, :create, :show]
   require_execution_access! only: [:create, :detect_contact_urls]  
   before_action :set_batch, only: [:show, :cancel, :resume, :progress, :destroy]
   before_action :ensure_own_batch!, only: [:show, :cancel, :resume, :progress, :destroy]
@@ -143,7 +143,7 @@ class FormSubmissionsController < ApplicationController
   def create
     # 送信対象のベーススコープ定義
     # クライアントがログインしている場合は、そのクライアントの顧客（または紐付けなし）に制限
-    if admin_signed_in?
+    if acting_as_admin?
       eligible_scope = Customer.all
     elsif client_signed_in?
       eligible_scope = Customer.where(client_id: [current_client.id, nil])
@@ -203,7 +203,7 @@ class FormSubmissionsController < ApplicationController
         eligible_scope.pluck(:id)
       elsif params[:customer_ids].present?
         # 選択されたIDが、ログイン中のクライアントがアクセス権を持つ顧客のものであるかを確認
-        base_check = admin_signed_in? ? Customer.all : Customer.where(client_id: [current_client.id, nil])
+        base_check = acting_as_admin? ? Customer.all : Customer.where(client_id: [current_client.id, nil])
         base_check.where(id: Array(params[:customer_ids]).map(&:to_i)).pluck(:id)
       elsif send_count && send_count > 0
         eligible_scope.limit(send_count).pluck(:id)
@@ -226,7 +226,7 @@ class FormSubmissionsController < ApplicationController
     # 月次制限チェック
     # Adminは制限なし
     # =========================
-    if client_signed_in? && !admin_signed_in?
+    if client_signed_in? && !acting_as_admin?
       unless current_client.can_send_this_month?(customer_ids.size)
         redirect_to dashboard_index_path,
                     alert: "今月の送信上限に達しています（#{current_client.monthly_sent_count}/#{current_client.monthly_limit}）"
@@ -250,7 +250,7 @@ class FormSubmissionsController < ApplicationController
     # 月次カウント加算
     # Adminは加算しない
     # =========================
-    if client_signed_in? && !admin_signed_in?
+    if client_signed_in? && !acting_as_admin?
       current_client.increment_monthly_sent!(customer_ids.size)
     end
 
@@ -258,15 +258,13 @@ class FormSubmissionsController < ApplicationController
     PlanPriorityQueue.enqueue_form_send_batch(
       batch.id,
       client: batch.client,
-      admin: admin_signed_in?
+      admin: acting_as_admin?
     )
 
     # 遷移先の判定
-    wait_notice = PlanPriorityQueue.wait_notice_for(client: current_client, admin: admin_signed_in?)
     notice_message = "バッチ送信を開始しました（#{customer_ids.size}件）"
-    notice_message = "#{notice_message} #{wait_notice}" if wait_notice.present?
 
-    if client_signed_in? || admin_signed_in?
+    if client_signed_in? || acting_as_admin?
       redirect_to dashboard_index_path, notice: notice_message
     else
       redirect_to form_submission_path(batch), notice: notice_message
@@ -284,7 +282,7 @@ class FormSubmissionsController < ApplicationController
     CustomerDuplicateCleanupJob.perform_later(
       attribute,
       client_signed_in?,
-      admin_signed_in?,
+      acting_as_admin?,
       current_client&.id
     )
 
@@ -329,7 +327,7 @@ class FormSubmissionsController < ApplicationController
     PlanPriorityQueue.enqueue_form_send_batch(
       @batch.id,
       client: @batch.client,
-      admin: admin_signed_in?
+      admin: acting_as_admin?
     )
 
     redirect_to form_submission_path(@batch), notice: "#{unprocessed.size}件の未処理分を再開しました。"
@@ -364,6 +362,13 @@ class FormSubmissionsController < ApplicationController
     end
   end
 
+  def import_template
+    send_data CustomerImportService.sample_csv,
+              filename: 'okurite_import_sample.csv',
+              type: 'text/csv; charset=utf-8',
+              disposition: 'attachment'
+  end
+
   def import_customers
     file = params[:file]
 
@@ -375,7 +380,7 @@ class FormSubmissionsController < ApplicationController
 
     csv_content = file.read
 
-    overwrite_blank = admin_signed_in? && params[:overwrite_blank] == '1'
+    overwrite_blank = acting_as_admin? && params[:overwrite_blank] == '1'
     client_id = current_client.id if respond_to?(:current_client) && current_client
 
     CustomerImportJob.perform_later(
@@ -402,7 +407,7 @@ class FormSubmissionsController < ApplicationController
                         .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
     
     # Apply client filtering
-    if client_signed_in? && !admin_signed_in?
+    if client_signed_in? && !acting_as_admin?
       base_scope = base_scope.where(client_id: current_client.id)
     end
     
@@ -428,7 +433,7 @@ class FormSubmissionsController < ApplicationController
                    end
 
     if customer_ids.empty?
-      if client_signed_in? && !admin_signed_in?
+      if client_signed_in? && !acting_as_admin?
         redirect_to dashboard_index_path, alert: '検出対象の顧客が選択されていません。'
       else
         redirect_to form_submissions_path, alert: '検出対象の顧客が選択されていません。'
@@ -437,7 +442,7 @@ class FormSubmissionsController < ApplicationController
     end
 
     # サブスクリプション制限チェック（Clientの場合）
-    if client_signed_in? && !admin_signed_in?
+    if client_signed_in? && !acting_as_admin?
       monthly_log = current_client.monthly_usage_log
       subscription_remaining = [monthly_log.form_detection_limit - monthly_log.form_detection_used, 0].max
 
@@ -470,11 +475,9 @@ class FormSubmissionsController < ApplicationController
     PlanPriorityQueue.enqueue_contact_detect_batch(
       batch.id,
       client: current_client,
-      admin: admin_signed_in?
+      admin: acting_as_admin?
     )
-    wait_notice = PlanPriorityQueue.wait_notice_for(client: current_client, admin: admin_signed_in?)
     notice_message = "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
-    notice_message = "#{notice_message} #{wait_notice}" if wait_notice.present?
     redirect_to dashboard_index_path, notice: notice_message
   end
   
@@ -486,7 +489,7 @@ class FormSubmissionsController < ApplicationController
 
   # バッチデータの所有権・閲覧権限を検証する認可フィルター
   def ensure_own_batch!
-    return if admin_signed_in? # 管理者は全件アクセスを許可
+    return if acting_as_admin? # 管理者は全件アクセスを許可
 
     # クライアントログイン時に、対象バッチの所有クライアントIDと一致するかチェック
     if client_signed_in? && @batch.client_id == current_client.id
@@ -498,7 +501,7 @@ class FormSubmissionsController < ApplicationController
   end
 
   def authenticate_admin_or_client!
-    unless admin_signed_in? || client_signed_in?
+    unless acting_as_admin? || client_signed_in?
       redirect_to new_admin_session_path, alert: 'ログインしてください'
     end
   end

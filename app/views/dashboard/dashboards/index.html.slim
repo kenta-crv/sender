@@ -5,7 +5,7 @@
     #content
       header.top-header
         .header-title-row
-          h2 Dashboard
+          h2 ダッシュボード
           .month-switcher
             = link_to dashboard_index_path(dashboard_month_params(@prev_month)),
               class: 'month-switcher__btn',
@@ -28,12 +28,12 @@
           / ===== HowToボタン =====
           = link_to dashboard_howto_path, class: 'notice-header-btn-unique' do
             i.fas.fa-question-circle
-            span.notice-text HowTo
+            span.notice-text 使い方
 
           / ===== Noticeボタン =====
           = link_to dashboard_notifications_path, class: 'notice-header-btn-unique' do
             i.fas.fa-bell
-            span.notice-text Notice
+            span.notice-text 通知
             - if @unread_notification_count.to_i > 0
               span.notice-badge-unique = @unread_notification_count
 
@@ -42,9 +42,9 @@
             i.fas.fa-user-shield
             span.notice-text
               - if current_client.present?
-                = current_client.subscription_plan.presence
+                = Subscription::PLAN_NAMES[current_client.subscription_plan.to_s.to_sym] || current_client.subscription_plan.presence
               - else
-                | Admin
+                | 管理者
 
       / ===== 解約予約中（期間内猶予）の警告バナー =====
       - if current_client.present? && current_client.subscription_status == 'cancelled' && current_client.subscription_plan != 'none'
@@ -55,7 +55,7 @@
       / ===== KPI =====
       .stats-grid
         .glass-card
-          .card-label Monthly Sends
+          .card-label 月間送信数
           .card-value
             = number_with_delimiter(@total_sent.to_i)
             span.unit 件
@@ -72,20 +72,20 @@
               = "上限: 無制限"
 
         .glass-card
-          .card-label Success
+          .card-label 成功
           .card-value
             = number_with_delimiter(@total_success)
             span.unit 件
 
           p.trend.up
             i.fas.fa-check-circle
-            |  実Success（未完了含む）
+            |  実成功（未完了含む）
 
           .mini-rate
-            = "#{@success_rate}% Success Rate"
+            = "#{@success_rate}% 成功率"
 
         .glass-card
-          .card-label Click Response
+          .card-label クリック反応
           .card-value
             = number_with_delimiter(@clicked_users_count)
             span.unit 件
@@ -95,12 +95,12 @@
             |  クリック反応数
 
           .mini-rate
-            = "#{@click_rate}% CTR"
+            = "#{@click_rate}% クリック率"
 
       / ===== SERPAPI & Form Detection Limits =====
       .stats-grid.mt-4
         .glass-card
-          .card-label SERP API
+          .card-label SERP検索
           .card-value
             = number_with_delimiter(@serp_api_used.to_i)
             span.unit 件
@@ -115,7 +115,7 @@
               = "残り: #{number_with_delimiter(remaining_serp)} 件 / 上限: #{number_with_delimiter(@serp_api_limit.to_i)} 件"
 
         .glass-card
-          .card-label Form Detection
+          .card-label フォーム検出
           .card-value
             = number_with_delimiter(@form_detection_used.to_i)
             span.unit 件
@@ -130,7 +130,7 @@
               = "残り: #{number_with_delimiter(remaining_form)} 件 / 上限: #{number_with_delimiter(@form_detection_limit.to_i)} 件"
 
         .glass-card
-          .card-label Import
+          .card-label インポート
           .card-value
             = number_with_delimiter(@import_count.to_i)
             span.unit 件
@@ -141,26 +141,26 @@
       .history-section.mt-5
         .glass-card
           .card-header-flex style="display: flex; justify-content: space-between; align-items: center; width: 100%;"
-            h5.m-0 Recent Send Forms
+            h5.m-0 最近のフォーム送信
 
             = link_to dashboard_history_path(dashboard_month_params),
               class: 'btn-electric-outline',
               style: 'display: inline-flex; align-items: center; padding: 0.6rem 1.2rem; font-size: 0.9rem; text-decoration: none; line-height: 1; border-radius: 6px; font-weight: 500;' do
 
-              | View All
+              | すべて見る
               i.fas.fa-chevron-right.ms-2 style="font-size: 0.75rem;"
 
           .table-responsive
             table.okurite-table style="table-layout: fixed; width: 100%;"
               thead
                 tr
-                  th style="width: 100px;" Date
-                  th style="width: 250px;" Title
-                  th style="width: 90px;" Target
-                  th style="width: 90px;" Sender
-                  th style="width: 90px;" Sender ID
-                  th style="width: 120px;" Progress
-                  th style="width: 100px;" Status
+                  th style="width: 100px;" 日付
+                  th style="width: 250px;" タイトル
+                  th style="width: 90px;" 対象
+                  th style="width: 90px;" 送信者
+                  th style="width: 90px;" 送信者ID
+                  th style="width: 120px;" 進捗
+                  th style="width: 100px;" 状態
 
               tbody
                 - if (@batches || []).blank?
@@ -171,15 +171,15 @@
                   tr
                     td = batch.created_at.strftime('%Y/%m/%d')
                     td
-                      .text-ellipsis style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="#{batch.submission&.title || 'Default'}"
-                        = batch.submission&.title || 'Default'
+                      .text-ellipsis style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="#{batch.submission&.title || '未設定'}"
+                        = batch.submission&.title || '未設定'
                     td = number_with_delimiter(batch.total_count)
 
                     td
                       - if batch.client.present?
-                        span.text-blue Client
+                        span.text-blue クライアント
                       - elsif batch.admin.present?
-                        span.text-green Admin
+                        span.text-green 管理者
                       - else
                         span.text-muted -
 
@@ -199,13 +199,13 @@
                     td
                       - case batch.status
                       - when 'processing'
-                        span.text-blue Processing
+                        span.text-blue 処理中
                       - when 'completed'
-                        span.text-green Completed
+                        span.text-green 完了
                       - when 'pending'
-                        span.text-muted Pending
+                        span.text-muted 待機中
                       - when 'cancelled'
-                        span.text-warning Cancelled
+                        span.text-warning キャンセル
                       - else
                         span.text-muted = batch.status
 
@@ -213,7 +213,7 @@
       .history-section.mt-5
         .glass-card
           .card-header-flex
-            h5.m-0 Customer Insights
+            h5.m-0 顧客状況
 
           .table-responsive
             table.okurite-table
@@ -239,19 +239,19 @@
       .history-section.mt-5
         .glass-card
           .card-header-flex
-            h5.m-0 Submission Performance
+            h5.m-0 送信内容別の実績
 
           .table-responsive
             table.okurite-table style="table-layout: fixed; width: 100%;"
               thead
                 tr
-                  th style="width: 250px;" Submission
-                  th style="width: 90px;" Sender
-                  th style="width: 90px;" Sender ID
-                  th style="width: 90px;" Total
-                  th style="width: 90px;" Success
-                  th style="width: 90px;" Failure
-                  th style="width: 90px;" Rate
+                  th style="width: 250px;" 送信内容
+                  th style="width: 90px;" 送信者
+                  th style="width: 90px;" 送信者ID
+                  th style="width: 90px;" 合計
+                  th style="width: 90px;" 成功
+                  th style="width: 90px;" 失敗
+                  th style="width: 90px;" 成功率
               tbody
                 / Rate = 完了バッチのみ / 送信不可(フォーム未検出・CAPTCHA等)除外
                 - @submission_stats.each do |stat|
@@ -269,9 +269,9 @@
                         = submission.title
                     td
                       - if sender_client.present?
-                        span.text-blue Client
+                        span.text-blue クライアント
                       - elsif sender_admin.present?
-                        span.text-green Admin
+                        span.text-green 管理者
                       - else
                         span.text-muted -
                     td
@@ -292,10 +292,10 @@
       .ok-icon
         i.fas.fa-bolt
 
-      h3 Trial Active
+      h3 トライアル利用中
 
       p
-        | 現在トライアルプランをご利用中です。
+        | 現在トライアルをご利用中です。
         br
         | プロプランへアップグレードして、
         br

@@ -1,7 +1,13 @@
 # frozen_string_literal: true
 
 class Clients::RegistrationsController < Devise::RegistrationsController
+  before_action :reject_client_auth_while_admin!, only: [:new, :create]
   before_action :configure_account_update_params, only: [:update]
+
+  def new
+    session[:client_oauth_intent] = "sign_up"
+    super
+  end
 
   def create
     build_resource(sign_up_params)

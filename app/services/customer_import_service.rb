@@ -20,6 +20,23 @@ class CustomerImportService
 
   COMPANY_KEYS = %w[会社名 company].freeze
 
+  SAMPLE_HEADERS = %w[
+    company tel address url contact_url business capital establish ceo people remarks
+  ].freeze
+
+  SAMPLE_VALUES = [
+    '株式会社サンプル', '03-1234-5678', '東京都渋谷区1-2-3',
+    'https://example.com', 'https://example.com/contact',
+    '製造業', '1000万円', '2010年4月', '山田太郎', '50', 'メモ'
+  ].freeze
+
+  def self.sample_csv
+    CSV.generate do |csv|
+      csv << SAMPLE_HEADERS
+      csv << SAMPLE_VALUES
+    end
+  end
+
   def initialize(overwrite_blank: false, client_id: nil)
     @overwrite_blank = overwrite_blank
     @client_id = client_id

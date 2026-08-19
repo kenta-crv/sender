@@ -18,7 +18,7 @@ module ApplicationHelper
   def plan_priority_wait_notice
     PlanPriorityQueue.wait_notice_for(
       client: current_client,
-      admin: admin_signed_in?
+      admin: acting_as_admin?
     )
   end
 
@@ -85,7 +85,7 @@ module ApplicationHelper
 
   def customer_delivery_status(customer, client_id: nil, admin_id: nil)
     client_id ||= current_client&.id if client_signed_in?
-    admin_id ||= current_admin&.id if admin_signed_in?
+    admin_id ||= current_admin&.id if acting_as_admin?
 
     if client_id.present? && customer.opted_out_for?(client_id)
       { label: "このクライアントから配信停止済み", css: "delivery-status-badge--client-opt-out" }
@@ -96,7 +96,7 @@ module ApplicationHelper
     end
   end
 
-  def customer_opted_out_client_labels(customer)
+    def customer_opted_out_client_labels(customer)
     customer.delivery_opt_outs.includes(:client).map do |opt_out|
       if opt_out.client_id.present?
         opt_out.client&.company.presence || opt_out.client&.email || "Client ##{opt_out.client_id}"
@@ -105,6 +105,14 @@ module ApplicationHelper
       end
     end
     .compact
+  end
+
+  def show_plan_upgrade_banner?
+    return false unless client_signed_in?
+    return false if acting_as_admin?
+    return false if %w[plans checkout].include?(controller_name)
+
+    controller_path.start_with?("dashboard") || %w[customers submissions form_submissions draft_customers].include?(controller_name)
   end
 
 end

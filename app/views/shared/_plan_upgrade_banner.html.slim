@@ -1,0 +1,32 @@
+- return unless client_signed_in?
+- return if acting_as_admin?
+- return if controller_name == "plans" || controller_name == "checkout"
+
+- client = current_client
+- standard_price = "¥#{number_with_delimiter(Subscription::PLAN_PRICES[:standard])}"
+- trial_ends = client.trial_ends_at || client.current_subscription&.trial_ends_at
+- show_trial = client.on_trial?
+- show_expired = client.trial_expired_without_paid?
+- show_usage = !show_expired && client.approaching_limit?(threshold: 0.8)
+
+- if show_expired
+  .glass-card.glass-card--accent.d-flex.align-items-center.justify-content-between.gap-3 role="status"
+    div
+      .card-label style="font-size: 1rem;" トライアルが終了しました
+      p.mb-0 style="font-size: 0.9rem;" = "閲覧は継続できます。本格運用はスタンダード（#{standard_price}/月・初回3ヶ月15%OFF）へ。"
+    = link_to "プランを見る", plans_path, class: "btn-electric-outline btn-electric-outline--danger", style: "text-decoration: none;"
+- elsif show_trial
+  .glass-card.glass-card--accent.d-flex.align-items-center.justify-content-between.gap-3 role="status"
+    div
+      .card-label style="font-size: 1rem;" 無料トライアル利用中
+      p.mb-0 style="font-size: 0.9rem;"
+        - if trial_ends.present?
+          = "#{trial_ends.strftime("%Y/%m/%d")}まで。"
+        | 上限に達したあとは閲覧のみになります。いつでも有料プランに切り替えできます。
+    = link_to "プラン・料金", plans_path, class: "btn-electric-outline", style: "text-decoration: none;"
+- elsif show_usage
+  .glass-card.glass-card--accent.d-flex.align-items-center.justify-content-between.gap-3 role="status"
+    div
+      .card-label style="font-size: 1rem;" 利用枠が残りわずかです
+      p.mb-0 style="font-size: 0.9rem;" 今月の使用量が上限の80%に達しています。プラン変更で枠を増やせます。
+    = link_to "プランを確認", plans_path, class: "btn-electric-outline", style: "text-decoration: none;"

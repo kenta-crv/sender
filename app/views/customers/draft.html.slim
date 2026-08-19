@@ -134,8 +134,8 @@
                   label.sc-detect__label 抽出件数上限
                   - default_limit = [100, @max_search_limit].min
                   = number_field_tag :limit, default_limit, min: 1, max: @max_search_limit, id: "serp-limit-input", class: "sc-detect__input"
-                  - if client_signed_in? && !admin_signed_in?
-                    small.text-muted style="font-size: 0.75rem; display: block; mt-1;" ※所有権限の上限件数を超えて指定することはできません。
+                  - if client_signed_in? && !acting_as_admin?
+                    small style="font-size: 0.75rem; display: block; margin-top: 0.25rem; color: rgba(229, 231, 235, 0.5);" ※ご利用プランの上限件数を超えて指定することはできません。
 
             button#start-serp-button.sc-detect__btn.sc-detect__btn--warning.w-100.mt-1 type="button" data-max="#{@max_search_limit || 0}"
               i.fas.fa-magic.me-2

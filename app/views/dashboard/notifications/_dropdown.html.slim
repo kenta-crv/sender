@@ -17,7 +17,7 @@
               - when 'FormDetection'
                 span.form-detection フォーム検出
             .notification-message = notification.message
-            .notification-time = time_ago_in_words(notification.created_at) + '前'
+            .notification-time = notification.created_at.strftime('%Y/%m/%d %H:%M')
     - else
       li.no-notifications
         | 新しい通知はありません

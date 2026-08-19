@@ -104,7 +104,7 @@
               td
                 - status = customer_delivery_status(@customer)
                 span class="delivery-status-badge #{status[:css]}" = status[:label]
-                - if admin_signed_in?
+                - if acting_as_admin?
                   - opted_out_labels = customer_opted_out_client_labels(@customer)
                   - if opted_out_labels.any?
                     div style="margin-top: 6px; font-size: 0.85rem; color: rgba(148,163,184,0.85);"

@@ -47,7 +47,7 @@
                       .okurite-pagination.py-2
                         = paginate @customers
 
-      - if admin_signed_in?
+      - if acting_as_admin?
         .glass-card.mt-4
           .card-body
             .d-flex.justify-content-between.align-items-center

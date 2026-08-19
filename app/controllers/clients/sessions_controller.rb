@@ -1,7 +1,12 @@
 # frozen_string_literal: true
 
 class Clients::SessionsController < Devise::SessionsController
-  # before_action :configure_sign_in_params, only: [:create]
+  before_action :reject_client_auth_while_admin!, only: [:new, :create]
+
+  def new
+    session[:client_oauth_intent] = "sign_in"
+    super
+  end
 
   # GET /resource/sign_in
   # def new

@@ -29,7 +29,7 @@ class Dashboard::NotificationsController < ApplicationController
   end
 
   def scoped_notifications
-    if admin_signed_in?
+    if acting_as_admin?
       Notification.all
     elsif client_signed_in?
       Notification.for_client(current_client.id)
@@ -39,6 +39,6 @@ class Dashboard::NotificationsController < ApplicationController
   end
 
   def authenticate_any!
-    redirect_to root_path unless admin_signed_in? || client_signed_in?
+    redirect_to root_path unless acting_as_admin? || client_signed_in?
   end
 end

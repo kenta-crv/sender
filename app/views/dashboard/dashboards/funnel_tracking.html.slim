@@ -4,9 +4,9 @@
 
     #content
       header.top-header
-        h2 Funnel Tracking
+        h2 ファネル分析
         .user-meta
-          span.badge-electric Admin
+          span.badge-electric 管理者
 
       / --- 期間フィルター ---
       .history-section.mt-4
@@ -138,7 +138,7 @@
                           span.text-muted 不明
                       td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem;"
                         - if submission.present?
-                          = truncate(submission.headline.presence || "Submission ##{submission.id}", length: 25)
+                          = truncate(submission.headline.presence || "案件 ##{submission.id}", length: 25)
                         - else
                           span.text-muted -
                       td = pg_labels_short[ev.page] || ev.page

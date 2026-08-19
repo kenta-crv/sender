@@ -4,7 +4,7 @@
 
     #content
       header.top-header
-        h2 Subscription Cancellation
+        h2 サブスクリプション解約
 
       .settings-section.mt-4
         .glass-card
@@ -23,7 +23,7 @@
             .form-group style="margin-top: 2rem;"
               span.card-label style="display: block; margin-bottom: 8px;" 現在のプラン
               span.badge-electric style="font-size: 1rem; padding: 6px 20px;"
-                = current_client.subscription_plan&.capitalize || 'None'
+                = Subscription::PLAN_NAMES[current_client.subscription_plan.to_s.to_sym] || current_client.subscription_plan.presence || '未契約'
 
             hr
 

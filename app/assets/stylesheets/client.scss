@@ -25,9 +25,22 @@
   /* 【PC基準】レイアウト構造 */
   .wrapper {
     display: flex;
+    flex-direction: column;
     padding-left: 260px; /* サイドバーの幅分、メインコンテンツを右にずらす */
     width: 100%;
     box-sizing: border-box;
+  }
+
+  .wrapper > .glass-card {
+    margin: 50px 50px 0;
+  }
+
+  .wrapper > .glass-card + .glass-card {
+    margin-top: 16px;
+  }
+
+  .wrapper > .glass-card + #content {
+    padding-top: 25px;
   }
 
   /* 【PC基準】サイドバー */
@@ -193,6 +206,10 @@
     p { color: rgba(229, 231, 235, 0.85); }
   }
 
+  .glass-card--accent {
+    border-color: rgba(0, 162, 255, 0.3);
+  }
+
   .card-header-flex {
     display: flex;
     justify-content: space-between;
@@ -333,6 +350,14 @@
       position: fixed;
       height: calc(100vh - 60px);
       background: #050505;
+    }
+
+    .wrapper > .glass-card {
+      margin: 20px 20px 0;
+    }
+
+    .wrapper > .glass-card + #content {
+      padding-top: 16px;
     }
 
     /* モバイル時のコンテンツ調整 */
@@ -1262,7 +1287,7 @@
     margin-right: 25px;
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
     text-align: center;
-    min-width: 85px;
+    min-width: 110px;
 
     &.badge-highlight {
       background: rgba(0, 162, 255, 0.1);

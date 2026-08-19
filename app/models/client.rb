@@ -16,28 +16,40 @@ class Client < ApplicationRecord
   has_many :submissions
   has_many :delivery_opt_outs, dependent: :destroy
 
-  def self.from_omniauth(auth)
+  def self.from_omniauth(auth, intent: "sign_in")
     email = auth.info.email.to_s.downcase.presence
     raise ArgumentError, "OAuth email missing" if email.blank?
 
-    client = find_by(provider: auth.provider, uid: auth.uid)
-    return client if client
+    existing = find_by(provider: auth.provider, uid: auth.uid) || find_by(email: email)
 
-    client = find_by(email: email)
-    if client
-      client.update!(provider: auth.provider, uid: auth.uid)
-      client.name = auth.info.name if client.name.blank? && auth.info.name.present?
-      client.save! if client.changed?
-      return client
+    if intent.to_s == "sign_up"
+      if existing
+        raise ArgumentError, I18n.t(
+          "okurite.auth.oauth_account_exists",
+          default: "このアカウントは既に登録されています。ログインしてください。"
+        )
+      end
+
+      return create!(
+        email: email,
+        password: Devise.friendly_token[0, 20],
+        name: auth.info.name,
+        provider: auth.provider,
+        uid: auth.uid
+      )
     end
 
-    create!(
-      email: email,
-      password: Devise.friendly_token[0, 20],
-      name: auth.info.name,
-      provider: auth.provider,
-      uid: auth.uid
-    )
+    unless existing
+      raise ArgumentError, I18n.t(
+        "okurite.auth.oauth_account_missing",
+        default: "このアカウントは未登録です。新規登録してください。"
+      )
+    end
+
+    existing.update!(provider: auth.provider, uid: auth.uid) if existing.provider.blank? || existing.uid.blank?
+    existing.name = auth.info.name if existing.name.blank? && auth.info.name.present?
+    existing.save! if existing.changed?
+    existing
   end
 
   def password_required?
@@ -60,6 +72,32 @@ class Client < ApplicationRecord
 
   def on_trial?
     subscription_plan == "trial" && trial_ends_at.present? && trial_ends_at > Time.current
+  end
+
+  def trial_expired_without_paid?
+    subscription = current_subscription
+    return true if subscription&.expired?
+    return true if subscription_plan == "trial" && trial_ends_at.present? && trial_ends_at <= Time.current
+
+    false
+  end
+
+  def approaching_limit?(threshold: 0.8)
+    checks = []
+    if monthly_limit.to_i.positive?
+      checks << (monthly_sent_count.to_f / monthly_limit >= threshold)
+    end
+
+    limits = usage_limits
+    log = monthly_usage_log
+    if limits[:serp_api_limit].to_i.positive?
+      checks << (log.serp_api_used.to_f / limits[:serp_api_limit] >= threshold)
+    end
+    if limits[:form_detection_limit].to_i.positive?
+      checks << (log.form_detection_used.to_f / limits[:form_detection_limit] >= threshold)
+    end
+
+    checks.any?
   end
 
   def subscription_active?

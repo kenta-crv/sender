@@ -3,22 +3,23 @@
   h2.sc-detect__title 顧客データ管理
 
   .sc-detect__card
-    .sc-detect__card-header
+    .sc-detect__card-header.d-flex.align-items-center.justify-content-between
       h5 顧客リスト一括インポート
-    
+      = link_to import_template_form_submissions_path, class: 'sc-detect__btn sc-detect__btn--primary', style: 'text-decoration: none;' do
+        i.fas.fa-download
+        | サンプルCSV
+
     .sc-detect__card-body
       = form_tag import_customers_form_submissions_path, multipart: true do
         .row.align-items-end
           .col-md-8
-            label.sc-detect__card-body.p-0.mb-2 
-              | CSVファイルを選択
-              span.ms-2.small(style="opacity: 0.6;") (ヘッダー: company, tel, address, url, contact_url, business, capital, establish, ceo, people, remarks)
+            label.mb-2 CSVファイルを選択
             = file_field_tag :file, class: 'sc-detect__file-input', accept: '.csv'
           
           .col-md-4
             = submit_tag 'インポート実行', class: 'sc-detect__btn sc-detect__btn--primary w-100'
 
-        - if admin_signed_in?
+        - if acting_as_admin?
           .form-check.mt-3
             = check_box_tag :overwrite_blank, '1', false, class: 'form-check-input', id: 'overwrite_blank'
             label.form-check-label for="overwrite_blank"
@@ -29,7 +30,48 @@
       .sc-detect__alert.sc-detect__alert--secondary.mt-3
         div
           i.fas.fa-info-circle.me-2
-          - if admin_signed_in?
+          - if acting_as_admin?
             | 同名の会社が存在する場合は情報を更新します。大量データはバックグラウンドで処理され、完了後に通知されます。
           - else
             | 同名の会社が存在する場合、CSVに値がある項目のみ更新します。空白セルは既存値を維持します。完了後に通知されます。
+
+      .sc-detect__table-wrapper.mt-3
+        table.sc-detect__table
+          thead
+            tr
+              th カラム名
+              th 意味
+          tbody
+            tr
+              td company
+              td 会社名（必須。「株式会社」などの法人格を含める）
+            tr
+              td tel
+              td 電話番号
+            tr
+              td address
+              td 住所
+            tr
+              td url
+              td HP URL
+            tr
+              td contact_url
+              td 問い合わせURL
+            tr
+              td business
+              td 業種
+            tr
+              td capital
+              td 資本金
+            tr
+              td establish
+              td 設立
+            tr
+              td ceo
+              td 代表者
+            tr
+              td people
+              td 従業員数
+            tr
+              td remarks
+              td 備考

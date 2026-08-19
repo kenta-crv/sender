@@ -3,7 +3,7 @@ class Dashboard::DashboardsController < ApplicationController
 
   before_action :authenticate_any!
   before_action :require_admin!, only: [:management, :funnel_tracking]
-  before_action :check_subscription_active!, unless: :admin_signed_in?
+  before_action :check_subscription_active!, unless: :acting_as_admin?
   before_action :set_base_scope, except: [:index, :setting, :management, :funnel_tracking, :click_tracking, :howto]
 
   def index
@@ -14,7 +14,7 @@ class Dashboard::DashboardsController < ApplicationController
     @not_detected_count = insights_scope.where(contact_url: 'not_detected').count
     @no_url_customers_count = insights_scope.where(contact_url: [nil, '']).where(url: [nil, '']).count
 
-    notification_scope = if admin_signed_in?
+    notification_scope = if acting_as_admin?
       Notification.all
     elsif client_signed_in?
       Notification.for_client(current_client.id)
@@ -42,11 +42,11 @@ class Dashboard::DashboardsController < ApplicationController
 
     @submission_stats = build_submission_stats(monthly_scope)
 
-    if admin_signed_in? && params[:client_id].present?
+    if acting_as_admin? && params[:client_id].present?
       assign_monthly_usage_stats!(Client.find(params[:client_id]))
     elsif client_signed_in?
       assign_monthly_usage_stats!(current_client)
-    elsif admin_signed_in?
+    elsif acting_as_admin?
       assign_monthly_usage_stats_for_admin!
     else
       assign_monthly_usage_stats_empty!
@@ -73,7 +73,7 @@ class Dashboard::DashboardsController < ApplicationController
     assign_selected_month!
     @q = @base_customers.ransack(params[:q])
 
-    if admin_signed_in?
+    if acting_as_admin?
       if params[:client_id].present?
         batch_scope = FormSubmissionBatch.where(client_id: params[:client_id])
         @submissions = Submission.where(client_id: params[:client_id]).order(created_at: :desc)
@@ -94,7 +94,7 @@ class Dashboard::DashboardsController < ApplicationController
 
     @submission_stats = @submissions.map do |submission|
       batches = submission.form_submission_batches.where(created_at: @month_range)
-      batches = batches.where(client_id: current_client.id) if client_signed_in? && !admin_signed_in?
+      batches = batches.where(client_id: current_client.id) if client_signed_in? && !acting_as_admin?
       rate_stats = FormSubmissionBatch.aggregate_rate_stats(batches)
 
       {
@@ -115,7 +115,7 @@ class Dashboard::DashboardsController < ApplicationController
     @q = @base_customers.includes(:last_form_call).ransack(params[:q])
     filtered = @q.result(distinct: true)
 
-    if admin_signed_in? && params[:last_call].present?
+    if acting_as_admin? && params[:last_call].present?
       lc = params[:last_call]
       statuses = Array(lc[:status]).reject(&:blank?)
       from_date = lc[:created_at_from].presence
@@ -167,7 +167,7 @@ class Dashboard::DashboardsController < ApplicationController
                             .or(query_scope.where(calls: { status: excluded_statuses }))
                             .distinct.count
 
-    if admin_signed_in?
+    if acting_as_admin?
       @submissions = Submission.where(client_id: nil).order(created_at: :desc)
     elsif client_signed_in?
       @submissions = current_client.submissions.order(created_at: :desc)
@@ -218,7 +218,7 @@ def searching_form
                                   .sort_by { |_name, count| -count }
                                   .map { |name, count| ["#{name}（#{count}件）", name] }
 
-  @submissions = admin_signed_in? ? Submission.where(client_id: nil).order(created_at: :desc) : (client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none)
+  @submissions = acting_as_admin? ? Submission.where(client_id: nil).order(created_at: :desc) : (client_signed_in? ? current_client.submissions.order(created_at: :desc) : Submission.none)
 end
 
   def setting; end
@@ -285,7 +285,7 @@ end
 
   def click_tracking
     click_scope =
-      if admin_signed_in?
+      if acting_as_admin?
         if params[:client_id].present?
           ClickTrackingLink.where(client_id: params[:client_id])
         else
@@ -300,7 +300,7 @@ end
     click_scope = click_scope.where(submission_id: params[:submission_id]) if params[:submission_id].present?
 
     @filter_submissions =
-      if admin_signed_in?
+      if acting_as_admin?
         if params[:client_id].present?
           Submission.where(client_id: params[:client_id]).order(created_at: :desc)
         else
@@ -396,9 +396,9 @@ end
   end
 
   def customer_insights_scope
-    if admin_signed_in? && params[:client_id].present?
+    if acting_as_admin? && params[:client_id].present?
       Customer.where(client_id: params[:client_id])
-    elsif admin_signed_in?
+    elsif acting_as_admin?
       Customer.all
     elsif client_signed_in?
       Customer.where(client_id: current_client.id)
@@ -408,9 +408,9 @@ end
   end
 
   def form_batch_scope
-    if admin_signed_in? && params[:client_id].present?
+    if acting_as_admin? && params[:client_id].present?
       FormSubmissionBatch.where(client_id: params[:client_id])
-    elsif admin_signed_in?
+    elsif acting_as_admin?
       FormSubmissionBatch.all
     elsif client_signed_in?
       current_client.form_submission_batches
@@ -420,9 +420,9 @@ end
   end
 
   def click_tracking_scope
-    if admin_signed_in? && params[:client_id].present?
+    if acting_as_admin? && params[:client_id].present?
       ClickTrackingLink.where(client_id: params[:client_id])
-    elsif admin_signed_in?
+    elsif acting_as_admin?
       ClickTrackingLink.all
     elsif client_signed_in?
       ClickTrackingLink.where(client_id: current_client.id)
@@ -432,9 +432,9 @@ end
   end
 
   def dashboard_submissions_scope
-    if admin_signed_in? && params[:client_id].present?
+    if acting_as_admin? && params[:client_id].present?
       Submission.where(client_id: params[:client_id]).order(created_at: :desc)
-    elsif admin_signed_in?
+    elsif acting_as_admin?
       Submission.order(created_at: :desc)
     elsif client_signed_in?
       current_client.submissions.order(created_at: :desc)
@@ -458,22 +458,27 @@ end
       }
     end
 
-    batch_scope
+    grouped_stats = batch_scope
       .completed_batches
       .where.not(submission_id: nil)
-      .select(:id, :submission_id, :status, :success_count, :failure_count, :error_log)
-      .find_each do |batch|
-        rate_stats = batch.rate_stats
-        row = stats_by_submission[batch.submission_id]
-        row[:success_count] += rate_stats[:success_count]
-        row[:failure_count] += rate_stats[:failure_count]
-        row[:total_sent] += rate_stats[:total_count]
-        row[:excluded_count] += rate_stats[:excluded_count]
-      end
+      .group(:submission_id)
+      .pluck(
+        Arel.sql('submission_id'),
+        Arel.sql('COALESCE(SUM(success_count), 0)'),
+        Arel.sql('COALESCE(SUM(failure_count), 0)')
+      )
 
-    stats_by_submission.each_value do |row|
-      total = row[:total_sent]
-      row[:rate] = total.positive? ? ((row[:success_count].to_f / total) * 100).round(1) : 0.0
+    grouped_stats.each do |submission_id, success, failure|
+      success = success.to_i
+      failure = failure.to_i
+      total = success + failure
+      stats_by_submission[submission_id] = {
+        total_sent: total,
+        success_count: success,
+        failure_count: failure,
+        excluded_count: 0,
+        rate: total.positive? ? ((success.to_f / total) * 100).round(1) : 0.0
+      }
     end
 
     sender_batch_ids = batch_scope
@@ -510,11 +515,11 @@ end
   end
 
   def authenticate_any!
-    redirect_to root_path unless admin_signed_in? || client_signed_in?
+    redirect_to root_path unless acting_as_admin? || client_signed_in?
   end
 
   def require_admin!
-    redirect_to root_path, alert: "このページへのアクセス権限がありません。" unless admin_signed_in?
+    redirect_to root_path, alert: "このページへのアクセス権限がありません。" unless acting_as_admin?
   end
 
   def check_subscription_active!
@@ -546,17 +551,16 @@ end
   end
 
   def set_base_scope
-    if admin_signed_in?
-      if params[:client_id].present?
-        @base_customers = Customer.where(client_id: params[:client_id]).includes(:last_form_call).left_joins(:calls).distinct
+    @base_customers =
+      if acting_as_admin? && params[:client_id].present?
+        Customer.where(client_id: params[:client_id])
+      elsif acting_as_admin?
+        Customer.all
+      elsif client_signed_in?
+        Customer.where(client_id: current_client.id)
       else
-        @base_customers = Customer.all.includes(:last_form_call).left_joins(:calls).distinct
+        Customer.none
       end
-    elsif client_signed_in?
-      @base_customers = Customer.where(client_id: current_client.id).includes(:last_form_call).left_joins(:calls).distinct
-    else
-      @base_customers = Customer.none
-    end
   end
 
   def generate_options(column)

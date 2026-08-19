@@ -72,7 +72,7 @@
                       - status = customer_delivery_status(@customer)
                       span class="delivery-status-badge #{status[:css]}" = status[:label]
 
-                      - if admin_signed_in?
+                      - if acting_as_admin?
                         - opted_out_labels = customer_opted_out_client_labels(@customer)
                         - if opted_out_labels.any?
                           .delivery-status-note

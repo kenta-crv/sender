@@ -36,7 +36,7 @@ module Dashboard
     end
 
     def notification_scope
-      if admin_signed_in?
+      if acting_as_admin?
         Notification.all
       elsif client_signed_in?
         Notification.where(client_id: current_client.id)
@@ -46,7 +46,7 @@ module Dashboard
     end
 
     def authenticate_admin_or_client!
-      unless admin_signed_in? || client_signed_in?
+      unless acting_as_admin? || client_signed_in?
         redirect_to root_path, alert: 'アクセス権限がありません'
       end
     end

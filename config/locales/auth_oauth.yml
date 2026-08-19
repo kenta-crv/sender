@@ -5,3 +5,8 @@ ja:
       oauth_microsoft: "Microsoft"
       oauth_or: "または"
       oauth_failure: "外部アカウントでのログインに失敗しました。"
+      oauth_success: "%{kind}アカウントでログインしました。"
+      oauth_signed_up: "%{kind}アカウントで登録しました。"
+      oauth_account_exists: "このアカウントは既に登録されています。ログインしてください。"
+      oauth_account_missing: "このアカウントは未登録です。新規登録してください。"
+      admin_session_blocks_client: "管理者でログイン中です。企業アカウントの登録・ログインは、管理者をログアウトしてから行ってください。"

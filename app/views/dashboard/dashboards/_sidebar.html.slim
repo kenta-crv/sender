@@ -50,7 +50,7 @@ nav#sidebar
         i.fas.fa-paper-plane
         span 問い合わせフォーム送信
 
-    - if admin_signed_in?
+    - if acting_as_admin?
       li class=(current_page?(dashboard_funnel_tracking_path) ? 'active' : '')
         = link_to dashboard_funnel_tracking_path do
           i.fas.fa-filter
@@ -59,7 +59,7 @@ nav#sidebar
       li class=(current_page?(dashboard_management_path) ? 'active' : '')
         = link_to dashboard_management_path do
           i.fas.fa-user-shield
-          span Management
+          span 管理
     - else
       li class=(current_page?(dashboard_click_tracking_path) ? 'active' : '')
         = link_to dashboard_click_tracking_path do
@@ -70,3 +70,5 @@ nav#sidebar
         = link_to dashboard_setting_path do
           i.fas.fa-cog
           span 設定
+
+= render "shared/plan_upgrade_banner"

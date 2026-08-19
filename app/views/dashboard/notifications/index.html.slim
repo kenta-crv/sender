@@ -7,9 +7,9 @@
         h2 通知一覧
         .user-meta
           - if current_client.present?
-            span.badge-electric = current_client.subscription_plan.presence
+            span.badge-electric = Subscription::PLAN_NAMES[current_client.subscription_plan.to_s.to_sym] || current_client.subscription_plan.presence
           - else
-            span.badge-electric Admin
+            span.badge-electric 管理者
 
       .notifications-index
         .notifications-header
@@ -35,7 +35,7 @@
                           | フォーム送信
                         - when 'FormDetection'
                           | フォーム検出
-                      .notification-time = time_ago_in_words(notification.created_at) + '前'
+                      .notification-time = notification.created_at.strftime('%Y/%m/%d %H:%M')
                     
                     .notification-message = notification.message
                     

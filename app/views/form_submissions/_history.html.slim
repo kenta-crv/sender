@@ -23,7 +23,18 @@
             td = batch.id
             td
               - status_class = case batch.status when 'pending' then 'secondary' when 'processing' then 'info' when 'completed' then 'success' when 'cancelled' then 'warning' end
-              span class="sc-detect__badge sc-detect__badge--#{status_class}" = batch.status
+              span class="sc-detect__badge sc-detect__badge--#{status_class}"
+                - case batch.status
+                - when 'processing'
+                  | 処理中
+                - when 'completed'
+                  | 完了
+                - when 'pending'
+                  | 待機中
+                - when 'cancelled'
+                  | キャンセル
+                - else
+                  = batch.status
 
             td
               - if batch.submission.present?
@@ -53,25 +64,25 @@
                 / 詳細ボタン（定義済みの primary スタイル）
                 = link_to form_submission_path(batch), class: 'sc-detect__btn sc-detect__btn--primary' do
                   i.fas.fa-file-alt
-                  | Detail
+                  | 詳細
                 
                 / 削除ボタン：リンクのデフォルト色を打ち消すため !important レベルで色を固定
-                -if admin_signed_in?
+                -if acting_as_admin?
                  = link_to form_submission_path(batch), method: :delete, data: { confirm: 'この送信バッチ履歴を完全に削除しますか？' }, class: 'sc-detect__badge sc-detect__badge--danger', style: 'color: #ef4444 !important; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; min-width: 80px;' do
                   i.fas.fa-trash-alt.me-1
-                  | Delete
+                  | 削除
 
     .mt-3
       = paginate @batches
 
   / 統計セクション
-  h2.sc-detect__title Submission別送信統計
+  h2.sc-detect__title 送信内容別の送信統計
 
   .sc-detect__table-wrapper
     table.sc-detect__table
       thead
         tr
-          th Submission
+          th 送信内容
           th 送信合計
           th 成功
           th 失敗

@@ -122,17 +122,17 @@ class SubmissionsController < ApplicationController
   private
 
   def authenticate_admin_or_client!
-    unless admin_signed_in? || client_signed_in?
+    unless acting_as_admin? || client_signed_in?
       redirect_to root_path, alert: 'ログインしてください'
     end
   end
 
   def scoped_customers
-    admin_signed_in? ? Customer.all : Customer.where(client_id: current_client.id)
+    acting_as_admin? ? Customer.all : Customer.where(client_id: current_client.id)
   end
 
   def scoped_submissions
-    if admin_signed_in?
+    if acting_as_admin?
       Submission.where(client_id: nil)
     else
       Submission.where(client_id: current_client.id)
@@ -140,7 +140,7 @@ class SubmissionsController < ApplicationController
   end
 
   def scoped_batches
-    if admin_signed_in?
+    if acting_as_admin?
       FormSubmissionBatch.where(client_id: nil)
     else
       FormSubmissionBatch.where(client_id: current_client.id)
@@ -148,7 +148,7 @@ class SubmissionsController < ApplicationController
   end
 
   def build_submission(params = {})
-    if admin_signed_in?
+    if acting_as_admin?
       submission = Submission.new(params)
       submission.client_id = nil
       submission

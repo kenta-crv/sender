@@ -55,25 +55,18 @@ class FormSubmissionBatch < ApplicationRecord
   end
 
   def self.aggregate_rate_stats(relation)
-    totals = {
-      success_count: 0,
-      failure_count: 0,
-      total_count: 0,
-      excluded_count: 0
+    completed = relation.completed_batches
+    success = completed.sum(:success_count).to_i
+    failure = completed.sum(:failure_count).to_i
+    total = success + failure
+
+    {
+      success_count: success,
+      failure_count: failure,
+      total_count: total,
+      excluded_count: 0,
+      rate: total.positive? ? ((success.to_f / total) * 100).round(1) : 0.0
     }
-
-    relation.completed_batches.find_each do |batch|
-      stats = batch.rate_stats
-      totals[:success_count] += stats[:success_count]
-      totals[:failure_count] += stats[:failure_count]
-      totals[:total_count] += stats[:total_count]
-      totals[:excluded_count] += stats[:excluded_count]
-    end
-
-    total = totals[:total_count]
-    totals.merge(
-      rate: total.positive? ? ((totals[:success_count].to_f / total) * 100).round(1) : 0.0
-    )
   end
 
   def unsendable_failure_count

@@ -99,13 +99,13 @@ module Dashboard
     private
 
     def authenticate_any!
-      unless admin_signed_in? || client_signed_in?
+      unless acting_as_admin? || client_signed_in?
         redirect_to root_path, alert: "権限がありません。"
       end
     end
 
     def set_target_client
-      if admin_signed_in?
+      if acting_as_admin?
         if params[:client_id].present?
           @target_client = Client.find(params[:client_id])
         else

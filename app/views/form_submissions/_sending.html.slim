@@ -45,7 +45,7 @@
             label.sc-detect__card-body.p-0.mb-2 メールアドレス
             = f.search_field :email_cont, class: "sc-detect__input"
 
-          - if admin_signed_in?
+          - if acting_as_admin?
             .col-md-3
               label.sc-detect__card-body.p-0.mb-2 最終送信状態
               = select_tag 'last_call[status][]',\
@@ -66,7 +66,7 @@
                 multiple: true
 
         .row.mb-3
-          - if admin_signed_in?
+          - if acting_as_admin?
             .col-md-3
               label.sc-detect__card-body.p-0.mb-2 最終送信日時（開始）
               = date_field_tag 'last_call[created_at_from]',\
@@ -175,7 +175,7 @@
                 th ID
                 th 会社名
                 th 問い合わせURL
-                - if admin_signed_in?
+                - if acting_as_admin?
                   th 最終送信
                   th ステータス
 
@@ -193,7 +193,7 @@
                       - if c.contact_url.present?
                         = link_to truncate(c.contact_url, length: 40), c.contact_url, target: '_blank', rel: 'noopener noreferrer'
 
-                    - if admin_signed_in?
+                    - if acting_as_admin?
                       td
                         - if c.last_form_call
                           span = c.last_form_call.created_at.strftime('%m/%d %H:%M')

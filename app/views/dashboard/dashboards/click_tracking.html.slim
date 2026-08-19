@@ -4,17 +4,17 @@
     
     #content
       header.top-header
-        h2 Click Tracking
+        h2 クリック履歴
         .user-meta
           - if current_client.present?
-            span.badge-electric = current_client.subscription_plan.presence
+            span.badge-electric = Subscription::PLAN_NAMES[current_client.subscription_plan.to_s.to_sym] || current_client.subscription_plan.presence
           - else
-            span.badge-electric Admin
+            span.badge-electric 管理者
 
       .history-section.mt-5
         .glass-card
           .card-header-flex
-            h5.m-0 Email Click Tracking
+            h5.m-0 メールクリック履歴
             p.text-muted 企業がメール内のリンクをクリックした履歴
 
           - if @filter_submissions.present?
@@ -25,7 +25,7 @@
                 .col-md-8
                   label.sc-detect__label 案件で絞り込む
                   = select_tag :submission_id,
-                    options_for_select([['すべての案件', '']] + @filter_submissions.map { |s| [(s.headline.presence || "Submission ##{s.id}"), s.id] }, params[:submission_id].presence),
+                    options_for_select([['すべての案件', '']] + @filter_submissions.map { |s| [(s.headline.presence || "案件 ##{s.id}"), s.id] }, params[:submission_id].presence),
                     class: 'sc-detect__select',
                     onchange: 'this.form.submit()'
                 .col-md-4
@@ -38,7 +38,7 @@
                 tr
                   th style="width: 150px;" 最終クリック日時
                   th style="width: 90px;" クリック数
-                  th style="width: 200px;" 案件（Submission）
+                  th style="width: 200px;" 案件
                   th style="width: 160px;" バッチ送信日時
                   th style="width: 180px;" 会社名
                   th style="width: 130px;" 電話番号
@@ -60,7 +60,7 @@
 
                     td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                       - if link.submission.present?
-                        = link_to truncate(link.submission.headline.presence || "Submission ##{link.submission.id}", length: 25),
+                        = link_to truncate(link.submission.headline.presence || "案件 ##{link.submission.id}", length: 25),
                           click_history_submission_path(link.submission),
                           title: link.submission.headline,
                           style: 'display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'

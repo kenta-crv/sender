@@ -203,7 +203,7 @@ class CustomersController < ApplicationController
     uploaded_file = params[:file]
     csv_content = uploaded_file.read
 
-    overwrite_blank = admin_signed_in? && params[:overwrite_blank] == '1'
+    overwrite_blank = acting_as_admin? && params[:overwrite_blank] == '1'
     client_id = current_client.id if respond_to?(:current_client) && current_client
 
     CustomerImportJob.perform_later(
@@ -221,7 +221,7 @@ def draft
 
   draft_scope_args = {
     current_client_id: client_signed_in? ? current_client.id : nil,
-    is_admin:          admin_signed_in?
+    is_admin:          acting_as_admin?
   }
 
   @industry_base_scope = Customer.draft_base_scope(**draft_scope_args, industry_name: nil)
@@ -239,7 +239,7 @@ def draft
                  .apply_status_filter(params[:status_filter])
                  .apply_serp_status_filter(params[:serp_status_filter])
                  .apply_tel_role_filter(
-                   is_admin:   admin_signed_in?,
+                   is_admin:   acting_as_admin?,
                    is_worker:  worker_signed_in?,
                    tel_filter: params[:tel_filter]
                  )
@@ -263,7 +263,7 @@ def draft
 
   raw_remaining = ExtractTracking.remaining_extractable_count
 
-  if client_signed_in? && !admin_signed_in?
+  if client_signed_in? && !acting_as_admin?
     monthly_log = current_client.monthly_usage_log
     subscription_remaining = [monthly_log.serp_api_limit - monthly_log.serp_api_used, 0].max
     @remaining_extractable = [subscription_remaining, @serp_target_count].min
@@ -289,7 +289,7 @@ def draft
                         .sort_by { |_name, count| -count }
                         .map { |name, count| ["#{name}（#{count}件）", name] }
 
-  @max_search_limit = admin_signed_in? ? @serp_target_count
+  @max_search_limit = acting_as_admin? ? @serp_target_count
                                        : [@serp_target_count, @remaining_extractable].min
 
   elapsed = ((Time.current - start_time) * 1000).round(2)
@@ -304,7 +304,7 @@ def serp_search
   company_query   = params[:company_query].presence
   fill_filter     = params[:fill_filter].presence
 
-  if client_signed_in? && !admin_signed_in?
+  if client_signed_in? && !acting_as_admin?
     monthly_log = current_client.monthly_usage_log
     subscription_remaining = [monthly_log.serp_api_limit - monthly_log.serp_api_used, 0].max
 
@@ -317,7 +317,7 @@ def serp_search
 
   base_scope = Customer.draft_base_scope(
     current_client_id: client_signed_in? ? current_client.id : nil,
-    is_admin:          admin_signed_in?,
+    is_admin:          acting_as_admin?,
     industry_name:     industry
   )
 
@@ -361,11 +361,10 @@ def serp_search
     serp_queue = PlanPriorityQueue.queue_for(
       :serp_enrichment,
       client: current_client,
-      admin: admin_signed_in?
+      admin: acting_as_admin?
     )
     SerpPipelineDbWorker.set(queue: serp_queue).perform_async(industry, customer_ids, run_id, 0, serp_queue.to_s)
     batch_size = SerpPipelineDbWorker::BATCH_SIZE
-    wait_notice = PlanPriorityQueue.wait_notice_for(client: current_client, admin: admin_signed_in?)
     prefix = if sidekiq.started? && sidekiq.redis_started?
       "RedisとSERP専用Sidekiqを起動してから"
     elsif sidekiq.started?
@@ -374,7 +373,6 @@ def serp_search
       ""
     end
     notice_message = "#{prefix}SERP補完をバックグラウンドで開始しました。対象: #{actual_limit}件（#{batch_size}件ずつ処理・失敗時は中断 / 業種: #{industry || '全業種'}）"
-    notice_message = "#{notice_message} #{wait_notice}" if wait_notice.present?
     redirect_to dashboard_index_path, notice: notice_message
   rescue Redis::CannotConnectError, Errno::ECONNREFUSED => e
     Rails.logger.warn("[serp_search] Redis接続不可: #{e.message}")
@@ -386,7 +384,7 @@ end
   private
 
   def authenticate_admin_or_client!
-    unless admin_signed_in? || client_signed_in?
+    unless acting_as_admin? || client_signed_in?
       respond_to do |format|
         format.html { redirect_to new_client_session_path, alert: 'ログインが必要です。' }
         format.json { render json: { error: 'Unauthorized' }, status: :unauthorized }
@@ -602,7 +600,7 @@ end
     CustomerDuplicateCleanupJob.perform_later(
       attribute,
       client_signed_in?,
-      admin_signed_in?,
+      acting_as_admin?,
       current_client&.id
     )
 

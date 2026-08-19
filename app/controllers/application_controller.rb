@@ -4,10 +4,9 @@ class ApplicationController < ActionController::Base
   FTKN_BOT_UA_PATTERN = /bot|crawl|spider|slurp|facebookexternalhit|preview|headless|wget|curl|python-requests|scrapy/i
 
   before_action :init_breadcrumbs
-  helper_method :breadcrumbs
+  helper_method :breadcrumbs, :acting_as_admin?
   before_action :check_trial_expiration
   before_action :record_ftkn_landing_click
-  
 
   def breadcrumbs
     @breadcrumbs
@@ -17,21 +16,34 @@ class ApplicationController < ActionController::Base
     @breadcrumbs << { label: label, path: path }
   end
 
-  private
-def after_sign_in_path_for(resource)
-  case resource
-  when Admin
-    dashboard_index_path(resource)
-  when Client
-    # Always redirect to dashboard for Clients, ignore stored location
-    dashboard_index_path
-  when Worker
-    # ↓ ここは「s」なし！ (resource)を忘れずに
-    worker_path(resource)
-  else
-    root_path
+  def acting_as_admin?
+    admin_signed_in? && !client_signed_in?
   end
-end
+
+  private
+
+  def after_sign_in_path_for(resource)
+    case resource
+    when Admin
+      sign_out(:client) if client_signed_in?
+      dashboard_index_path(resource)
+    when Client
+      sign_out(:admin) if admin_signed_in?
+      dashboard_index_path
+    when Worker
+      worker_path(resource)
+    else
+      root_path
+    end
+  end
+
+  def reject_client_auth_while_admin!
+    return unless admin_signed_in?
+
+    redirect_to dashboard_index_path,
+                alert: t("okurite.auth.admin_session_blocks_client",
+                         default: "管理者でログイン中です。企業アカウントの登録・ログインは、管理者をログアウトしてから行ってください。")
+  end
 
   def init_breadcrumbs
     @breadcrumbs = []
@@ -44,14 +56,14 @@ end
 
   def delivery_filter_client_id
     return current_client.id if client_signed_in?
-    return params[:client_id].presence if admin_signed_in?
+    return params[:client_id].presence if acting_as_admin?
 
     nil
   end
   helper_method :delivery_filter_client_id
 
   def delivery_filter_admin_id
-    return current_admin.id if admin_signed_in?
+    return current_admin.id if acting_as_admin?
 
     nil
   end

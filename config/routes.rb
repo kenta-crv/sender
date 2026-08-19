@@ -90,7 +90,8 @@ Rails.application.routes.draw do
 
   resources :form_submissions, only: [:index, :create, :show, :destroy] do
     collection do
-      post :import_customers 
+      post :import_customers
+      get :import_template
       post :detect_contact_urls
     end
     member do

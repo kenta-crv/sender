@@ -96,6 +96,20 @@ class CustomerImportServiceTest < ActiveSupport::TestCase
     File.delete(path)
   end
 
+  test "サンプルCSVは英語ヘッダーでインポートできる" do
+    csv = CustomerImportService.sample_csv
+
+    result = CustomerImportService.new.call(csv_content: csv)
+    customer = Customer.find_by!(company: "株式会社サンプル")
+
+    assert_equal 1, result[:import_count]
+    assert_includes csv, "company"
+    refute_includes csv, "会社名"
+    assert_equal "03-1234-5678", customer.tel
+    assert_equal "https://example.com/contact", customer.contact_url
+    assert_equal "山田太郎", customer.ceo
+  end
+
   test "備考をインポートできる" do
     csv = <<~CSV
       company,remarks

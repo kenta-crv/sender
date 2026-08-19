@@ -15,7 +15,7 @@ class Subscription < ApplicationRecord
   after_commit :notify_updated, on: :update
 
   PLAN_NAMES = {
-    trial: "トライアルプラン",
+    trial: "トライアル",
     standard: "スタンダードプラン",
     enterprise: "エンタープライズプラン"
   }.freeze
