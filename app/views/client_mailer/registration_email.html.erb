@@ -44,9 +44,9 @@
       <p>現在、トライアルでご利用いただけます。</p>
       <p>トライアル期間中は以下の制限でご利用いただけます：</p>
       <ul>
-        <li>フォーム送信：月間1,000件まで</li>
-        <li>SERP API実行：月間10件まで</li>
-        <li>フォーム自動検出：月間100件まで</li>
+        <li>フォーム送信：<%= Subscription::PLAN_DELIVERY_LIMITS[:trial] %>件まで</li>
+        <li>AIリスト制作（SERP）：<%= Subscription::PLAN_SERP_API_LIMITS[:trial] %>件まで</li>
+        <li>フォーム自動検出：<%= Subscription::PLAN_FORM_DETECTION_LIMITS[:trial] %>件まで</li>
       </ul>
 
       <p>ダッシュボードにログインして、すぐにサービスをご利用いただけます。</p>

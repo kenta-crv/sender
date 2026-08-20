@@ -1,0 +1,43 @@
+<p><%= @client_name %> 様</p>
+
+<% case @event %>
+<% when :registered %>
+  <% if @subscription.trial? %>
+    <p>この度は Okurite（オクリテ）の無料トライアルをお申し込みいただき、誠にありがとうございます。</p>
+    <p>トライアルの開始手続きが完了しました。</p>
+  <% else %>
+    <p>この度は Okurite（オクリテ）をご利用いただき、誠にありがとうございます。</p>
+    <p>プラン登録が完了しました。</p>
+  <% end %>
+<% when :changed %>
+  <p>Okurite（オクリテ）のプラン変更が完了しました。</p>
+  <% if @previous_plan.present? %>
+    <p>変更前プラン: <%= @previous_plan_name %></p>
+  <% end %>
+<% when :cancelled %>
+  <p>Okurite（オクリテ）の解約手続きを受け付けました。</p>
+  <p>ご契約期間の終了日まで引き続きご利用いただけます。</p>
+<% else %>
+  <p>Okurite（オクリテ）のご契約内容が更新されました。</p>
+<% end %>
+
+<table>
+  <tr>
+    <th>プラン</th>
+    <td><%= @subscription.plan_name %></td>
+  </tr>
+  <tr>
+    <th>ステータス</th>
+    <td><%= @subscription.status %></td>
+  </tr>
+  <% if @subscription.trial_ends_at.present? %>
+    <tr>
+      <th>トライアル終了日</th>
+      <td><%= @subscription.trial_ends_at.strftime("%Y年%m月%d日 %H:%M") %></td>
+    </tr>
+  <% end %>
+</table>
+
+<p><a href="<%= @dashboard_url %>">ダッシュボードへ移動</a></p>
+<p>ご不明な点がございましたら、<a href="mailto:info@j-work.jp">info@j-work.jp</a> までお問い合わせください。</p>
+<p>株式会社J Work</p>

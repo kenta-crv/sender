@@ -528,3 +528,46 @@ body:has(.app-flash-container) #okurite-client-portal .wrapper > .glass-card + #
     pointer-events: none;
   }
 }
+
+/* /plans ページ専用：LP用クラスの余白リセット・カード高さ揃え */
+.plans-index .pricing-cards-section {
+  padding: 0;
+  overflow: visible;
+}
+.plans-index .sp-company {
+  padding: 32px 0 40px;
+}
+.plans-index .sp-company .sp-section-header {
+  margin-bottom: 16px;
+}
+.plans-index .lp-scroll-wrap {
+  overflow: visible;
+  padding-bottom: 16px;
+}
+.plans-index .pricing-cards-grid.lp-scroll-grid {
+  align-items: stretch;
+}
+.plans-index .pricing-cards-card,
+.plans-index .pricing-cards-card:nth-child(2),
+.plans-index .pricing-cards-card:hover,
+.plans-index .pricing-cards-card:nth-child(2):hover {
+  transform: none;
+  height: 100%;
+}
+.plans-index .pricing-cards-plan-title {
+  white-space: nowrap;
+  font-size: 20px;
+  line-height: 1.4;
+}
+.plans-index .pricing-cards-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+.plans-index .pricing-cards-card > p:not(.pricing-cards-plan-sub) {
+  min-height: 4.5em;
+  line-height: 1.5;
+}

@@ -3,7 +3,7 @@ html lang="ja"
   head
     = render "layouts/head"
 
-  body
+  body class="#{controller_name}-#{action_name}"
     = render "shared/breadcrumbs" if breadcrumbs.any?
 
     / 固定ナビゲーション（サイドバー等）がある場合に、横幅を侵食しないように余白を確保した配置

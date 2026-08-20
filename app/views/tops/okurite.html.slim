@@ -246,29 +246,29 @@ section.admin-preview-section
 - standard_price = Subscription::PLAN_PRICES[:standard]
 - standard_intro_price = Subscription.standard_intro_price
 - plans = [ \
-  { title: "トライアルプラン", sub: "Trial Plan", btn: "10日間無料トライアル", btn_class: "btn-gray", desc: "問い合わせフォームからのAI自動営業送信に特化した、手軽に始められるプラン", features: [ \
+  { title: "トライアルプラン", sub: "Trial Plan", btn: "#{Subscription::TRIAL_DAYS}日間無料トライアル", btn_class: "btn-gray", desc: "問い合わせフォームからのAI自動営業送信を、手軽にお試しできるプラン", features: [ \
     ["初期費用","0円"], \
     ["月額費用","0円"], \
-    ["AIリスト制作","10件"], \
-    ["フォーム自動検出","100件"], \
-    ["自動フォーム営業実行","1,000件"], \
-    ["契約期間","10日間"] \
+    ["AIリスト制作","#{Subscription::PLAN_SERP_API_LIMITS[:trial]}件"], \
+    ["フォーム自動検出","#{Subscription::PLAN_FORM_DETECTION_LIMITS[:trial]}件"], \
+    ["自動フォーム営業実行","#{Subscription::PLAN_DELIVERY_LIMITS[:trial]}件"], \
+    ["契約期間","#{Subscription::TRIAL_DAYS}日間"] \
   ], cta: "トライアル 〉" }, \
-  { title: "スタンダードプラン", sub: "Standard Plan", btn: "全体機能を満遍なく使用可能", btn_class: "btn-blue", desc: "問い合わせフォームからのAI自動営業送信に特化した、手軽に始められるプラン", features: [ \
+  { title: "スタンダードプラン", sub: "Standard Plan", btn: "全体機能を満遍なく使用可能", btn_class: "btn-blue", desc: "リスト制作・フォーム検出から自動営業送信まで、全体機能を満遍なく使える標準プラン。", features: [ \
     ["初期費用","0円"], \
     ["月額費用", { original: "#{standard_price.to_s(:delimited)}円", sale: "#{standard_intro_price.to_s(:delimited)}円" }], \
     ["初回特典", { sale: "#{Subscription::STANDARD_INTRO_MONTHS}ヶ月#{Subscription::STANDARD_INTRO_PERCENT_OFF}%OFF" }], \
-    ["AIリスト制作","1,000件"], \
-    ["フォーム自動検出","15,000件"], \
-    ["自動フォーム営業実行","15,000件"], \
+    ["AIリスト制作","#{Subscription::PLAN_SERP_API_LIMITS[:standard].to_s(:delimited)}件"], \
+    ["フォーム自動検出","#{Subscription::PLAN_FORM_DETECTION_LIMITS[:standard].to_s(:delimited)}件"], \
+    ["自動フォーム営業実行","#{Subscription::PLAN_DELIVERY_LIMITS[:standard].to_s(:delimited)}件"], \
     ["契約期間","いつでも解約可"] \
   ], cta: "お申し込みはこちら 〉" }, \
   { title: "エンタープライズプラン", sub: "Enterprise Plan", btn: "全ての機能を最大使用可能", btn_class: "btn-green", desc: "スタンダードプランより更に大量送信を実行したい企業におすすめのプラン。", features: [ \
     ["初期費用","0円"], \
-    ["月額費用","98,000円"], \
-    ["AIリスト制作","3,000件"], \
-    ["フォーム自動検出","40,000件"], \
-    ["自動フォーム営業実行","40,000件"], \
+    ["月額費用","#{Subscription::PLAN_PRICES[:enterprise].to_s(:delimited)}円"], \
+    ["AIリスト制作","#{Subscription::PLAN_SERP_API_LIMITS[:enterprise].to_s(:delimited)}件"], \
+    ["フォーム自動検出","#{Subscription::PLAN_FORM_DETECTION_LIMITS[:enterprise].to_s(:delimited)}件"], \
+    ["自動フォーム営業実行","#{Subscription::PLAN_DELIVERY_LIMITS[:enterprise].to_s(:delimited)}件"], \
     ["契約期間","いつでも解約可"] \
   ], cta: "お申し込みはこちら 〉" } \
 ]
@@ -394,11 +394,11 @@ section.compare-fixed
 
         .result__item
           span.label 月額コスト
-          span.value 49,800円
+          span.value #{Subscription::PLAN_PRICES[:standard].to_s(:delimited)}円
 
         .result__item
           span.label フォーム送信
-          span.value 月間15,000
+          span.value 月間#{Subscription::PLAN_DELIVERY_LIMITS[:standard].to_s(:delimited)}
 
 
 
@@ -426,7 +426,7 @@ section.service-compare
     ]
 
     - okurite = [ \
-      ["15,000件以上の圧倒的な件数", "にアプローチできるので結果が出やすい"], \
+      ["#{Subscription::PLAN_DELIVERY_LIMITS[:standard].to_s(:delimited)}件以上の圧倒的な件数", "にアプローチできるので結果が出やすい"], \
       ["独自のダッシュボードで", "リアルタイムに可視化"], \
       ["アプローチコスト33円と", "コストパフォーマンスに優れる"], \
       ["独自のダッシュボードで", "リアルタイムに可視化"], \
@@ -590,7 +590,7 @@ section.sp-columns-seo
     h2.trial-cta-title
       | まずは
       br.sp-only
-      span 10日間無料で体験
+      span #{Subscription::TRIAL_DAYS}日間無料で体験
 
     p.trial-cta-description
       | 問い合わせフォーム営業を最短5分で開始できます。
@@ -598,7 +598,7 @@ section.sp-columns-seo
     .trial-cta-points
       .trial-cta-point
         i.fas.fa-check-circle
-        span 上限1000件送信
+        span 上限#{Subscription::PLAN_DELIVERY_LIMITS[:trial]}件送信
 
       .trial-cta-point
         i.fas.fa-check-circle
@@ -610,7 +610,7 @@ section.sp-columns-seo
 
     = link_to '/clients/sign_up', class: 'ok-btn-primary' do
 
-      span 10日間無料で試してみる
+      span #{Subscription::TRIAL_DAYS}日間無料で試してみる
       i.fas.fa-chevron-right
 
     p.trial-cta-note

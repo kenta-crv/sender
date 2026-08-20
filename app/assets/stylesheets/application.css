@@ -1335,6 +1335,7 @@ body {
 /* PC：中央プラン強調 */
 @media (min-width: 992px) {
   .pricing-cards-card:nth-child(2) {
+    transform-origin: center top;
     transform: scale(1.05);
     border-color: rgba(0,212,255,0.5);
     box-shadow: 0 0 30px rgba(0,212,255,0.25), 0 20px 60px rgba(0,0,0,0.8);

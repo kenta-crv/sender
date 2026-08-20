@@ -1,134 +1,163 @@
-.sc-detect.container
-  .text-center.mb-5
-    h1.sc-detect__title style="border-bottom: none; margin-bottom: 10px;" プラン選択
-    p.lead style="color: rgba(229, 231, 235, 0.7);" あなたにぴったりのプランをお選びください
+.pricing-cards-section style="background: #050505;"
+  .sp-company style="background: #050505; padding: 24px 0 0;"
+    .sp-company-inner style="padding: 0 40px;"
+      .sp-section-header style="margin-bottom: 8px; max-width: 600px; margin-left: auto; margin-right: auto;"
+        h2 style="color: #fff; font-size: 32px; font-weight: 900; margin-bottom: 6px;" プラン選択
+        p.desc style="color: rgba(207,239,255,0.7); margin: 0;" あなたにぴったりのプランをお選びください
 
-  - subscription = @subscription
+      - subscription = @subscription
 
-  - if @is_new_account
-    .sc-detect__alert.sc-detect__alert--info.mb-5 style="justify-content: center; padding: 1.5rem 0;"
-      div
-        i.fas.fa-info-circle.me-2
-        | クレジットカードなしで送信内容の作成・インポートなど
-        strong style="color: #38bdf8; margin: 0 5px;" 一部機能を体験
-        | できます。本番実行時にお支払い方法の登録が必要です。
+      .lp-scroll-wrap style="margin-top: 35px;"
+        button.lp-scroll-btn.lp-scroll-prev type="button" aria-label="前へ" onclick="scrollLpCards('.pricing-cards-grid', -1)"
+          svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
+            path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        .pricing-cards-grid.lp-scroll-grid style="margin-top: 18px;"
+          / =========================
+          / TRIAL
+          / =========================
+          - if @is_new_account
+            - is_trial_active = subscription&.trial_active?
+            - trial = Subscription.new(plan_type: :trial)
 
-  .row.row-cols-1.row-cols-md-3.g-4
+            .pricing-cards-card
+              h3.pricing-cards-plan-title = trial.plan_name
+              p.pricing-cards-plan-sub Trial Plan
+              button.pricing-cards-btn.btn-gray #{Subscription::TRIAL_DAYS}日間無料トライアル
+              p style="color: rgba(207,239,255,0.7); font-size: 14px; margin-bottom: 20px;" 問い合わせフォームからのAI自動営業送信を、手軽にお試しできるプラン
 
-    / =========================
-    / TRIAL
-    / =========================
-    - if @is_new_account
-      - is_trial_active = subscription&.trial_active?
-      - trial = Subscription.new(plan_type: :trial)
+              .pricing-cards-features
+                .pricing-cards-feature
+                  span 初期費用
+                  span 0円
+                hr
+                .pricing-cards-feature
+                  span 月額費用
+                  span 0円
+                hr
+                .pricing-cards-feature
+                  span AIリスト制作
+                  span #{Subscription::PLAN_SERP_API_LIMITS[:trial]}件
+                hr
+                .pricing-cards-feature
+                  span フォーム自動検出
+                  span #{Subscription::PLAN_FORM_DETECTION_LIMITS[:trial]}件
+                hr
+                .pricing-cards-feature
+                  span 自動フォーム営業実行
+                  span #{Subscription::PLAN_DELIVERY_LIMITS[:trial]}件
+                hr
+                .pricing-cards-feature
+                  span 契約期間
+                  span #{Subscription::TRIAL_DAYS}日間
+                hr
 
-      .col
-        .sc-detect__card.h-100 style=(is_trial_active ? "border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);" : "")
-          .sc-detect__card-header
-            h5.text-center = trial.plan_name
-
-          .sc-detect__card-body.d-flex.flex-column.text-center
-            .mb-4
-              span.display-5.fw-bold style="color: #ffffff;" = "¥#{trial.price}"
-              span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;" 
-                |  / #{Subscription::TRIAL_DAYS}日間
-
-            ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
-              li.mb-2
-                i.fas.fa-check-circle.me-2 style="color: #10b981;"
-                | 最大#{trial.delivery_limit}回実行可能
-              li.mb-2
-                i.fas.fa-check-circle.me-2 style="color: #10b981;"
-                | #{Subscription::TRIAL_DAYS}日間無料
-              li.mb-2
-                i.fas.fa-check-circle.me-2 style="color: #10b981;"
-                | 終了後、#{Subscription::PLAN_NAMES[:enterprise]}へ移行
-
-            .mt-auto
               - if is_trial_active && current_client.payment_method_registered?
-                button.sc-detect__btn.w-100 disabled="disabled" style="background: rgba(148, 163, 184, 0.2); color: rgba(229, 231, 235, 0.5); cursor: default; justify-content: center;" 
+                button.pricing-cards-main-btn.btn-gray disabled="disabled" style="opacity: 0.5; cursor: default;"
                   | 現在のプラン
               - elsif is_trial_active
-                = link_to checkout_confirmation_path(plan_type: "trial"), class: "sc-detect__btn sc-detect__btn--warning w-100", style: "justify-content: center; text-decoration: none;"
+                = link_to checkout_confirmation_path(plan_type: "trial"), class: "pricing-cards-main-btn btn-gray", style: "text-decoration: none; display: block; text-align: center;"
                   | お支払い方法を登録
               - else
-                = link_to checkout_confirmation_path(plan_type: "trial"), class: "sc-detect__btn sc-detect__btn--warning w-100", style: "justify-content: center; text-decoration: none;"
+                = link_to checkout_confirmation_path(plan_type: "trial"), class: "pricing-cards-main-btn btn-gray", style: "text-decoration: none; display: block; text-align: center;"
                   | このプランを選択
 
-    / =========================
-    / STANDARD
-    / =========================
-    - is_standard = subscription&.plan_type == 'standard' && subscription&.active?
-    - standard = Subscription.new(plan_type: :standard)
-    - standard_intro_price = Subscription.standard_intro_price
+          / =========================
+          / STANDARD
+          / =========================
+          - is_standard = subscription&.plan_type == 'standard' && subscription&.active?
+          - standard = Subscription.new(plan_type: :standard)
+          - standard_intro_price = Subscription.standard_intro_price
 
-    .col
-      .sc-detect__card.h-100 style=(is_standard ? "border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);" : "")
-        .sc-detect__card-header
-          h5.text-center = standard.plan_name
+          .pricing-cards-card
+            h3.pricing-cards-plan-title = standard.plan_name
+            p.pricing-cards-plan-sub Standard Plan
+            button.pricing-cards-btn.btn-blue 全体機能を満遍なく使用可能
+            p style="color: rgba(207,239,255,0.7); font-size: 14px; margin-bottom: 20px;" リスト制作・フォーム検出から自動営業送信まで、全体機能を満遍なく使える標準プラン。
 
-        .sc-detect__card-body.d-flex.flex-column.text-center
-          .mb-4
-            div style="margin-bottom: 4px;"
-              s style="color: rgba(229, 231, 235, 0.45); font-size: 1.1rem; margin-right: 8px;" = "¥#{standard.price.to_s(:delimited)}"
-              span.display-5.fw-bold style="color: #ff6b6b;" = "¥#{standard_intro_price.to_s(:delimited)}"
-            span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;"
-              |  / 月（初回#{Subscription::STANDARD_INTRO_MONTHS}ヶ月#{Subscription::STANDARD_INTRO_PERCENT_OFF}%OFF）
+            .pricing-cards-features
+              .pricing-cards-feature
+                span 初期費用
+                span 0円
+              hr
+              .pricing-cards-feature
+                span 月額費用
+                span.pricing-cards-feature-price
+                  s.pricing-cards-feature-original #{standard.price.to_s(:delimited)}円
+                  span.pricing-cards-feature-sale #{standard_intro_price.to_s(:delimited)}円
+              hr
+              .pricing-cards-feature
+                span 初回特典
+                span.pricing-cards-feature-price
+                  span.pricing-cards-feature-sale #{Subscription::STANDARD_INTRO_MONTHS}ヶ月#{Subscription::STANDARD_INTRO_PERCENT_OFF}%OFF
+              hr
+              .pricing-cards-feature
+                span AIリスト制作
+                span #{Subscription::PLAN_SERP_API_LIMITS[:standard].to_s(:delimited)}件
+              hr
+              .pricing-cards-feature
+                span フォーム自動検出
+                span #{Subscription::PLAN_FORM_DETECTION_LIMITS[:standard].to_s(:delimited)}件
+              hr
+              .pricing-cards-feature
+                span 自動フォーム営業実行
+                span #{Subscription::PLAN_DELIVERY_LIMITS[:standard].to_s(:delimited)}件
+              hr
+              .pricing-cards-feature
+                span 契約期間
+                span いつでも解約可
+              hr
 
-          ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 最大#{standard.delivery_limit.to_s(:delimited)}回実行可能
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 通常月額 ¥#{standard.price.to_s(:delimited)}
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 初回#{Subscription::STANDARD_INTRO_MONTHS}ヶ月は ¥#{standard_intro_price.to_s(:delimited)}（#{Subscription::STANDARD_INTRO_PERCENT_OFF}%OFF）
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 解約はいつでも可能
-
-          .mt-auto
             - if is_standard
-              button.sc-detect__btn.w-100 disabled="disabled" style="background: rgba(148, 163, 184, 0.2); color: rgba(229, 231, 235, 0.5); cursor: default; justify-content: center;"
+              button.pricing-cards-main-btn.btn-blue disabled="disabled" style="opacity: 0.5; cursor: default;"
                 | 現在のプラン
             - else
-              = link_to checkout_confirmation_path(plan_type: "standard"), class: "sc-detect__btn sc-detect__btn--primary w-100", style: "justify-content: center; text-decoration: none;"
+              = link_to checkout_confirmation_path(plan_type: "standard"), class: "pricing-cards-main-btn btn-blue", style: "text-decoration: none; display: block; text-align: center;"
                 | このプランを選択
 
-    / =========================
-    / ENTERPRISE
-    / =========================
-    - is_enterprise = subscription&.plan_type == 'enterprise' && subscription&.active?
-    - enterprise = Subscription.new(plan_type: :enterprise)
+          / =========================
+          / ENTERPRISE
+          / =========================
+          - is_enterprise = subscription&.plan_type == 'enterprise' && subscription&.active?
+          - enterprise = Subscription.new(plan_type: :enterprise)
 
-    .col
-      .sc-detect__card.h-100 style=(is_enterprise ? "border-color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);" : "")
-        .sc-detect__card-header
-          h5.text-center = enterprise.plan_name
+          .pricing-cards-card
+            h3.pricing-cards-plan-title = enterprise.plan_name
+            p.pricing-cards-plan-sub Enterprise Plan
+            button.pricing-cards-btn.btn-green 全ての機能を最大使用可能
+            p style="color: rgba(207,239,255,0.7); font-size: 14px; margin-bottom: 20px;" 大量送信を実行したい企業におすすめのプラン
 
-        .sc-detect__card-body.d-flex.flex-column.text-center
-          .mb-4
-            span.display-5.fw-bold style="color: #ffffff;" = "¥#{enterprise.price}"
-            span style="color: rgba(229, 231, 235, 0.5); font-size: 0.9rem;" 
-              |  / 月
+            .pricing-cards-features
+              .pricing-cards-feature
+                span 初期費用
+                span 0円
+              hr
+              .pricing-cards-feature
+                span 月額費用
+                span #{enterprise.price.to_s(:delimited)}円
+              hr
+              .pricing-cards-feature
+                span AIリスト制作
+                span #{Subscription::PLAN_SERP_API_LIMITS[:enterprise].to_s(:delimited)}件
+              hr
+              .pricing-cards-feature
+                span フォーム自動検出
+                span #{Subscription::PLAN_FORM_DETECTION_LIMITS[:enterprise].to_s(:delimited)}件
+              hr
+              .pricing-cards-feature
+                span 自動フォーム営業実行
+                span #{Subscription::PLAN_DELIVERY_LIMITS[:enterprise].to_s(:delimited)}件
+              hr
+              .pricing-cards-feature
+                span 契約期間
+                span いつでも解約可
+              hr
 
-          ul.list-unstyled.mb-4.text-start style="display: inline-block; margin: 0 auto;"
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 最大#{enterprise.delivery_limit}回実行可能
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 月#{enterprise.price}円
-            li.mb-2
-              i.fas.fa-check-circle.me-2 style="color: #10b981;"
-              | 解約はいつでも可能
-
-          .mt-auto
             - if is_enterprise
-              button.sc-detect__btn.w-100 disabled="disabled" style="background: rgba(148, 163, 184, 0.2); color: rgba(229, 231, 235, 0.5); cursor: default; justify-content: center;"
+              button.pricing-cards-main-btn.btn-green disabled="disabled" style="opacity: 0.5; cursor: default;"
                 | 現在のプラン
             - else
-              = link_to checkout_confirmation_path(plan_type: "enterprise"), class: "sc-detect__btn sc-detect__btn--primary w-100", style: "justify-content: center; text-decoration: none;"
+              = link_to checkout_confirmation_path(plan_type: "enterprise"), class: "pricing-cards-main-btn btn-green", style: "text-decoration: none; display: block; text-align: center;"
                 | このプランを選択
+        button.lp-scroll-btn.lp-scroll-next type="button" aria-label="次へ" onclick="scrollLpCards('.pricing-cards-grid', 1)"
+          svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
+            path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"

@@ -27,19 +27,19 @@ class Subscription < ApplicationRecord
   }.freeze
 
   PLAN_DELIVERY_LIMITS = {
-    trial: 500,
+    trial: 50,
     standard: 15_000,
     enterprise: 40_000
   }.freeze
 
   PLAN_SERP_API_LIMITS = {
-    trial: 15,
+    trial: 7,
     standard: 1000,
     enterprise: 3000
   }.freeze
 
   PLAN_FORM_DETECTION_LIMITS = {
-    trial: 50,
+    trial: 15,
     standard: 15_000,
     enterprise: 40_000
   }.freeze
@@ -82,7 +82,7 @@ class Subscription < ApplicationRecord
     delivery_limit == Float::INFINITY
   end
 
-  # 今月これまでに送信した累積件数を含めて、上限（トライアルなら500件）を超えないか正しく検証
+  # 今月これまでに送信した累積件数を含めて、上限を超えないか検証
   def can_send_delivery?(count)
     return true if unlimited?
     (client.monthly_sent_count + count) <= delivery_limit

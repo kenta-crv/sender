@@ -17,7 +17,7 @@
           th 担当者
           th メール
           th 電話
-          th クリック
+          th クリック履歴
           th 操作
       tbody
         - @submissions.each do |sub|
@@ -44,7 +44,7 @@
                   | 編集
 
                 = link_to click_history_submission_path(sub), class: 'sc-detect__btn sc-detect__btn--warning' do
-                  | クリック
+                  | クリック履歴
                 
                 / 削除は赤色のバッジスタイルを適用して文字色を固定
                 = link_to submission_path(sub), 

@@ -104,6 +104,14 @@ class Client < ApplicationRecord
     subscription_status == "active"
   end
 
+  def update_company_name(value)
+    name = value.to_s.strip
+    return false if name.blank?
+    return true if company == name
+
+    update(company: name)
+  end
+
   def monthly_sent_count
     monthly_usage_log.sent_count
   end

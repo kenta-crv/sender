@@ -6,7 +6,7 @@
     <td>
       <% case @event %>
       <% when :registered %>
-        登録
+        <%= @subscription.trial? ? "トライアル申し込み" : "登録" %>
       <% when :changed %>
         変更
       <% when :cancelled %>
@@ -22,7 +22,11 @@
   </tr>
   <tr>
     <th>会社名</th>
-    <td><%= @client.company.presence || "-" %></td>
+    <td><%= @client.try(:company).presence || "-" %></td>
+  </tr>
+  <tr>
+    <th>お名前</th>
+    <td><%= @client.try(:name).presence || "-" %></td>
   </tr>
   <tr>
     <th>メールアドレス</th>
@@ -35,7 +39,7 @@
   <% if @event == :changed && @previous_plan.present? %>
     <tr>
       <th>変更前プラン</th>
-      <td><%= Subscription::PLAN_NAMES[@previous_plan.to_sym] || @previous_plan %></td>
+      <td><%= @previous_plan_name %></td>
     </tr>
   <% end %>
   <tr>
@@ -48,7 +52,7 @@
       <td><%= @subscription.trial_ends_at.strftime("%Y年%m月%d日 %H:%M") %></td>
     </tr>
   <% end %>
-  <% if @client.trial_ends_at.present? %>
+  <% if @client.respond_to?(:trial_ends_at) && @client.trial_ends_at.present? && @client.trial_ends_at != @subscription.trial_ends_at %>
     <tr>
       <th>クライアントトライアル終了日</th>
       <td><%= @client.trial_ends_at.strftime("%Y年%m月%d日 %H:%M") %></td>

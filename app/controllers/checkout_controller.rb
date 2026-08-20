@@ -109,11 +109,6 @@ class CheckoutController < ApplicationController
           end
 
           @subscription = current_client.subscriptions.find_by(stripe_subscription_id: @session.subscription)
-
-          @payment = current_client.payments.find_by(stripe_payment_intent_id: @invoice_id) || current_client.payments.order(created_at: :desc).first
-          if @subscription
-            ClientMailer.plan_registration_email(current_client, @subscription, @payment).deliver_now
-          end
         end
       end
 

@@ -2,7 +2,7 @@
 
 イベント: <%=
   case @event
-  when :registered then "登録"
+  when :registered then @subscription.trial? ? "トライアル申し込み" : "登録"
   when :changed then "変更"
   when :cancelled then "解約"
   else @event.to_s
@@ -10,17 +10,18 @@
 %>
 
 クライアントID: <%= @client.id %>
-会社名: <%= @client.company.presence || "-" %>
+会社名: <%= @client.try(:company).presence || "-" %>
+お名前: <%= @client.try(:name).presence || "-" %>
 メールアドレス: <%= @client.email %>
 プラン: <%= @subscription.plan_name %>
 <% if @event == :changed && @previous_plan.present? %>
-変更前プラン: <%= Subscription::PLAN_NAMES[@previous_plan.to_sym] || @previous_plan %>
+変更前プラン: <%= @previous_plan_name %>
 <% end %>
 ステータス: <%= @subscription.status %>
 <% if @subscription.trial_ends_at.present? %>
 トライアル終了日: <%= @subscription.trial_ends_at.strftime("%Y年%m月%d日 %H:%M") %>
 <% end %>
-<% if @client.trial_ends_at.present? %>
+<% if @client.respond_to?(:trial_ends_at) && @client.trial_ends_at.present? && @client.trial_ends_at != @subscription.trial_ends_at %>
 クライアントトライアル終了日: <%= @client.trial_ends_at.strftime("%Y年%m月%d日 %H:%M") %>
 <% end %>
 Stripe Subscription ID: <%= @subscription.stripe_subscription_id.presence || "-" %>

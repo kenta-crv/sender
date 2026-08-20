@@ -41,12 +41,12 @@ module TopsHelper
     # list
     { category: "list", q: "リストがなくても使えますか？", a: "はい。業種・地域・企業規模やキーワード、求人情報などからニーズのある企業を抽出できます。自社リストのみで送信することも可能です。" },
     { category: "list", q: "問い合わせフォームURLがなくても送れますか？", a: "はい。企業トップページURLからAIが問い合わせフォームを自動検出します。検出できなかった先は送信対象から除外されます。エンタープライズでは手動送信などもご相談可能です。" },
-    { category: "list", q: "月間の送信・検出上限は？", a: "トライアル：送信500件・フォーム検出50件・AIリスト15件。スタンダード：送信・検出各15,000件・リスト1,000件。エンタープライズ：送信・検出各40,000件・リスト3,000件です。" },
+    { category: "list", q: "月間の送信・検出上限は？", a: "トライアル：送信#{Subscription::PLAN_DELIVERY_LIMITS[:trial]}件・フォーム検出#{Subscription::PLAN_FORM_DETECTION_LIMITS[:trial]}件・AIリスト#{Subscription::PLAN_SERP_API_LIMITS[:trial]}件。スタンダード：送信#{Subscription::PLAN_DELIVERY_LIMITS[:standard].to_s(:delimited)}件・検出#{Subscription::PLAN_FORM_DETECTION_LIMITS[:standard].to_s(:delimited)}件・リスト#{Subscription::PLAN_SERP_API_LIMITS[:standard].to_s(:delimited)}件。エンタープライズ：送信#{Subscription::PLAN_DELIVERY_LIMITS[:enterprise].to_s(:delimited)}件・検出#{Subscription::PLAN_FORM_DETECTION_LIMITS[:enterprise].to_s(:delimited)}件・リスト#{Subscription::PLAN_SERP_API_LIMITS[:enterprise].to_s(:delimited)}件です。" },
     { category: "list", q: "同一企業への再アプローチはできますか？", a: "はい。運用ルールに沿って間隔を空けた再アプローチが可能です。" },
 
     # pricing
-    { category: "pricing", q: "無料トライアルの条件は？", a: "#{Subscription::TRIAL_DAYS}日間・0円です。アカウント登録だけで開始でき、クレジットカードは不要です。上限は送信500件・フォーム検出50件・AIリスト制作15件です。" },
-    { category: "pricing", q: "有料プランの料金は？", a: "スタンダード通常月額49,800円（送信・検出各15,000件）。初回3ヶ月は15%OFFで42,330円/月。エンタープライズ月額98,000円（各40,000件）。初期費用は0円で、いつでも解約できます。詳細は料金セクションをご確認ください。" },
+    { category: "pricing", q: "無料トライアルの条件は？", a: "#{Subscription::TRIAL_DAYS}日間・0円です。アカウント登録だけで開始でき、クレジットカードは不要です。上限は送信#{Subscription::PLAN_DELIVERY_LIMITS[:trial]}件・フォーム検出#{Subscription::PLAN_FORM_DETECTION_LIMITS[:trial]}件・AIリスト制作#{Subscription::PLAN_SERP_API_LIMITS[:trial]}件です。" },
+    { category: "pricing", q: "有料プランの料金は？", a: "スタンダード通常月額#{Subscription::PLAN_PRICES[:standard].to_s(:delimited)}円（送信・検出各#{Subscription::PLAN_DELIVERY_LIMITS[:standard].to_s(:delimited)}件）。初回#{Subscription::STANDARD_INTRO_MONTHS}ヶ月は#{Subscription::STANDARD_INTRO_PERCENT_OFF}%OFFで#{Subscription.standard_intro_price.to_s(:delimited)}円/月。エンタープライズ月額#{Subscription::PLAN_PRICES[:enterprise].to_s(:delimited)}円（送信#{Subscription::PLAN_DELIVERY_LIMITS[:enterprise].to_s(:delimited)}件）。初期費用は0円で、いつでも解約できます。詳細は料金セクションをご確認ください。" },
     { category: "pricing", q: "トライアル終了後はどうなりますか？", a: "終了後は自動課金されません。継続する場合は管理画面の料金プラン（/plans）からスタンダード（推奨・初回3ヶ月15%OFF）またはエンタープライズをCheckoutしてください。不要ならそのまま終了します。" },
     { category: "pricing", q: "成果報酬はかかりますか？", a: "かかりません。月額プランの範囲でのご利用です。成約時の成果報酬もいただきません。" },
     { category: "pricing", q: "請求書払いはできますか？", a: "法人利用の場合、契約形態に応じてご案内します。ご希望はお問い合わせください。" },

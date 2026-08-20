@@ -27,11 +27,16 @@ class SubscriptionNotifier
 
       Rails.cache.write(dedup_key, true, expires_in: CACHE_TTL)
 
-      SubscriptionMailer.notification(
+      args = {
         event: event,
         subscription: subscription,
         previous_plan: previous_plan
-      ).deliver_later
+      }
+
+      SubscriptionMailer.notification(**args).deliver_now
+      if subscription.client.email.present?
+        SubscriptionMailer.client_notification(**args).deliver_now
+      end
     rescue => e
       Rails.logger.error "[SubscriptionNotifier] #{event} failed subscription_id=#{subscription.id} #{e.message}"
     end

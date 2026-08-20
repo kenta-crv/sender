@@ -1,0 +1,34 @@
+<%= @client_name %> 様
+
+<% case @event %>
+<% when :registered %>
+<% if @subscription.trial? %>
+この度は Okurite（オクリテ）の無料トライアルをお申し込みいただき、誠にありがとうございます。
+トライアルの開始手続きが完了しました。
+<% else %>
+この度は Okurite（オクリテ）をご利用いただき、誠にありがとうございます。
+プラン登録が完了しました。
+<% end %>
+<% when :changed %>
+Okurite（オクリテ）のプラン変更が完了しました。
+<% if @previous_plan.present? %>
+変更前プラン: <%= @previous_plan_name %>
+<% end %>
+<% when :cancelled %>
+Okurite（オクリテ）の解約手続きを受け付けました。
+ご契約期間の終了日まで引き続きご利用いただけます。
+<% else %>
+Okurite（オクリテ）のご契約内容が更新されました。
+<% end %>
+
+プラン: <%= @subscription.plan_name %>
+ステータス: <%= @subscription.status %>
+<% if @subscription.trial_ends_at.present? %>
+トライアル終了日: <%= @subscription.trial_ends_at.strftime("%Y年%m月%d日 %H:%M") %>
+<% end %>
+
+ダッシュボード: <%= @dashboard_url %>
+
+ご不明な点がございましたら、info@j-work.jp までお問い合わせください。
+
+株式会社J Work

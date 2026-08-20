@@ -25,6 +25,7 @@ class SubmissionsController < ApplicationController
   def create
     @submission = build_submission(submission_params)
     if @submission.save
+      sync_company_to_submission_owner
       redirect_to submissions_path, notice: '送信内容を作成しました。'
     else
       render :new
@@ -36,6 +37,7 @@ class SubmissionsController < ApplicationController
 
   def update
     if @submission.update(submission_params)
+      sync_company_to_submission_owner
       redirect_to submissions_path, notice: '送信内容を更新しました。'
     else
       render :edit
@@ -153,12 +155,21 @@ class SubmissionsController < ApplicationController
       submission.client_id = nil
       submission
     else
-      current_client.submissions.new(params)
+      submission = current_client.submissions.new(params)
+      submission.company = current_client.company if submission.company.blank?
+      submission
     end
   end
 
   def set_submission
     @submission = scoped_submissions.find(params[:id])
+  end
+
+  def sync_company_to_submission_owner
+    client = @submission.client
+    return if client.blank?
+
+    client.update_company_name(@submission.company)
   end
 
   def submission_params
