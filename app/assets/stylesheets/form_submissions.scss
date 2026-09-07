@@ -99,6 +99,7 @@
   &.container {
     max-width: 1200px;
     margin: 40px auto;
+    padding-bottom: 120px;
   }
 
   /* タイトル */
@@ -161,11 +162,11 @@
     border-radius: 12px;
     border: 1px solid rgba(148, 163, 184, 0.2);
     margin: 20px 0;
-    max-height: 400px;
-    overflow-y: auto;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: visible;
 
-    /* スクロールバーのカスタマイズ */
-    &::-webkit-scrollbar { width: 8px; }
+    &::-webkit-scrollbar { height: 8px; width: 8px; }
     &::-webkit-scrollbar-track { background: rgba(2, 6, 23, 0.2); }
     &::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
   }
@@ -185,12 +186,33 @@
       top: 0;
       z-index: 1;
       border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+      vertical-align: middle;
+      white-space: nowrap;
     }
 
     td {
       padding: 10px 15px;
       border-bottom: 1px solid rgba(148, 163, 184, 0.1);
       color: rgba(229, 231, 235, 0.8);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .sc-detect__progress-label {
+      display: inline-block;
+      margin-bottom: 0;
+      margin-right: 8px;
+      text-align: left;
+    }
+
+    .sc-detect__progress {
+      display: inline-block;
+      width: 72px;
+      vertical-align: middle;
+
+      .sc-detect__progress-bar::after {
+        animation: none;
+      }
     }
 
     tr:hover td {

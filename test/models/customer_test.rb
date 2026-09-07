@@ -36,4 +36,21 @@ class CustomerTest < ActiveSupport::TestCase
     refute Customer.exists?(drop2.id)
     assert Customer.exists?(other.id)
   end
+
+  test "filter_by_last_form_call keeps unsent and matching last form calls in SQL" do
+    unsent = Customer.create!(company: "未送信", tel: "03-0000-1000")
+    success = Customer.create!(company: "成功", tel: "03-0000-1001")
+    failure = Customer.create!(company: "失敗", tel: "03-0000-1002")
+    Call.create!(customer: success, call_type: "form", status: "自動送信成功", created_at: 2.days.ago)
+    Call.create!(customer: failure, call_type: "form", status: "自動送信失敗", created_at: 2.days.ago)
+
+    ids = Customer.filter_by_last_form_call(
+      status: ["自動送信成功"],
+      calls_id_null: "true"
+    ).pluck(:id)
+
+    assert_includes ids, unsent.id
+    assert_includes ids, success.id
+    refute_includes ids, failure.id
+  end
 end

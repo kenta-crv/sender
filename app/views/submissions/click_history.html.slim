@@ -1,5 +1,6 @@
 .sc-detect.container
   h2.sc-detect__title クリック履歴
+  p.text-muted.mb-2 = ClickTrackingHelper::CLICK_HISTORY_STAY_NOTE
   p.text-muted.mb-4
     | 案件:
     strong.mx-2 = @submission.headline.presence || "Submission ##{@submission.id}"

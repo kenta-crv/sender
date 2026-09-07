@@ -225,7 +225,7 @@ class FormSendJob < ApplicationJob
       target_url: submission.url
     )
 
-    # 詳細リンクは必ず /l/:token 経由（クリック計測 → target_url へリダイレクト）。
+    # 詳細リンクは必ず /l/:token 経由（リダイレクト。クリックは LP 可視3秒で記録）。
     # 表示ホストは Submission.url に合わせる（例: j-work.jp/l/...）。
     # そのホストで /l/ /u/ が Okurite に届くこと（TrackingLinkHost）。
     detail_link =

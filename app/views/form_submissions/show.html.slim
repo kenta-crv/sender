@@ -54,7 +54,7 @@
               | 送信停止
 
           - unless @batch.status == 'processing'
-            - unprocessed_count = @batch.unprocessed_customer_ids.size
+            - unprocessed_count = [@batch.total_count.to_i - @batch.processed_count.to_i, 0].max
             - if unprocessed_count > 0
               = link_to resume_form_submission_path(@batch), method: :post, class: 'sc-detect__btn sc-detect__btn--warning', data: { confirm: "未処理の#{unprocessed_count}件を再開しますか？" } do
                 i.fas.fa-play.me-1
@@ -112,23 +112,11 @@
             td = call.comment
             td = call.created_at.strftime('%Y/%m/%d %H:%M')
 
-  / --- エラーログ ---
-  - errors = @batch.parsed_error_log
-  - if errors.any?
-    h2.sc-detect__title style="font-size: 20px; color: #ef4444;" エラーログ
-    .sc-detect__table-wrapper.mb-5
-      table.sc-detect__table
-        thead
-          tr
-            th 顧客ID
-            th エラー内容
-            th 発生日時
-        tbody
-          - errors.each do |err|
-            tr
-              td = err['customer_id']
-              td.text-danger = err['message']
-              td = err['at']
+    = paginate @results, param_name: :results_page
+
+  - if @batch.failure_count.to_i.positive?
+    p.mb-5 style="color: #94a3b8;"
+      | 失敗 #{@batch.failure_count}件（エラーログ全件は読み込みません）
 
   .mt-4.mb-5
     = link_to form_submissions_path, class: 'sc-detect__btn sc-detect__btn--primary', style: 'text-decoration: none;' do

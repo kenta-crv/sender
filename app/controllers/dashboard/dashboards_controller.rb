@@ -4,7 +4,7 @@ class Dashboard::DashboardsController < ApplicationController
   before_action :authenticate_any!
   before_action :require_admin!, only: [:management, :funnel_tracking]
   before_action :check_subscription_active!, unless: :acting_as_admin?
-  before_action :set_base_scope, except: [:index, :setting, :management, :funnel_tracking, :click_tracking, :howto]
+  before_action :set_base_scope, except: [:index, :setting, :management, :funnel_tracking, :click_tracking, :howto, :history]
 
   def index
     insights_scope = customer_insights_scope
@@ -71,74 +71,38 @@ class Dashboard::DashboardsController < ApplicationController
 
   def history
     assign_selected_month!
-    @q = @base_customers.ransack(params[:q])
 
     if acting_as_admin?
       if params[:client_id].present?
         batch_scope = FormSubmissionBatch.where(client_id: params[:client_id])
-        @submissions = Submission.where(client_id: params[:client_id]).order(created_at: :desc)
+        submissions = Submission.where(client_id: params[:client_id])
       else
         batch_scope = FormSubmissionBatch.all
-        @submissions = Submission.order(created_at: :desc)
+        submissions = Submission.all
       end
     elsif client_signed_in?
       batch_scope = current_client.form_submission_batches
-      @submissions = current_client.submissions.order(created_at: :desc)
+      submissions = current_client.submissions
     else
       batch_scope = FormSubmissionBatch.none
-      @submissions = Submission.none
+      submissions = Submission.none
     end
 
     monthly_batches = batch_scope.where(created_at: @month_range)
-    @batches = monthly_batches.order(created_at: :desc).page(params[:page]).per(20)
+    @batches = monthly_batches.without_payload_columns.includes(:submission).order(created_at: :desc).page(params[:page]).per(20)
 
-    @submission_stats = @submissions.map do |submission|
-      batches = submission.form_submission_batches.where(created_at: @month_range)
-      batches = batches.where(client_id: current_client.id) if client_signed_in? && !acting_as_admin?
-      rate_stats = FormSubmissionBatch.aggregate_rate_stats(batches)
-
-      {
-        submission: submission,
-        total_sent: rate_stats[:total_count],
-        success_count: rate_stats[:success_count],
-        failure_count: rate_stats[:failure_count],
-        excluded_count: rate_stats[:excluded_count],
-        rate: rate_stats[:rate],
-        last_sent_at: batches.order(started_at: :desc).limit(1).pluck(:started_at).first
-      }
+    stats_by_id = FormSubmissionBatch.stats_by_submission_id(monthly_batches)
+    @submission_stats = submissions.where(id: stats_by_id.keys).order(created_at: :desc).map do |submission|
+      stats_by_id[submission.id].merge(submission: submission)
     end.reject { |stat| stat[:total_sent].to_i.zero? && stat[:last_sent_at].blank? }
   end
 
   def sending
     @base_customers = Customer.all
 
-    @q = @base_customers.includes(:last_form_call).ransack(params[:q])
+    @q = @base_customers.ransack(params[:q])
     filtered = @q.result(distinct: true)
-
-    if acting_as_admin? && params[:last_call].present?
-      lc = params[:last_call]
-      statuses = Array(lc[:status]).reject(&:blank?)
-      from_date = lc[:created_at_from].presence
-      to_date = lc[:created_at_to].presence
-      unsent = lc[:calls_id_null].to_s == 'true'
-      has_sent_filters = statuses.any? || from_date.present? || to_date.present?
-
-      if unsent || has_sent_filters
-        filtered_ids = filtered.includes(:last_form_call).select do |customer|
-          call = customer.last_form_call
-          next unsent if call.blank?
-          next false unless has_sent_filters
-
-          status_ok = statuses.blank? || statuses.include?(call.status)
-          from_ok = from_date.blank? || call.created_at >= Time.zone.parse(from_date)
-          to_ok = to_date.blank? || call.created_at <= Time.zone.parse(to_date).end_of_day
-
-          status_ok && from_ok && to_ok
-        end.map(&:id)
-
-        filtered = filtered.where(id: filtered_ids)
-      end
-    end
+    filtered = filtered.filter_by_last_form_call(params[:last_call]) if acting_as_admin?
 
     excluded_statuses = ['フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected', 'CAPTCHA NG']
 
@@ -146,6 +110,7 @@ class Dashboard::DashboardsController < ApplicationController
                    .where.not(contact_url: [nil, '', 'not_detected'])
                    .left_joins(:calls)
                    .where("calls.status NOT IN (?) OR calls.id IS NULL", excluded_statuses)
+                   .distinct
                    .page(params[:customers_page]).per(50)
 
     @detectable_customers = filtered

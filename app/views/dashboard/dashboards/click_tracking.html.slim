@@ -15,7 +15,7 @@
         .glass-card
           .card-header-flex
             h5.m-0 メールクリック履歴
-            p.text-muted 企業がメール内のリンクをクリックした履歴
+            p.text-muted = ClickTrackingHelper::CLICK_HISTORY_STAY_NOTE
 
           - if @filter_submissions.present?
             = form_tag dashboard_click_tracking_path, method: :get, class: 'click-filter-form' do

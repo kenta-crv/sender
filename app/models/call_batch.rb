@@ -1,6 +1,9 @@
 class CallBatch < ApplicationRecord
   belongs_to :worker, optional: true
   has_many :calls, dependent: :nullify
+  scope :without_payload_columns, -> {
+    select((column_names - %w[customer_ids error_log]).map { |column| "#{table_name}.#{column}" })
+  }
 
   def parsed_customer_ids
     JSON.parse(customer_ids || '[]')

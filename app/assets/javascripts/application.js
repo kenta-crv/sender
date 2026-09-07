@@ -461,7 +461,49 @@
     mountDataTargetNav();
     initTrialOverlay();
     appendFtknToSignUpLinks();
+    window.startFtknStayTracking();
   });
+})();
+
+(function () {
+  function ftknStayEndpoint() {
+    var host = window.location.hostname;
+    if (host === "okurite.pro" || host === "localhost" || host === "127.0.0.1") {
+      return "/ftkn_stay";
+    }
+    return "https://okurite.pro/ftkn_stay";
+  }
+
+  window.startFtknStayTracking = function () {
+    var params = new URLSearchParams(window.location.search);
+    var ftkn = params.get("ftkn") || sessionStorage.getItem("ftkn");
+    if (!ftkn) return;
+
+    sessionStorage.setItem("ftkn", ftkn);
+    if (sessionStorage.getItem("ftkn_stay_sent_" + ftkn)) return;
+    if (window.__okuriteFtknStayStarted === ftkn) return;
+    window.__okuriteFtknStayStarted = ftkn;
+
+    var visibleMs = 0;
+    var last = Date.now();
+    var timer = setInterval(function () {
+      var now = Date.now();
+      if (document.visibilityState === "visible") {
+        visibleMs += now - last;
+      }
+      last = now;
+      if (visibleMs < 3000) return;
+
+      clearInterval(timer);
+      sessionStorage.setItem("ftkn_stay_sent_" + ftkn, "1");
+      var body = new Blob(["token=" + encodeURIComponent(ftkn)], {
+        type: "application/x-www-form-urlencoded"
+      });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(ftknStayEndpoint(), body);
+      }
+    }, 250);
+  };
 })();
 
 window.scrollJapNottoCards = function (direction) {

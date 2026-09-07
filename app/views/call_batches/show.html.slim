@@ -122,23 +122,11 @@
             td = call.transferred_to
             td = call.started_at&.strftime('%H:%M:%S')
 
-  / --- エラーログ ---
-  - errors = @batch.parsed_error_log
-  - if errors.any?
-    h2.sc-detect__title style="font-size: 20px; color: #ef4444;" エラーログ
-    .sc-detect__table-wrapper.mb-5
-      table.sc-detect__table
-        thead
-          tr
-            th 顧客ID
-            th エラー内容
-            th 発生日時
-        tbody
-          - errors.each do |err|
-            tr
-              td = err['customer_id']
-              td.text-danger = err['message']
-              td = err['at']
+    = paginate @calls
+
+  - if @batch.failure_count.to_i.positive?
+    p.mb-5 style="color: #94a3b8;"
+      | 失敗 #{@batch.failure_count}件（エラーログ全件は読み込みません）
 
   .mt-4.mb-5.d-flex.gap-3
     = link_to dashboard_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "text-decoration: none;" do

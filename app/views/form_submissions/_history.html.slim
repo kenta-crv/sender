@@ -47,11 +47,10 @@
             td.text-danger = batch.failure_count
             td
               - if batch.status == 'completed'
-                - rate_stats = batch.rate_stats
-                | #{rate_stats[:rate]}%
+                | #{batch.display_success_rate}%
               - else
                 span.text-muted -
-            td style="min-width: 150px;"
+            td
               - percent = batch.total_count.to_i > 0 ? ((batch.processed_count.to_f / batch.total_count) * 100).round(1) : 0
               span.sc-detect__progress-label = "#{percent}%"
               .sc-detect__progress

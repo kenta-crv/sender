@@ -87,6 +87,8 @@ class CallBatchesController < ApplicationController
                  .where(call_batch_id: @batch.id)
                  .includes(:customer)
                  .order(created_at: :desc)
+                 .page(params[:page])
+                 .per(50)
   end
 
   # PATCH /call_batches/:id/pause
@@ -120,6 +122,11 @@ class CallBatchesController < ApplicationController
   private
 
   def set_batch
-    @batch = CallBatch.find(params[:id])
+    @batch =
+      if action_name == 'show'
+        CallBatch.without_payload_columns.find(params[:id])
+      else
+        CallBatch.find(params[:id])
+      end
   end
 end

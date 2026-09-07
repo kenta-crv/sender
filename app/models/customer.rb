@@ -32,6 +32,43 @@ class Customer < ApplicationRecord
     where(created_at: from..to)
   }
 
+  def self.filter_by_last_form_call(lc)
+    lc = lc.respond_to?(:to_unsafe_h) ? lc.to_unsafe_h : (lc || {})
+    lc = lc.symbolize_keys
+    statuses = Array(lc[:status]).reject(&:blank?)
+    unsent = lc[:calls_id_null].to_s == 'true'
+    from_date = lc[:created_at_from].presence
+    to_date = lc[:created_at_to].presence
+    has_sent_filters = statuses.any? || from_date.present? || to_date.present?
+    return all unless unsent || has_sent_filters
+
+    last_calls_sql = Call.form_submissions
+      .group(:customer_id)
+      .select('customer_id, MAX(created_at) AS last_created_at')
+      .to_sql
+
+    rel = joins(<<~SQL.squish)
+      LEFT JOIN (#{last_calls_sql}) last_form_call_times
+        ON last_form_call_times.customer_id = customers.id
+      LEFT JOIN calls last_form_call_rows
+        ON last_form_call_rows.customer_id = last_form_call_times.customer_id
+        AND last_form_call_rows.created_at = last_form_call_times.last_created_at
+        AND last_form_call_rows.call_type = 'form'
+    SQL
+
+    parts = []
+    parts << 'last_form_call_times.customer_id IS NULL' if unsent
+    if has_sent_filters
+      sent = ['last_form_call_times.customer_id IS NOT NULL']
+      sent << sanitize_sql_array(['last_form_call_rows.status IN (?)', statuses]) if statuses.any?
+      sent << sanitize_sql_array(['last_form_call_rows.created_at >= ?', Time.zone.parse(from_date)]) if from_date
+      sent << sanitize_sql_array(['last_form_call_rows.created_at <= ?', Time.zone.parse(to_date).end_of_day]) if to_date
+      parts << "(#{sent.join(' AND ')})"
+    end
+
+    rel.where(parts.join(' OR ')).distinct
+  end
+
   scope :deliverable_for, ->(client_id = nil, admin_id = nil) {
     scope = all
     if client_id.present?

@@ -148,6 +148,8 @@ Rails.application.routes.draw do
   get '/u/:token', to: 'unsubscribes#show', as: :short_unsubscribe
   post '/webhooks/stripe', to: 'webhooks#stripe'
   get '/l/:token', to: 'click_tracking#redirect', as: :click_tracking
+  post '/ftkn_stay', to: 'click_tracking#stay', as: :ftkn_stay
+  match '/ftkn_stay', to: 'click_tracking#stay', via: :options
 
   resources :problems
   get 'columns',         to: 'tops#columns'

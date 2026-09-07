@@ -14,49 +14,8 @@ class FormSubmissionsController < ApplicationController
     # -------------------------
     @q = Customer.ransack(params[:q])
 
-    base_customers = @q.result
-                       .includes(:last_form_call)
-                       .distinct
-
-    # -------------------------
-    # 最新送信条件
-    # -------------------------
-    if params[:last_call].present?
-      lc = params[:last_call]
-      statuses = Array(lc[:status]).reject(&:blank?)
-      unsent = lc[:calls_id_null].to_s == 'true'
-      has_sent_filters =
-        statuses.any? ||
-        lc[:created_at_from].present? ||
-        lc[:created_at_to].present?
-
-      if unsent || has_sent_filters
-        customer_ids = Customer
-          .includes(:last_form_call)
-          .select do |customer|
-            call = customer.last_form_call
-            next unsent if call.blank?
-            next false unless has_sent_filters
-
-            status_ok =
-              statuses.blank? ||
-              statuses.include?(call.status)
-
-            from_ok =
-              lc[:created_at_from].blank? ||
-              call.created_at >= Time.zone.parse(lc[:created_at_from])
-
-            to_ok =
-              lc[:created_at_to].blank? ||
-              call.created_at <= Time.zone.parse(lc[:created_at_to]).end_of_day
-
-            status_ok && from_ok && to_ok
-          end
-          .map(&:id)
-
-        base_customers = base_customers.where(id: customer_ids)
-      end
-    end
+    base_customers = @q.result.distinct
+    base_customers = base_customers.filter_by_last_form_call(params[:last_call])
 
     # =====================================================
     # 顧客カテゴリ
@@ -105,38 +64,27 @@ class FormSubmissionsController < ApplicationController
 
     @batches =
       FormSubmissionBatch
+        .without_payload_columns
+        .includes(:submission)
         .order(created_at: :desc)
         .page(params[:page])
         .per(20)
 
-    @submission_stats =
-      @submissions.map do |submission|
-        batches = submission.form_submission_batches
-        rate_stats = FormSubmissionBatch.aggregate_rate_stats(batches)
+    stats_by_id = FormSubmissionBatch.stats_by_submission_id(FormSubmissionBatch.all)
+    @submission_stats = @submissions.map do |submission|
+      row = stats_by_id[submission.id] || {
+        total_sent: 0,
+        success_count: 0,
+        failure_count: 0,
+        excluded_count: 0,
+        rate: 0.0,
+        last_sent_at: nil
+      }
+      row.merge(submission: submission)
+    end
 
-        last_sent_at =
-          batches
-            .order(started_at: :desc)
-            .limit(1)
-            .pluck(:started_at)
-            .first
-
-        {
-          submission: submission,
-          total_sent: rate_stats[:total_count],
-          success_count: rate_stats[:success_count],
-          failure_count: rate_stats[:failure_count],
-          excluded_count: rate_stats[:excluded_count],
-          rate: rate_stats[:rate],
-          last_sent_at: last_sent_at
-        }
-      end
-
-    # =====================================================
-    # 【追加項目】検索フォーム（ビュー）用の選択肢データ生成
-    # =====================================================
-    @business_options = Customer.where.not(business: [nil, '']).order(:business).pluck(:business).uniq
-    @genre_options    = Customer.where.not(genre: [nil, '']).order(:genre).pluck(:genre).uniq
+    @business_options = Customer.where.not(business: [nil, '']).distinct.order(:business).pluck(:business)
+    @genre_options    = Customer.where.not(genre: [nil, '']).distinct.order(:genre).pluck(:genre)
   end
 
   # POST /form_submissions
@@ -163,36 +111,7 @@ class FormSubmissionsController < ApplicationController
       eligible_scope = eligible_scope.ransack(params[:q]).result
     end
 
-    # 最終送信条件を適用（検索画面と同じ last_form_call 基準）
-    if params[:last_call].present?
-      lc = params[:last_call]
-      statuses = Array(lc[:status]).reject(&:blank?)
-      unsent = lc[:calls_id_null].to_s == 'true'
-      has_sent_filters =
-        statuses.any? ||
-        lc[:created_at_from].present? ||
-        lc[:created_at_to].present?
-
-      if unsent || has_sent_filters
-        matched_ids = eligible_scope.includes(:last_form_call).select do |customer|
-          call = customer.last_form_call
-          next unsent if call.blank?
-          next false unless has_sent_filters
-
-          status_ok = statuses.blank? || statuses.include?(call.status)
-          from_ok =
-            lc[:created_at_from].blank? ||
-            call.created_at >= Time.zone.parse(lc[:created_at_from])
-          to_ok =
-            lc[:created_at_to].blank? ||
-            call.created_at <= Time.zone.parse(lc[:created_at_to]).end_of_day
-
-          status_ok && from_ok && to_ok
-        end.map(&:id)
-
-        eligible_scope = eligible_scope.where(id: matched_ids)
-      end
-    end
+    eligible_scope = eligible_scope.filter_by_last_form_call(params[:last_call])
 
     send_count = params[:send_count].to_i if params[:send_count].present?
 
@@ -294,11 +213,13 @@ class FormSubmissionsController < ApplicationController
 
   # GET /form_submissions/:id
   def show
+    ended = @batch.completed_at || Time.current
     @results = Call.form_submissions
-                   .where(customer_id: @batch.parsed_customer_ids)
-                   .where('calls.created_at >= ?', @batch.created_at)
+                   .where(created_at: @batch.created_at..ended)
                    .order(created_at: :desc)
-    @customers_by_id = Customer.where(id: @batch.parsed_customer_ids).index_by(&:id)
+                   .page(params[:results_page])
+                   .per(50)
+    @customers_by_id = Customer.where(id: @results.map(&:customer_id)).index_by(&:id)
   end
 
   # PATCH /form_submissions/:id/cancel
@@ -484,7 +405,12 @@ class FormSubmissionsController < ApplicationController
   private
 
   def set_batch
-    @batch = FormSubmissionBatch.find(params[:id])
+    @batch =
+      if action_name == 'show'
+        FormSubmissionBatch.without_payload_columns.find(params[:id])
+      else
+        FormSubmissionBatch.find(params[:id])
+      end
   end
 
   # バッチデータの所有権・閲覧権限を検証する認可フィルター

@@ -15,6 +15,50 @@ class FormSubmissionBatch < ApplicationRecord
   ].freeze
 
   scope :completed_batches, -> { where(status: 'completed') }
+  scope :without_payload_columns, -> {
+    select((column_names - %w[customer_ids error_log]).map { |column| "#{table_name}.#{column}" })
+  }
+
+  def display_success_rate
+    total = success_count.to_i + failure_count.to_i
+    total.positive? ? ((success_count.to_f / total) * 100).round(1) : 0.0
+  end
+
+  def self.stats_by_submission_id(relation)
+    last_sent = relation.where.not(submission_id: nil).group(:submission_id).maximum(:started_at)
+    grouped = relation.completed_batches.where.not(submission_id: nil).group(:submission_id).pluck(
+      Arel.sql('submission_id'),
+      Arel.sql('COALESCE(SUM(success_count), 0)'),
+      Arel.sql('COALESCE(SUM(failure_count), 0)')
+    )
+
+    stats = last_sent.each_with_object({}) do |(submission_id, started_at), hash|
+      hash[submission_id] = {
+        total_sent: 0,
+        success_count: 0,
+        failure_count: 0,
+        excluded_count: 0,
+        rate: 0.0,
+        last_sent_at: started_at
+      }
+    end
+
+    grouped.each do |submission_id, success, failure|
+      success = success.to_i
+      failure = failure.to_i
+      total = success + failure
+      row = stats[submission_id] || { last_sent_at: last_sent[submission_id] }
+      stats[submission_id] = row.merge(
+        total_sent: total,
+        success_count: success,
+        failure_count: failure,
+        excluded_count: 0,
+        rate: total.positive? ? ((success.to_f / total) * 100).round(1) : 0.0
+      )
+    end
+
+    stats
+  end
 
   def parsed_customer_ids
     JSON.parse(customer_ids || '[]')
