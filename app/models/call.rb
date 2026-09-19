@@ -149,6 +149,22 @@ class Call < ApplicationRecord
     Call.group("MONTH(created_at)").count
   end
 
+  def append_call_turn!(speaker, text, script: nil)
+    line = if speaker.to_s == 'them'
+             "相手: #{text}"
+           else
+             "こちら[#{script}]: #{text}"
+           end
+    body = [speech_result, line].compact.reject(&:blank?).join("\n")
+    updates = {
+      speech_result: body.last(4000),
+      speech_detected_at: Time.current
+    }
+    updates[:speech_category] = script.to_s if script.present?
+    updates[:flow_phase] = 'ended' if TwilioService.hangup_script?(script)
+    update(updates)
+  end
+
   def user_time_count #時間単位のカウント
     Call.where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
   end

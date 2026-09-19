@@ -35,7 +35,10 @@ class GoogleSpeechStream
   private
 
   def run_streaming
-    client = Google::Cloud::Speech::V1::Speech::Client.new
+    client = Google::Cloud::Speech::V1::Speech::Client.new do |config|
+      path = ENV['GOOGLE_APPLICATION_CREDENTIALS']
+      config.credentials = path if path.present? && File.exist?(path)
+    end
 
     # ストリーミング設定
     config = Google::Cloud::Speech::V1::RecognitionConfig.new(
@@ -100,21 +103,6 @@ class GoogleSpeechStream
         if result.is_final
           Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} FINAL: '#{transcript}' (#{confidence})")
           @on_result.call(transcript, confidence)
-        else
-          transcript_utf8 = transcript.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') rescue transcript
-
-          # 初期フェーズ用: 何でもいいので2文字以上の発話で即トリガー
-          if @interim_any && transcript_utf8.strip.length >= 2
-            Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} INTERIM ANY: '#{transcript}'")
-            @on_result.call(transcript, confidence)
-          else
-            # 通常フェーズ: 厳密なキーワードのみマッチ（誤判定防止）
-            category, _ = TwilioService.classify_speech_strict(transcript_utf8)
-            if category != 'unknown'
-              Rails.logger.info("[GoogleSpeech] call_id=#{@call_id} INTERIM STRICT MATCH: '#{transcript}' → #{category}")
-              @on_result.call(transcript, confidence)
-            end
-          end
         end
       end
     end

@@ -1,90 +1,38 @@
 # README
 
-## Twilio自動発信 セットアップ手順
+## 開発環境の起動（第1段階）
 
-### 必要なサービス（すべて起動が必要）
+電話・フォーム送信・リスト補完は、次の4つが全部動いているときだけ進みます。起動はプロジェクトの一番上で、次の1コマンドだけです。
 
-自動発信機能は以下の4プロセスが**すべて起動している状態**で動作します。
-どれか1つでも欠けると発信されません。
-
-| # | サービス | 役割 | 起動コマンド |
-|---|---------|------|-------------|
-| 1 | Redis | ジョブキュー | `redis-server` |
-| 2 | Sidekiq | バックグラウンドジョブ実行（**発信処理本体**） | `bundle exec sidekiq` |
-| 3 | Rails | Webサーバー・UI | `bundle exec rails server` |
-| 4 | ngrok | Twilio Webhook受信用の公開URL | `ngrok http 3000` |
-
-### セットアップ
-
-1. コード取得・依存関係インストール
-   ```
-   git pull origin feature/verification-test
-   bundle install
-   rails db:migrate
-   ```
-
-2. Google Cloud Speech APIのキー（JSON）を配置し、`.env` に設定
-   ```
-   GOOGLE_APPLICATION_CREDENTIALS=/path/to/your-service-account.json
-   ```
-
-3. `.env` の `NGROK_URL` をngrokで表示されたURLに更新
-
-4. ストリームモード有効化（初回のみ）
-   ```
-   rails console
-   > TwilioConfig.current.update(stream_mode_enabled: true)
-   ```
-
-### 起動
-
-#### 推奨：一括起動スクリプト
-
-senderディレクトリで、お使いのOSに合わせて以下を実行してください。
-4つのサービスが自動的に別ウィンドウで起動します。
-
-**macOS:**
 ```
-chmod +x start_dev.sh   # 初回のみ
 ./start_dev.sh
 ```
 
-**Windows:**
-```
-start_dev.bat をダブルクリック
-```
-
-#### 手動起動（スクリプトが動かない場合）
-
-ターミナルを4つ開き、それぞれで以下を実行：
+止まっているものだけ起動し、最後に OK / NG を出します。起動せずに確認するだけなら次です。
 
 ```
-# ターミナル1: Redis
+./start_dev.sh check
+```
+
+| 番号 | 名前 | 役割 | 止まっているときの見方 |
+|------|------|------|------------------------|
+| 1 | Redis | 作業の待ち行列 | `redis-cli ping` が PONG にならない |
+| 2 | Rails | 画面。外部サービスからの通知の受け口 | ブラウザで http://127.0.0.1:3002/ が開かない。Terminal の Rails 画面 |
+| 3 | Sidekiq | 裏で発信とフォーム送信を実行する本体 | `./start_dev.sh check` が NG。Terminal の Sidekiq 画面。管理者ログイン後の `/sidekiq` |
+| 4 | ngrok | 電話会社（Twilio）からこのマシンへ届ける入口 | http://127.0.0.1:4040 。`.env` の `NGROK_URL` が画面の https URL と一致していること |
+
+Windows では `start_dev.bat` をプロジェクトの一番上で実行します。
+
+スクリプトが使えないときの手動起動（作業ディレクトリはプロジェクトの一番上）:
+
+```
 redis-server
-
-# ターミナル2: Sidekiq（これを忘れると発信されません）
-cd sender && bundle exec sidekiq
-
-# ターミナル3: ngrok
-ngrok http 3000
-
-# ターミナル4: Rails
-cd sender && bundle exec rails server
+bundle exec sidekiq -C config/sidekiq.yml
+ngrok http 3002
+bundle exec rails server -p 3002
 ```
 
-### 発信テスト
-
-- `/call_batches/dashboard` → 「新規発信」から発信
-- バッチを作成しても発信が始まらない場合は、**Sidekiqのログ**を確認してください
-
-### トラブルシューティング
-
-| 症状 | 原因 | 対処 |
-|------|------|------|
-| バッチは作られるが発信されない | Sidekiq未起動 | `bundle exec sidekiq` を実行 |
-| Sidekiq起動時にRedis接続エラー | Redis未起動 | `redis-server` を実行 |
-| Twilio Webhookが届かない | ngrok URL未更新 | `.env` の `NGROK_URL` を更新してRails再起動 |
-| Google Speech認証エラー | JSONキーパス誤り | `.env` の `GOOGLE_APPLICATION_CREDENTIALS` を絶対パスで指定 |
+発信の試し打ちは、4つが OK になったあと `/call_batches/dashboard` から行います。Google の音声認識は、この段階では使いません。
 
 ---
 

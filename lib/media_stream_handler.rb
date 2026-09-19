@@ -66,7 +66,6 @@ class MediaStreamHandler
       call_id: @call_id,
       hints: hints,
       single_utterance: false,
-      interim_any: @phase == 'initial',
       on_result: method(:on_speech_result),
       on_error: method(:on_speech_error)
     )
@@ -97,48 +96,20 @@ class MediaStreamHandler
       return if @redirected
     end
 
-    # UTF-8に変換
-    transcript = transcript.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') unless transcript.encoding == Encoding::UTF_8
-
-    # 分類
-    category, _matched = TwilioService.classify_speech(transcript)
-
-    Rails.logger.info("[MediaStreamHandler] call_id=#{@call_id} transcript='#{transcript}' category=#{category}")
-
-    # Callレコードを更新
+    transcript = TwilioService.utf8_speech(transcript)
     call = Call.find_by(id: @call_id)
-    if call
-      call.update(
-        speech_result: transcript,
-        speech_category: category,
-        speech_confidence: confidence,
-        speech_detected_at: Time.current,
-        flow_phase: category
-      )
-    end
+    return unless call
 
-    # 初期フェーズ（もしもし検知）の場合はgreetingにリダイレクト
-    if @phase == 'initial'
-      do_redirect do
-        base_url = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
-        Twilio::REST::Client.new(
-          ENV.fetch('TWILIO_ACCOUNT_SID'),
-          ENV.fetch('TWILIO_AUTH_TOKEN')
-        ).calls(@call_sid).update(
-          url: "#{base_url}/twilio/greeting?call_id=#{@call_id}",
-          method: 'POST'
-        )
-      end
-      return
-    end
+    script = TwilioService.choose_script(transcript, purpose_played: TwilioService.purpose_played?(call))
+    hangup = TwilioService.hangup_script?(script)
+    Rails.logger.info("[MediaStreamHandler] call_id=#{@call_id} transcript='#{transcript}' script=#{script}")
 
-    # 通常フェーズ: 分類結果に基づきリダイレクト（wait と unknown は除く）
-    # unknown は「もしもし」「あー」等の挨拶/雑音で誤って転送発火しないように無視
-    unless category.in?(%w[wait unknown])
-      do_redirect do
-        redirector = CallRedirector.new
-        redirector.redirect_call(@call_sid, @call_id, category)
-      end
+    call.append_call_turn!('them', transcript, script: script)
+    call.update(speech_confidence: confidence)
+    call.append_call_turn!('us', TwilioService.script_text(script), script: script)
+
+    do_redirect do
+      CallRedirector.new.redirect_script(@call_sid, @call_id, script, hangup: hangup)
     end
   end
 
@@ -148,14 +119,7 @@ class MediaStreamHandler
     # エラー時はGatherモードにフォールバック
     do_redirect do
       if @call_sid && @call_id
-        base_url = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
-        Twilio::REST::Client.new(
-          ENV.fetch('TWILIO_ACCOUNT_SID'),
-          ENV.fetch('TWILIO_AUTH_TOKEN')
-        ).calls(@call_sid).update(
-          url: "#{base_url}/twilio/greeting?call_id=#{@call_id}",
-          method: 'POST'
-        )
+        CallRedirector.new.redirect_script(@call_sid, @call_id, 'repeat', hangup: false)
       end
     end
   end

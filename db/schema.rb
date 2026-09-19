@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_08_08_000001) do
+ActiveRecord::Schema.define(version: 2026_09_18_000001) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -222,6 +222,31 @@ ActiveRecord::Schema.define(version: 2026_08_08_000001) do
     t.index ["customer_id", "admin_id"], name: "index_delivery_opt_outs_on_customer_id_and_admin_id", unique: true
     t.index ["customer_id", "client_id"], name: "index_delivery_opt_outs_on_customer_id_and_client_id", unique: true
     t.index ["customer_id"], name: "index_delivery_opt_outs_on_customer_id"
+  end
+
+  create_table "dial_scripts", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "css"
+    t.text "greeting_text"
+    t.text "purpose_text"
+    t.text "wait_text"
+    t.text "absent_text"
+    t.text "rejection_text"
+    t.text "no_human_text"
+    t.text "repeat_text"
+    t.text "closing_text"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+  end
+
+  create_table "dial_utterances", force: :cascade do |t|
+    t.integer "dial_script_id", null: false
+    t.string "phrase", null: false
+    t.string "script_key", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["dial_script_id", "phrase"], name: "index_dial_utterances_on_dial_script_id_and_phrase"
+    t.index ["dial_script_id"], name: "index_dial_utterances_on_dial_script_id"
   end
 
   create_table "extract_trackings", force: :cascade do |t|
@@ -511,6 +536,7 @@ ActiveRecord::Schema.define(version: 2026_08_08_000001) do
   add_foreign_key "delivery_opt_outs", "admins"
   add_foreign_key "delivery_opt_outs", "clients"
   add_foreign_key "delivery_opt_outs", "customers"
+  add_foreign_key "dial_utterances", "dial_scripts"
   add_foreign_key "fax_deliveries", "customers"
   add_foreign_key "form_submission_batches", "admins"
   add_foreign_key "form_submission_batches", "clients"

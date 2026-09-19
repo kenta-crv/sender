@@ -11,6 +11,7 @@ class Customer < ApplicationRecord
   has_many :serp_enrichment_run_targets, dependent: :destroy
   has_one :last_call, -> { order(created_at: :desc) }, class_name: 'Call'
   has_one :last_form_call, -> { where(call_type: 'form').order(created_at: :desc) }, class_name: 'Call'
+  has_one :last_auto_call, -> { where(call_type: 'auto_phone').order(created_at: :desc) }, class_name: 'Call'
   belongs_to :worker, optional: true
   belongs_to :client, optional: true
   before_create :generate_unsubscribe_token
@@ -127,6 +128,9 @@ class Customer < ApplicationRecord
       genre
       contact_url
       fobbiden
+      status
+      ceo
+      client_id
       created_at
       updated_at
       id

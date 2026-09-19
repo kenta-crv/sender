@@ -7,25 +7,13 @@ class CallRedirector
     @base_url = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
   end
 
-  def redirect_call(call_sid, call_id, category)
-    Rails.logger.info("[CallRedirector] call_id=#{call_id} category=#{category} → redirecting")
-
-    case category
-    when "transfer"
-      @client.calls(call_sid).update(
-        url: "#{@base_url}/twilio/transfer?call_id=#{call_id}",
-        method: 'POST'
-      )
-    when "wait"
-      # 継続リスニング — リダイレクトしない
-      Rails.logger.info("[CallRedirector] call_id=#{call_id} wait — 継続リスニング")
-    else
-      # absent, inquiry, rejection, unknown
-      @client.calls(call_sid).update(
-        url: "#{@base_url}/twilio/stream_result?call_id=#{call_id}&category=#{category}",
-        method: 'POST'
-      )
-    end
+  def redirect_script(call_sid, call_id, script, hangup:)
+    hangup_q = hangup ? '1' : '0'
+    Rails.logger.info("[CallRedirector] call_id=#{call_id} script=#{script} hangup=#{hangup_q}")
+    @client.calls(call_sid).update(
+      url: "#{@base_url}/twilio/stream_result?call_id=#{call_id}&script=#{script}&hangup=#{hangup_q}",
+      method: 'POST'
+    )
   rescue => e
     Rails.logger.error("[CallRedirector] call_id=#{call_id} error: #{e.message}")
   end

@@ -115,6 +115,10 @@ Rails.application.routes.draw do
     post 'conference/status', to: 'conference#status'
   end
 
+  resources :dial_scripts do
+    resources :dial_utterances, only: [:create, :destroy]
+  end
+
   resources :call_batches do
     member do
       patch :pause
@@ -124,6 +128,7 @@ Rails.application.routes.draw do
     end
     collection do
       get :dashboard
+      get :analytics
     end
   end
 

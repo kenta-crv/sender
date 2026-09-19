@@ -1,0 +1,268 @@
+- connected_pct = analytics_pct(@kpis[:connected], @kpis[:dials])
+- appt_pct = analytics_pct(@kpis[:appointments], @kpis[:dials])
+- result_pcts = { connected: analytics_pct(@result_counts[:connected], @result_total), absent: analytics_pct(@result_counts[:absent], @result_total), busy: analytics_pct(@result_counts[:busy], @result_total), other: analytics_pct(@result_counts[:other], @result_total) }
+- range_label = "#{@from.strftime('%Y/%m/%d')} - #{@to.strftime('%Y/%m/%d')}"
+- d_dials = analytics_delta(@kpis[:dials], @prev_kpis[:dials])
+- d_conn = analytics_delta(@kpis[:connected], @prev_kpis[:connected])
+- d_appt = analytics_delta(@kpis[:appointments], @prev_kpis[:appointments])
+- d_dur = analytics_delta(@kpis[:avg_duration], @prev_kpis[:avg_duration])
+- logout_path = client_signed_in? ? destroy_client_session_path : (admin_signed_in? ? destroy_admin_session_path : new_client_session_path)
+- sidebar = capture do
+  aside.da-side
+    .da-side__brand
+      = image_tag 'okurite-logo.webp', alt: 'Okurite'
+      span Okurite
+    ul.da-side__nav
+      li
+        = link_to new_call_batch_path do
+          span.da-ico.da-ico--plus
+          | 新規自動発信
+      li
+        = link_to call_batches_path do
+          span.da-ico.da-ico--list
+          | 発信リスト
+      li
+        = link_to dashboard_call_batches_path do
+          span.da-ico.da-ico--hist
+          | 発信履歴
+      li.is-active
+        = link_to analytics_call_batches_path(from: @from, to: @to) do
+          span.da-ico.da-ico--chart
+          | アナリティクス
+      li
+        = link_to dashboard_setting_path do
+          span.da-ico.da-ico--gear
+          | 設定
+    .da-side__foot
+      = link_to logout_path, method: (client_signed_in? || admin_signed_in? ? :delete : :get) do
+        span.da-ico.da-ico--out
+        | ログアウト
+
+.da-page
+  .da-page__bar
+    = form_tag analytics_call_batches_path, method: :get, class: 'da-range' do
+      = date_field_tag :from, @from
+      span –
+      = date_field_tag :to, @to
+      = submit_tag '表示'
+
+  .da-grid-top
+    article.da-board
+      .da-board__frame
+        = sidebar
+        .da-board__main
+          .da-board__head
+            h2 アナリティクス
+            span.da-chip = range_label
+          .da-kpis
+            .da-kpi
+              span.da-kpi__ico.da-kpi__ico--phone
+              .da-kpi__meta
+                small 総発信数
+                strong = number_with_delimiter(@kpis[:dials])
+            .da-kpi
+              span.da-kpi__ico.da-kpi__ico--user
+              .da-kpi__meta
+                small 接続数
+                strong
+                  = number_with_delimiter(@kpis[:connected])
+                  em 件
+            .da-kpi
+              span.da-kpi__ico.da-kpi__ico--ok
+              .da-kpi__meta
+                small アポイント
+                strong
+                  = number_with_delimiter(@kpis[:appointments])
+                  em 件
+            .da-kpi
+              span.da-kpi__ico.da-kpi__ico--clock
+              .da-kpi__meta
+                small 平均通話時間
+                strong = analytics_duration_label(@kpis[:avg_duration])
+          .da-panel.da-panel--grow
+            .da-panel__head
+              span 発信数の推移
+              span.da-muted 日別
+            .da-chart
+              = analytics_line_svg([{ values: @daily_dials, color: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)' }])
+
+    article.da-board
+      .da-board__frame
+        = sidebar
+        .da-board__main
+          .da-board__head
+            h2 アナリティクス
+            span.da-chip = range_label
+          .da-kpis.da-kpis--hero
+            .da-hero
+              small 発信数
+              strong = number_with_delimiter(@kpis[:dials])
+              - if d_dials
+                .da-delta class=(d_dials.negative? ? 'is-down' : 'is-up')
+                  span = "#{d_dials.positive? ? '+' : ''}#{d_dials}%"
+                  = analytics_spark_svg(@daily_dials, color: (d_dials.negative? ? '#f87171' : '#34d399'))
+            .da-hero
+              small 接続数
+              strong = number_with_delimiter(@kpis[:connected])
+              - if d_conn
+                .da-delta class=(d_conn.negative? ? 'is-down' : 'is-up')
+                  span = "#{d_conn.positive? ? '+' : ''}#{d_conn}%"
+                  = analytics_spark_svg(@daily_connected, color: (d_conn.negative? ? '#f87171' : '#34d399'))
+            .da-hero
+              small アポイント
+              strong = number_with_delimiter(@kpis[:appointments])
+              - if d_appt
+                .da-delta class=(d_appt.negative? ? 'is-down' : 'is-up')
+                  span = "#{d_appt.positive? ? '+' : ''}#{d_appt}%"
+            .da-hero
+              small 平均通話時間
+              strong = analytics_duration_label(@kpis[:avg_duration])
+              - if d_dur
+                .da-delta class=(d_dur.negative? ? 'is-down' : 'is-up')
+                  span = "#{d_dur.positive? ? '+' : ''}#{d_dur}%"
+          .da-panel
+            span.da-panel__title 発信結果の内訳
+            .da-stack
+              span style="width: #{result_pcts[:connected]}%; background: #38bdf8;"
+              span style="width: #{result_pcts[:absent]}%; background: #60a5fa;"
+              span style="width: #{result_pcts[:busy]}%; background: #64748b;"
+              span style="width: #{result_pcts[:other]}%; background: #334155;"
+            .da-stack-legend
+              div
+                b = "#{result_pcts[:connected]}%"
+                small 接続
+              div
+                b = "#{result_pcts[:absent]}%"
+                small 不在
+              div
+                b = "#{result_pcts[:busy]}%"
+                small 話中
+              div
+                b = "#{result_pcts[:other]}%"
+                small その他
+
+  .da-grid-bottom
+    article.da-board
+      .da-board__frame
+        = sidebar
+        .da-board__main
+          .da-board__head
+            h2 アナリティクス
+            span.da-chip = range_label
+          .da-panel.da-panel--grow
+            .da-panel__head
+              span 発信数・接続数の推移
+              .da-legend
+                span
+                  i style="background:#38bdf8;"
+                  | 発信数
+                span
+                  i style="background:#e2e8f0;"
+                  | 接続数
+            .da-chart.da-chart--lg
+              = analytics_line_svg([{ values: @daily_dials, color: '#38bdf8', fill: 'rgba(56, 189, 248, 0.14)' }, { values: @daily_connected, color: '#e2e8f0', fill: nil }])
+          .da-foot-kpis
+            .da-foot
+              span.da-kpi__ico.da-kpi__ico--phone
+              strong = number_with_delimiter(@kpis[:dials])
+              small 発信数
+            .da-foot
+              span.da-kpi__ico.da-kpi__ico--user
+              strong = number_with_delimiter(@kpis[:connected])
+              small 接続数
+            .da-foot
+              span.da-kpi__ico.da-kpi__ico--ok
+              strong = number_with_delimiter(@kpis[:appointments])
+              small アポイント
+            .da-foot
+              span.da-kpi__ico.da-kpi__ico--clock
+              strong = analytics_duration_label(@kpis[:avg_duration])
+              small 平均通話時間
+
+    article.da-board
+      .da-board__frame
+        = sidebar
+        .da-board__main
+          .da-board__head
+            h2 アナリティクス
+            span.da-chip = range_label
+          .da-panel.da-panel--grow
+            span.da-panel__title 発信結果の内訳
+            .da-donut-row
+              = analytics_donut_svg
+              .da-legend.da-legend--col
+                span
+                  i style="background:#38bdf8;"
+                  | 接続 #{result_pcts[:connected]}%
+                span
+                  i style="background:#60a5fa;"
+                  | 不在 #{result_pcts[:absent]}%
+                span
+                  i style="background:#64748b;"
+                  | 話中 #{result_pcts[:busy]}%
+                span
+                  i style="background:#334155;"
+                  | その他 #{result_pcts[:other]}%
+          .da-foot-kpis.da-foot-kpis--3
+            .da-foot
+              span.da-kpi__ico.da-kpi__ico--user
+              strong = number_with_delimiter(@kpis[:connected])
+              small 接続数
+              em = "#{connected_pct}%"
+            .da-foot
+              span.da-kpi__ico.da-kpi__ico--ok
+              strong = number_with_delimiter(@kpis[:appointments])
+              small アポイント
+              em = "#{appt_pct}%"
+            .da-foot
+              span.da-kpi__ico.da-kpi__ico--clock
+              strong = analytics_duration_label(@kpis[:avg_duration])
+              small 平均通話時間
+
+    article.da-board
+      .da-board__frame
+        = sidebar
+        .da-board__main
+          .da-board__head
+            h2 アナリティクス
+            span.da-chip = range_label
+          .da-mini-row
+            .da-mini
+              span.da-kpi__ico.da-kpi__ico--phone
+              div
+                strong = number_with_delimiter(@kpis[:dials])
+                small 発信数
+            .da-mini
+              span.da-kpi__ico.da-kpi__ico--user
+              div
+                strong = number_with_delimiter(@kpis[:connected])
+                small 接続数
+            .da-mini
+              span.da-kpi__ico.da-kpi__ico--ok
+              div
+                strong = number_with_delimiter(@kpis[:appointments])
+                small アポイント
+          .da-panel.da-panel--grow
+            span.da-panel__title 発信リスト別 成果
+            table.da-table
+              thead
+                tr
+                  th #
+                  th 発信リスト
+                  th 発信数
+                  th 接続数
+                  th アポ
+                  th アポ率
+              tbody
+                - if @batch_rows.any?
+                  - @batch_rows.each_with_index do |row, i|
+                    tr
+                      td = i + 1
+                      td = row[:name]
+                      td = number_with_delimiter(row[:dials])
+                      td = number_with_delimiter(row[:connected])
+                      td = number_with_delimiter(row[:appointments])
+                      td = "#{row[:appointment_rate].round(1)}%"
+                - else
+                  tr
+                    td.da-empty colspan="6" 対象期間の発信はありません。
