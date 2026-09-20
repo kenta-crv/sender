@@ -35,7 +35,7 @@ module BrightData
       retries = 0
       begin
         raw = execute_request(target_url)
-        parsed = JSON.parse(raw, symbolize_names: false)
+        parsed = sanitize_utf8(JSON.parse(raw, symbolize_names: false))
 
         # Bright Data がエラーを返す場合のチェック
         if parsed.is_a?(Hash) && parsed["error"]
@@ -102,14 +102,33 @@ module BrightData
       results
     end
 
+    def self.sanitize_utf8(value)
+      case value
+      when String
+        text = value.dup
+        text.force_encoding(Encoding::UTF_8)
+        return text if text.valid_encoding?
+
+        text.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "")
+      when Hash
+        value.each_with_object({}) do |(key, nested), acc|
+          acc[sanitize_utf8(key)] = sanitize_utf8(nested)
+        end
+      when Array
+        value.map { |nested| sanitize_utf8(nested) }
+      else
+        value
+      end
+    end
+
     private
 
-    def normalize_text(value)
-      text = value.to_s.dup
-      text.force_encoding(Encoding::UTF_8)
-      return text if text.valid_encoding?
+    def sanitize_utf8(value)
+      self.class.sanitize_utf8(value)
+    end
 
-      value.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "")
+    def normalize_text(value)
+      sanitize_utf8(value.to_s)
     end
 
     def execute_request(target_url)

@@ -21,4 +21,15 @@ class BrightData::SerpClientTest < ActiveSupport::TestCase
     assert_equal true, results.first.dig("result", "fatal")
     assert_equal 1, yielded.size
   end
+
+  test "sanitize_utf8 replaces invalid bytes so regex later does not raise" do
+    dirty = "a\x80b".dup.force_encoding(Encoding::UTF_8)
+    refute dirty.valid_encoding?
+
+    cleaned = BrightData::SerpClient.sanitize_utf8({ "title" => dirty, "items" => [dirty] })
+
+    assert cleaned["title"].valid_encoding?
+    assert_equal "ab", cleaned["title"]
+    assert cleaned["items"].first.valid_encoding?
+  end
 end

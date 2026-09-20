@@ -146,6 +146,7 @@ module BrightData
           item["customer_id"] = job[:customer_id]
           item["customer_company"] = job[:company]
         end
+        batch = SerpClient.sanitize_utf8(batch)
         billable_calls = billable_serp_api_calls(batch)
         audit_run&.bill_serp_api_usage!(billable_calls) unless dry_run
         puts "[Pipeline] SERP API課金対象: #{billable_calls}/#{batch.size}件" unless dry_run
@@ -167,11 +168,16 @@ module BrightData
         puts "[Pipeline] 費用停止: #{stop_run_reason}" if stop_run_reason
 
         companies = batch.flat_map do |item|
-          CompanyExtractor.extract(item["result"], query: item["query"]).map do |company|
-            company.merge(
-              customer_id: item["customer_id"],
-              customer_company: item["customer_company"]
-            )
+          begin
+            CompanyExtractor.extract(item["result"], query: item["query"]).map do |company|
+              company.merge(
+                customer_id: item["customer_id"],
+                customer_company: item["customer_company"]
+              )
+            end
+          rescue ArgumentError, Encoding::CompatibilityError => e
+            puts "[Pipeline] SERP抽出スキップ customer_id=#{item['customer_id']}: #{SerpClient.sanitize_utf8(e.message.to_s)}"
+            []
           end
         end
 

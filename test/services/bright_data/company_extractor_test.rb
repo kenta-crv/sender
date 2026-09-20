@@ -31,6 +31,31 @@ class BrightData::CompanyExtractorTest < ActiveSupport::TestCase
     assert_equal "https://www.lifeplatech.co.jp/company/", companies.first[:url]
   end
 
+  test "extract does not raise when organic titles contain invalid UTF-8" do
+    dirty_title = "株式会社ライフプラテック\x80 | 会社概要".dup.force_encoding(Encoding::UTF_8)
+    refute dirty_title.valid_encoding?
+
+    serp_result = {
+      "organic" => [
+        {
+          "title" => dirty_title,
+          "link" => "https://www.lifeplatech.co.jp/company/"
+        }
+      ]
+    }
+
+    companies = nil
+    assert_nothing_raised do
+      companies = BrightData::CompanyExtractor.extract(
+        serp_result,
+        query: "株式会社ライフプラテック 会社概要"
+      )
+    end
+
+    assert_equal 1, companies.size
+    assert companies.first[:title].valid_encoding?
+  end
+
   test "extract keeps company name that appears after title separators" do
     serp_result = {
       "organic_results" => [

@@ -21,6 +21,12 @@ class CustomerTest < ActiveSupport::TestCase
     refute_includes ids, sole.id
   end
 
+  test "serp_extraction_targets excludes paused companies" do
+    paused = Customer.create!(company: "株式会社停止", url: nil, serp_status: "serp_paused")
+
+    refute_includes Customer.serp_extraction_targets.pluck(:id), paused.id
+  end
+
   test "cleanup_duplicates! keeps lowest id and deletes excess contact_url rows" do
     url = "https://example.test/contact"
     keep = Customer.create!(company: "株式会社残す", contact_url: url)

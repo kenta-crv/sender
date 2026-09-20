@@ -40,6 +40,8 @@ module BrightData
     # ★ キー名（"organic_results" vs "organic" 等）はDay1の確認結果に合わせて修正
     def self.extract(serp_result, query: nil)
       companies = []
+      serp_result = SerpClient.sanitize_utf8(serp_result)
+      query = SerpClient.sanitize_utf8(query)
 
       # 1. organic_results（メインのGoogle検索結果）
       organics = serp_result["organic_results"] || serp_result["organic"] || []
