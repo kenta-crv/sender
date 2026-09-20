@@ -10,8 +10,7 @@ module CustomersHelper
     "serp_queued" => "処理中",
     "serp_done"   => "完了",
     "serp_imported" => "登録済み",
-    "serp_error" => "エラー",
-    "serp_paused" => "停止"
+    "serp_error" => "エラー"
   }.freeze
 
   def serp_status_label(value)
@@ -38,7 +37,6 @@ module CustomersHelper
     when "serp_done"    then "ai-badge-green"
     when "serp_imported" then "ai-badge-blue"
     when "serp_error" then "ai-badge-red"
-    when "serp_paused" then "ai-badge-gray"
     else "ai-badge-gray"
     end
   end
@@ -50,7 +48,6 @@ module CustomersHelper
     when "serp_done"     then "sc-detect__badge--success"
     when "serp_imported" then "sc-detect__badge--info"
     when "serp_error"    then "sc-detect__badge--danger"
-    when "serp_paused"   then "sc-detect__badge--info"
     else "sc-detect__badge--info"
     end
   end

@@ -456,7 +456,6 @@ class SerpProgressTracker
     when "serp_done"     then "完了"
     when "serp_imported" then "登録済み"
     when "serp_error"    then "エラー"
-    when "serp_paused"   then "停止"
     else value.to_s
     end
   end

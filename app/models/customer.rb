@@ -138,7 +138,7 @@ class Customer < ApplicationRecord
   end
 
   def self.draft_base_scope(current_client_id: nil, is_admin: false, industry_name: nil)
-    scope = where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error', 'serp_paused'])
+    scope = where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error'])
 
     if is_admin
       # 管理者は全件
@@ -160,7 +160,7 @@ class Customer < ApplicationRecord
     case serp_status
     when "null"
       where(serp_status: [nil, ''])
-    when "serp_queued", "serp_done", "serp_imported", "serp_error", "serp_paused"
+    when "serp_queued", "serp_done", "serp_imported", "serp_error"
       where(serp_status: serp_status)
     else
       all
@@ -329,7 +329,6 @@ class Customer < ApplicationRecord
       Arel.sql("SUM(CASE WHEN serp_status = 'serp_done' THEN 1 ELSE 0 END)"),
       Arel.sql("SUM(CASE WHEN serp_status = 'serp_imported' THEN 1 ELSE 0 END)"),
       Arel.sql("SUM(CASE WHEN serp_status = 'serp_error' THEN 1 ELSE 0 END)"),
-      Arel.sql("SUM(CASE WHEN serp_status = 'serp_paused' THEN 1 ELSE 0 END)"),
       Arel.sql("SUM(CASE WHEN NOT #{blank_tel} THEN 1 ELSE 0 END)"),
       Arel.sql("SUM(CASE WHEN NOT #{blank_address} THEN 1 ELSE 0 END)"),
       Arel.sql("SUM(CASE WHEN NOT #{blank_url} THEN 1 ELSE 0 END)"),
@@ -346,15 +345,14 @@ class Customer < ApplicationRecord
         queued:   row[2].to_i,
         done:     row[3].to_i,
         imported: row[4].to_i,
-        error:    row[5].to_i,
-        paused:   row[6].to_i
+        error:    row[5].to_i
       },
       fill: {
-        tel:         row[7].to_i,
-        address:     row[8].to_i,
-        url:         row[9].to_i,
-        contact_url: row[10].to_i,
-        full:        row[11].to_i
+        tel:         row[6].to_i,
+        address:     row[7].to_i,
+        url:         row[8].to_i,
+        contact_url: row[9].to_i,
+        full:        row[10].to_i
       }
     }
   end

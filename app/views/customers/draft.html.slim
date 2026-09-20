@@ -63,9 +63,6 @@
                     tr
                       th エラー
                       td.text-end.fw-bold style="color: #ef4444;" = "#{stats.dig(:status, :error)}件"
-                    tr
-                      th 停止
-                      td.text-end.fw-bold = "#{stats.dig(:status, :paused)}件"
                     tr style="border-top: 1px solid rgba(56, 189, 248, 0.3);"
                       th 全件数
                       td.text-end.h5.fw-bold.mb-0 = "#{total}件"
@@ -173,7 +170,7 @@
               = paginate @serp_targets, param_name: :serp_page
 
     / ── 絞り込みフィルタ ──
-    - serp_status_options = [["全て", ""], ["未処理", "null"], ["処理中", "serp_queued"], ["完了", "serp_done"], ["登録済み", "serp_imported"], ["エラー", "serp_error"], ["停止", "serp_paused"]]
+    - serp_status_options = [["全て", ""], ["未処理", "null"], ["処理中", "serp_queued"], ["完了", "serp_done"], ["登録済み", "serp_imported"], ["エラー", "serp_error"]]
     - fill_filter_options = [["全て", ""], ["tel未取得", "missing_tel"], ["address未取得", "missing_address"], ["address不十分", "partial_address"], ["公式URL未取得", "missing_url"], ["contact_url未取得", "missing_contact_url"], ["全項目充足", "fully_enriched"], ["SERP完了かつtel未取得", "done_missing_tel"], ["SERP完了かつaddress未取得", "done_missing_address"], ["SERP完了かつaddress不十分", "done_partial_address"]]
     .col-xl-7
       .sc-detect__card.h-100
