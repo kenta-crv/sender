@@ -89,7 +89,7 @@ class SerpEnrichmentRun < ApplicationRecord
         actual_error: actual_error
       )
     )
-    Notification.create_for_serp!(run: self, client_id: client_id)
+    notify_serp_finished!(mail: false)
   end
 
   def fail!(message)
@@ -98,7 +98,20 @@ class SerpEnrichmentRun < ApplicationRecord
       error_message: message.to_s,
       finished_at: Time.current
     )
+    notify_serp_finished!(mail: true)
   end
+
+  def notify_serp_finished!(mail:)
+    unless Notification.exists?(notifiable: self, type: "SerpEnrichment")
+      Notification.create_for_serp!(run: self, client_id: client_id)
+    end
+    return unless mail
+
+    ClientMailer.serp_run_stopped(self).deliver_later
+  rescue StandardError => e
+    Rails.logger.error("[SerpEnrichmentRun] 通知に失敗しました: #{e.class} #{e.message}")
+  end
+  private :notify_serp_finished!
 
   def bill_serp_api_usage!(count)
     billed = count.to_i

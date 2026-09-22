@@ -1,0 +1,29 @@
+= form_with model: @dial_script, local: true do |f|
+  - if @dial_script.errors.any?
+    .sc-detect__alert.mb-4
+      - @dial_script.errors.full_messages.each do |msg|
+        p = msg
+
+  .sc-detect__card.mb-4
+    .sc-detect__card-header
+      | 基本
+    .sc-detect__card-body
+      .sc-detect__form-group
+        = f.label :name, '名前', class: 'sc-detect__label'
+        = f.text_field :name, class: 'sc-detect__input'
+      .sc-detect__form-group
+        = f.label :css, '構成用CSS', class: 'sc-detect__label'
+        = f.text_area :css, class: 'sc-detect__input dial-script-css', rows: 8
+
+  .sc-detect__card.mb-4
+    .sc-detect__card-header
+      | 電話で流す文章
+    .sc-detect__card-body
+      - DialScript::SCRIPT_LABELS.each do |key, label|
+        .sc-detect__form-group
+          = f.label :"#{key}_text", label, class: 'sc-detect__label'
+          = f.text_area :"#{key}_text", class: 'sc-detect__input', rows: 3
+
+  .d-flex.gap-3.mb-5
+    = f.submit @dial_script.persisted? ? '更新する' : '作成する', class: 'sc-detect__btn sc-detect__btn--warning'
+    = link_to '戻る', @dial_script.persisted? ? dial_script_path(@dial_script) : dial_scripts_path, class: 'sc-detect__btn sc-detect__btn--primary', style: 'text-decoration: none;'

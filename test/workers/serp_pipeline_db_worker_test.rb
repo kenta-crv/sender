@@ -1,6 +1,7 @@
 require "test_helper"
 
 class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
+  include ActionMailer::TestHelper
   test "perform uses db pipeline without legacy contact detector" do
     customer = Customer.create!(company: "Logistics Pipeline Target")
     captured = nil
@@ -178,6 +179,27 @@ class SerpPipelineDbWorkerTest < ActiveSupport::TestCase
     assert_nil run.error_message
     customers.each { |c| assert_nil c.reload.serp_status }
     assert_equal ids, captured[:customer_ids]
+  end
+
+  test "fail! records in-app notification and enqueues stop mail" do
+    customer = Customer.create!(company: "Notify Target")
+    run = SerpEnrichmentRun.create_for_targets!(
+      run_id: "notify-fail-run",
+      industry: "外国人求人",
+      limit: 1,
+      targets: [customer]
+    )
+
+    assert_difference -> { Notification.count }, 1 do
+      assert_enqueued_emails 1 do
+        run.fail!("SERP API error rate 50.0% (>= 50%)")
+      end
+    end
+
+    notice = Notification.find_by!(notifiable: run, type: "SerpEnrichment")
+    assert_equal "error", notice.status
+    assert_includes notice.message, "SERP実行停止"
+    assert_includes notice.message, "50.0%"
   end
 
   private

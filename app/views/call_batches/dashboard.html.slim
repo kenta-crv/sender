@@ -101,7 +101,7 @@
             td
               span.sc-detect__badge.sc-detect__badge--secondary = call.twilio_status
             td
-              small style="font-size: 11px;" = truncate(call.speech_result.to_s, length: 30)
+              pre.dial-call-log = call.speech_result.presence || '-'
             td
               - b_class = call.speech_category == 'inquiry' ? 'success' : 'info'
               span class="sc-detect__badge sc-detect__badge--#{b_class}" style="font-size: 10px;" = call.speech_category
@@ -113,6 +113,11 @@
     = link_to new_call_batch_path, class: 'sc-detect__btn sc-detect__btn--warning', style: "justify-content: center; min-width: 150px; text-decoration: none;" do
       i.fas.fa-plus.me-1
       | 新規発信
+    = link_to analytics_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "justify-content: center; min-width: 150px; text-decoration: none;" do
+      i.fas.fa-chart-pie.me-1
+      | アナリティクス
     = link_to call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "justify-content: center; min-width: 150px; text-decoration: none;" do
       i.fas.fa-list.me-1
       | バッチ一覧
+    = link_to dial_scripts_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "justify-content: center; min-width: 150px; text-decoration: none;" do
+      | 発信原稿

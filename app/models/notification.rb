@@ -129,6 +129,12 @@ class Notification < ApplicationRecord
 
   def self.generate_serp_message(run)
     total = run.target_count.to_i
+    if run.status.to_s == "error"
+      pending = run.targets.where(result_status: "pending").count
+      reason = run.error_message.to_s.presence || "不明なエラー"
+      return "SERP実行停止: #{reason}（対象#{total}件 / 未処理#{pending}件）"
+    end
+
     success = run.summary_json['done_count'].to_i
     error = run.summary_json['error_count'].to_i
     updated = run.summary_json['actual_success'].to_i
