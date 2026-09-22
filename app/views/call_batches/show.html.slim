@@ -109,7 +109,7 @@
               span.sc-detect__badge.sc-detect__badge--secondary style="font-size: 10px;" = call.twilio_status
             td = call.flow_phase
             td
-              pre.dial-call-log = call.speech_result.presence || '-'
+              small style="font-size: 11px;" = truncate(call.speech_result.to_s, length: 40)
             td
               - b_class = 'secondary'
               - if call.speech_category == 'transfer'

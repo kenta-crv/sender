@@ -1,47 +1,34 @@
-.sc-detect.container.dial-call-new style="padding-bottom: 100px; min-height: 100vh;"
+.sc-detect.container style="padding-bottom: 100px; min-height: 100vh;"
   h2.sc-detect__title 新規自動発信
 
-  - qh = call_batch_search_params.to_h
-  - active_filters = []
-  - active_filters << "会社名: #{qh['company_cont']}" if qh['company_cont'].present?
-  - active_filters << "業種: #{qh['business_cont']}" if qh['business_cont'].present?
-  - active_filters << "電話: #{qh['tel_cont']}" if qh['tel_cont'].present?
-  - active_filters << "代表者: #{qh['ceo_cont']}" if qh['ceo_cont'].present?
-  - active_filters << "ジャンル: #{qh['genre_cont']}" if qh['genre_cont'].present?
-  - active_filters << "ステータス: #{qh['status_eq']}" if qh['status_eq'].present?
-  - if qh['client_id_eq'].present?
-    - section_client = @clients.detect { |c| c.id.to_s == qh['client_id_eq'].to_s }
-    - active_filters << "所属: #{section_client&.name.presence || qh['client_id_eq']}"
-  - active_filters << '未発信のみ' if params[:call_history] == 'never'
-  - active_filters << '発信履歴あり' if params[:call_history] == 'called'
-  - active_filters << "最終発信日: #{params[:last_call_from]}" if params[:last_call_from].present?
-  - active_filters << "最終発信日まで: #{params[:last_call_to]}" if params[:last_call_to].present?
-  - active_filters << "最終結果: #{params[:last_call_result]}" if params[:last_call_result].present?
-
+  / --- 顧客検索（独立フォーム） ---
   .sc-detect__card.mb-4
-    .sc-detect__card-header.d-flex.justify-content-between.align-items-center
-      div
-        | 検索条件
-      button.sc-detect__btn.sc-detect__btn--warning type="button" id="open-call-batch-search" style="min-width: 140px; justify-content: center;"
-        | 条件を指定
+    .sc-detect__card-header
+      i.fas.fa-search.me-2
+      | 顧客検索・フィルタ
     .sc-detect__card-body
-      - if active_filters.any?
-        .dial-call-new__chips
-          - active_filters.each do |label|
-            span.sc-detect__badge.sc-detect__badge--info = label
-        = link_to '条件をクリア', new_call_batch_path, style: 'color: #7dd3fc; font-size: 13px;'
-      - else
-        p.mb-0 style="color: #94a3b8;" 未発信と履歴ありを分けて探せます。複数条件は「条件を指定」から入力します。
+      = search_form_for @q, url: new_call_batch_path, method: :get do |f|
+        .row.g-3
+          .col-md-3
+            .sc-detect__form-group
+              label.sc-detect__label 会社名
+              = f.search_field :company_cont, class: 'sc-detect__input', placeholder: '会社名'
+          .col-md-3
+            .sc-detect__form-group
+              label.sc-detect__label 業種
+              = f.search_field :industry_cont, class: 'sc-detect__input', placeholder: '業種'
+          .col-md-3
+            .sc-detect__form-group
+              label.sc-detect__label 電話番号
+              = f.search_field :tel_cont, class: 'sc-detect__input', placeholder: '電話番号'
+          .col-md-3.d-flex.align-items-end
+            = f.submit '検索実行', class: 'sc-detect__btn sc-detect__btn--primary w-100', style: "justify-content: center;"
 
+  / --- 発信設定・顧客一覧フォーム ---
   = form_tag call_batches_path, method: :post do
-    - qh.each do |key, value|
-      = hidden_field_tag "q[#{key}]", value
-    = hidden_field_tag :call_history, params[:call_history]
-    = hidden_field_tag :last_call_from, params[:last_call_from]
-    = hidden_field_tag :last_call_to, params[:last_call_to]
-    = hidden_field_tag :last_call_result, params[:last_call_result]
     .sc-detect__card.mb-4
       .sc-detect__card-header
+        i.fas.fa-cog.me-2
         | 発信基本設定
       .sc-detect__card-body
         .row.g-3
@@ -52,7 +39,7 @@
           .col-md-3
             .sc-detect__form-group
               label.sc-detect__label 同時回線数
-              = select_tag :concurrent_lines, options_for_select([['1回線', 1]], 1), class: 'sc-detect__input'
+              = select_tag :concurrent_lines, options_for_select([['3回線', 3], ['4回線', 4], ['5回線', 5]], 3), class: 'sc-detect__input'
           .col-md-3
             .sc-detect__form-group
               label.sc-detect__label 発信件数（空欄で全件）
@@ -66,151 +53,47 @@
     .sc-detect__card.mb-4
       .sc-detect__card-header.d-flex.justify-content-between.align-items-center
         div
+          i.fas.fa-users.me-2
           | 発信対象顧客
-          span style="margin-left: 8px; font-size: 12px; color: #94a3b8;" 1ページ100件
         span.sc-detect__badge.sc-detect__badge--info = "#{@customers.total_count} 件"
-      .sc-detect__table-wrapper
+      .sc-detect__table-wrapper style="max-height: 500px;"
         table.sc-detect__table
           thead
             tr
               th style='width:50px'
                 input type="checkbox" id="check_all_customers"
               th 会社名
-              th 所属
               th 電話番号
-              th 代表者
+              th 担当者
               th 業種
-              th 発信区分
-              th 最終発信
-              th 最終結果
               th ステータス
           tbody
-            - if @customers.any?
-              - @customers.each do |customer|
-                - last_call = @last_auto_calls[customer.id]
-                tr
-                  td
-                    = check_box_tag 'customer_ids[]', customer.id, false, class: 'customer-check'
-                  td.fw-bold = customer.company
-                  td = customer.client&.name.presence || '未所属'
-                  td = customer.tel
-                  td = customer.ceo.presence || '-'
-                  td = customer.business.presence || '-'
-                  td
-                    - if last_call
-                      span.sc-detect__badge.sc-detect__badge--warning 再発信
-                    - else
-                      span.sc-detect__badge.sc-detect__badge--info 未発信
-                  td
-                    - if last_call
-                      = (last_call.started_at || last_call.created_at)&.strftime('%Y/%m/%d %H:%M')
-                    - else
-                      | -
-                  td
-                    - if last_call
-                      = last_call.speech_category.presence || last_call.flow_phase.presence || last_call.twilio_status.presence || '-'
-                    - else
-                      | -
-                  td
-                    span.sc-detect__badge.sc-detect__badge--secondary = customer.status.presence || '-'
-            - else
+            - @customers.each do |customer|
               tr
-                td[colspan="10"] 対象の顧客がありません。
+                td
+                  = check_box_tag 'customer_ids[]', customer.id, false, class: 'customer-check'
+                td.fw-bold = customer.company
+                td = customer.tel
+                td = customer.name
+                td = customer.industry
+                td
+                  span.sc-detect__badge.sc-detect__badge--secondary = customer.status
 
-      .sc-detect__pagination-zone.my-4.d-flex.justify-content-center
+      .p-3
         = paginate @customers
 
-    .mt-5.d-flex.gap-3.pb-5
-      = button_tag '発信開始', type: 'submit', class: 'sc-detect__btn sc-detect__btn--warning', data: { confirm: '自動発信を開始しますか？' }
-      = link_to 'キャンセル', call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: 'text-decoration: none;'
+    .d-flex.gap-3.pb-5
+      = button_tag type: 'submit', class: 'sc-detect__btn sc-detect__btn--warning', style: "padding: 15px 40px; font-size: 1.1rem;", data: { confirm: '自動発信を開始しますか？' } do
+        i.fas.fa-phone-alt.me-2
+        | 発信開始
+      
+      = link_to call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "padding: 15px 40px; text-decoration: none;" do
+        | キャンセル
 
-#call-batch-search-modal.dial-call-search-overlay.sc-detect aria-hidden="true"
-  .dial-call-search-overlay__panel
-    .dial-call-search-overlay__head
-      h5 複数条件で検索
-      button.dial-call-search-overlay__close type="button" id="close-call-batch-search" aria-label="閉じる" ×
-    = search_form_for @q, url: new_call_batch_path, method: :get do |f|
-      .dial-call-search-overlay__body
-        .row.g-3
-          .col-md-6
-            .sc-detect__form-group
-              label.sc-detect__label 会社名
-              = f.search_field :company_cont, class: 'sc-detect__input', placeholder: '会社名'
-          .col-md-6
-            .sc-detect__form-group
-              label.sc-detect__label 電話番号
-              = f.search_field :tel_cont, class: 'sc-detect__input', placeholder: '電話番号'
-          .col-md-6
-            .sc-detect__form-group
-              label.sc-detect__label 業種
-              = f.search_field :business_cont, class: 'sc-detect__input', placeholder: '業種'
-          .col-md-6
-            .sc-detect__form-group
-              label.sc-detect__label ジャンル
-              = f.search_field :genre_cont, class: 'sc-detect__input', placeholder: 'ジャンル'
-          .col-md-6
-            .sc-detect__form-group
-              label.sc-detect__label 代表者
-              = f.search_field :ceo_cont, class: 'sc-detect__input', placeholder: '代表者'
-          .col-md-6
-            .sc-detect__form-group
-              label.sc-detect__label 顧客ステータス
-              = f.search_field :status_eq, class: 'sc-detect__input', placeholder: 'ステータス'
-          .col-md-12
-            .sc-detect__form-group
-              label.sc-detect__label 所属（どのリストか）
-              = f.select :client_id_eq, options_from_collection_for_select(@clients, :id, :name, qh['client_id_eq']), { include_blank: '指定しない' }, class: 'sc-detect__input'
-          .col-md-12
-            .sc-detect__form-group
-              label.sc-detect__label 発信区分
-              .dial-call-new__radios
-                label
-                  = radio_button_tag :call_history, '', params[:call_history].blank?
-                  | すべて
-                label
-                  = radio_button_tag :call_history, 'never', params[:call_history] == 'never'
-                  | 未発信（履歴なし）
-                label
-                  = radio_button_tag :call_history, 'called', params[:call_history] == 'called'
-                  | 発信履歴あり（再発信）
-          .col-md-4
-            .sc-detect__form-group
-              label.sc-detect__label 最終発信日（開始）
-              = date_field_tag :last_call_from, params[:last_call_from], class: 'sc-detect__input'
-          .col-md-4
-            .sc-detect__form-group
-              label.sc-detect__label 最終発信日（終了）
-              = date_field_tag :last_call_to, params[:last_call_to], class: 'sc-detect__input'
-          .col-md-4
-            .sc-detect__form-group
-              label.sc-detect__label 最終結果
-              = select_tag :last_call_result, options_for_select([['指定しない', ''], ['用件', 'purpose'], ['待ち', 'wait'], ['不在', 'absent'], ['断り', 'rejection'], ['人へ回さず終了', 'no_human'], ['締め', 'closing'], ['開始のみ', 'initiating']], params[:last_call_result]), class: 'sc-detect__input'
-      .dial-call-search-overlay__foot
-        = link_to 'クリア', new_call_batch_path, class: 'sc-detect__btn sc-detect__btn--primary', style: 'text-decoration: none;'
-        = f.submit 'この条件で表示', class: 'sc-detect__btn sc-detect__btn--warning'
-
-javascript:
-  (function() {
-    const setup = function() {
-      const all = document.getElementById('check_all_customers');
-      if (all) {
-        all.onchange = function() {
-          document.querySelectorAll('.customer-check').forEach(function(c) {
-            c.checked = all.checked;
-          });
-        };
+  javascript:
+    document.getElementById('check_all_customers').addEventListener('change', function() {
+      var checks = document.querySelectorAll('.customer-check');
+      for (var i = 0; i < checks.length; i++) {
+        checks[i].checked = this.checked;
       }
-      const modal = document.getElementById('call-batch-search-modal');
-      const openBtn = document.getElementById('open-call-batch-search');
-      const closeBtn = document.getElementById('close-call-batch-search');
-      if (!modal) return;
-      const open = function() { modal.classList.add('is-open'); modal.setAttribute('aria-hidden', 'false'); };
-      const close = function() { modal.classList.remove('is-open'); modal.setAttribute('aria-hidden', 'true'); };
-      if (openBtn) openBtn.onclick = open;
-      if (closeBtn) closeBtn.onclick = close;
-      modal.onclick = function(e) { if (e.target === modal) close(); };
-    };
-    if (document.readyState !== 'loading') setup();
-    else document.addEventListener('DOMContentLoaded', setup);
-    document.addEventListener('turbolinks:load', setup);
-  })();
+    });
