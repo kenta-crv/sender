@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_08_08_000001) do
+ActiveRecord::Schema.define(version: 2026_09_25_183000) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -271,6 +271,8 @@ ActiveRecord::Schema.define(version: 2026_08_08_000001) do
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.integer "failure_count", default: 0
+    t.integer "admin_id"
+    t.index ["admin_id"], name: "index_form_detection_batches_on_admin_id"
   end
 
   create_table "form_submission_batches", force: :cascade do |t|
@@ -512,6 +514,7 @@ ActiveRecord::Schema.define(version: 2026_08_08_000001) do
   add_foreign_key "delivery_opt_outs", "clients"
   add_foreign_key "delivery_opt_outs", "customers"
   add_foreign_key "fax_deliveries", "customers"
+  add_foreign_key "form_detection_batches", "admins"
   add_foreign_key "form_submission_batches", "admins"
   add_foreign_key "form_submission_batches", "clients"
   add_foreign_key "monthly_usage_logs", "clients"

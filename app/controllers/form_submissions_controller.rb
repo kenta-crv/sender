@@ -362,6 +362,7 @@ class FormSubmissionsController < ApplicationController
       return
     end
 
+    limited_to_remaining = nil
     # サブスクリプション制限チェック（Clientの場合）
     if client_signed_in? && !acting_as_admin?
       monthly_log = current_client.monthly_usage_log
@@ -372,11 +373,10 @@ class FormSubmissionsController < ApplicationController
         return
       end
 
-      # リクエストされた件数が残り上限を超えている場合は制限する
+      # リクエストされた件数が残り上限を超えている場合は、上限分だけ続ける
       if customer_ids.size > subscription_remaining
         customer_ids = customer_ids.first(subscription_remaining)
-        redirect_to dashboard_index_path, alert: "残り上限（#{subscription_remaining}件）を超えているため、#{subscription_remaining}件のみ処理します。"
-        return
+        limited_to_remaining = subscription_remaining
       end
 
       # 使用数を加算
@@ -390,6 +390,7 @@ class FormSubmissionsController < ApplicationController
       status: 'processing',
       started_at: Time.current,
       client: current_client,
+      admin: current_admin
     )
 
     # ファンアウト自体をジョブ化し、HTTPリクエストのタイムアウト（504）を回避
@@ -399,6 +400,7 @@ class FormSubmissionsController < ApplicationController
       admin: acting_as_admin?
     )
     notice_message = "#{customer_ids.size}件のお問い合わせフォームURL自動検出を開始しました。"
+    notice_message += "残り上限のため#{limited_to_remaining}件だけ処理します。" if limited_to_remaining
     redirect_to dashboard_index_path, notice: notice_message
   end
   
