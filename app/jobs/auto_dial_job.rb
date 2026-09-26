@@ -17,7 +17,17 @@ class AutoDialJob < ApplicationJob
     end
 
     unless customer.tel.present?
-      batch.record_result!(customer_id, success: false, message: '電話番号が未登録です')
+      Call.create!(
+        customer: customer,
+        call_batch_id: batch.id,
+        call_type: 'auto_phone',
+        dial_script_id: batch.dial_script_id,
+        status: 'リスト不備NG',
+        twilio_status: 'failed',
+        ended_at: Time.current,
+        worker_id: batch.worker_id
+      )
+      batch.record_result!(customer_id, success: false, message: 'リスト不備NG')
       return
     end
 
@@ -34,15 +44,25 @@ class AutoDialJob < ApplicationJob
       customer: customer,
       call_batch_id: batch.id,
       call_type: 'auto_phone',
+      dial_script_id: batch.dial_script_id,
       twilio_status: 'queued',
       flow_phase: 'initiating',
       started_at: Time.current,
       worker_id: batch.worker_id
     )
 
-    # Twilio発信
+    base_url = TwilioService.public_base_url
+    if base_url.blank?
+      call.update!(
+        twilio_status: 'failed',
+        speech_result: '次の文章を返すアドレスが空です。NGROK_URL を設定してください。',
+        ended_at: Time.current
+      )
+      batch.record_result!(customer_id, success: false, message: '次の文章を返すアドレスが空です')
+      return
+    end
+
     service = TwilioService.new
-    base_url = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
     sid = service.initiate_call(customer, call, base_url)
     call.update!(twilio_call_sid: sid, twilio_status: 'initiated')
 

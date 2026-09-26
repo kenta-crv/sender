@@ -41,6 +41,7 @@
 .da-page
   .da-page__bar
     = form_tag analytics_call_batches_path, method: :get, class: 'da-range' do
+      = select_tag :dial_script_id, options_from_collection_for_select(@dial_scripts, :id, :label_for_select, @dial_script&.id), include_blank: (@dial_scripts.blank? ? '原稿がありません' : false)
       = date_field_tag :from, @from
       span –
       = date_field_tag :to, @to
@@ -52,7 +53,10 @@
         = sidebar
         .da-board__main
           .da-board__head
-            h2 アナリティクス
+            h2
+              | アナリティクス
+              - if @dial_script
+                span.da-script-name = @dial_script.label_for_select
             span.da-chip = range_label
           .da-kpis
             .da-kpi
@@ -243,7 +247,33 @@
                 strong = number_with_delimiter(@kpis[:appointments])
                 small アポイント
           .da-panel.da-panel--grow
-            span.da-panel__title 発信リスト別 成果
+            span.da-panel__title 手動入力と同じステータス
+            table.da-table
+              thead
+                tr
+                  th ステータス
+                  th 件数
+              tbody
+                - @status_counts.each do |label, count|
+                  - next unless count.to_i.positive?
+                  tr
+                    td = label
+                    td = count
+                - if @status_counts.values.sum.zero?
+                  tr
+                    td.da-empty colspan="2" この原稿の結果はまだありません。
+            span.da-panel__title style="display:block; margin-top: 16px;" 原稿の進行
+            - stage_max = [@stage_counts.map(&:last).max.to_i, 1].max
+            - @stage_counts.each do |key, count|
+              .da-stack-legend
+                div
+                  small = DialScript::SCRIPT_LABELS[key]
+                  b = count
+              .da-stack
+                span style="width: #{(count.to_f / stage_max * 100).round(1)}%; background: #38bdf8;"
+            p style="margin: 12px 0; color: #94a3b8;"
+              | 合計通話時間 #{analytics_duration_label(@duration_total)} / 平均 #{analytics_duration_label(@kpis[:avg_duration])}
+            span.da-panel__title style="display:block; margin-top: 16px;" 発信リスト別 成果
             table.da-table
               thead
                 tr

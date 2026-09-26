@@ -1,5 +1,6 @@
 class CallBatch < ApplicationRecord
   belongs_to :worker, optional: true
+  belongs_to :dial_script, optional: true
   has_many :calls, dependent: :nullify
   scope :without_payload_columns, -> {
     select((column_names - %w[customer_ids error_log]).map { |column| "#{table_name}.#{column}" })
@@ -55,6 +56,16 @@ class CallBatch < ApplicationRecord
 
   def cancel!
     update!(status: 'cancelled')
+    stop_live_calls!
+  end
+
+  def stop_live_calls!
+    service = TwilioService.new
+    calls.where(twilio_status: %w[queued initiated ringing in-progress]).find_each do |call|
+      service.hangup_call(call.twilio_call_sid)
+    rescue => e
+      Rails.logger.error("[CallBatch] stop_live_calls call_id=#{call.id} #{e.message}")
+    end
   end
 
   # 未処理の顧客IDを取得

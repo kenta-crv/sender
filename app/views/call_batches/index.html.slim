@@ -1,21 +1,11 @@
 .sc-detect.container style="padding-bottom: 100px; min-height: 100vh;"
   h2.sc-detect__title 自動発信バッチ一覧
 
-  .mb-4.d-flex.gap-3
-    / 新規発信ボタン（ネオンイエロー）
-    = link_to new_call_batch_path, class: 'sc-detect__btn sc-detect__btn--warning', style: "text-decoration: none; justify-content: center; min-width: 140px;" do
-      i.fas.fa-plus.me-1
-      | 新規発信
-    
-    / ダッシュボードボタン（ネオンブルー）
-    = link_to dashboard_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "text-decoration: none; justify-content: center; min-width: 140px;" do
-      i.fas.fa-chart-line.me-1
-      | ダッシュボード
-    = link_to analytics_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "text-decoration: none; justify-content: center; min-width: 140px;" do
-      i.fas.fa-chart-pie.me-1
-      | アナリティクス
-    = link_to dial_scripts_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "text-decoration: none; justify-content: center; min-width: 140px;" do
-      | 発信原稿
+  .mb-4.dial-action-row
+    = link_to '新規発信', new_call_batch_path, class: 'sc-detect__btn sc-detect__btn--primary'
+    = link_to 'ダッシュボード', dashboard_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary'
+    = link_to 'アナリティクス', analytics_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary'
+    = link_to '発信原稿', dial_scripts_path, class: 'sc-detect__btn sc-detect__btn--primary'
 
   .sc-detect__table-wrapper
     table.sc-detect__table
@@ -23,11 +13,10 @@
         tr
           th style="width: 60px;" #
           th バッチ名
+          th 原稿
           th ステータス
           th style="width: 80px;" 合計
-          th style="width: 80px;" 成功
-          th style="width: 80px;" 失敗
-          th style="width: 80px;" 転送
+          th style="width: 80px;" 処理済
           th style="width: 80px;" 回線
           th 開始日時
           th 完了日時
@@ -37,6 +26,7 @@
             td = batch.id
             td
               = link_to batch.name, call_batch_path(batch), style: "color: #38bdf8; font-weight: 700; text-decoration: none;"
+            td = batch.dial_script ? "ID #{batch.dial_script_id}" : '-'
             td
               - case batch.status
               - when 'pending'
@@ -50,9 +40,7 @@
               - when 'cancelled'
                 span.sc-detect__badge.sc-detect__badge--danger キャンセル
             td.fw-bold = batch.total_count
-            td.text-success.fw-bold = batch.success_count
-            td.text-danger.fw-bold = batch.failure_count
-            td.text-info.fw-bold = batch.transferred_count
+            td = batch.processed_count
             td = "#{batch.concurrent_lines}回線"
             td style="font-size: 0.85rem;" = batch.started_at&.strftime('%m/%d %H:%M') || '-'
             td style="font-size: 0.85rem;" = batch.completed_at&.strftime('%m/%d %H:%M') || '-'

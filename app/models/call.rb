@@ -5,6 +5,7 @@ class Call < ApplicationRecord
   belongs_to :customer
   belongs_to :worker, optional: true
   belongs_to :call_batch, optional: true
+  belongs_to :dial_script, optional: true
   # Validations for recording fields
   #validates :recording_url, presence: true, if: :recording_duration?
   #validates :recording_duration, numericality: { greater_than: 0 }, if: :recording_duration?
@@ -100,6 +101,24 @@ class Call < ApplicationRecord
   ]
   def self.StatuItems
     @@StatuItems
+  end
+
+  def save_selected_status!(label)
+    return unless self.class.StatuItems.include?(label.to_s)
+
+    update!(status: label.to_s)
+  end
+
+  def apply_manual_status!(twilio_status)
+    return if self.class.StatuItems.include?(status)
+
+    label = case twilio_status.to_s
+            when 'no-answer'
+              '着信留守'
+            when 'busy'
+              '担当者不在'
+            end
+    save_selected_status!(label) if label
   end
 
   @@sfa_status = [

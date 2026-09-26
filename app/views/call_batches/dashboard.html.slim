@@ -1,10 +1,38 @@
 .sc-detect.container style="padding-bottom: 100px; min-height: 100vh;"
-  h2.sc-detect__title 自動発信ダッシュボード
+  h2.sc-detect__title
+    | 自動発信ダッシュボード
+    - if @dial_script
+      span.dial-script-picker__name = @dial_script.label_for_select
+  = form_with url: dashboard_call_batches_path, method: :get, local: true, class: 'mb-4 dial-script-picker' do
+    = select_tag :dial_script_id, options_from_collection_for_select(@dial_scripts, :id, :label_for_select, @dial_script&.id), include_blank: (@dial_scripts.blank? ? '原稿がありません' : false), class: 'sc-detect__input'
+    = submit_tag 'この原稿を表示', class: 'sc-detect__btn sc-detect__btn--primary'
+
+  - if @dial_script
+    .dial-script-preview
+      .sc-detect__card.mb-4
+        .sc-detect__card-header
+          | 原稿 ID #{@dial_script.id}: #{@dial_script.name}
+        .sc-detect__card-body
+          .dial-script-preview__block
+            .sc-detect__label 挨拶
+            p.dial-script-preview__text = @dial_script.greeting_text.presence || '（未入力）'
+          .dial-script-preview__block
+            .sc-detect__label 用件
+            p.dial-script-preview__text = @dial_script.purpose_text.presence || '（未入力）'
+          .dial-script-preview__block
+            .sc-detect__label 待ち
+            p.dial-script-preview__text = @dial_script.wait_text.presence || '（未入力）'
+          .dial-script-preview__block
+            .sc-detect__label 聞き直し
+            p.dial-script-preview__text = @dial_script.text_for('repeat')
+          - Call.StatuItems.each do |label|
+            .dial-script-preview__block
+              .sc-detect__label = label
+              p.dial-script-preview__text = @dial_script.status_text(label).presence || '（未入力）'
 
   / --- 本日の統計 ---
   .row.mb-4
-    - today_rate = @stats[:today_total] > 0 ? ((@stats[:today_answered].to_f / @stats[:today_total]) * 100).round(1) : 0
-    - stats_items = [{ label: '本日の発信数', value: @stats[:today_total], color: '#38bdf8' }, { label: '応答数', value: @stats[:today_answered], color: '#10b981' }, { label: '転送数', value: @stats[:today_transferred], color: '#7dd3fc' }, { label: '応答率', value: "#{today_rate}%", color: '#ffffff' }]
+    - stats_items = [{ label: '本日の発信数', value: @stats[:today_total], color: '#38bdf8' }] + @status_counts.select { |_label, count| count.to_i.positive? }.map { |label, count| { label: label, value: count, color: '#e2e8f0' } }
     
     - stats_items.each do |item|
       .col-md-3.mb-3
@@ -29,30 +57,22 @@
           .col-md-2
             strong.me-1 style="color: #7dd3fc;" 処理済:
             span = @current_batch.processed_count
-          .col-md-2
-            strong.me-1.text-success 成功:
-            span = @current_batch.success_count
-          .col-md-2
-            strong.me-1.text-danger 失敗:
-            span = @current_batch.failure_count
-          .col-md-3
-            strong.me-1.text-info 転送:
-            span = @current_batch.transferred_count
+          - @status_counts.each do |label, count|
+            - next unless count.to_i.positive?
+            .col-md-2
+              strong.me-1 style="color: #e2e8f0;" = "#{label}:"
+              span = count
 
         - batch_percent = @current_batch.total_count.to_i > 0 ? ((@current_batch.processed_count.to_f / @current_batch.total_count) * 100).round(1) : 0
         .sc-detect__progress-label = "#{batch_percent}%"
         .sc-detect__progress
           .sc-detect__progress-bar style="width: #{batch_percent}%"
 
-        .mt-4.d-flex.gap-2
-          = link_to call_batch_path(@current_batch), class: 'sc-detect__btn sc-detect__btn--primary' do
-            i.fas.fa-search.me-1
-            | 詳細
-          = link_to pause_call_batch_path(@current_batch), method: :patch, class: 'sc-detect__btn sc-detect__btn--warning', style: "background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b;", data: { confirm: '発信を一時停止しますか？' } do
-            i.fas.fa-pause.me-1
+        .mt-4.dial-action-row
+          = link_to '詳細', call_batch_path(@current_batch), class: 'sc-detect__btn sc-detect__btn--primary'
+          = button_to pause_call_batch_path(@current_batch), method: :patch, class: 'sc-detect__btn sc-detect__btn--primary', form: { class: 'dial-action-row__form' }, style: 'border-color: #f59e0b; color: #f59e0b;', data: { confirm: '発信を一時停止しますか？' } do
             | 一時停止
-          = link_to cancel_call_batch_path(@current_batch), method: :delete, class: 'sc-detect__badge sc-detect__badge--danger', style: "padding: 8px 16px; text-decoration: none; justify-content: center;", data: { confirm: '発信をキャンセルしますか？' } do
-            i.fas.fa-stop.me-1
+          = button_to cancel_call_batch_path(@current_batch), method: :patch, class: 'sc-detect__btn sc-detect__btn--danger', data: { confirm: '発信をキャンセルしますか？' } do
             | キャンセル
 
   / --- アクティブ通話 ---
@@ -94,30 +114,21 @@
           th 終了
       tbody
         - @recent_calls.each do |call|
-          - row_style = call.flow_phase == 'transfer' ? "background: rgba(56, 189, 248, 0.05);" : (call.flow_phase == 'inquiry' ? "background: rgba(16, 185, 129, 0.05);" : "")
+          - row_style = ""
           tr style=row_style
             td.fw-bold = call.customer&.company
             td = call.customer&.tel
             td
-              span.sc-detect__badge.sc-detect__badge--secondary = call.twilio_status
+              span.sc-detect__badge.sc-detect__badge--secondary = call.status.presence || '-'
             td
               pre.dial-call-log = call.speech_result.presence || '-'
             td
-              - b_class = call.speech_category == 'inquiry' ? 'success' : 'info'
-              span class="sc-detect__badge sc-detect__badge--#{b_class}" style="font-size: 10px;" = call.speech_category
+              span.sc-detect__badge.sc-detect__badge--info style="font-size: 10px;" = DialScript::SCRIPT_LABELS[call.speech_category] || call.speech_category
             td = call.duration ? "#{call.duration}秒" : '-'
             td = call.ended_at&.strftime('%H:%M:%S')
 
-  / ボタンエリアをさらに際立たせるためのマージン
-  .mt-5.pb-5.d-flex.gap-3
-    = link_to new_call_batch_path, class: 'sc-detect__btn sc-detect__btn--warning', style: "justify-content: center; min-width: 150px; text-decoration: none;" do
-      i.fas.fa-plus.me-1
-      | 新規発信
-    = link_to analytics_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "justify-content: center; min-width: 150px; text-decoration: none;" do
-      i.fas.fa-chart-pie.me-1
-      | アナリティクス
-    = link_to call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "justify-content: center; min-width: 150px; text-decoration: none;" do
-      i.fas.fa-list.me-1
-      | バッチ一覧
-    = link_to dial_scripts_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "justify-content: center; min-width: 150px; text-decoration: none;" do
-      | 発信原稿
+  .mt-5.pb-5.dial-action-row
+    = link_to '新規発信', new_call_batch_path, class: 'sc-detect__btn sc-detect__btn--primary'
+    = link_to 'アナリティクス', analytics_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary'
+    = link_to 'バッチ一覧', call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary'
+    = link_to '発信原稿', dial_scripts_path, class: 'sc-detect__btn sc-detect__btn--primary'

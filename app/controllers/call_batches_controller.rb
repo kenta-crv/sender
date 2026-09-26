@@ -1,22 +1,27 @@
 class CallBatchesController < ApplicationController
+  before_action :authenticate_admin!
   before_action :set_batch, only: [:show, :pause, :resume, :cancel, :progress]
 
   # GET /call_batches/dashboard
   def dashboard
-    @active_calls = Call.auto_calls.active_twilio
-                        .includes(:customer)
-                        .order(started_at: :desc)
-    @current_batch = CallBatch.where(status: 'processing').last
-    @recent_calls = Call.auto_calls
+    @dial_scripts = DialScript.order(:id)
+    @dial_script = DialScript.find_by(id: params[:dial_script_id])
+    @dial_script ||= DialScript.order(:id).first
+    script_calls = if @dial_script
+                     Call.auto_calls.where(dial_script_id: @dial_script.id)
+                   else
+                     Call.none
+                   end
+    @active_calls = script_calls.active_twilio.includes(:customer).order(started_at: :desc)
+    @current_batch = CallBatch.where(status: 'processing', dial_script_id: @dial_script.id).order(id: :desc).first if @dial_script
+    @recent_calls = script_calls
                         .where.not(twilio_status: ['initiated', 'ringing', 'in-progress'])
                         .order(ended_at: :desc)
                         .limit(50)
                         .includes(:customer)
-    @stats = {
-      today_total: Call.auto_calls.call_count_today.count,
-      today_answered: Call.auto_calls.call_count_today.where(twilio_status: 'completed').where.not(answered_at: nil).count,
-      today_transferred: Call.auto_calls.call_count_today.where(flow_phase: 'transfer').count
-    }
+    today = script_calls.call_count_today
+    @stats = { today_total: today.count }
+    @status_counts = Call.StatuItems.index_with { |label| today.where(status: label).count }
 
     respond_to do |format|
       format.html
@@ -26,6 +31,9 @@ class CallBatchesController < ApplicationController
 
   # GET /call_batches/analytics
   def analytics
+    @dial_scripts = DialScript.order(:id)
+    @dial_script = DialScript.find_by(id: params[:dial_script_id])
+    @dial_script ||= @dial_scripts.first
     @from = analytics_parse_date(params[:from]) || Time.current.to_date.beginning_of_month
     @to = analytics_parse_date(params[:to]) || Time.current.to_date
     @from, @to = @to, @from if @from > @to
@@ -45,24 +53,43 @@ class CallBatchesController < ApplicationController
     @daily_dials = @daily_labels.map { |day| (grouped[day] || []).size }
     @daily_connected = @daily_labels.map { |day| (grouped[day] || []).count { |call| analytics_connected?(call) } }
     @batch_rows = analytics_batch_rows(current_calls)
+    @status_counts = Call.StatuItems.index_with { |label| current_calls.count { |call| call.status == label } }
+    @stage_counts = DialScript::SCRIPT_KEYS.map do |key|
+      [key, current_calls.count { |call| call.speech_result.to_s.include?("[#{key}]") }]
+    end
+    durations = current_calls.map(&:duration).compact
+    @duration_total = durations.sum
   end
 
   # GET /call_batches
   def index
-    @batches = CallBatch.order(created_at: :desc).page(params[:page]).per(20)
+    @batches = CallBatch.includes(:dial_script).order(created_at: :desc).page(params[:page]).per(20)
   end
 
   # GET /call_batches/new
   def new
-    @q = Customer.ransack(call_batch_search_params)
-    @customers = call_batch_eligible_customers.page(params[:page]).per(100)
+    @dial_scripts = DialScript.order(:id)
+    @dial_script = DialScript.find_by(id: params[:dial_script_id])
     @clients = Client.order(:name)
-    latest_ids = Call.auto_calls.where(customer_id: @customers.map(&:id)).group(:customer_id).maximum(:id)
-    @last_auto_calls = Call.where(id: latest_ids.values).index_by(&:customer_id)
+    @q = Customer.ransack(@dial_script ? call_batch_search_params : {})
+    if @dial_script
+      @customers = call_batch_eligible_customers.page(params[:page]).per(100)
+      latest_ids = Call.auto_calls.where(dial_script_id: @dial_script.id, customer_id: @customers.map(&:id)).group(:customer_id).maximum(:id)
+      @last_auto_calls = Call.where(id: latest_ids.values).index_by(&:customer_id)
+    else
+      @customers = Customer.none.page(params[:page]).per(100)
+      @last_auto_calls = {}
+    end
   end
 
   # POST /call_batches
   def create
+    @dial_script = DialScript.find_by(id: params[:dial_script_id])
+    unless @dial_script
+      redirect_to new_call_batch_path, alert: 'かける原稿を選んでください。'
+      return
+    end
+
     eligible_scope = call_batch_eligible_customers
 
     send_count = params[:send_count].to_i if params[:send_count].present?
@@ -70,7 +97,7 @@ class CallBatchesController < ApplicationController
     customer_ids = if params[:select_all] == '1'
                      eligible_scope.pluck(:id)
                    elsif params[:customer_ids].present?
-                     Array(params[:customer_ids]).map(&:to_i)
+                     eligible_scope.where(id: Array(params[:customer_ids]).map(&:to_i)).pluck(:id)
                    elsif send_count && send_count > 0
                      eligible_scope.limit(send_count).pluck(:id)
                    else
@@ -83,6 +110,7 @@ class CallBatchesController < ApplicationController
 
     if customer_ids.empty?
       redirect_to new_call_batch_path(
+        dial_script_id: @dial_script.id,
         q: call_batch_search_params.to_h,
         call_history: params[:call_history],
         last_call_from: params[:last_call_from],
@@ -101,6 +129,7 @@ class CallBatchesController < ApplicationController
       status: 'processing',
       started_at: Time.current,
       concurrent_lines: concurrent_lines,
+      dial_script_id: @dial_script.id,
       worker_id: current_admin&.id || current_worker&.id
     )
 
@@ -111,18 +140,16 @@ class CallBatchesController < ApplicationController
 
   # GET /call_batches/:id
   def show
-    @calls = Call.auto_calls
-                 .where(call_batch_id: @batch.id)
-                 .includes(:customer)
-                 .order(created_at: :desc)
-                 .page(params[:page])
-                 .per(50)
+    calls = Call.auto_calls.where(call_batch_id: @batch.id)
+    calls = calls.where(dial_script_id: @batch.dial_script_id) if @batch.dial_script_id
+    @status_counts = Call.StatuItems.index_with { |label| calls.where(status: label).count }
+    @calls = calls.includes(:customer).order(created_at: :desc).page(params[:page]).per(50)
   end
 
   # PATCH /call_batches/:id/pause
   def pause
     @batch.pause!
-    redirect_to call_batch_path(@batch), notice: '発信を一時停止しました。'
+    redirect_back fallback_location: call_batch_path(@batch), notice: '発信を一時停止しました。'
   end
 
   # PATCH /call_batches/:id/resume
@@ -132,13 +159,13 @@ class CallBatchesController < ApplicationController
     if unprocessed.any?
       unprocessed.each { |cid| AutoDialJob.perform_later(@batch.id, cid) }
     end
-    redirect_to call_batch_path(@batch), notice: "発信を再開しました（残り#{unprocessed.size}件）"
+    redirect_back fallback_location: call_batch_path(@batch), notice: "発信を再開しました（残り#{unprocessed.size}件）"
   end
 
   # PATCH /call_batches/:id/cancel
   def cancel
     @batch.cancel!
-    redirect_to call_batch_path(@batch), notice: '発信をキャンセルしました。'
+    redirect_back fallback_location: call_batch_path(@batch), notice: '発信をキャンセルしました。'
   end
 
   # GET /call_batches/:id/progress (JSON)
@@ -180,10 +207,9 @@ class CallBatchesController < ApplicationController
   end
 
   def analytics_calls_between(from_time, to_time)
-    Call.auto_calls
-        .where('COALESCE(started_at, created_at) BETWEEN ? AND ?', from_time, to_time)
-        .includes(:call_batch)
-        .to_a
+    rel = Call.auto_calls.where('COALESCE(started_at, created_at) BETWEEN ? AND ?', from_time, to_time)
+    rel = rel.where(dial_script_id: @dial_script.id) if @dial_script
+    rel.includes(:call_batch).to_a
   end
 
   def analytics_call_date(call)
@@ -195,7 +221,7 @@ class CallBatchesController < ApplicationController
   end
 
   def analytics_appointment?(call)
-    call.flow_phase == 'transfer' || %w[transfer inquiry].include?(call.speech_category)
+    call.status == 'APP'
   end
 
   def analytics_result_key(call)
@@ -203,7 +229,7 @@ class CallBatchesController < ApplicationController
       :connected
     elsif call.twilio_status == 'busy'
       :busy
-    elsif %w[no-answer canceled].include?(call.twilio_status) || call.speech_category == 'absent'
+    elsif %w[no-answer canceled].include?(call.twilio_status) || call.status == '着信留守'
       :absent
     else
       :other
@@ -358,12 +384,12 @@ class CallBatchesController < ApplicationController
   def call_batch_eligible_customers
     rel = Customer.ransack(call_batch_search_params).result
                   .where.not(tel: [nil, ''])
-                  .where("fobbiden IS NULL OR fobbiden != 'true'")
                   .includes(:client)
 
-    auto_ids = Call.auto_calls.select(:customer_id)
+    auto_ids = Call.auto_calls.where(dial_script_id: @dial_script&.id, status: Call.StatuItems).select(:customer_id)
+    history = params[:call_history].presence || 'all'
 
-    case params[:call_history]
+    case history
     when 'never'
       rel = rel.where.not(id: auto_ids)
     when 'called'
@@ -371,7 +397,7 @@ class CallBatchesController < ApplicationController
     end
 
     if params[:last_call_from].present? || params[:last_call_to].present? || params[:last_call_result].present?
-      last_ids_sql = Call.auto_calls.select('customer_id, MAX(id) AS last_id').group(:customer_id).to_sql
+      last_ids_sql = Call.auto_calls.where(dial_script_id: @dial_script&.id).select('customer_id, MAX(id) AS last_id').group(:customer_id).to_sql
       rel = rel.joins(<<~SQL.squish)
         INNER JOIN (#{last_ids_sql}) last_auto_ids ON last_auto_ids.customer_id = customers.id
         INNER JOIN calls last_auto_calls ON last_auto_calls.id = last_auto_ids.last_id
@@ -383,7 +409,7 @@ class CallBatchesController < ApplicationController
         rel = rel.where('COALESCE(last_auto_calls.started_at, last_auto_calls.created_at) <= ?', Time.zone.parse(params[:last_call_to]).end_of_day)
       end
       if params[:last_call_result].present?
-        rel = rel.where('last_auto_calls.speech_category = :r OR last_auto_calls.flow_phase = :r', r: params[:last_call_result])
+        rel = rel.where(last_auto_calls: { status: params[:last_call_result] })
       end
     end
 

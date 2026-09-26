@@ -11,18 +11,27 @@
       .sc-detect__form-group
         = f.label :name, '名前', class: 'sc-detect__label'
         = f.text_field :name, class: 'sc-detect__input'
-      .sc-detect__form-group
-        = f.label :css, '構成用CSS', class: 'sc-detect__label'
-        = f.text_area :css, class: 'sc-detect__input dial-script-css', rows: 8
 
   .sc-detect__card.mb-4
     .sc-detect__card-header
       | 電話で流す文章
     .sc-detect__card-body
-      - DialScript::SCRIPT_LABELS.each do |key, label|
+      .sc-detect__form-group
+        = f.label :greeting_text, '挨拶', class: 'sc-detect__label'
+        = f.text_area :greeting_text, class: 'sc-detect__input', rows: 3
+      .sc-detect__form-group
+        = f.label :purpose_text, '用件', class: 'sc-detect__label'
+        = f.text_area :purpose_text, class: 'sc-detect__input', rows: 3
+      .sc-detect__form-group
+        = f.label :wait_text, '待ち', class: 'sc-detect__label'
+        = f.text_area :wait_text, class: 'sc-detect__input', rows: 3
+      .sc-detect__form-group
+        = f.label :repeat_text, '聞き直し', class: 'sc-detect__label'
+        = f.text_area :repeat_text, class: 'sc-detect__input', rows: 3
+      - Call.StatuItems.each do |label|
         .sc-detect__form-group
-          = f.label :"#{key}_text", label, class: 'sc-detect__label'
-          = f.text_area :"#{key}_text", class: 'sc-detect__input', rows: 3
+          = label_tag "status_text_#{label}", label, class: 'sc-detect__label'
+          = text_area_tag "dial_script[status_texts][#{label}]", @dial_script.status_text(label), id: "status_text_#{label}", class: 'sc-detect__input', rows: 3
 
   .d-flex.gap-3.mb-5
     = f.submit @dial_script.persisted? ? '更新する' : '作成する', class: 'sc-detect__btn sc-detect__btn--warning'

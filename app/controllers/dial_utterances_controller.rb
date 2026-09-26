@@ -1,4 +1,5 @@
 class DialUtterancesController < ApplicationController
+  before_action :authenticate_admin!
   before_action :set_dial_script
 
   def create

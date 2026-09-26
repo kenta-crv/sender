@@ -1,8 +1,4 @@
 .sc-detect.container.dial-script-page style="padding-bottom: 100px; min-height: 100vh;"
-  - if @dial_script.css.present?
-    style
-      == @dial_script.css
-
   h2.sc-detect__title
     | 原稿 ID #{@dial_script.id}: #{@dial_script.name}
 
@@ -17,10 +13,22 @@
       .sc-detect__card-header
         | 電話で流す文章
       .sc-detect__card-body
-        - DialScript::SCRIPT_LABELS.each do |key, label|
+        .dial-script-preview__block
+          .sc-detect__label 挨拶
+          p.dial-script-preview__text = @dial_script.greeting_text.presence || '（未入力）'
+        .dial-script-preview__block
+          .sc-detect__label 用件
+          p.dial-script-preview__text = @dial_script.purpose_text.presence || '（未入力）'
+        .dial-script-preview__block
+          .sc-detect__label 待ち
+          p.dial-script-preview__text = @dial_script.wait_text.presence || '（未入力）'
+        .dial-script-preview__block
+          .sc-detect__label 聞き直し
+          p.dial-script-preview__text = @dial_script.text_for('repeat')
+        - Call.StatuItems.each do |label|
           .dial-script-preview__block
             .sc-detect__label = label
-            p.dial-script-preview__text = @dial_script.text_for(key).presence || '（未入力）'
+            p.dial-script-preview__text = @dial_script.status_text(label).presence || '（未入力）'
 
   .sc-detect__card.mb-4
     .sc-detect__card-header
@@ -37,7 +45,7 @@
           .col-md-4
             .sc-detect__form-group
               = f.label :script_key, '出す原稿', class: 'sc-detect__label'
-              = f.select :script_key, DialScript::SCRIPT_LABELS.map { |k, l| [l, k] }, {}, class: 'sc-detect__input'
+              = f.select :script_key, DialScript.utterance_options, {}, class: 'sc-detect__input'
           .col-md-2.d-flex.align-items-end
             .sc-detect__form-group.mb-0
               = f.submit '追加', class: 'sc-detect__btn sc-detect__btn--warning', style: 'justify-content: center; width: 100%;'
@@ -60,7 +68,7 @@
                   td = utterance.phrase
                   td = DialScript::SCRIPT_LABELS[utterance.script_key] || utterance.script_key
                   td
-                    = link_to '削除', dial_script_dial_utterance_path(@dial_script, utterance), method: :delete, data: { confirm: '削除しますか？' }, style: 'color: #f87171;'
+                    = button_to '削除', dial_script_dial_utterance_path(@dial_script, utterance), method: :delete, form: { style: 'display: inline;' }, data: { confirm: '削除しますか？' }, style: 'background: none; border: 0; color: #f87171; padding: 0; cursor: pointer;'
             - else
               tr
                 td colspan="3" まだありません。上の欄から追加できます。

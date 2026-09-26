@@ -33,7 +33,7 @@ module Twilio
     end
 
     def base_url
-      ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', request.base_url))
+      TwilioService.public_base_url.presence || request.base_url
     end
 
     def builder

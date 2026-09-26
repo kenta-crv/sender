@@ -1,4 +1,5 @@
 class DialScriptsController < ApplicationController
+  before_action :authenticate_admin!
   before_action :set_dial_script, only: [:show, :edit, :update, :destroy]
 
   def index
@@ -10,7 +11,7 @@ class DialScriptsController < ApplicationController
   end
 
   def new
-    @dial_script = DialScript.new
+    @dial_script = DialScript.new(repeat_text: DialScript::REPEAT_TEXT)
   end
 
   def create
@@ -45,9 +46,13 @@ class DialScriptsController < ApplicationController
   end
 
   def dial_script_params
-    params.require(:dial_script).permit(
-      :name, :css, :greeting_text, :purpose_text, :wait_text, :absent_text,
-      :rejection_text, :no_human_text, :repeat_text, :closing_text
+    permitted = params.require(:dial_script).permit(
+      :name, :greeting_text, :purpose_text, :wait_text, :repeat_text, status_texts: {}
     )
+    hash = permitted.to_h
+    if hash['status_texts']
+      hash['status_texts'] = hash['status_texts'].slice(*Call.StatuItems).to_json
+    end
+    hash
   end
 end

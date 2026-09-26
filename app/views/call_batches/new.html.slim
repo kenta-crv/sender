@@ -1,6 +1,16 @@
 .sc-detect.container.dial-call-new style="padding-bottom: 100px; min-height: 100vh;"
   h2.sc-detect__title 新規自動発信
 
+  .sc-detect__card.mb-4
+    .sc-detect__card-header
+      | かける原稿
+    .sc-detect__card-body
+      = form_with url: new_call_batch_path, method: :get, local: true do
+        = select_tag :dial_script_id, options_from_collection_for_select(@dial_scripts, :id, :label_for_select, @dial_script&.id), include_blank: '原稿を選んでください', class: 'sc-detect__input', style: 'max-width: 420px;'
+        = submit_tag 'この原稿のリストを表示', class: 'sc-detect__btn sc-detect__btn--warning', style: 'margin-top: 12px;'
+      - unless @dial_script
+        p.mb-0 style="color: #94a3b8; margin-top: 12px;" 原稿を選ぶまで、電話リストは表示しません。
+
   - qh = call_batch_search_params.to_h
   - active_filters = []
   - active_filters << "会社名: #{qh['company_cont']}" if qh['company_cont'].present?
@@ -29,14 +39,15 @@
         .dial-call-new__chips
           - active_filters.each do |label|
             span.sc-detect__badge.sc-detect__badge--info = label
-        = link_to '条件をクリア', new_call_batch_path, style: 'color: #7dd3fc; font-size: 13px;'
+        = link_to '条件をクリア', new_call_batch_path(dial_script_id: @dial_script&.id), style: 'color: #7dd3fc; font-size: 13px;'
       - else
         p.mb-0 style="color: #94a3b8;" 未発信と履歴ありを分けて探せます。複数条件は「条件を指定」から入力します。
 
   = form_tag call_batches_path, method: :post do
     - qh.each do |key, value|
       = hidden_field_tag "q[#{key}]", value
-    = hidden_field_tag :call_history, params[:call_history]
+    = hidden_field_tag :dial_script_id, @dial_script&.id
+    = hidden_field_tag :call_history, params[:call_history].presence || 'all'
     = hidden_field_tag :last_call_from, params[:last_call_from]
     = hidden_field_tag :last_call_to, params[:last_call_to]
     = hidden_field_tag :last_call_result, params[:last_call_result]
@@ -108,20 +119,25 @@
                       | -
                   td
                     - if last_call
-                      = last_call.speech_category.presence || last_call.flow_phase.presence || last_call.twilio_status.presence || '-'
+                      = last_call.status.presence || '-'
                     - else
                       | -
                   td
-                    span.sc-detect__badge.sc-detect__badge--secondary = customer.status.presence || '-'
+                    span.sc-detect__badge.sc-detect__badge--secondary = last_call&.status.presence || '-'
             - else
               tr
-                td[colspan="10"] 対象の顧客がありません。
+                td[colspan="10"]
+                  - if @dial_script
+                    | 対象の顧客がありません。
+                  - else
+                    | 原稿を選ぶと、この原稿の電話リストを表示します。
 
       .sc-detect__pagination-zone.my-4.d-flex.justify-content-center
-        = paginate @customers
+        = paginate @customers, params: { dial_script_id: @dial_script&.id }
 
     .mt-5.d-flex.gap-3.pb-5
-      = button_tag '発信開始', type: 'submit', class: 'sc-detect__btn sc-detect__btn--warning', data: { confirm: '自動発信を開始しますか？' }
+      - if @dial_script
+        = button_tag '発信開始', type: 'submit', class: 'sc-detect__btn sc-detect__btn--warning', data: { confirm: '自動発信を開始しますか？' }
       = link_to 'キャンセル', call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: 'text-decoration: none;'
 
 #call-batch-search-modal.dial-call-search-overlay.sc-detect aria-hidden="true"
@@ -130,6 +146,7 @@
       h5 複数条件で検索
       button.dial-call-search-overlay__close type="button" id="close-call-batch-search" aria-label="閉じる" ×
     = search_form_for @q, url: new_call_batch_path, method: :get do |f|
+      = hidden_field_tag :dial_script_id, @dial_script&.id
       .dial-call-search-overlay__body
         .row.g-3
           .col-md-6
@@ -165,14 +182,14 @@
               label.sc-detect__label 発信区分
               .dial-call-new__radios
                 label
-                  = radio_button_tag :call_history, '', params[:call_history].blank?
-                  | すべて
-                label
                   = radio_button_tag :call_history, 'never', params[:call_history] == 'never'
-                  | 未発信（履歴なし）
+                  | 未発信（この原稿では結果なし）
                 label
                   = radio_button_tag :call_history, 'called', params[:call_history] == 'called'
-                  | 発信履歴あり（再発信）
+                  | この原稿の履歴あり
+                label
+                  = radio_button_tag :call_history, 'all', params[:call_history].blank? || params[:call_history] == 'all'
+                  | すべて
           .col-md-4
             .sc-detect__form-group
               label.sc-detect__label 最終発信日（開始）
@@ -184,9 +201,9 @@
           .col-md-4
             .sc-detect__form-group
               label.sc-detect__label 最終結果
-              = select_tag :last_call_result, options_for_select([['指定しない', ''], ['用件', 'purpose'], ['待ち', 'wait'], ['不在', 'absent'], ['断り', 'rejection'], ['人へ回さず終了', 'no_human'], ['締め', 'closing'], ['開始のみ', 'initiating']], params[:last_call_result]), class: 'sc-detect__input'
+              = select_tag :last_call_result, options_for_select([['指定しない', '']] + Call.StatuItems.map { |label| [label, label] }, params[:last_call_result]), class: 'sc-detect__input'
       .dial-call-search-overlay__foot
-        = link_to 'クリア', new_call_batch_path, class: 'sc-detect__btn sc-detect__btn--primary', style: 'text-decoration: none;'
+        = link_to 'クリア', new_call_batch_path(dial_script_id: @dial_script&.id), class: 'sc-detect__btn sc-detect__btn--primary', style: 'text-decoration: none;'
         = f.submit 'この条件で表示', class: 'sc-detect__btn sc-detect__btn--warning'
 
 javascript:

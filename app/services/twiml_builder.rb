@@ -14,7 +14,7 @@ class TwimlBuilder
   end
 
   def gather_script_response(call, script_key, hangup:)
-    text = TwilioService.script_text(script_key, @config)
+    text = TwilioService.script_text(script_key, call)
     Twilio::TwiML::VoiceResponse.new do |r|
       if hangup
         twiml_say(r, text) if text.present?
@@ -38,37 +38,6 @@ class TwimlBuilder
     end
   end
 
-  # Conference転送（発信者側）
-  def transfer_response(call, conference_name, base_url)
-    Twilio::TwiML::VoiceResponse.new do |r|
-      r.dial do |d|
-        d.conference(
-          conference_name,
-          start_conference_on_enter: true,
-          end_conference_on_exit: true,
-          wait_url: '',
-          status_callback: "#{base_url}/twilio/conference/status",
-          status_callback_event: "join leave"
-        )
-      end
-    end
-  end
-
-  # オペレーターConference参加
-  def operator_join_response(conference_name, base_url)
-    Twilio::TwiML::VoiceResponse.new do |r|
-      r.dial do |d|
-        d.conference(
-          conference_name,
-          start_conference_on_enter: true,
-          end_conference_on_exit: false,
-          status_callback: "#{base_url}/twilio/conference/status",
-          status_callback_event: "join leave"
-        )
-      end
-    end
-  end
-
   def stream_voice_response(call, wss_url)
     stream_script_response(call, 'greeting', wss_url, hangup: false)
   end
@@ -78,7 +47,7 @@ class TwimlBuilder
   end
 
   def stream_script_response(call, script_key, wss_url, hangup:)
-    text = TwilioService.script_text(script_key, @config)
+    text = TwilioService.script_text(script_key, call)
     Twilio::TwiML::VoiceResponse.new do |r|
       twiml_say(r, text) if text.present?
       if hangup
@@ -110,7 +79,7 @@ class TwimlBuilder
   def play_or_say(node, key, default_text: nil)
     audio_file = AUDIO_DIR.join("#{key}.mp3")
     if File.exist?(audio_file)
-      base_url = ENV.fetch('NGROK_URL', ENV.fetch('APP_BASE_URL', ''))
+      base_url = TwilioService.public_base_url
       node.play(url: "#{base_url}/audio/#{key}.mp3")
     else
       text = (@config.send("#{key}_text") rescue nil) || default_text

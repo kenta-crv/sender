@@ -40,6 +40,8 @@ ActiveRecord::Schema.define(version: 2026_09_25_183000) do
     t.integer "worker_id"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.integer "dial_script_id"
+    t.index ["dial_script_id"], name: "index_call_batches_on_dial_script_id"
     t.index ["status"], name: "index_call_batches_on_status"
     t.index ["worker_id"], name: "index_call_batches_on_worker_id"
   end
@@ -69,8 +71,10 @@ ActiveRecord::Schema.define(version: 2026_09_25_183000) do
     t.integer "call_batch_id"
     t.string "stream_sid"
     t.datetime "speech_detected_at"
+    t.integer "dial_script_id"
     t.index ["call_batch_id"], name: "index_calls_on_call_batch_id"
     t.index ["customer_id"], name: "index_calls_on_customer_id"
+    t.index ["dial_script_id"], name: "index_calls_on_dial_script_id"
     t.index ["twilio_call_sid"], name: "index_calls_on_twilio_call_sid"
   end
 
@@ -233,10 +237,11 @@ ActiveRecord::Schema.define(version: 2026_09_25_183000) do
     t.text "absent_text"
     t.text "rejection_text"
     t.text "no_human_text"
-    t.text "repeat_text"
+    t.text "repeat_text", default: "もう一度おっしゃっていただけますか。"
     t.text "closing_text"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.text "status_texts"
   end
 
   create_table "dial_utterances", force: :cascade do |t|
@@ -498,7 +503,7 @@ ActiveRecord::Schema.define(version: 2026_09_25_183000) do
     t.text "wait_text"
     t.string "operator_number"
     t.string "from_number"
-    t.integer "no_answer_timeout", default: 7
+    t.integer "no_answer_timeout", default: 10
     t.integer "speech_timeout", default: 3
     t.integer "gather_timeout", default: 5
     t.string "voice_language", default: "ja-JP"

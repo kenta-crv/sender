@@ -23,15 +23,11 @@
           .col-md-2
             .sc-detect__label 合計
             span.fw-bold id="batch-total" = @batch.total_count
-          .col-md-2
-            .sc-detect__label 成功
-            span.text-success.fw-bold id="batch-success" = @batch.success_count
-          .col-md-2
-            .sc-detect__label 失敗
-            span.text-danger.fw-bold id="batch-failure" = @batch.failure_count
-          .col-md-2
-            .sc-detect__label 転送
-            span.text-info.fw-bold id="batch-transferred" = @batch.transferred_count
+          - @status_counts.each do |label, count|
+            - next unless count.to_i.positive?
+            .col-md-2
+              .sc-detect__label = label
+              span.fw-bold = count
           .col-md-2
             .sc-detect__label 処理済
             span.fw-bold id="batch-processed" = @batch.processed_count
@@ -57,21 +53,17 @@
             strong.me-1 style="color: #7dd3fc;" 回線数:
             = @batch.concurrent_lines
 
-        .d-flex.gap-2.mt-4
+        .dial-action-row.mt-4
           - if @batch.status == 'processing'
-            = link_to pause_call_batch_path(@batch), method: :patch, class: 'sc-detect__btn sc-detect__btn--warning', style: "background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; text-decoration: none;", data: { confirm: '発信を一時停止しますか？' } do
-              i.fas.fa-pause.me-1
+            = button_to pause_call_batch_path(@batch), method: :patch, class: 'sc-detect__btn sc-detect__btn--primary', style: 'border-color: #f59e0b; color: #f59e0b;', data: { confirm: '発信を一時停止しますか？' } do
               | 一時停止
-            = link_to cancel_call_batch_path(@batch), method: :patch, class: 'sc-detect__badge sc-detect__badge--danger', style: "padding: 10px 20px; text-decoration: none;", data: { confirm: '発信をキャンセルしますか？' } do
-              i.fas.fa-stop.me-1
+            = button_to cancel_call_batch_path(@batch), method: :patch, class: 'sc-detect__btn sc-detect__btn--danger', data: { confirm: '発信をキャンセルしますか？' } do
               | キャンセル
 
           - if @batch.status == 'paused'
-            = link_to resume_call_batch_path(@batch), method: :patch, class: 'sc-detect__btn sc-detect__btn--primary', style: "justify-content: center; min-width: 120px; text-decoration: none;", data: { confirm: '発信を再開しますか？' } do
-              i.fas.fa-play.me-1
+            = button_to resume_call_batch_path(@batch), method: :patch, class: 'sc-detect__btn sc-detect__btn--primary', data: { confirm: '発信を再開しますか？' } do
               | 再開
-            = link_to cancel_call_batch_path(@batch), method: :patch, class: 'sc-detect__badge sc-detect__badge--danger', style: "padding: 10px 20px; text-decoration: none; margin-left: 8px;", data: { confirm: '発信をキャンセルしますか？' } do
-              i.fas.fa-stop.me-1
+            = button_to cancel_call_batch_path(@batch), method: :patch, class: 'sc-detect__btn sc-detect__btn--danger', data: { confirm: '発信をキャンセルしますか？' } do
               | キャンセル
 
   / --- 通話結果一覧 ---
@@ -85,17 +77,14 @@
           th Twilio
           th フロー
           th 認識結果
-          th 分類
+          th 結果
           th 信頼度
           th 通話
-          th 転送先
           th 発信時刻
       tbody
         - @calls.each do |call|
           - row_style = ""
-          - if call.speech_category == 'transfer'
-            - row_style = "background: rgba(56, 189, 248, 0.05);"
-          - elsif call.speech_category == 'inquiry'
+          - if call.speech_category == 'inquiry'
             - row_style = "background: rgba(16, 185, 129, 0.05);"
           - elsif call.speech_category == 'rejection'
             - row_style = "background: rgba(245, 158, 11, 0.05);"
@@ -111,30 +100,20 @@
             td
               pre.dial-call-log = call.speech_result.presence || '-'
             td
-              - b_class = 'secondary'
-              - if call.speech_category == 'transfer'
-                - b_class = 'info'
-              - elsif call.speech_category == 'inquiry'
-                - b_class = 'success'
-              span class="sc-detect__badge sc-detect__badge--#{b_class}" style="font-size: 10px;" = call.speech_category
+              span.sc-detect__badge.sc-detect__badge--secondary style="font-size: 10px;" = call.status.presence || '-'
             td = call.speech_confidence ? "#{(call.speech_confidence * 100).round}%" : '-'
             td = call.duration ? "#{call.duration}s" : '-'
-            td = call.transferred_to
             td = call.started_at&.strftime('%H:%M:%S')
 
     = paginate @calls
 
   - if @batch.failure_count.to_i.positive?
     p.mb-5 style="color: #94a3b8;"
-      | 失敗 #{@batch.failure_count}件（エラーログ全件は読み込みません）
+      | 処理できなかった件数は、上のステータス件数を見てください。
 
-  .mt-4.mb-5.d-flex.gap-3
-    = link_to dashboard_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "text-decoration: none;" do
-      i.fas.fa-chart-line.me-1
-      | ダッシュボード
-    = link_to call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary', style: "text-decoration: none;" do
-      i.fas.fa-list.me-1
-      | バッチ一覧
+  .mt-4.mb-5.dial-action-row
+    = link_to 'ダッシュボード', dashboard_call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary'
+    = link_to 'バッチ一覧', call_batches_path, class: 'sc-detect__btn sc-detect__btn--primary'
 
 - if @batch.status.in?(['pending', 'processing'])
   javascript:
@@ -156,9 +135,6 @@
             .then(function(data) {
               errorCount = 0;
               document.getElementById('batch-total').textContent = data.total_count;
-              document.getElementById('batch-success').textContent = data.success_count;
-              document.getElementById('batch-failure').textContent = data.failure_count;
-              document.getElementById('batch-transferred').textContent = data.transferred_count;
               document.getElementById('batch-processed').textContent = data.processed_count;
               document.getElementById('batch-percent').textContent = data.progress_percent + '%';
               document.getElementById('batch-progress-bar').style.width = data.progress_percent + '%';

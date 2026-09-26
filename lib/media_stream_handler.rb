@@ -100,13 +100,14 @@ class MediaStreamHandler
     call = Call.find_by(id: @call_id)
     return unless call
 
-    script = TwilioService.choose_script(transcript, purpose_played: TwilioService.purpose_played?(call))
+    script = TwilioService.choose_script(transcript, call: call)
     hangup = TwilioService.hangup_script?(script)
     Rails.logger.info("[MediaStreamHandler] call_id=#{@call_id} transcript='#{transcript}' script=#{script}")
 
     call.append_call_turn!('them', transcript, script: script)
     call.update(speech_confidence: confidence)
-    call.append_call_turn!('us', TwilioService.script_text(script), script: script)
+    call.append_call_turn!('us', TwilioService.script_text(script, call), script: script)
+    call.save_selected_status!(script) if hangup
 
     do_redirect do
       CallRedirector.new.redirect_script(@call_sid, @call_id, script, hangup: hangup)

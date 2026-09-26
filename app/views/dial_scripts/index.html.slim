@@ -25,7 +25,7 @@
               td = script.dial_utterances.size
               td
                 = link_to '編集', edit_dial_script_path(script), style: "color: #7dd3fc; margin-right: 12px;"
-                = link_to '削除', dial_script_path(script), method: :delete, data: { confirm: '削除しますか？' }, style: "color: #f87171;"
+                = button_to '削除', dial_script_path(script), method: :delete, form: { style: 'display: inline;' }, data: { confirm: '削除しますか？' }, style: 'background: none; border: 0; color: #f87171; padding: 0; cursor: pointer;'
         - else
           tr
             td colspan="4" 原稿はまだありません。

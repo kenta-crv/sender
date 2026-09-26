@@ -203,6 +203,18 @@ body.call_batches-analytics {
   align-items: center;
   gap: 8px;
 
+  select {
+    background: #0b1726;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #e5e7eb;
+    border-radius: 8px;
+    padding: 4px 8px;
+    color-scheme: dark;
+    min-width: 220px;
+    max-width: 320px;
+    font-size: 12px;
+  }
+
   input[type="date"] {
     background: #0b1726;
     border: 1px solid rgba(56, 189, 248, 0.35);
@@ -367,6 +379,13 @@ body.call_batches-analytics {
     font-weight: 800;
     color: #fff;
     white-space: nowrap;
+  }
+
+  .da-script-name {
+    margin-left: 12px;
+    color: #7dd3fc;
+    font-size: 14px;
+    font-weight: 700;
   }
 }
 

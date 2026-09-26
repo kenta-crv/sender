@@ -17,6 +17,10 @@ module Twilio
       updates[:duration] = duration.to_i if duration.present?
 
       call.update(updates)
+      call.reload
+      if status.in?(%w[completed busy failed no-answer canceled cancelled])
+        call.apply_manual_status!(status)
+      end
 
       # バッチの結果記録（通話終了時）
       if status == 'completed' && call.call_batch_id.present?
@@ -50,19 +54,16 @@ module Twilio
       call = Call.find_by(twilio_call_sid: call_sid)
       return head(:ok) unless call
 
-      config = TwilioConfig.current
-
-      # 最小録音時間を超えた場合のみ保存
-      if recording_duration >= config.recording_min_duration
+      connected = call.answered_at.present? || recording_duration.positive?
+      if connected
         call.update(
           recording_url: recording_url,
           recording_sid: recording_sid
         )
         Rails.logger.info("[TWILIO:RECORDING] call_id=#{call.id} 保存 (#{recording_duration}s)")
       else
-        # 短い録音は削除
         TwilioService.new.delete_recording(recording_sid)
-        Rails.logger.info("[TWILIO:RECORDING] call_id=#{call.id} 短いため削除 (#{recording_duration}s)")
+        Rails.logger.info("[TWILIO:RECORDING] call_id=#{call.id} 未接続のため削除")
       end
 
       head :ok

@@ -618,12 +618,64 @@
 
 
 /* キャンセルボタン（ネオンレッド）の追加 */
+.sc-detect .dial-script-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  select.sc-detect__input {
+    width: 360px;
+    max-width: 100%;
+    flex: 0 0 360px;
+    color: #ffffff;
+  }
+}
+
+.sc-detect .dial-script-picker__name {
+  margin-left: 16px;
+  color: #7dd3fc;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sc-detect .dial-action-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  > form {
+    display: inline;
+    margin: 0;
+  }
+
+  a.sc-detect__btn,
+  button.sc-detect__btn {
+    width: auto;
+    flex: 0 0 auto;
+    justify-content: center;
+    text-decoration: none;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+}
+
+.sc-detect button.sc-detect__btn {
+  font-family: "Hiragino Sans", "Meiryo", sans-serif;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
 .sc-detect .sc-detect__btn--danger {
-  background: rgba(239, 68, 68, 0.1) !important;
+  background: transparent !important;
   color: #ef4444 !important;
-  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  border: 1px solid #ef4444 !important;
   text-decoration: none !important;
   justify-content: center;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-family: "Hiragino Sans", "Meiryo", sans-serif;
+  white-space: nowrap;
+  box-shadow: none !important;
 }
 
 .sc-detect .sc-detect__btn--danger:hover {
