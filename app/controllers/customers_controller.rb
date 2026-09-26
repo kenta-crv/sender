@@ -133,7 +133,7 @@ class CustomersController < ApplicationController
       end
 
       query = Customer.where(status: 'draft').where('id > ?', @customer.id)
-      query = query.where(business: params[:industry_name]) if params[:industry_name].present?
+      query = query.with_any_business(params[:industry_name]) if params[:industry_name].present?
 
       case params[:tel_filter]
       when "with_tel"
@@ -274,16 +274,10 @@ def draft
   @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
 
   selected_industry = params[:industry_name].presence
-  industry_scope = @industry_base_scope.with_legal_entity
-                                       .where.not(business: [nil, ''])
-                                       .group(:business)
-
-  industry_counts =
-    if selected_industry.present?
-      industry_scope.having("COUNT(*) >= 10 OR business = ?", selected_industry).count
-    else
-      industry_scope.having("COUNT(*) >= 10").count
-    end
+  industry_counts = Customer.business_counts(@industry_base_scope.with_legal_entity)
+  industry_counts = industry_counts.select do |name, count|
+    count >= 10 || (selected_industry.present? && name == selected_industry)
+  end
 
   @industry_options = industry_counts
                         .sort_by { |_name, count| -count }
@@ -548,7 +542,7 @@ end
         normalized_company = Customer.normalized_name(customer.company)
         normalized_tel     = customer.tel.to_s.delete('-')
 
-        existing_customer = Customer.where(business: customer.business, status: nil)
+        existing_customer = Customer.with_any_business(customer.businesses).where(status: nil)
                                     .where.not(id: customer.id)
                                     .find do |c|
           c_tel      = c.tel.to_s.delete('-')

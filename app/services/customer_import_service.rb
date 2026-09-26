@@ -63,7 +63,11 @@ class CustomerImportService
       end
 
       customer = Customer.find_or_initialize_by(company: company_name)
-      customer.assign_attributes(attributes_from(row))
+      attrs = attributes_from(row)
+      if attrs.key?(:business) && attrs[:business].present? && customer.business.present?
+        attrs[:business] = Customer.merge_businesses(customer.business, attrs[:business])
+      end
+      customer.assign_attributes(attrs)
       customer.client_id = @client_id if @client_id.present?
 
       if customer.save

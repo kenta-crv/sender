@@ -12,9 +12,10 @@ class FormSubmissionsController < ApplicationController
     # -------------------------
     # 検索（Ransack）
     # -------------------------
-    @q = Customer.ransack(params[:q])
+    @q, business_in_values = Customer.ransack_without_business_in(params[:q])
 
     base_customers = @q.result.distinct
+    base_customers = base_customers.with_any_business(business_in_values) if business_in_values.any?
     base_customers = base_customers.filter_by_last_form_call(params[:last_call])
 
     # =====================================================
@@ -36,7 +37,7 @@ class FormSubmissionsController < ApplicationController
 
     if params[:business_filter].present?
       business_filters = Array(params[:business_filter]).reject(&:blank?)
-      detectable_scope = detectable_scope.where(business: business_filters) if business_filters.any?
+      detectable_scope = detectable_scope.with_any_business(business_filters) if business_filters.any?
     end
 
     if params[:genre_filter].present?
@@ -83,7 +84,7 @@ class FormSubmissionsController < ApplicationController
       row.merge(submission: submission)
     end
 
-    @business_options = Customer.where.not(business: [nil, '']).distinct.order(:business).pluck(:business)
+    @business_options = Customer.business_counts.keys.sort
     @genre_options    = Customer.where.not(genre: [nil, '']).distinct.order(:genre).pluck(:genre)
   end
 
@@ -336,7 +337,7 @@ class FormSubmissionsController < ApplicationController
     # 複数選択に対応するため、配列形式で条件を指定できるように調整
     if params[:business_filter].present?
       business_filters = Array(params[:business_filter]).reject(&:blank?)
-      base_scope = base_scope.where(business: business_filters) if business_filters.any?
+      base_scope = base_scope.with_any_business(business_filters) if business_filters.any?
     end
 
     # 職種(genre)フィルタにも対応

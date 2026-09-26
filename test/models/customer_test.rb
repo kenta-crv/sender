@@ -1,6 +1,22 @@
 require "test_helper"
 
 class CustomerTest < ActiveSupport::TestCase
+  test "複数業種を保持し、いずれかでも検索できる" do
+    customer = Customer.create!(company: "株式会社マルチ", business: "製造業、物流・運送")
+
+    assert_equal ["製造業", "物流・運送"], customer.businesses
+    assert_equal "製造業|物流・運送", customer.business
+    assert_equal "製造業、物流・運送", customer.businesses_text
+
+    ids = Customer.with_any_business("物流・運送").pluck(:id)
+    assert_includes ids, customer.id
+
+    ids = Customer.with_any_business(["製造業", "飲食・フード"]).pluck(:id)
+    assert_includes ids, customer.id
+
+    refute_includes Customer.with_any_business("金融・保険").pluck(:id), customer.id
+  end
+
   test "with_legal_entity matches companies with legal entity designators" do
     corp = Customer.create!(company: "株式会社テスト", tel: "03-0000-0000")
     sole = Customer.create!(company: "田中商店", tel: "03-0000-0001")

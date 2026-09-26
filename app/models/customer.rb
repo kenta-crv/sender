@@ -112,6 +112,9 @@ class Customer < ApplicationRecord
     end
   }
 
+  BUSINESS_SEPARATOR = '|'.freeze
+  BUSINESS_SPLIT_PATTERN = /[|\/,、]/.freeze
+
   def self.ransackable_associations(auth_object = nil)
     %w[calls last_call]
   end
@@ -133,6 +136,67 @@ class Customer < ApplicationRecord
     ]
   end
 
+  # 複数業種を「|」区切りで保持する。入力は | / , 、 を受け付ける。
+  def self.parse_businesses(value)
+    Array(value).flat_map { |v| v.to_s.split(BUSINESS_SPLIT_PATTERN) }.map(&:strip).reject(&:blank?).uniq
+  end
+
+  def self.normalize_businesses(value)
+    parse_businesses(value).join(BUSINESS_SEPARATOR)
+  end
+
+  def self.merge_businesses(*values)
+    normalize_businesses(values)
+  end
+
+  def self.with_any_business(names)
+    names = parse_businesses(names)
+    return all if names.empty?
+
+    clauses = []
+    binds = []
+    names.each do |name|
+      clauses << '(business = ? OR business LIKE ? OR business LIKE ? OR business LIKE ?)'
+      binds.push(name, "#{name}#{BUSINESS_SEPARATOR}%", "%#{BUSINESS_SEPARATOR}#{name}#{BUSINESS_SEPARATOR}%", "%#{BUSINESS_SEPARATOR}#{name}")
+    end
+    where(clauses.join(' OR '), *binds)
+  end
+
+  def self.business_counts(scope = all)
+    counts = Hash.new(0)
+    scope.where.not(business: [nil, '']).pluck(:business).each do |raw|
+      parse_businesses(raw).each { |name| counts[name] += 1 }
+    end
+    counts
+  end
+
+  def self.business_options_for(scope, min_count: 1)
+    business_counts(scope)
+      .select { |_name, count| count >= min_count }
+      .sort_by { |_name, count| -count }
+      .map { |name, count| ["#{name}（#{count}件）", name] }
+  end
+
+  # ransack の business_in（完全一致）は複数業種に対応できないため、外してから適用する。
+  def self.ransack_without_business_in(params, scope: all)
+    q = params.respond_to?(:to_unsafe_h) ? params.to_unsafe_h : (params || {})
+    q = q.deep_dup.with_indifferent_access
+    business_values = Array(q.delete(:business_in)).reject(&:blank?)
+    [scope.ransack(q), business_values]
+  end
+
+  def business=(value)
+    super(self.class.normalize_businesses(value))
+  end
+
+  def businesses
+    self.class.parse_businesses(self[:business])
+  end
+
+  def businesses_text
+    businesses.join('、')
+  end
+
   def generate_unsubscribe_token
     self.unsubscribe_token ||= SecureRandom.hex(32)
   end
@@ -148,7 +212,7 @@ class Customer < ApplicationRecord
       scope = scope.none
     end
 
-    scope = scope.where(business: industry_name) if industry_name.present?
+    scope = scope.with_any_business(industry_name) if industry_name.present?
     scope
   end
 

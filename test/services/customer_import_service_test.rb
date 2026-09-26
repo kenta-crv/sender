@@ -9,6 +9,22 @@ class CustomerImportServiceTest < ActiveSupport::TestCase
     )
   end
 
+  test "業種は既存値とマージして複数保持する" do
+    @customer.update!(business: "製造業")
+    csv = <<~CSV
+      company,business
+      テスト株式会社,物流・運送
+    CSV
+    path = write_temp_csv(csv)
+
+    CustomerImportService.new.call(file_path: path)
+
+    @customer.reload
+    assert_equal ["製造業", "物流・運送"], @customer.businesses
+  ensure
+    File.delete(path)
+  end
+
   test "空白セルを既存値維持モードでは上書きしない" do
     csv = <<~CSV
       company,tel,address

@@ -36,8 +36,9 @@
                     th URL
                     td = f.text_field :url, class: "form-control"
                   tr
-                    th 業種
-                    td = f.text_field :business, class: "form-control"
+                    th 業種（複数可）
+                    td
+                      = f.text_field :business, value: f.object.businesses_text, class: "form-control", placeholder: "例: 製造業、IT・Web・システム"
                   tr
                     th 資本金
                     td = f.text_field :capital, class: "form-control"

@@ -30,7 +30,7 @@
                         = link_to customer.company, customer_path(customer, q: params[:q]&.permit!), style: 'color: var(--electric-blue); text-decoration: none; font-weight: 600;'
                       td= customer.tel
                       td= customer.address
-                      td= customer.business
+                      td= customer.businesses_text
                       td= customer.genre
                       td
                         - if customer.url.present?

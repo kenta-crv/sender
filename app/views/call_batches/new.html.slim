@@ -16,7 +16,7 @@
           .col-md-3
             .sc-detect__form-group
               label.sc-detect__label 業種
-              = f.search_field :industry_cont, class: 'sc-detect__input', placeholder: '業種'
+              = f.search_field :business_cont, class: 'sc-detect__input', placeholder: '業種'
           .col-md-3
             .sc-detect__form-group
               label.sc-detect__label 電話番号
@@ -74,8 +74,8 @@
                   = check_box_tag 'customer_ids[]', customer.id, false, class: 'customer-check'
                 td.fw-bold = customer.company
                 td = customer.tel
-                td = customer.name
-                td = customer.industry
+                td = customer.ceo
+                td = customer.businesses_text
                 td
                   span.sc-detect__badge.sc-detect__badge--secondary = customer.status
 

@@ -159,8 +159,8 @@
                     tr
                       td style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{target.company}"
                         = target.company
-                      td style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{target.business}"
-                        = target.business.presence || "-"
+                      td style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{target.businesses_text}"
+                        = target.businesses_text.presence || "-"
                 - else
                   tr#serp-target-empty
                     td colspan="2" style="color: rgba(229, 231, 235, 0.4); text-align: center; font-size: 0.8rem;" 補完対象の企業はありません
@@ -264,14 +264,14 @@
                   - else
                     span style="color: rgba(229, 231, 235, 0.25);" -
 
-              - industry_filled = customer&.business.to_s.strip.present?
+              - industry_filled = customer&.businesses&.any?
               td style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
                 .d-flex.align-items-center.gap-1.w-100
                   span style="flex-shrink: 0;" = fill_icon(industry_filled ? "1" : nil)
                   .overflow-hidden style="flex-grow: 1;"
-                    - if customer&.business.present?
-                      div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{customer&.business}"
-                        = customer&.business
+                    - if industry_filled
+                      div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="#{customer.businesses_text}"
+                        = customer.businesses_text
                     - else
                       div style="color: rgba(229, 231, 235, 0.25);" -
 

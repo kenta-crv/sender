@@ -64,7 +64,7 @@ module BrightData
         targets = Customer.where(id: ordered).to_a.sort_by { |c| ordered.index(c.id) || 0 }
       else
         scope = Customer.serp_extraction_targets
-        scope = scope.where(business: industry) if industry.present?
+        scope = scope.with_any_business(industry) if industry.present?
         targets = scope.order(updated_at: :desc, id: :asc).limit(limit).to_a
       end
       puts "[Pipeline] 対象レコード: #{targets.size}件"
