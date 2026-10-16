@@ -24,6 +24,7 @@ class FormSubmissionsController < ApplicationController
 
     @customers = base_customers
                    .where.not(contact_url: [nil, '', 'not_detected'])
+                   .visible_on_form_send_list
                    .page(params[:customers_page])
                    .per(50)
 
@@ -103,6 +104,7 @@ class FormSubmissionsController < ApplicationController
     # 送信可能な条件（URLが存在し、禁止フラグが立っていないもの）
     captcha_ng_customer_ids = Call.where(call_type: 'form', status: 'CAPTCHA NG').distinct.pluck(:customer_id)
     eligible_scope = eligible_scope.where.not(contact_url: [nil, '', 'not_detected'])
+                                   .visible_on_form_send_list
                                    .where.not(id: captcha_ng_customer_ids)
                                    .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
                                    .order(:id)

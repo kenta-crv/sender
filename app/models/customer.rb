@@ -1,5 +1,9 @@
 class Customer < ApplicationRecord
   DUPLICATE_CLEANUP_ATTRIBUTES = %w[company tel url contact_url].freeze
+  # 送信一覧に出さない結果。一覧と送信開始で同じ条件に使う。
+  FORM_SEND_HIDDEN_CALL_STATUSES = [
+    'フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected', 'CAPTCHA NG'
+  ].freeze
   LEGAL_ENTITY_TERMS = %w[
     株式会社 有限会社 合同会社 一般社団法人 一般財団法人 社会福祉法人 医療法人 学校法人
   ].freeze
@@ -23,6 +27,20 @@ class Customer < ApplicationRecord
     dash_list = DASH_VARIANTS.join(", ")
     "(#{col} IS NULL OR TRIM(#{col}) = '' OR #{col} = ' ' OR #{col} = ' ' OR TRIM(#{col}) IN (#{dash_list}))"
   end
+
+  # 送信一覧と同じ顧客だけを残す。
+  # 結果が無い顧客は残す。結果がある顧客は、上の5つ以外の結果が1件でもあれば残す。
+  scope :visible_on_form_send_list, -> {
+    hidden_customer_ids = Call.where.not(customer_id: nil)
+      .group(:customer_id)
+      .having(
+        "COUNT(CASE WHEN calls.status NOT IN (?) THEN 1 END) = 0",
+        FORM_SEND_HIDDEN_CALL_STATUSES
+      )
+      .select(:customer_id)
+
+    where.not(id: hidden_customer_ids)
+  }
 
   scope :between_created_at, ->(from, to) {
     where(created_at: from..to).where.not(tel: nil)

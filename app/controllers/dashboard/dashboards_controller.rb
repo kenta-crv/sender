@@ -105,13 +105,11 @@ class Dashboard::DashboardsController < ApplicationController
     filtered = filtered.with_any_business(business_in_values) if business_in_values.any?
     filtered = filtered.filter_by_last_form_call(params[:last_call]) if acting_as_admin?
 
-    excluded_statuses = ['フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected', 'CAPTCHA NG']
+    excluded_statuses = Customer::FORM_SEND_HIDDEN_CALL_STATUSES
 
     @customers = filtered
                    .where.not(contact_url: [nil, '', 'not_detected'])
-                   .left_joins(:calls)
-                   .where("calls.status NOT IN (?) OR calls.id IS NULL", excluded_statuses)
-                   .distinct
+                   .visible_on_form_send_list
                    .page(params[:customers_page]).per(50)
 
     @detectable_customers = filtered
