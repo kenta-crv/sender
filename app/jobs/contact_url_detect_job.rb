@@ -17,7 +17,13 @@ class ContactUrlDetectJob < ApplicationJob
       return
     end
 
-    if customer.contact_url.present?
+    if customer.contact_detection_status == 'unsendable'
+      batch&.record_result!(customer_id, success: false, message: '送信不可')
+      return
+    end
+
+    if customer.usable_contact_url.present?
+      customer.update_column(:contact_detection_status, 'detected') if customer.contact_detection_status.blank?
       batch&.record_result!(customer_id, success: true)
       return
     end
@@ -36,15 +42,15 @@ class ContactUrlDetectJob < ApplicationJob
       result = detector.detect(customer)
 
       if result[:status] == 'detected'
-        customer.update_column(:contact_url, result[:contact_url])
+        customer.mark_contact_detected!(result[:contact_url])
         Rails.logger.info("[ContactUrlDetectJob] 検出成功: #{customer.company} → #{result[:contact_url]}")
         success = true
       else
-        customer.update_column(:contact_url, 'not_detected')
+        customer.mark_contact_not_detected!
         Rails.logger.info("[ContactUrlDetectJob] 検出失敗: #{customer.company} - #{result[:message]}")
       end
     rescue StandardError => e
-      customer.update_column(:contact_url, 'not_detected') rescue nil
+      customer.mark_contact_not_detected! rescue nil
       Rails.logger.error("[ContactUrlDetectJob] エラー: #{customer.company} - #{e.message}")
     ensure
       detector&.teardown_driver rescue nil

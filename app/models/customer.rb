@@ -1,5 +1,6 @@
 class Customer < ApplicationRecord
   DUPLICATE_CLEANUP_ATTRIBUTES = %w[company tel url contact_url].freeze
+  CONTACT_URL_PLACEHOLDERS = ['not_detected', 'メーラー起動リンクのため検出不可'].freeze
   # 送信一覧に出さない結果。一覧と送信開始で同じ条件に使う。
   FORM_SEND_HIDDEN_CALL_STATUSES = [
     'フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected', 'CAPTCHA NG'
@@ -26,6 +27,56 @@ class Customer < ApplicationRecord
   def self.blank_sql(col)
     dash_list = DASH_VARIANTS.join(", ")
     "(#{col} IS NULL OR TRIM(#{col}) = '' OR #{col} = ' ' OR #{col} = ' ' OR TRIM(#{col}) IN (#{dash_list}))"
+  end
+
+  scope :with_real_contact_url, -> {
+    where.not(contact_url: [nil, ''] + CONTACT_URL_PLACEHOLDERS)
+      .where("customers.contact_detection_status IS NULL OR customers.contact_detection_status != ?", "unsendable")
+  }
+
+  scope :awaiting_contact_detection, -> {
+    where(contact_url: [nil, ''])
+      .where(contact_detection_status: [nil, ''])
+  }
+
+  scope :contact_form_not_detected, -> {
+    where(
+      "customers.contact_detection_status = :status OR customers.contact_url = :status",
+      status: "not_detected"
+    )
+  }
+
+  def contact_detection_label
+    case contact_detection_status
+    when 'detected' then '検出済み'
+    when 'not_detected' then '未検出'
+    when 'mailer' then 'メーラー起動'
+    when 'unsendable' then '送信不可'
+    else '未確認'
+    end
+  end
+
+  def usable_contact_url
+    return if contact_detection_status == 'unsendable'
+
+    value = contact_url.to_s.strip
+    return if value.blank? || CONTACT_URL_PLACEHOLDERS.include?(value)
+
+    value
+  end
+
+  def mark_contact_detected!(url)
+    update_columns(
+      contact_url: url,
+      contact_detection_status: 'detected',
+      updated_at: Time.current
+    )
+  end
+
+  def mark_contact_not_detected!
+    attrs = { contact_detection_status: 'not_detected', updated_at: Time.current }
+    attrs[:contact_url] = nil if CONTACT_URL_PLACEHOLDERS.include?(contact_url)
+    update_columns(attrs)
   end
 
   # 送信一覧と同じ顧客だけを残す。

@@ -29,8 +29,8 @@
 
 .row
   .col-md-3.center
-      - if @customer.contact_url.present?
-        = link_to '問い合わせフォームを表示する', @customer.contact_url, target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
+      - if @customer.usable_contact_url.present?
+        = link_to '問い合わせフォームを表示する', @customer.usable_contact_url, target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
       - elsif @customer.url.present?
         = link_to 'ホームページを表示する', @customer.url, target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
       - else
@@ -89,13 +89,14 @@
             tr
               th.report-color 問い合わせフォーム
             tr 
-              td= @customer.contact_url
+              td= @customer.usable_contact_url
             tr
               th.report-color 問い合わせURL
             tr 
               td
-                = @customer.contact_url
-                - if @customer.contact_url.present?
+                = @customer.usable_contact_url
+                span.ms-2 style="color: #94a3b8;" = @customer.contact_detection_label
+                - if @customer.usable_contact_url.present?
                   = form_tag form_submissions_path, method: :post, class: 'd-inline ml-2' do
                     = hidden_field_tag 'customer_ids[]', @customer.id
                     = submit_tag 'フォーム送信', class: 'btn btn-sm btn-outline-primary', data: { confirm: 'この顧客にフォーム送信を実行しますか？' }
@@ -112,7 +113,7 @@
                       = opted_out_labels.join(' / ')
 
   .col-md-9
-    - iframe_url = @customer.contact_url.presence || @customer.url
+    - iframe_url = @customer.usable_contact_url.presence || @customer.url
     - if iframe_url.present?
       iframe src=iframe_url width="100%" height="800" frameborder="0"
     - else

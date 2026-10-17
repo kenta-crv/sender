@@ -700,6 +700,7 @@ end
       :genre,
       :contact_form,
       :contact_url,
+      :contact_detection_status,
       :capital,
       :establish,
       :ceo,

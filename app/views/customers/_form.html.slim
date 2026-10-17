@@ -61,12 +61,25 @@
                     th お問い合わせフォームURL
                     td
                       = f.text_field :contact_url, placeholder: 'https://example.com/contact', class: "form-control"
-                      - if @customer.contact_url.blank? && @customer.url.blank?
+                      - if @customer.usable_contact_url.blank? && @customer.url.blank?
                         div style="margin-top: 8px; font-size: 0.8rem; color: rgba(255, 80, 80, 0.8);"
                           | URLが未設定です。HPのURLまたはお問い合わせフォームURLを設定してください。
-                      - elsif @customer.contact_url.blank? && @customer.url.present?
+                      - elsif @customer.contact_detection_status == 'unsendable'
+                        div style="margin-top: 8px; font-size: 0.8rem; color: #94a3b8;"
+                          | 送信不可です。送る場合は、フォーム検出を検出済みか未確認に戻してください。
+                      - elsif @customer.contact_detection_status == 'not_detected'
+                        div style="margin-top: 8px; font-size: 0.8rem; color: #94a3b8;"
+                          | 未検出です。再検出するには、フォーム検出を未確認に戻してください。
+                      - elsif @customer.usable_contact_url.blank? && @customer.url.present?
                         div style="margin-top: 8px; font-size: 0.8rem; color: var(--electric-blue);"
                           | HPから自動検出可能です（フォーム送信時に自動検出されます）
+                  tr
+                    th フォーム検出
+                    td
+                      = f.select :contact_detection_status,
+                        [['未確認', ''], ['検出済み', 'detected'], ['未検出', 'not_detected'], ['メーラー起動', 'mailer'], ['送信不可', 'unsendable']],
+                        {},
+                        class: 'form-control'
                   tr
                     th フォーム送信の状態
                     td style="padding-top: 15px; padding-bottom: 15px;"

@@ -281,9 +281,10 @@
                     a.d-inline-flex.align-items-center.gap-1 href="#{customer.url}" target="_blank" rel="noopener" title="#{customer.url}" style="color: #38bdf8; text-decoration: none;"
                       span style="font-size: 0.9rem;" = url_quality_icon(customer.url)
                       span HP
-                  - if customer&.contact_url.present? && official_url?(customer.contact_url)
-                    a.d-inline-flex.align-items-center.gap-1 href="#{customer.contact_url}" target="_blank" rel="noopener" title="#{customer.contact_url}" style="color: #7dd3fc; text-decoration: none;"
-                      span style="font-size: 0.9rem;" = url_quality_icon(customer.contact_url)
+                  - contact_form = customer&.usable_contact_url
+                  - if contact_form.present? && official_url?(contact_form)
+                    a.d-inline-flex.align-items-center.gap-1 href="#{contact_form}" target="_blank" rel="noopener" title="#{contact_form}" style="color: #7dd3fc; text-decoration: none;"
+                      span style="font-size: 0.9rem;" = url_quality_icon(contact_form)
                       span Contact
                   - if customer&.url.blank? && customer&.contact_url.blank?
                     span style="color: rgba(229, 231, 235, 0.25);" -
