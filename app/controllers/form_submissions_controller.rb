@@ -126,7 +126,7 @@ class FormSubmissionsController < ApplicationController
       elsif params[:customer_ids].present?
         # 選択されたIDが、ログイン中のクライアントがアクセス権を持つ顧客のものであるかを確認
         base_check = acting_as_admin? ? Customer.all : Customer.where(client_id: [current_client.id, nil])
-        base_check.where(id: Array(params[:customer_ids]).map(&:to_i)).pluck(:id)
+        base_check.where("customers.fobbiden IS NULL OR customers.fobbiden NOT IN (?)", %w[true t 1]).where(id: Array(params[:customer_ids]).map(&:to_i)).pluck(:id)
       elsif send_count && send_count > 0
         eligible_scope.limit(send_count).pluck(:id)
       else

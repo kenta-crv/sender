@@ -139,7 +139,7 @@ class Customer < ApplicationRecord
   end
 
   scope :deliverable_for, ->(client_id = nil, admin_id = nil) {
-    scope = all
+    scope = where("customers.fobbiden IS NULL OR customers.fobbiden NOT IN (?)", %w[true t 1])
     if client_id.present?
       opted_out_ids = DeliveryOptOut.where(client_id: client_id).select(:customer_id)
       scope = scope.where.not(id: opted_out_ids)

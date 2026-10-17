@@ -87,7 +87,9 @@ module ApplicationHelper
     client_id ||= current_client&.id if client_signed_in?
     admin_id ||= current_admin&.id if acting_as_admin?
 
-    if client_id.present? && customer.opted_out_for?(client_id)
+    if %w[true t 1].include?(customer.fobbiden.to_s)
+      { label: "全クライアント共通で送信禁止", css: "delivery-status-badge--global-ng" }
+    elsif client_id.present? && customer.opted_out_for?(client_id)
       { label: "このクライアントから配信停止済み", css: "delivery-status-badge--client-opt-out" }
     elsif admin_id.present? && customer.delivery_opt_outs.exists?(admin_id: admin_id)
       { label: "この管理者から配信停止済み", css: "delivery-status-badge--client-opt-out" }

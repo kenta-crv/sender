@@ -86,6 +86,15 @@
                       - status = customer_delivery_status(@customer)
                       span class="delivery-status-badge #{status[:css]}" = status[:label]
 
+                      - if acting_as_admin? || !client_signed_in?
+                        .delivery-status-note
+                          | 下のチェックをオンにすると、
+                          strong 全クライアント共通
+                          | で送信禁止になります（管理者専用）。
+                        label style="display: inline-flex; align-items: center; cursor: pointer; color: var(--text-muted); font-size: 0.9rem; margin-top: 12px;"
+                          = f.check_box :fobbiden, { style: "margin-right: 8px; width: 16px; height: 16px; accent-color: var(--electric-blue);" }, "true", "0"
+                          span 全クライアント共通で送信禁止
+
                       - if acting_as_admin?
                         - opted_out_labels = customer_opted_out_client_labels(@customer)
                         - if opted_out_labels.any?
