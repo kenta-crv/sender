@@ -73,6 +73,7 @@ class FormSubmissionsController < ApplicationController
         .per(20)
 
     stats_by_id = FormSubmissionBatch.stats_by_submission_id(FormSubmissionBatch.all)
+    manual_stats = FormSubmissionBatch.manual_stats_by_submission_id(@submissions.map(&:id))
     @submission_stats = @submissions.map do |submission|
       row = stats_by_id[submission.id] || {
         total_sent: 0,
@@ -82,7 +83,13 @@ class FormSubmissionsController < ApplicationController
         rate: 0.0,
         last_sent_at: nil
       }
-      row.merge(submission: submission)
+      row.merge(submission: submission).merge(
+        manual_stats[submission.id] || {
+          manual_success_count: 0,
+          manual_failure_count: 0,
+          manual_rate: 0.0
+        }
+      )
     end
 
     @business_options = Customer.business_counts.keys.sort

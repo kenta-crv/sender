@@ -1,120 +1,158 @@
-.mb-3.d-flex.justify-content-between
-  - if @prev_customer
-    = link_to '前へ', customer_path(@prev_customer, all_ids: @all_ids.join(','), submission_id: @submission_id, current_index: @current_index - 1), class: 'btn btn-secondary'
-  - else
-    div
+- if @submission_id.present?
+  .sc-detect.container
+    h2.sc-detect__title 顧客ID #{@customer.id}
 
-  .d-flex.gap-2
-    = button_to '手動送信失敗', manual_call_customer_path(@customer), \
-        params: { status: '手動送信失敗', \
-                 all_ids: @all_ids.join(','), \
-                 submission_id: @submission_id, \
-                 current_index: @current_index }, \
-        method: :post, class: 'btn btn-danger'
-
-    = button_to '手動送信成功', manual_call_customer_path(@customer), \
-        params: { status: '手動送信成功', \
-                 all_ids: @all_ids.join(','), \
-                 submission_id: @submission_id, \
-                 current_index: @current_index }, \
-        method: :post, class: 'btn btn-success'
-
-  - if @next_customer
-    = link_to '次へ', customer_path(@next_customer, all_ids: @all_ids.join(','), submission_id: @submission_id, current_index: @current_index + 1), class: 'btn btn-secondary'
-  - else
-    / 次がない場合はボタンを出さない
-    div
-
-/ 以降、会社情報表示やiframe部分は変更なし
-
-.row
-  .col-md-3.center
-      - if @customer.usable_contact_url.present?
-        = link_to '問い合わせフォームを表示する', @customer.usable_contact_url, target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
-      - elsif @customer.url.present?
-        = link_to 'ホームページを表示する', @customer.url, target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
-      - else
-        - search_query = [@customer.company, @customer.tel, @customer.address].compact.join(' ')
-        - if search_query.present?
-          = link_to 'Google検索', "https://www.google.com/search?q=#{CGI.escape(search_query)}", target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
-      .table-container
-        table.table-space
-          col[width="30%"]
-          col[width="70%"]
-          tbody
-            tr
-              th.document-color 会社名
-            tr
-              td= @customer.company
-            tr
-              th.report-color 電話番号
-            tr
-              td= @customer.tel
-            tr
-              th.report-color 住所
-            tr
-              td= @customer.address
-            tr
-              th.document-color メールアドレス
-            tr
-              td= @customer.email
-            tr
-              th.report-color URL
-            tr 
-              td= @customer.url
-            tr
-              th.report-color 業種
-            tr 
-              td= @customer.businesses_text
-            tr
-              th.report-color 資本金
-            tr
-              td= @customer.capital
-            tr
-              th.report-color 設立
-            tr
-              td= @customer.establish
-            tr
-              th.report-color 代表者
-            tr
-              td= @customer.ceo
-            tr
-              th.report-color 従業員数
-            tr
-              td= @customer.people
-            tr
-              th.report-color 備考
-            tr
-              td= @customer.remarks
-            tr
-              th.report-color 問い合わせフォーム
-            tr 
-              td= @customer.usable_contact_url
-            tr
-              th.report-color 問い合わせURL
-            tr 
-              td
-                = @customer.usable_contact_url
-                span.ms-2 style="color: #94a3b8;" = @customer.contact_detection_label
-                - if @customer.usable_contact_url.present?
-                  = form_tag form_submissions_path, method: :post, class: 'd-inline ml-2' do
-                    = hidden_field_tag 'customer_ids[]', @customer.id
-                    = submit_tag 'フォーム送信', class: 'btn btn-sm btn-outline-primary', data: { confirm: 'この顧客にフォーム送信を実行しますか？' }
-            tr
-              th フォーム送信の状態
-              td
-                - status = customer_delivery_status(@customer)
-                span class="delivery-status-badge #{status[:css]}" = status[:label]
-                - if acting_as_admin?
-                  - opted_out_labels = customer_opted_out_client_labels(@customer)
-                  - if opted_out_labels.any?
-                    div style="margin-top: 6px; font-size: 0.85rem; color: rgba(148,163,184,0.85);"
-                      | メール配信停止済み:
-                      = opted_out_labels.join(' / ')
-
-  .col-md-9
-    - iframe_url = @customer.usable_contact_url.presence || @customer.url
-    - if iframe_url.present?
-      iframe src=iframe_url width="100%" height="800" frameborder="0"
+    .sc-detect__card
+      .sc-detect__card-header
+        h5 = @customer.company
+      .sc-detect__card-body
+        - if @form_status_history.present?
+          p
+            strong 過去ステータス
+            = @form_status_history.map { |call| call.status }.join(' → ')
+        - if @manual_fill_started
+          .sc-detect__alert.sc-detect__alert--info
+            div Chrome は1つだけ開きます。送信前の画面と比べて結果が分かれば、その判定で次の顧客へ進みます。判断できないときは、Chrome の「自動で判断できないとき」から送信可否を押してください。その可否でも次の顧客へ進みます。
+          - next_url = @current_index < @all_ids.length - 1 ? customer_path(@all_ids[@current_index + 1], all_ids: @all_ids.join(','), submission_id: @submission_id, current_index: @current_index + 1) : history_submission_path(@submission_id)
+          script
+            | var manualStateUrl = #{manual_state_customer_path(@customer, submission_id: @submission_id).to_json};
+            | var manualNextUrl = #{next_url.to_json};
+            | setInterval(function() {
+            |   fetch(manualStateUrl, { credentials: 'same-origin' }).then(function(response) { return response.json(); }).then(function(data) {
+            |     if (data.done) { window.location = manualNextUrl; }
+            |   });
+            | }, 2000);
+        .sc-detect__actions
+          = button_to '手動送信失敗', manual_call_customer_path(@customer), \
+              params: { status: '手動送信失敗', \
+                       all_ids: @all_ids.join(','), \
+                       submission_id: @submission_id, \
+                       current_index: @current_index }, \
+              method: :post, class: 'sc-detect__btn sc-detect__btn--danger'
+          = button_to '手動送信成功', manual_call_customer_path(@customer), \
+              params: { status: '手動送信成功', \
+                       all_ids: @all_ids.join(','), \
+                       submission_id: @submission_id, \
+                       current_index: @current_index }, \
+              method: :post, class: 'sc-detect__btn sc-detect__btn--success'
+- else
+  .mb-3.d-flex.justify-content-between
+    - if @prev_customer
+      = link_to '前へ', customer_path(@prev_customer, all_ids: @all_ids.join(','), submission_id: @submission_id, current_index: @current_index - 1), class: 'btn btn-secondary'
     - else
-      p.text-muted iframeで表示するURLがありません。
+      div
+
+    .d-flex.gap-2
+      = button_to '手動送信失敗', manual_call_customer_path(@customer), \
+          params: { status: '手動送信失敗', \
+                   all_ids: @all_ids.join(','), \
+                   submission_id: @submission_id, \
+                   current_index: @current_index }, \
+          method: :post, class: 'btn btn-danger'
+
+      = button_to '手動送信成功', manual_call_customer_path(@customer), \
+          params: { status: '手動送信成功', \
+                   all_ids: @all_ids.join(','), \
+                   submission_id: @submission_id, \
+                   current_index: @current_index }, \
+          method: :post, class: 'btn btn-success'
+
+    - if @next_customer
+      = link_to '次へ', customer_path(@next_customer, all_ids: @all_ids.join(','), submission_id: @submission_id, current_index: @current_index + 1), class: 'btn btn-secondary'
+    - else
+      / 次がない場合はボタンを出さない
+      div
+
+  / 以降、会社情報表示やiframe部分は変更なし
+
+  .row
+    .col-md-3.center
+        - if @customer.usable_contact_url.present?
+          = link_to '問い合わせフォームを表示する', @customer.usable_contact_url, target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
+        - elsif @customer.url.present?
+          = link_to 'ホームページを表示する', @customer.url, target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
+        - else
+          - search_query = [@customer.company, @customer.tel, @customer.address].compact.join(' ')
+          - if search_query.present?
+            = link_to 'Google検索', "https://www.google.com/search?q=#{CGI.escape(search_query)}", target: '_blank', class: 'btn btn-outline-primary mb-2 btn-block'
+        .table-container
+          table.table-space
+            col[width="30%"]
+            col[width="70%"]
+            tbody
+              tr
+                th.document-color 会社名
+              tr
+                td= @customer.company
+              tr
+                th.report-color 電話番号
+              tr
+                td= @customer.tel
+              tr
+                th.report-color 住所
+              tr
+                td= @customer.address
+              tr
+                th.document-color メールアドレス
+              tr
+                td= @customer.email
+              tr
+                th.report-color URL
+              tr 
+                td= @customer.url
+              tr
+                th.report-color 業種
+              tr 
+                td= @customer.businesses_text
+              tr
+                th.report-color 資本金
+              tr
+                td= @customer.capital
+              tr
+                th.report-color 設立
+              tr
+                td= @customer.establish
+              tr
+                th.report-color 代表者
+              tr
+                td= @customer.ceo
+              tr
+                th.report-color 従業員数
+              tr
+                td= @customer.people
+              tr
+                th.report-color 備考
+              tr
+                td= @customer.remarks
+              tr
+                th.report-color 問い合わせフォーム
+              tr 
+                td= @customer.usable_contact_url
+              tr
+                th.report-color 問い合わせURL
+              tr 
+                td
+                  = @customer.usable_contact_url
+                  span.ms-2 style="color: #94a3b8;" = @customer.contact_detection_label
+                  - if @customer.usable_contact_url.present?
+                    = form_tag form_submissions_path, method: :post, class: 'd-inline ml-2' do
+                      = hidden_field_tag 'customer_ids[]', @customer.id
+                      = submit_tag 'フォーム送信', class: 'btn btn-sm btn-outline-primary', data: { confirm: 'この顧客にフォーム送信を実行しますか？' }
+              tr
+                th フォーム送信の状態
+                td
+                  - status = customer_delivery_status(@customer)
+                  span class="delivery-status-badge #{status[:css]}" = status[:label]
+                  - if acting_as_admin?
+                    - opted_out_labels = customer_opted_out_client_labels(@customer)
+                    - if opted_out_labels.any?
+                      div style="margin-top: 6px; font-size: 0.85rem; color: rgba(148,163,184,0.85);"
+                        | メール配信停止済み:
+                        = opted_out_labels.join(' / ')
+
+    .col-md-9
+      - iframe_url = @customer.usable_contact_url.presence || @customer.url
+      - if iframe_url.present?
+        iframe src=iframe_url width="100%" height="800" frameborder="0"
+      - else
+        p.text-muted iframeで表示するURLがありません。

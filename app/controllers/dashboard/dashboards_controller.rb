@@ -95,6 +95,19 @@ class Dashboard::DashboardsController < ApplicationController
     @submission_stats = submissions.where(id: stats_by_id.keys).order(created_at: :desc).map do |submission|
       stats_by_id[submission.id].merge(submission: submission)
     end.reject { |stat| stat[:total_sent].to_i.zero? && stat[:last_sent_at].blank? }
+    manual_stats = FormSubmissionBatch.manual_stats_by_submission_id(
+      @submission_stats.map { |stat| stat[:submission].id },
+      period: @month_range
+    )
+    @submission_stats.each do |stat|
+      stat.merge!(
+        manual_stats[stat[:submission].id] || {
+          manual_success_count: 0,
+          manual_failure_count: 0,
+          manual_rate: 0.0
+        }
+      )
+    end
   end
 
   def sending

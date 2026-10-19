@@ -1,6 +1,34 @@
 .sc-detect.container
-  h2.sc-detect__title 送信履歴（エラー・未検出）
-  
+  h2.sc-detect__title 手動送信（営業禁止・NG対象を除く）
+
+  .sc-detect__card
+    .sc-detect__card-header
+      h5 蓄積結果
+    .sc-detect__card-body
+      .row.text-center
+        .col-md-3
+          .sc-detect__label 手動送信成功
+          span.fw-bold style="color: #10b981; font-size: 22px;" = "#{@manual_success_count}件"
+        .col-md-3
+          .sc-detect__label 手動送信失敗
+          span.fw-bold style="color: #ef4444; font-size: 22px;" = "#{@manual_failure_count}件"
+        .col-md-3
+          .sc-detect__label 割合
+          span.fw-bold style="color: #ffffff; font-size: 22px;" = "#{@manual_rate}%"
+        .col-md-3
+          .sc-detect__label 残り
+          span.fw-bold style="color: #ffffff; font-size: 22px;" = "#{@pending_ids.size}件"
+      - if @pending_ids.any?
+        .sc-detect__actions
+          = link_to customer_path(@pending_ids.first, all_ids: @pending_ids.join(','), submission_id: @submission.id, current_index: 0), class: 'sc-detect__btn sc-detect__btn--warning' do
+            i.fas.fa-play
+            | スタート
+
+  - if notice
+    .sc-detect__alert.sc-detect__alert--info.mb-4
+      div
+        = notice
+
   - if alert
     .sc-detect__alert.sc-detect__alert--info.mb-4
       div
@@ -14,24 +42,29 @@
           th 顧客ID
           th 会社名
           th ステータス
+          th 過去ステータス
           th コメント
           th 送信日時
-          th 操作
       tbody
         - @display_rows.each_with_index do |row, index|
           - customer = row[:customer]
           - call = row[:latest_call]
           - error = row[:error_entry]
           - status_text = row[:status_text]
+          - status_class = status_text == '手動送信成功' ? 'success' : (status_text == '手動送信失敗' ? 'danger' : 'warning')
 
-          / エラー行として背景に微かな赤みを適用
-          tr style="background: rgba(239, 68, 68, 0.05);"
+          tr
             td = customer.id
             td.fw-bold = customer.company
             td
-              span.sc-detect__badge.sc-detect__badge--danger
+              span class="sc-detect__badge sc-detect__badge--#{status_class}"
                 = status_text
-            td 
+            td.sc-detect__cell-wrap
+              - if row[:past_statuses].present?
+                = row[:past_statuses].join(' → ')
+              - else
+                | なし
+            td.sc-detect__cell-wrap
               - if call.present?
                 = call.comment
               - elsif error.present?
@@ -41,11 +74,3 @@
                 = call.created_at.strftime('%y/%m/%d %H:%M')
               - else
                 = row[:batch_at].strftime('%y/%m/%d %H:%M')
-            td
-              / 詳細ボタン（定義済みの primary スタイルを適用）
-              = link_to customer_path(customer, \
-                  all_ids: @all_target_ids.join(','), \
-                  submission_id: @submission.id, \
-                  current_index: index), \
-                  class: 'sc-detect__btn sc-detect__btn--primary' do
-                | 詳細

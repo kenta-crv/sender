@@ -14,6 +14,19 @@ class FormSubmissionBatch < ApplicationRecord
     'not_detected'
   ].freeze
 
+  # 自動送信のあと、手動送信の一覧に出すステータス。営業禁止とNG対象は出さない。
+  MANUAL_FOLLOWUP_STATUSES = [
+    '自動送信失敗',
+    'CAPTCHA NG',
+    '本文未入力スキップ',
+    'メアド過多スキップ',
+    'フォーム未検出',
+    'アクセス失敗',
+    'エラー'
+  ].freeze
+
+  MANUAL_RESULT_STATUSES = %w[手動送信成功 手動送信失敗].freeze
+
   scope :completed_batches, -> { where(status: 'completed') }
   scope :without_payload_columns, -> {
     select((column_names - %w[customer_ids error_log]).map { |column| "#{table_name}.#{column}" })
@@ -180,6 +193,47 @@ class FormSubmissionBatch < ApplicationRecord
                     .pluck(:customer_id)
                     .uniq
     all_ids - processed
+  end
+
+  # 送信内容ごとの手動送信成功数と割合。
+  # 同じ顧客を複数回記録した場合は、最後の結果だけを数える。
+  def self.manual_stats_by_submission_id(submission_ids, period: nil)
+    submission_ids = Array(submission_ids).map(&:to_i).uniq
+    return {} if submission_ids.empty?
+
+    scope = Call.where(status: MANUAL_RESULT_STATUSES)
+    scope = scope.where(created_at: period) if period
+
+    seen = {}
+    scope.order(created_at: :desc).pluck(:customer_id, :status, :comment).each do |customer_id, status, comment|
+      submission_id = comment.to_s[/submission_id=(\d+)/, 1].to_i
+      next unless submission_ids.include?(submission_id)
+
+      key = [submission_id, customer_id]
+      next if seen.key?(key)
+
+      seen[key] = status
+    end
+
+    grouped = Hash.new { |hash, key| hash[key] = { success: 0, failure: 0 } }
+    seen.each do |(submission_id, _customer_id), status|
+      if status == '手動送信成功'
+        grouped[submission_id][:success] += 1
+      else
+        grouped[submission_id][:failure] += 1
+      end
+    end
+
+    submission_ids.each_with_object({}) do |submission_id, hash|
+      success = grouped[submission_id][:success]
+      failure = grouped[submission_id][:failure]
+      total = success + failure
+      hash[submission_id] = {
+        manual_success_count: success,
+        manual_failure_count: failure,
+        manual_rate: total.positive? ? ((success.to_f / total) * 100).round(1) : 0.0
+      }
+    end
   end
 
   def progress_payload

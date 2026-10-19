@@ -130,6 +130,7 @@ Rails.application.routes.draw do
   resources :customers do
     member do
       post :manual_call
+      get :manual_state
     end
     collection do
       post :cleanup_duplicates

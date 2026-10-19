@@ -93,6 +93,93 @@ class FormSendJob < ApplicationJob
     end
   end
 
+  def self.sender_info_for(batch, customer)
+    new.send(:build_sender_info, batch, customer)
+  end
+
+  def self.start_manual_fill(customer, submission, all_ids: [], current_index: 0)
+    return false if customer.usable_contact_url.blank?
+
+    latest_status = customer.calls.where(call_type: 'form').order(created_at: :desc).pick(:status)
+    return false if latest_status.present? && !FormSubmissionBatch::MANUAL_FOLLOWUP_STATUSES.include?(latest_status)
+
+    batch = submission.form_submission_batches.order(created_at: :desc).find do |candidate|
+      candidate.parsed_customer_ids.map(&:to_i).include?(customer.id)
+    end
+    return false unless batch
+
+    ids = all_ids.map(&:to_i)
+    ids = [customer.id] if ids.empty?
+    index = current_index.to_i
+    index = ids.index(customer.id) || 0 unless ids[index] == customer.id
+
+    $manual_fill_mutex ||= Mutex.new
+    existing_driver = nil
+    watch_token = nil
+    $manual_fill_mutex.synchronize do
+      session = $manual_fill_session
+      alive = session && FormSender.manual_driver_alive?(session[:driver])
+      return true if alive && session[:customer_id] == customer.id
+      return true if $manual_fill_running_for == customer.id
+
+      $manual_watch_token = $manual_watch_token.to_i + 1
+      watch_token = $manual_watch_token
+      $manual_fill_running_for = customer.id
+      if alive
+        existing_driver = session[:driver]
+        session[:customer_id] = customer.id
+      end
+    end
+
+    batch_id = batch.id
+    submission_id = submission.id
+    Thread.new do
+      driver = existing_driver
+      while index < ids.length
+        break if $manual_watch_token != watch_token
+
+        customer_id = ids[index]
+        next_customer_id = ids[index + 1]
+        outcome = nil
+        Rails.application.executor.wrap do
+          filled_customer = Customer.find_by(id: customer_id)
+          latest = filled_customer&.calls&.where(call_type: 'form')&.order(created_at: :desc)&.pick(:status)
+          can_fill = filled_customer&.usable_contact_url.present? &&
+                     (latest.blank? || FormSubmissionBatch::MANUAL_FOLLOWUP_STATUSES.include?(latest))
+          if can_fill
+            $manual_fill_running_for = customer_id
+            FormSender.publish_manual_session(customer_id, driver) if driver
+            filled_batch = FormSubmissionBatch.find(batch_id)
+            sender = FormSender.new(
+              debug: true,
+              confirm_mode: true,
+              headless: false,
+              save_to_db: false,
+              skip_detection: true,
+              sender_info: sender_info_for(filled_batch, filled_customer),
+              confirm_callback: -> {},
+              leave_browser_open: true,
+              existing_driver: driver,
+              manual_submission_id: submission_id,
+              watch_token: watch_token,
+              next_customer_id: next_customer_id
+            )
+            sender.send_to_customer(filled_customer)
+            driver = $manual_fill_session && $manual_fill_session[:driver]
+            outcome = sender.manual_watch_outcome
+          end
+        end
+        index += 1
+        break if outcome && outcome != :advance
+      end
+    rescue StandardError => e
+      Rails.logger.error("[手動送信の自動入力] #{e.class}: #{e.message}")
+    ensure
+      $manual_fill_running_for = nil if $manual_watch_token == watch_token
+    end
+    true
+  end
+
   private
 
   def enqueue_unprocessed(batch_id)

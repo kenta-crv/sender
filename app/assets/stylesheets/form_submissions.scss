@@ -308,6 +308,44 @@
         color: #ffffff;
       }
     }
+
+    &--success {
+      background: #10b981;
+      color: #01040a;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
+      &:hover {
+        background: #ffffff;
+        color: #01040a;
+      }
+    }
+
+    &--danger {
+      background: transparent;
+      border: 1px solid #ef4444;
+      color: #ef4444;
+      &:hover {
+        background: rgba(239, 68, 68, 0.12);
+        color: #ffffff;
+      }
+    }
+  }
+
+  .sc-detect__actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 16px;
+
+    form {
+      margin: 0;
+    }
+  }
+
+  .sc-detect__cell-wrap {
+    white-space: normal !important;
+    min-width: 160px;
+    max-width: 320px;
+    line-height: 1.6;
   }
 
   /* アラート・情報エリア */
@@ -630,6 +668,13 @@
   background: #ef4444 !important;
   color: #ffffff !important;
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.6) !important;
+}
+
+.sc-detect .sc-detect__actions .sc-detect__btn--warning,
+.sc-detect .sc-detect__actions .sc-detect__btn--success,
+.sc-detect .sc-detect__actions .sc-detect__btn--danger {
+  padding: 12px 28px;
+  font-size: 15px;
 }
 
 /* ラベルの既存クラスへの統合（もし不足していれば） */

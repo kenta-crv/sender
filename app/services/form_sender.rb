@@ -76,6 +76,16 @@ class FormSender
   # 送信ボタン検出用キーワード
   SUBMIT_PATTERNS = %w[送信 確認 submit send 入力内容を確認 送信する 確認する 確認画面へ 次へ].freeze
 
+  # 手動送信の自動判定で使う。短い語（受付・完了・ありがとう）は送信前からあるので使わない
+  MANUAL_STRONG_SUCCESS = %w[
+    送信しました 送信完了 受け付けました 受付いたしました 送信いたしました
+    ありがとうございました お問い合わせいただき 送信されました
+    送信を受け付け お問い合わせを受け付け お問合せを受け付け
+    受付完了 お問い合わせ完了 お問合せ完了 送信が完了
+    受け付け致しました 送信致しました submitted successfully message has been sent
+  ].freeze
+  MANUAL_STRONG_FAILURE = %w[送信に失敗 送信できませんでした メールの送信に失敗 送信エラーが発生].freeze
+
   # 成功判定用キーワード
   SUCCESS_PATTERNS = %w[ありがとう 完了 受付 送信しました 送信完了 thank success
                         受け付けました 受付いたしました 送信いたしました お問い合わせいただき
@@ -96,7 +106,7 @@ class FormSender
     営業についてはお断り 売り込みお断り 売込みお断り 営業
   ].freeze
 
-  attr_reader :driver, :customer, :result
+  attr_reader :driver, :customer, :result, :manual_watch_outcome
 
   # アラートのエラー検出用キーワード
   ALERT_ERROR_PATTERNS = %w[未入力 エラー error 入力してください 必須 required チェックを入れて].freeze
@@ -121,17 +131,22 @@ class FormSender
     'お確かめ下さい', 'お確かめください', '内容をお確かめ',
   ].freeze
 
-  def initialize(debug: false, confirm_mode: false, save_to_db: false, headless: false, confirm_callback: nil, sender_info: nil, skip_detection: false)
-    @driver = nil
+  def initialize(debug: false, confirm_mode: false, save_to_db: false, headless: false, confirm_callback: nil, sender_info: nil, skip_detection: false, leave_browser_open: false, existing_driver: nil, manual_submission_id: nil, watch_token: nil, next_customer_id: nil)
+    @driver = existing_driver
     @result = { status: nil, message: nil }
     @debug = debug
     @confirm_mode = confirm_mode  # trueの場合、送信前に停止して確認を待つ
     @save_to_db = save_to_db      # trueの場合、送信結果をDBに保存
     @headless = headless           # trueの場合、ヘッドレスモードで実行
+    @leave_browser_open = leave_browser_open # trueの場合、ドライバ終了後もブラウザを残す
     @alert_had_error = false      # アラートにエラーメッセージがあったか
     @confirm_callback = confirm_callback  # 確認モード時の待機処理（Proc）
     @custom_sender_info = sender_info     # カスタム送信者情報（Submissionモデルから）
     @skip_detection = skip_detection      # trueの場合、contact_url自動検出をスキップ（バッチ高速化）
+    @manual_submission_id = manual_submission_id
+    @watch_token = watch_token
+    @next_customer_id = next_customer_id
+    @manual_watch_outcome = nil
   end
 
   # sender_info アクセサ（カスタム情報がある場合はマージ）
@@ -141,11 +156,21 @@ class FormSender
 
   # ブラウザを起動
   def setup_driver
-    options = Selenium::WebDriver::Chrome::Options.new
+    return if @driver
+
+    options = Selenium::WebDriver::Chrome::Options.new(detach: true) if @leave_browser_open
+    options ||= Selenium::WebDriver::Chrome::Options.new
+    # 手動入力は画像などの読み込み完了を待たず、DOM が出来た時点で入力を始める
+    options.page_load_strategy = :eager if @confirm_mode
     if @headless
       options.add_argument('--headless=new')  # 新ヘッドレスモード（Chrome 109+、旧--headlessより互換性が高い）
+    elsif @confirm_mode
+      options.add_argument('--no-first-run')
+      options.add_argument('--no-default-browser-check')
+      options.add_argument('--disable-sync')
+      options.add_argument('--disable-translate')
     end
-    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-gpu') unless @confirm_mode && !@headless
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1280,800')
@@ -171,12 +196,184 @@ class FormSender
     end
     @driver.manage.timeouts.implicit_wait = 0  # 暗黙的待機なし（find_element失敗時の3秒ペナルティを排除）
     @driver.manage.timeouts.page_load = 15  # ページ読み込みタイムアウト（15秒）遅いサーバーでの長時間ブロック防止
+    self.class.publish_manual_session(@customer.id, @driver) if @manual_submission_id && @customer
   end
 
   # ブラウザを終了（例外が発生しても確実にnilに設定）
+  # 手動入力のあとは quit しない。参照を残さないと Chrome が一緒に落ちる。
   def teardown_driver
+    if @leave_browser_open && @driver
+      self.class.retain_open_browser(@driver)
+      @driver = nil
+      @leave_browser_open = false
+      return
+    end
     @driver&.quit rescue nil
     @driver = nil
+  end
+
+  def self.retain_open_browser(driver)
+    $manual_open_browsers ||= []
+    $manual_open_browsers << driver unless $manual_open_browsers.include?(driver)
+    publish_manual_session(nil, driver)
+  end
+
+  def self.publish_manual_session(customer_id, driver)
+    $manual_fill_session ||= {}
+    $manual_fill_session[:customer_id] = customer_id if customer_id
+    $manual_fill_session[:driver] = driver if driver
+  end
+
+  def self.manual_driver_alive?(driver)
+    return false unless driver
+
+    driver.window_handles
+    true
+  rescue StandardError
+    false
+  end
+
+  # 入力後の Chrome を見る。
+  # 送信前の画面と比べて、完了か失敗が新しく出たときだけ自動判定する。
+  # ページは変わったがどちらでもないとき、またはボタンが押されたときはダイアログの可否を使う。
+  def watch_manual_result
+    inject_manual_dialog
+    baseline = manual_baseline
+    token = @watch_token
+    dialog_opened = false
+    loop do
+      ActiveRecord::Base.connection_pool.release_connection
+      sleep 2
+      return :stop if $manual_watch_token != token
+
+      begin
+        driver.window_handle
+      rescue StandardError
+        return :stop
+      end
+
+      signal = manual_auto_signal(baseline)
+      if signal == :success || signal == :failure
+        ActiveRecord::Base.connection_pool.with_connection do
+          record_manual_result(signal == :success ? '手動送信成功' : '手動送信失敗', '自動判定')
+        end
+        return :advance
+      end
+
+      choice = driver.execute_script("return window.__okuriteManualChoice || ''") rescue ''
+      if choice == 'success' || choice == 'failure'
+        ActiveRecord::Base.connection_pool.with_connection do
+          record_manual_result(choice == 'success' ? '手動送信成功' : '手動送信失敗', 'ダイアログ')
+        end
+        return :advance
+      end
+
+      if signal == :dialog && !dialog_opened
+        driver.execute_script('if (window.__okuriteShowManualDialog) window.__okuriteShowManualDialog();') rescue nil
+        dialog_opened = true
+      end
+    end
+  end
+
+  def manual_baseline
+    {
+      url: (driver.current_url rescue ''),
+      text: manual_body_text,
+      cf7: manual_cf7_status
+    }
+  end
+
+  def manual_body_text
+    driver.find_element(:css, 'body').text.to_s
+  rescue StandardError
+    ''
+  end
+
+  def manual_cf7_status
+    element = driver.find_elements(:css, '.wpcf7').first
+    element ? element.attribute('data-status').to_s : ''
+  rescue StandardError
+    ''
+  end
+
+  def manual_auto_signal(baseline)
+    cf7 = manual_cf7_status
+    if %w[sent mail_sent_ng].include?(cf7) && !%w[sent mail_sent_ng].include?(baseline[:cf7])
+      return :success
+    end
+    return :failure if cf7 == 'mail_failed' && baseline[:cf7] != 'mail_failed'
+
+    text = manual_body_text
+    if MANUAL_STRONG_SUCCESS.any? { |word| text.include?(word) && !baseline[:text].to_s.include?(word) }
+      return :success
+    end
+    if MANUAL_STRONG_FAILURE.any? { |word| text.include?(word) && !baseline[:text].to_s.include?(word) }
+      return :failure
+    end
+
+    current_url = (driver.current_url rescue '')
+    return nil if current_url.blank? || baseline[:url].blank?
+
+    current_path = (URI.parse(current_url).path rescue '')
+    base_path = (URI.parse(baseline[:url]).path rescue '')
+    return :dialog if current_path.present? && base_path.present? && current_path.chomp('/') != base_path.chomp('/')
+
+    nil
+  rescue StandardError
+    nil
+  end
+
+  def inject_manual_dialog
+    driver.execute_script(<<~'JS')
+      if (document.getElementById('okurite-manual-dialog')) return;
+      var bar = document.createElement('button');
+      bar.type = 'button';
+      bar.textContent = '自動で判断できないとき';
+      bar.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483646;padding:10px 14px;border:0;border-radius:8px;background:#0f766e;color:#fff;font-size:14px;';
+      var wrap = document.createElement('div');
+      wrap.id = 'okurite-manual-dialog';
+      wrap.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;align-items:center;justify-content:center;';
+      var box = document.createElement('div');
+      box.style.cssText = 'background:#fff;color:#111;padding:24px;border-radius:12px;width:320px;text-align:center;';
+      var title = document.createElement('p');
+      title.textContent = '送信結果を自動で判断できませんでした';
+      var ok = document.createElement('button');
+      ok.type = 'button';
+      ok.textContent = '送信できた';
+      ok.style.cssText = 'margin:8px;padding:10px 16px;background:#10b981;border:0;border-radius:8px;';
+      var ng = document.createElement('button');
+      ng.type = 'button';
+      ng.textContent = 'できなかった';
+      ng.style.cssText = 'margin:8px;padding:10px 16px;background:#ef4444;color:#fff;border:0;border-radius:8px;';
+      function choose(value) { window.__okuriteManualChoice = value; }
+      ok.addEventListener('click', function() { choose('success'); });
+      ng.addEventListener('click', function() { choose('failure'); });
+      bar.addEventListener('click', function() { wrap.style.display = 'flex'; });
+      box.appendChild(title);
+      box.appendChild(ok);
+      box.appendChild(ng);
+      wrap.appendChild(box);
+      document.body.appendChild(bar);
+      document.body.appendChild(wrap);
+      window.__okuriteManualChoice = '';
+      window.__okuriteShowManualDialog = function() { wrap.style.display = 'flex'; };
+    JS
+  rescue StandardError => e
+    log "送信可否ダイアログの表示に失敗: #{e.message}"
+  end
+
+  def record_manual_result(status, signal_name)
+    customer = Customer.find(@customer.id)
+    latest = customer.calls.where(call_type: 'form').order(created_at: :desc).pick(:status)
+    return if FormSubmissionBatch::MANUAL_RESULT_STATUSES.include?(latest)
+
+    Call.create!(
+      customer_id: customer.id,
+      status: status,
+      call_type: 'form',
+      comment: "手動送信｜submission_id=#{@manual_submission_id}｜直前=#{latest}｜#{signal_name}"
+    )
+    log "#{status}を記録しました（#{signal_name}）"
   end
 
   # 送信実行
@@ -240,15 +437,22 @@ class FormSender
       # フォームにアクセス
       log "アクセス中: #{form_url}"
       driver.navigate.to(form_url)
-      # ページ読み込み待機（body+form存在で早期完了）
-      wait_for(min_seconds: 1, max_seconds: 10) do
-        body = driver.find_element(:css, 'body') rescue nil
-        form = driver.find_element(:css, 'form') rescue nil
-        body && form
+      if @confirm_mode
+        # 入力欄が見えたらすぐ入れる。form タグが無いページで10秒待たない
+        wait_for(min_seconds: 0, max_seconds: 3) do
+          driver.find_elements(:css, 'textarea, input:not([type="hidden"]):not([type="submit"])').any?
+        end
+      else
+        # ページ読み込み待機（body+form存在で早期完了）
+        wait_for(min_seconds: 1, max_seconds: 10) do
+          body = driver.find_element(:css, 'body') rescue nil
+          form = driver.find_element(:css, 'form') rescue nil
+          body && form
+        end
       end
 
-      # 営業禁止チェック
-      if page_has_no_sales_warning?
+      # 営業禁止チェック。手動入力では止めず、人が送信するかどうかを判断する
+      if !@confirm_mode && page_has_no_sales_warning?
         @result = { status: '営業禁止', message: 'ページ内に営業禁止ワードが検出されました' }
         teardown_driver
         return @result
@@ -258,7 +462,17 @@ class FormSender
       filled = fill_form
       log "入力完了: #{filled}フィールド"
 
-      if filled >= 2 && !@message_filled
+      if @confirm_mode && @manual_submission_id
+        log "=== 手動送信の確認 ==="
+        self.class.publish_manual_session(@customer.id, @driver)
+        @manual_watch_outcome = watch_manual_result
+        if @manual_watch_outcome == :advance && @next_customer_id
+          self.class.publish_manual_session(@next_customer_id, @driver)
+          $manual_fill_running_for = @next_customer_id
+        end
+        teardown_driver
+        @result = { status: '確認完了', message: "手動確認 #{@manual_watch_outcome}" }
+      elsif filled >= 2 && !@message_filled
         # 送信品質ガード①：本文入力欄が無い場合は送信スキップ
         @result = { status: '本文未入力スキップ', message: '本文入力欄が見つからなかったため送信をスキップしました' }
         teardown_driver
@@ -796,9 +1010,13 @@ class FormSender
               end
             end
           else
-            # テキスト入力の場合
-            input.clear
-            input.send_keys(value)
+            # テキスト入力の場合。手動入力は一文字ずつ打たず、まとめて入れる
+            if @confirm_mode
+              fast_set_value(input, value)
+            else
+              input.clear
+              input.send_keys(value)
+            end
             filled_count += 1
             log "    → 入力成功: #{value[0..20]}..."
           end
@@ -852,6 +1070,22 @@ class FormSender
     handle_radio_buttons
 
     filled_count
+  end
+
+  # 手動入力用。send_keys は本文が長いと一文字ずつ打つので遅い
+  def fast_set_value(input, value)
+    maxlength = input.attribute('maxlength').to_i
+    text = value.to_s
+    text = text[0, maxlength] if maxlength.positive?
+    driver.execute_script(<<~'JS', input, text)
+      var el = arguments[0];
+      var value = arguments[1];
+      var proto = el.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+      var desc = Object.getOwnPropertyDescriptor(proto, 'value');
+      if (desc && desc.set) { desc.set.call(el, value); } else { el.value = value; }
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    JS
   end
 
   # 重要フィールドかどうか判定（必須マークがなくても入力すべき最低限のフィールド）
@@ -1599,7 +1833,7 @@ class FormSender
 
       begin
         scroll_to_element(checkbox)
-        sleep 0.3
+        sleep 0.3 unless @confirm_mode
         driver.execute_script("arguments[0].click();", checkbox)
         consent_label = get_label_text(checkbox).to_s.strip
         consent_label = checkbox.attribute('name') if consent_label.empty?
@@ -1617,7 +1851,7 @@ class FormSender
         if CONSENT_PATTERNS.any? { |p| page_text.include?(p.downcase) }
           cb = unchecked.first
           scroll_to_element(cb)
-          sleep 0.3
+          sleep 0.3 unless @confirm_mode
           driver.execute_script("arguments[0].click();", cb)
           log "  → 同意チェックボックスをチェック（ページ内キーワード検出）"
         end

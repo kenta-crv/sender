@@ -78,6 +78,18 @@ class CustomersController < ApplicationController
 
     @prev_customer = Customer.find_by(id: prev_id) if prev_id
     @next_customer = Customer.find_by(id: next_id) if next_id
+    if @submission_id.present?
+      @form_status_history = @customer.calls.where(call_type: 'form').order(:created_at)
+      submission = Submission.find_by(id: @submission_id)
+      if submission && acting_as_admin?
+        @manual_fill_started = FormSendJob.start_manual_fill(
+          @customer,
+          submission,
+          all_ids: @all_ids,
+          current_index: @current_index
+        )
+      end
+    end
   end
 
   def new
@@ -156,11 +168,37 @@ class CustomersController < ApplicationController
 
   def manual_call
     @customer = Customer.find(params[:id])
-    Call.create!(customer_id: @customer.id, status: params[:status], comment: "手動送信")
+    status = params[:status].to_s
+    unless FormSubmissionBatch::MANUAL_RESULT_STATUSES.include?(status)
+      if params[:stay] == 'history'
+        redirect_to history_submission_path(params[:submission_id], work: @customer.id), alert: 'ステータスが不正です。'
+      else
+        redirect_to customer_path(@customer, all_ids: params[:all_ids], submission_id: params[:submission_id], current_index: params[:current_index], autofill: params[:autofill]),
+                    alert: 'ステータスが不正です。'
+      end
+      return
+    end
+
+    previous_status = @customer.calls.order(created_at: :desc).pick(:status)
+    Call.create!(
+      customer_id: @customer.id,
+      status: status,
+      call_type: 'form',
+      comment: "手動送信｜submission_id=#{params[:submission_id]}｜直前=#{previous_status}"
+    )
 
     all_ids = params[:all_ids].to_s.split(',').map(&:to_i)
     current_idx = params[:current_index].to_i
     submission_id = params[:submission_id]
+
+    if params[:stay] == 'history'
+      if current_idx < all_ids.length - 1
+        redirect_to history_submission_path(submission_id, work: all_ids[current_idx + 1])
+      else
+        redirect_to history_submission_path(submission_id), notice: '手動送信の記録が終わりました。'
+      end
+      return
+    end
 
     if current_idx < all_ids.length - 1
       next_customer_id = all_ids[current_idx + 1]
@@ -170,8 +208,20 @@ class CustomersController < ApplicationController
                   current_index: current_idx + 1)
     else
       redirect_to history_submission_path(submission_id),
-                  alert: '手動送信リストがなくなりました。管理者に連絡してください'
+                  notice: '手動送信の記録が終わりました。'
     end
+  end
+
+  def manual_state
+    customer = Customer.find(params[:id])
+    if client_signed_in? && customer.client_id != current_client.id
+      head :forbidden
+      return
+    end
+
+    status = customer.calls.where(call_type: 'form').order(created_at: :desc).pick(:status)
+    done = FormSubmissionBatch::MANUAL_RESULT_STATUSES.include?(status)
+    render json: { done: done, status: status }
   end
 
   def destroy
@@ -675,6 +725,46 @@ end
   end
 
   private
+
+  def start_manual_form_fill
+    return unless acting_as_admin?
+    return if @submission_id.blank?
+    return if @customer.contact_url.blank? || @customer.contact_url == 'not_detected'
+
+    latest_status = @customer.calls.where(call_type: 'form').order(created_at: :desc).pick(:status)
+    return if latest_status.present? && !FormSubmissionBatch::MANUAL_FOLLOWUP_STATUSES.include?(latest_status)
+
+    submission = Submission.find_by(id: @submission_id)
+    return unless submission
+
+    batch = submission.form_submission_batches.order(created_at: :desc).find do |candidate|
+      candidate.parsed_customer_ids.map(&:to_i).include?(@customer.id)
+    end
+    return unless batch
+
+    @manual_fill_started = true
+    customer_id = @customer.id
+    batch_id = batch.id
+    Thread.new do
+      Rails.application.executor.wrap do
+        filled_batch = FormSubmissionBatch.find(batch_id)
+        customer = Customer.find(customer_id)
+        sender = FormSender.new(
+          debug: true,
+          confirm_mode: true,
+          headless: false,
+          save_to_db: false,
+          skip_detection: true,
+          sender_info: FormSendJob.sender_info_for(filled_batch, customer),
+          confirm_callback: -> {},
+          leave_browser_open: true
+        )
+        sender.send_to_customer(customer)
+      end
+    rescue StandardError => e
+      Rails.logger.error("[手動送信の自動入力] #{e.class}: #{e.message}")
+    end
+  end
 
   def sync_client_delivery_opt_out!(customer)
     return unless current_client.present?

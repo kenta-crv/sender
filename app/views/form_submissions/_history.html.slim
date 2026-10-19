@@ -86,6 +86,8 @@
           th 成功
           th 失敗
           th 成功率
+          th 手動成功
+          th 手動割合
           th 最終送信
           /th 手動設定
           th 操作
@@ -103,6 +105,8 @@
             td.text-success = success
             td.text-danger = failure
             td = "#{rate}%"
+            td = stat[:manual_success_count].to_i
+            td = "#{stat[:manual_rate] || 0.0}%"
             td = stat[:last_sent_at]&.strftime('%m/%d %H:%M') || '-'
             /td
               .sc-detect__check-group

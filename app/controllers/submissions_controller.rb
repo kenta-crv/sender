@@ -77,33 +77,42 @@ class SubmissionsController < ApplicationController
       customer_ids = batch.customer_ids.present? ? JSON.parse(batch.customer_ids) : []
       error_logs = batch.error_log.present? ? JSON.parse(batch.error_log) : []
       customers = scoped_customers.deliverable_for(delivery_filter_client_id, delivery_filter_admin_id).where(id: customer_ids).index_by(&:id)
-      latest_calls = Call.where(customer_id: customer_ids).order(created_at: :desc).group_by(&:customer_id)
+      form_calls = Call.where(customer_id: customer_ids, call_type: 'form').order(created_at: :asc).group_by(&:customer_id)
       customer_ids.each do |c_id|
         next if seen_customer_ids.include?(c_id)
         customer = customers[c_id]
         next unless customer
-        call = latest_calls[c_id]&.first
-        error = error_logs.find { |e| e["customer_id"] == c_id }
-        status_text = if call.present?
-                        call.status
+        calls = form_calls[c_id] || []
+        latest_call = calls.last
+        error = error_logs.find { |e| e["customer_id"].to_i == c_id.to_i }
+        auto_call = calls.reverse.find { |call| !FormSubmissionBatch::MANUAL_RESULT_STATUSES.include?(call.status) }
+        auto_status = if auto_call.present?
+                        auto_call.status
                       elsif error.present?
-                        '自動送信失敗'
+                        error["message"].to_s.split(':', 2).first.to_s.strip
                       else
                         '自動送信成功'
                       end
-        if ['自動送信失敗', 'フォーム未検出'].include?(status_text)
-          @display_rows << {
-            customer: customer,
-            latest_call: call,
-            error_entry: error,
-            status_text: status_text,
-            batch_at: batch.created_at
-          }
-          seen_customer_ids << c_id
-        end
+        next unless FormSubmissionBatch::MANUAL_FOLLOWUP_STATUSES.include?(auto_status)
+
+        status_text = latest_call&.status.presence || auto_status
+        @display_rows << {
+          customer: customer,
+          latest_call: latest_call,
+          past_statuses: calls[0...-1].map(&:status),
+          error_entry: error,
+          status_text: status_text,
+          batch_at: batch.created_at
+        }
+        seen_customer_ids << c_id
       end
     end
-    @all_target_ids = @display_rows.map { |row| row[:customer].id }
+    @manual_success_count = @display_rows.count { |row| row[:status_text] == '手動送信成功' }
+    @manual_failure_count = @display_rows.count { |row| row[:status_text] == '手動送信失敗' }
+    judged = @manual_success_count + @manual_failure_count
+    @manual_rate = judged.positive? ? ((@manual_success_count.to_f / judged) * 100).round(1) : 0.0
+    @pending_rows = @display_rows.reject { |row| FormSubmissionBatch::MANUAL_RESULT_STATUSES.include?(row[:status_text]) }
+    @pending_ids = @pending_rows.map { |row| row[:customer].id }
   end
 
   def click_history
