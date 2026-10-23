@@ -2,25 +2,25 @@ module TopsHelper
   # LP / トップから内部リンクする代表記事（Draftiy app ジャンル）
   FEATURED_COLUMNS = {
     top: [
-      { title: "営業フレームワークを活用した顧客関係管理", path: "/columns/customer-relationship-management-sales-framework" },
-      { title: "営業成果を測定するためのKPI設定ガイド", path: "/columns/kpi-setting-guide-for-sales-results" },
-      { title: "BtoB営業改善のためのPDCAサイクルの実践ガイド", path: "/columns/btob-eigyou-kaizen-pdca-fb994e66-4617-4210-8561-ec6f07ba0dfa" },
-      { title: "受注率を高めるための営業トレーニングプログラム", path: "/columns/sales-training-program" },
-      { title: "営業ファネル分析を行う際のデータ収集方法", path: "/columns/eigyou-faneru-bunseki-data-shuushuu" }
+      { title: "フォーム営業とは何か？営業プロセス全体像の解説", path: "/columns/app-complete-guide" },
+      { title: "問い合わせフォーム営業は有効か？送信率100%を実現する運用設計と注意点", path: "/columns/inquiry-form-sales-effectiveness" },
+      { title: "営業代行を利用する際の注意点と失敗しないためのポイント", path: "/columns/sales-outsourcing-failure-cases-app" },
+      { title: "【AI営業リスト生成】AI・プログラミング・人のシナジーを活かしたリスト制作の最大化", path: "/columns/ai-sales-list-generation" },
+      { title: "問い合わせ営業の進め方｜リスト作成から商談化までの流れ", path: "/columns/inquiry-sales-process" }
     ],
     okurite: [
-      { title: "営業フレームワークを活用した顧客関係管理", path: "/columns/customer-relationship-management-sales-framework" },
-      { title: "営業成果を測定するためのKPI設定ガイド", path: "/columns/kpi-setting-guide-for-sales-results" },
-      { title: "BtoB営業改善のためのPDCAサイクルの実践ガイド", path: "/columns/btob-eigyou-kaizen-pdca-fb994e66-4617-4210-8561-ec6f07ba0dfa" },
-      { title: "営業ファネル分析を行う際のデータ収集方法", path: "/columns/eigyou-faneru-bunseki-data-shuushuu" },
-      { title: "営業マネジメントにおけるデータ活用の重要性", path: "/columns/importance-of-data-utilization-in-sales-management" }
+      { title: "フォーム営業とは何か？営業プロセス全体像の解説", path: "/columns/app-complete-guide" },
+      { title: "問い合わせフォーム営業は有効か？送信率100%を実現する運用設計と注意点", path: "/columns/inquiry-form-sales-effectiveness" },
+      { title: "フォーム営業の自動化とは？仕組みと導入ステップを解説", path: "/columns/form-sales-automation" },
+      { title: "問い合わせフォーム営業を自動化するメリット・デメリット", path: "/columns/contact-form-sales-automation" },
+      { title: "人力営業と問い合わせフォーム営業自動化の違い｜コストと成果を比較", path: "/columns/human-sales-vs-automation" }
     ],
     sales: [
-      { title: "営業マネジメントフレームワークの導入ステップ", path: "/columns/sales-management-framework-implementation-steps" },
-      { title: "営業成果を測定するためのKPI設定ガイド", path: "/columns/kpi-setting-guide-for-sales-results" },
-      { title: "受注率を高めるための営業トレーニングプログラム", path: "/columns/sales-training-program" },
-      { title: "リモート営業におけるマネジメント手法", path: "/columns/remote-sales-management-techniques" },
-      { title: "営業マネジメントにおけるリーダーシップの役割", path: "/columns/leadership-in-sales-management" }
+      { title: "営業代行を利用する際の注意点と失敗しないためのポイント", path: "/columns/sales-outsourcing-failure-cases-app" },
+      { title: "営業代行で失敗しない！BtoB企業が知っておくべき業界構造と主要プレイヤー", path: "/columns/btob-sales-agency" },
+      { title: "テレアポ型営業代行を導入すべきか？ BtoB企業の新規商談獲得における実務的判断基準", path: "/columns/btob-sales-outsourcing-telemarketing-meeting-app" },
+      { title: "営業代行業者選びの失敗を避けるためのチェックリスト", path: "/columns/eigyou-daiyou-gyousha-sentaku-checklist" },
+      { title: "【完全版】アウトバウンド営業の教科書：最新AI×プロの技術で商談を最大化する方法", path: "/columns/outbound-sales-guide" }
     ]
   }.freeze
 
@@ -47,13 +47,13 @@ module TopsHelper
     # pricing
     { category: "pricing", q: "無料トライアルの条件は？", a: "#{Subscription::TRIAL_DAYS}日間・0円です。アカウント登録だけで開始でき、クレジットカードは不要です。上限は送信#{Subscription::PLAN_DELIVERY_LIMITS[:trial]}件・フォーム検出#{Subscription::PLAN_FORM_DETECTION_LIMITS[:trial]}件・AIリスト制作#{Subscription::PLAN_SERP_API_LIMITS[:trial]}件です。" },
     { category: "pricing", q: "有料プランの料金は？", a: "スタンダード通常月額#{Subscription::PLAN_PRICES[:standard].to_s(:delimited)}円（送信・検出各#{Subscription::PLAN_DELIVERY_LIMITS[:standard].to_s(:delimited)}件）。初回#{Subscription::STANDARD_INTRO_MONTHS}ヶ月は#{Subscription::STANDARD_INTRO_PERCENT_OFF}%OFFで#{Subscription.standard_intro_price.to_s(:delimited)}円/月。エンタープライズ月額#{Subscription::PLAN_PRICES[:enterprise].to_s(:delimited)}円（送信#{Subscription::PLAN_DELIVERY_LIMITS[:enterprise].to_s(:delimited)}件）。初期費用は0円で、いつでも解約できます。詳細は料金セクションをご確認ください。" },
-    { category: "pricing", q: "トライアル終了後はどうなりますか？", a: "終了後は自動課金されません。継続する場合は管理画面の料金プラン（/plans）からスタンダード（推奨・初回3ヶ月15%OFF）またはエンタープライズをCheckoutしてください。不要ならそのまま終了します。" },
+    { category: "pricing", q: "トライアル終了後はどうなりますか？", a: "終了後は自動課金されません。継続する場合は、ログイン後の料金プラン画面からスタンダード（推奨・初回3ヶ月15%OFF）またはエンタープライズにお申し込みください。不要なら、そのまま終了します。" },
     { category: "pricing", q: "成果報酬はかかりますか？", a: "かかりません。月額プランの範囲でのご利用です。成約時の成果報酬もいただきません。" },
     { category: "pricing", q: "請求書払いはできますか？", a: "法人利用の場合、契約形態に応じてご案内します。ご希望はお問い合わせください。" },
 
     # setup
     { category: "setup", q: "申し込みから初回送信までの手順は？", a: "①「トライアルを実施」などからアカウント登録（会社名・氏名・連絡先など・約30秒）→②登録完了と同時にトライアル開始（カード不要）→③ダッシュボードでリスト準備・文面設定→④フォーム検出／送信開始、の順です。" },
-    { category: "setup", q: "有料プランへの切り替え方は？", a: "管理画面の料金プラン（/plans）からスタンダードまたはエンタープライズを選び、クレジットカードでCheckoutします。" },
+    { category: "setup", q: "有料プランへの切り替え方は？", a: "ログイン後の料金プラン画面からスタンダードまたはエンタープライズを選び、クレジットカードでお申し込みください。" },
     { category: "setup", q: "文面は自由に設定できますか？", a: "はい。商材やターゲットに合わせて送信文面を設定・調整できます。導入時の文面・ターゲット設計の相談も可能です。" }
   ].freeze
 
