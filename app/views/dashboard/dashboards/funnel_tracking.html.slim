@@ -85,13 +85,12 @@
         .glass-card
           .card-header-flex
             - list_params = { since: @since_days, filter_page: @filter_page, filter_event: @filter_event }.compact
-            - range_label = if @recent_events.total_count.zero?
-                '（0件）'
-              else
-                from = @recent_events.offset_value + 1
-                to   = [@recent_events.offset_value + @recent_events.length, @recent_events.total_count].min
-                "（#{@recent_events.total_count}件中 #{from}–#{to}件）"
-              end
+            - if @recent_events.total_count.zero?
+              - range_label = '（0件）'
+            - else
+              - from = @recent_events.offset_value + 1
+              - to = [@recent_events.offset_value + @recent_events.length, @recent_events.total_count].min
+              - range_label = "（#{@recent_events.total_count}件中 #{from}–#{to}件）"
             - if @filter_page.present? || @filter_event.present?
               - fp_label = { 'top' => 'トップページ', 'registration' => '新規登録', 'checkout_confirmation' => '決済確認', 'stripe_session_expired' => 'Stripe' }
               - fe_label = { 'visit' => '訪問', 'abandon' => '離脱', 'proceed' => '進行' }
