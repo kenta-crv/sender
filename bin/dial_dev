@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# 試験発信用に Rails(3000) と ngrok を揃えて起動する
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+PORT=3000
+NGROK_DOMAIN="${DIAL_NGROK_DOMAIN:-nondisastrous-sheri-arabinosic.ngrok-free.dev}"
+PUBLIC_URL="https://${NGROK_DOMAIN}"
+
+ping_local() {
+  curl -s -o /dev/null -w '%{http_code}' --connect-timeout 1 "http://127.0.0.1:${PORT}/twilio/ping" || true
+}
+
+ping_public() {
+  curl -s -o /dev/null -w '%{http_code}' -H 'ngrok-skip-browser-warning: 1' --connect-timeout 3 "${PUBLIC_URL}/twilio/ping" || true
+}
+
+if [ "$(ping_local)" != "200" ]; then
+  echo "[dial_dev] Rails を ${PORT} で起動します"
+  nohup env DISABLE_SPRING=1 bundle exec rails s -p "$PORT" -b 127.0.0.1 \
+    > /tmp/okurite-rails-3001.log 2>&1 &
+  for _ in $(seq 1 60); do
+    [ "$(ping_local)" = "200" ] && break
+    sleep 1
+  done
+fi
+
+if [ "$(ping_local)" != "200" ]; then
+  echo "[dial_dev] Rails が起動しませんでした。/tmp/okurite-rails-3001.log を確認してください。"
+  exit 1
+fi
+echo "[dial_dev] Rails OK"
+
+if [ "$(ping_public)" != "200" ]; then
+  echo "[dial_dev] ngrok を起動します (${PUBLIC_URL})"
+  if pgrep -x ngrok >/dev/null 2>&1; then
+    killall ngrok 2>/dev/null || true
+    sleep 1
+  fi
+  nohup ngrok http "127.0.0.1:${PORT}" --url="${PUBLIC_URL}" \
+    > /tmp/okurite-ngrok.log 2>&1 &
+  for _ in $(seq 1 30); do
+    [ "$(ping_public)" = "200" ] && break
+    sleep 1
+  done
+fi
+
+if [ "$(ping_public)" != "200" ]; then
+  echo "[dial_dev] 公開接続が通りません。/tmp/okurite-ngrok.log を確認してください。"
+  exit 1
+fi
+echo "[dial_dev] 公開接続 OK (${PUBLIC_URL})"
+
+# .env の NGROK_URL を揃える
+if [ -f .env ]; then
+  if grep -q '^NGROK_URL=' .env; then
+    sed -i.bak "s|^NGROK_URL=.*|NGROK_URL=${PUBLIC_URL}|" .env && rm -f .env.bak
+  else
+    printf '\nNGROK_URL=%s\n' "$PUBLIC_URL" >> .env
+  fi
+  if ! grep -q '^SKIP_TWILIO_VALIDATION=' .env; then
+    printf '\nSKIP_TWILIO_VALIDATION=true\n' >> .env
+  fi
+fi
+
+echo "[dial_dev] 準備完了。 /call_batches/dashboard で試験発信できます。"

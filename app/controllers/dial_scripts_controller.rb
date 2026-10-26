@@ -8,6 +8,8 @@ class DialScriptsController < ApplicationController
 
   def show
     @dial_utterance = DialUtterance.new
+    @dial_faq = DialFaq.new
+    @unknown_utterances = @dial_script.dial_unknown_utterances.order(created_at: :desc).limit(50)
   end
 
   def new
@@ -16,6 +18,7 @@ class DialScriptsController < ApplicationController
 
   def create
     @dial_script = DialScript.new(dial_script_params)
+    apply_bank_fields!(@dial_script)
     if @dial_script.save
       redirect_to @dial_script, notice: '原稿を作成しました。'
     else
@@ -27,7 +30,9 @@ class DialScriptsController < ApplicationController
   end
 
   def update
-    if @dial_script.update(dial_script_params)
+    @dial_script.assign_attributes(dial_script_params)
+    apply_bank_fields!(@dial_script)
+    if @dial_script.save
       redirect_to @dial_script, notice: '原稿を更新しました。'
     else
       render :edit
@@ -47,12 +52,25 @@ class DialScriptsController < ApplicationController
 
   def dial_script_params
     permitted = params.require(:dial_script).permit(
-      :name, :greeting_text, :purpose_text, :wait_text, :repeat_text, status_texts: {}
+      :name, :greeting_text, :purpose_text, :wait_text, :repeat_text,
+      :smalltalk_text, :clarify_text, :clarify_alt_text, :clarify_simple_text,
+      :callback_text,
+      status_texts: {}
     )
     hash = permitted.to_h
     if hash['status_texts']
-      hash['status_texts'] = hash['status_texts'].slice(*Call.StatuItems).to_json
+      hash['status_texts'] = hash['status_texts'].slice(*Call::AI_STATUS_ITEMS).to_json
     end
     hash
+  end
+
+  def apply_bank_fields!(script)
+    raw = params.require(:dial_script)
+    DialScript::BANK_EDIT_KEYS.each do |key|
+      field = "bank_#{key}"
+      next unless raw.key?(field)
+
+      script.assign_bank_field(key, raw[field])
+    end
   end
 end

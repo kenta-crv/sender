@@ -20,13 +20,14 @@ module Twilio
       call.reload
       if status.in?(%w[completed busy failed no-answer canceled cancelled])
         call.apply_manual_status!(status)
+        DialTransferService.cancel_operator!(call)
       end
 
       # バッチの結果記録（通話終了時）
       if status == 'completed' && call.call_batch_id.present?
         batch = call.call_batch
         answered = call.answered_at.present?
-        transferred = call.flow_phase == 'transfer'
+        transferred = call.flow_phase.to_s.start_with?('transfer')
         batch.record_result!(
           call.customer_id,
           success: answered,
@@ -41,6 +42,28 @@ module Twilio
         )
       end
 
+      head :ok
+    end
+
+    # POST /twilio/amd — 留守番電話は着信不在
+    def amd
+      call_sid = params['CallSid']
+      answered_by = params['AnsweredBy'].to_s
+      call = Call.find_by(twilio_call_sid: call_sid)
+      return head(:ok) unless call
+
+      Rails.logger.info("[TWILIO:AMD] call_id=#{call.id} AnsweredBy=#{answered_by}")
+      human_spoke = call.speech_result.to_s.include?('相手:')
+      if answered_by == 'machine_end_other' && human_spoke
+        head :ok
+        return
+      end
+      if answered_by.start_with?('machine') || answered_by == 'fax'
+        call.save_selected_status!('着信不在')
+        call.update(flow_phase: 'ended')
+        DialTransferService.cancel_operator!(call)
+        TwilioService.new.hangup_call(call_sid)
+      end
       head :ok
     end
 

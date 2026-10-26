@@ -36,8 +36,8 @@
                         - if customer.url.present?
                           = link_to customer.url, customer.url, target: "_blank", rel: "noopener", style: 'color: var(--electric-blue); text-decoration: none;'
                       td
-                        - if customer.contact_url.present?
-                          = link_to customer.contact_url, customer.contact_url, target: "_blank", rel: "noopener", style: 'color: var(--electric-blue); text-decoration: none;'
+                        - if customer.usable_contact_url.present?
+                          = link_to customer.usable_contact_url, customer.usable_contact_url, target: "_blank", rel: "noopener", style: 'color: var(--electric-blue); text-decoration: none;'
                       td
                         .okurite-actions
                           = link_to '編集', edit_customer_path(customer, q: params[:q]&.permit!), class: 'btn-electric-outline', style: 'display: inline-block; margin-right: 8px; text-decoration: none;'

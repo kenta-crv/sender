@@ -10,6 +10,9 @@ footer.custom-footer.bg-dark.text-white.py-4.mt-5
             li = link_to "お役立ち記事", "/columns", class: "footer-link"
             li = link_to "Okurite", okurite_path, class: "footer-link"
             li = link_to "Ri-Plus", sales_path, class: "footer-link"
+            li = link_to "プライバシーポリシー", privacy_path, class: "footer-link"
+            li = link_to "利用規約", tos_path, class: "footer-link"
+            li = link_to "特定商取引法に基づく表記", specific_path, class: "footer-link"
 
             li
               - if client_signed_in? || admin_signed_in?
@@ -18,4 +21,4 @@ footer.custom-footer.bg-dark.text-white.py-4.mt-5
                 = link_to "ログイン", new_client_session_path, class: "footer-link"
 
   .footer-bottom.text-center.mt-3.pt-2.border-top.border-secondary
-    p.mb-0.small &copy; 2026 J Work.co.ltd . All Rights Reserved.
+    p.mb-0.small &copy; 2026 J Work Co., Ltd. All Rights Reserved.

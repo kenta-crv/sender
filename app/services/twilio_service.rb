@@ -40,8 +40,19 @@ class TwilioService
     end
   end
 
+  def self.bidirectional_call?(call)
+    call&.dial_script_id.to_i == 1
+  end
+
+  def self.bidirectional_call_script?(script)
+    script&.id.to_i == 1
+  end
+
   # 顧客に発信
   def initiate_call(customer, call, base_url)
+    if self.class.bidirectional_call?(call)
+      DialPlaybackCache.preload!(call.dial_script)
+    end
     twilio_call = @client.calls.create(
       to: self.class.to_e164(customer.tel),
       from: config.from_number,
@@ -51,7 +62,11 @@ class TwilioService
       timeout: (config.no_answer_timeout.presence || 10).to_i,
       record: true,
       recording_status_callback: "#{base_url}/twilio/recording_status",
-      recording_status_callback_method: 'POST'
+      recording_status_callback_method: 'POST',
+      machine_detection: 'DetectMessageEnd',
+      async_amd: true,
+      async_amd_status_callback: "#{base_url}/twilio/amd",
+      async_amd_status_callback_method: 'POST'
     )
     twilio_call.sid
   end
@@ -65,10 +80,15 @@ class TwilioService
   end
 
   SCRIPT_KEYS = DialScript::SCRIPT_KEYS
-  HANGUP_SCRIPTS = Call.StatuItems
+  HANGUP_SCRIPTS = Call::AI_STATUS_ITEMS.freeze
 
   def self.hangup_script?(script)
-    HANGUP_SCRIPTS.include?(script.to_s)
+    key = script.to_s
+    key == 'callback' || HANGUP_SCRIPTS.include?(key)
+  end
+
+  def self.transfer_script?(script)
+    script.to_s == 'transfer'
   end
 
   def self.purpose_played?(call)
@@ -76,33 +96,62 @@ class TwilioService
   end
 
   def self.script_text(key, call = nil)
-    from_pack = call.is_a?(Call) ? call.dial_script&.text_for(key) : nil
+    key = key.to_s
+    if key == 'transfer'
+      return DialTransferService::THANKS_TEXT
+    end
+
+    if key == 'faq' && call.is_a?(Call)
+      faq = call.pending_faq || DialFaq.find_by(id: call.pending_faq_id)
+      if faq&.answer.present?
+        return "#{faq.answer} 詳しくは担当よりご案内いたします。"
+      end
+      return 'ご質問ありがとうございます。担当よりご案内いたします。'
+    end
+
+    if call.is_a?(Call) && call.dial_script
+      picked = call.dial_script.pick_text_for(key, call: call)
+      return picked if picked.present?
+    end
+
+    from_pack = call.is_a?(Call) ? call.dial_script&.legacy_text_for(key) : nil
     return from_pack if from_pack.present?
 
-    case key.to_s
+    case key
     when 'greeting'
-      'お電話ありがとうございます。'
+      DialScript::SAMPLE_RESPONSE_BANKS['greeting'].first
     when 'purpose'
-      '本日はご案内でお電話しました。続きをお聞きいただけますか。'
+      DialScript::SAMPLE_RESPONSE_BANKS['purpose'].first
     when 'wait'
-      '承知しました。そのままお待ちします。'
+      DialScript::SAMPLE_RESPONSE_BANKS['wait'].first
+    when 'smalltalk'
+      DialScript::SMALLTALK_TEXT
     when 'repeat'
       DialScript::REPEAT_TEXT
+    when 'clarify'
+      DialScript::CLARIFY_TEXT
+    when 'clarify_alt'
+      DialScript::CLARIFY_ALT_TEXT
+    when 'clarify_simple'
+      DialScript::CLARIFY_SIMPLE_TEXT
+    when 'callback'
+      DialScript::CALLBACK_TEXT
+    when '着信不在'
+      '失礼いたします。'
+    when 'フロントアウト'
+      '承知いたしました。お時間いただきありがとうございました。失礼いたします。'
+    when '担当者不在'
+      '承知いたしました。改めてお電話させていただきます。失礼いたします。'
+    when '電話不通'
+      ''
     else
       ''
     end
   end
 
-  # 登録した語句に合う文章だけを選ぶ。文章は作らない。一致が無ければ聞き直す。
-  def self.choose_script(text, call: nil, purpose_played: nil)
-    text = utf8_speech(text)
-    return 'repeat' if text.blank?
-
-    pack = call.is_a?(Call) ? call.dial_script : nil
-    saved = match_saved_utterance(text, pack)
-    return saved if DialScript::SCRIPT_KEYS.include?(saved.to_s)
-
-    'repeat'
+  # 意図分類 → 失敗時のみ段階フォールバック。文章は作らない。
+  def self.choose_script(text, call: nil, purpose_played: nil, llm: true)
+    DialFlowEngine.resolve(text, call: call, llm: llm)
   end
 
   def self.utf8_speech(text)

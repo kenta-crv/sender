@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_09_25_183000) do
+ActiveRecord::Schema.define(version: 2026_10_19_170000) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -72,6 +72,10 @@ ActiveRecord::Schema.define(version: 2026_09_25_183000) do
     t.string "stream_sid"
     t.datetime "speech_detected_at"
     t.integer "dial_script_id"
+    t.integer "unknown_streak", default: 0, null: false
+    t.integer "pending_faq_id"
+    t.text "conversation_context"
+    t.string "operator_call_sid"
     t.index ["call_batch_id"], name: "index_calls_on_call_batch_id"
     t.index ["customer_id"], name: "index_calls_on_customer_id"
     t.index ["dial_script_id"], name: "index_calls_on_dial_script_id"
@@ -211,7 +215,9 @@ ActiveRecord::Schema.define(version: 2026_09_25_183000) do
     t.string "ceo"
     t.string "people"
     t.text "remarks"
+    t.string "contact_detection_status"
     t.index ["client_id"], name: "index_customers_on_client_id"
+    t.index ["contact_detection_status"], name: "index_customers_on_contact_detection_status"
     t.index ["unsubscribe_token"], name: "index_customers_on_unsubscribe_token", unique: true
   end
 
@@ -228,6 +234,17 @@ ActiveRecord::Schema.define(version: 2026_09_25_183000) do
     t.index ["customer_id"], name: "index_delivery_opt_outs_on_customer_id"
   end
 
+  create_table "dial_faqs", force: :cascade do |t|
+    t.integer "dial_script_id", null: false
+    t.string "question", null: false
+    t.text "answer", null: false
+    t.text "phrases"
+    t.text "embedding"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["dial_script_id"], name: "index_dial_faqs_on_dial_script_id"
+  end
+
   create_table "dial_scripts", force: :cascade do |t|
     t.string "name", null: false
     t.text "css"
@@ -242,6 +259,27 @@ ActiveRecord::Schema.define(version: 2026_09_25_183000) do
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.text "status_texts"
+    t.text "smalltalk_text"
+    t.text "clarify_text"
+    t.text "clarify_alt_text"
+    t.text "clarify_simple_text"
+    t.text "handoff_text"
+    t.text "callback_text"
+    t.text "response_banks"
+  end
+
+  create_table "dial_unknown_utterances", force: :cascade do |t|
+    t.integer "dial_script_id"
+    t.integer "call_id"
+    t.text "transcript", null: false
+    t.string "classifier_path"
+    t.string "fallback_key"
+    t.integer "streak"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["call_id"], name: "index_dial_unknown_utterances_on_call_id"
+    t.index ["created_at"], name: "index_dial_unknown_utterances_on_created_at"
+    t.index ["dial_script_id"], name: "index_dial_unknown_utterances_on_dial_script_id"
   end
 
   create_table "dial_utterances", force: :cascade do |t|
@@ -250,6 +288,7 @@ ActiveRecord::Schema.define(version: 2026_09_25_183000) do
     t.string "script_key", null: false
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.text "embedding"
     t.index ["dial_script_id", "phrase"], name: "index_dial_utterances_on_dial_script_id_and_phrase"
     t.index ["dial_script_id"], name: "index_dial_utterances_on_dial_script_id"
   end

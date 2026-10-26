@@ -12,7 +12,10 @@ link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&displ
 = stylesheet_link_tag "application", media: "all", "data-turbolinks-track": "reload"
 = javascript_include_tag "application", "data-turbolinks-track": "reload"
 
-= display_meta_tags
+- if controller_name == "tops" && %w[index okurite sales].include?(action_name)
+  = display_meta_tags(default_meta_tags)
+- else
+  = display_meta_tags
 = favicon_link_tag "favicon.ico"
 
 - if defined?(breadcrumbs) && breadcrumbs.present?

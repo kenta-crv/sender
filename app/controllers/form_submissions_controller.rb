@@ -22,14 +22,15 @@ class FormSubmissionsController < ApplicationController
     # =====================================================
 
     @customers = base_customers
-                   .where.not(contact_url: [nil, '', 'not_detected'])
+                   .with_real_contact_url
+                   .visible_on_form_send_list
                    .page(params[:customers_page])
                    .per(50)
 
     # 【修正】business_filter / genre_filter を検出対象一覧にも適用する。
     # 複数選択に対応するため、配列でも単一値でも正しく処理できるように `Array()` で包み、空白を除外します。
     detectable_scope = base_customers
-                          .where(contact_url: [nil, ''])
+                          .awaiting_contact_detection
                           .where.not(url: [nil, ''])
                           .with_legal_entity
                           .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
@@ -48,8 +49,7 @@ class FormSubmissionsController < ApplicationController
                               .page(params[:detectable_page])
                               .per(50)
 
-    @not_detected_count =
-      Customer.where(contact_url: 'not_detected').count
+    @not_detected_count = Customer.contact_form_not_detected.count
 
     @no_url_customers =
       base_customers
@@ -101,7 +101,8 @@ class FormSubmissionsController < ApplicationController
 
     # 送信可能な条件（URLが存在し、禁止フラグが立っていないもの）
     captcha_ng_customer_ids = Call.where(call_type: 'form', status: 'CAPTCHA NG').distinct.pluck(:customer_id)
-    eligible_scope = eligible_scope.where.not(contact_url: [nil, '', 'not_detected'])
+    eligible_scope = eligible_scope.with_real_contact_url
+                                   .visible_on_form_send_list
                                    .where.not(id: captcha_ng_customer_ids)
                                    .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
                                    .order(:id)
@@ -123,7 +124,7 @@ class FormSubmissionsController < ApplicationController
       elsif params[:customer_ids].present?
         # 選択されたIDが、ログイン中のクライアントがアクセス権を持つ顧客のものであるかを確認
         base_check = acting_as_admin? ? Customer.all : Customer.where(client_id: [current_client.id, nil])
-        base_check.where(id: Array(params[:customer_ids]).map(&:to_i)).pluck(:id)
+        base_check.where("customers.fobbiden IS NULL OR customers.fobbiden NOT IN (?)", %w[true t 1]).where(id: Array(params[:customer_ids]).map(&:to_i)).pluck(:id)
       elsif send_count && send_count > 0
         eligible_scope.limit(send_count).pluck(:id)
       else
@@ -214,12 +215,12 @@ class FormSubmissionsController < ApplicationController
   # GET /form_submissions/:id
   def show
     ended = @batch.completed_at || Time.current
-    @results = Call.form_submissions
-                   .where(created_at: @batch.created_at..ended)
-                   .order(created_at: :desc)
-                   .page(params[:results_page])
-                   .per(50)
+    customer_ids = JSON.parse(FormSubmissionBatch.where(id: @batch.id).pick(:customer_ids).presence || '[]')
+    results_scope = Call.form_submissions
+                        .where(customer_id: customer_ids, created_at: @batch.created_at..ended)
+    @results = results_scope.order(created_at: :desc).page(params[:results_page]).per(50)
     @customers_by_id = Customer.where(id: @results.map(&:customer_id)).index_by(&:id)
+    @result_chart = build_result_chart(results_scope.group(:status).count)
   end
 
   # PATCH /form_submissions/:id/cancel
@@ -322,7 +323,7 @@ class FormSubmissionsController < ApplicationController
   # POST /form_submissions/detect_contact_urls
   def detect_contact_urls
     # Build base scope for customer selection
-    base_scope = Customer.where(contact_url: [nil, ''])
+    base_scope = Customer.awaiting_contact_detection
                         .where.not(url: [nil, ''])
                         .with_legal_entity
                         .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
@@ -405,6 +406,46 @@ class FormSubmissionsController < ApplicationController
   end
   
   private
+
+  RESULT_SLICE_DEFS = [
+    ['自動送信成功', '成功', '#34d399'],
+    ['送信成功', '成功', '#34d399'],
+    ['自動送信失敗', '送信失敗', '#f87171'],
+    ['送信失敗', '送信失敗', '#ef4444'],
+    ['アクセス失敗', '送信失敗', '#fb7185'],
+    ['営業禁止', '見送り', '#fbbf24'],
+    ['フォーム未検出', '見送り', '#94a3b8'],
+    ['本文未入力スキップ', '見送り', '#38bdf8'],
+    ['メアド過多スキップ', '見送り', '#a78bfa'],
+    ['CAPTCHA NG', '見送り', '#f97316'],
+    ['NG対象', '見送り', '#64748b']
+  ].freeze
+
+  def build_result_chart(counts)
+    known = RESULT_SLICE_DEFS.map(&:first)
+    slices = RESULT_SLICE_DEFS.filter_map do |status, group, color|
+      count = counts[status].to_i
+      next if count.zero?
+
+      { status: status, group: group, color: color, count: count }
+    end
+    counts.each do |status, count|
+      next if known.include?(status) || count.to_i.zero?
+
+      slices << { status: status, group: 'その他', color: '#cbd5e1', count: count.to_i }
+    end
+
+    total = slices.sum { |slice| slice[:count] }
+    cursor = 0.0
+    stops = slices.map do |slice|
+      start = cursor
+      cursor += total.positive? ? (slice[:count].to_f / total * 100) : 0
+      "#{slice[:color]} #{start.round(2)}% #{cursor.round(2)}%"
+    end
+    groups = slices.each_with_object(Hash.new(0)) { |slice, hash| hash[slice[:group]] += slice[:count] }
+
+    { slices: slices, total: total, gradient: stops.join(', '), groups: groups }
+  end
 
   def set_batch
     @batch =

@@ -7,6 +7,40 @@
     = select_tag :dial_script_id, options_from_collection_for_select(@dial_scripts, :id, :label_for_select, @dial_script&.id), include_blank: (@dial_scripts.blank? ? '原稿がありません' : false), class: 'sc-detect__input'
     = submit_tag 'この原稿を表示', class: 'sc-detect__btn sc-detect__btn--primary'
 
+  .sc-detect__card.mb-4
+    .sc-detect__card-header 試験発信
+    .sc-detect__card-body
+      p.mb-2 style="color: rgba(229, 231, 235, 0.8);"
+        | 相手役 #{@test_to_display} へかけ、転送先は #{@operator_display} です。原稿は ID 1 を使います。
+      p.mb-2 style="color: rgba(229, 231, 235, 0.55); font-size: 12px;"
+        | 発信前に公開接続を確認します。切れているときは電話をかけず、日本語で案内します。
+      - if @public_url_ready
+        p.mb-2 style="color: #86efac; font-size: 12px;" = @public_url_message
+      - else
+        p.mb-2 style="color: #fbbf24; font-size: 12px;" = @public_url_message
+      - if DialScript.exists?(1)
+        = button_to '試験発信する', test_dial_call_batches_path, method: :post, class: 'sc-detect__btn sc-detect__btn--primary', params: { dial_script_id: 1 }, data: { confirm: "原稿 ID 1 で相手役 #{@test_to_display} に電話をかけます。よろしいですか？" }
+      - else
+        p.mb-0 style="color: #fbbf24;" 試験発信は原稿 ID 1 が必要です。先に ID 1 の原稿を作ってください。
+
+  .sc-detect__card.mb-4
+    .sc-detect__card-header 今の会話
+    .sc-detect__card-body data-live-transcript="1" data-call-id=(@watch_call&.id) data-poll-url=dashboard_call_batches_path(format: :json, dial_script_id: (@dial_script&.id || 1), call_id: @watch_call&.id)
+      - if @watch_call
+        p.mb-1 style="color: #7dd3fc; font-size: 12px;"
+          | 通話 ID #{@watch_call.id} / #{@watch_call.twilio_status} / #{@watch_call.flow_phase}
+        p.mb-2
+          small style="color: rgba(229, 231, 235, 0.5);" = "#{@watch_call.customer&.company} #{@watch_call.customer&.tel}"
+        p.mb-1 style="color: #7dd3fc; font-size: 12px;" 通話中の文字（保存を待たず出します）
+        pre.dial-call-log data-final-log="1" = @watch_call.speech_result.presence || 'つながると、ここに会話が出ます。'
+        p.mb-0 data-confirmed-log="1" style="color: #86efac; font-size: 12px; white-space: pre-wrap;"
+        p.mb-0 data-interim-line="1" style="color: #fbbf24; font-size: 12px; display: none;"
+      - else
+        p.mb-1 style="color: rgba(229, 231, 235, 0.5); font-size: 12px;" 試験発信すると、この欄に会話が出ます。
+        pre.dial-call-log data-final-log="1" まだ通話はありません。
+        p.mb-0 data-confirmed-log="1" style="color: #86efac; font-size: 12px; white-space: pre-wrap;"
+        p.mb-0 data-interim-line="1" style="color: #fbbf24; font-size: 12px; display: none;"
+
   - if @dial_script
     .dial-script-preview
       .sc-detect__card.mb-4
@@ -25,7 +59,7 @@
           .dial-script-preview__block
             .sc-detect__label 聞き直し
             p.dial-script-preview__text = @dial_script.text_for('repeat')
-          - Call.StatuItems.each do |label|
+          - Call::AI_STATUS_ITEMS.each do |label|
             .dial-script-preview__block
               .sc-detect__label = label
               p.dial-script-preview__text = @dial_script.status_text(label).presence || '（未入力）'
@@ -86,15 +120,19 @@
       - if @active_calls.any?
         .row
           - @active_calls.each do |call|
-            .col-md-4.mb-3
-              .sc-detect__card style="border-color: #38bdf8; box-shadow: 0 0 15px rgba(56, 189, 248, 0.2); background: rgba(15, 23, 42, 0.9);"
+            .col-md-6.mb-3
+              .sc-detect__card style="border-color: #38bdf8; box-shadow: 0 0 15px rgba(56, 189, 248, 0.2); background: rgba(15, 23, 42, 0.9);" data-live-transcript="1" data-call-id=call.id
                 .sc-detect__card-body.p-3
                   h6 style="color: #ffffff; font-weight: 700;" = call.customer&.company || '不明'
                   p.mb-2
                     small style="color: rgba(229, 231, 235, 0.5);" = call.customer&.tel
-                  .d-flex.justify-content-between
+                  .d-flex.justify-content-between.mb-2
                     span.sc-detect__badge.sc-detect__badge--info style="font-size: 10px;" = call.twilio_status
                     span.sc-detect__badge.sc-detect__badge--secondary style="font-size: 10px;" = call.flow_phase
+                  p.mb-1 style="color: #7dd3fc; font-size: 12px;" 通話中の文字
+                  pre.dial-call-log data-final-log="1" = call.speech_result.presence || '-'
+                  p.mb-0 data-confirmed-log="1" style="color: #86efac; font-size: 12px; white-space: pre-wrap;"
+                  p.mb-0 data-interim-line="1" style="color: #fbbf24; font-size: 12px; display: none;"
       - else
         p style="color: rgba(229, 231, 235, 0.4); text-align: center; padding: 20px 0;" 現在アクティブな通話はありません。
 

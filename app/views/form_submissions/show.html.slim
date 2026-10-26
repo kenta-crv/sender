@@ -86,8 +86,32 @@
               i.fas.fa-mouse-pointer.me-1
               | クリック履歴
 
-  / --- 送信結果一覧 ---
+  / --- 送信結果の内訳 ---
   h2.sc-detect__title style="font-size: 20px;" 送信結果
+  - chart = @result_chart || {}
+  - if chart[:total].to_i.positive?
+    .sc-detect__card.mb-4
+      .sc-detect__card-body
+        .send-result-summary
+          .send-result-pie style="background: conic-gradient(#{chart[:gradient]});" aria-hidden="true"
+          .send-result-detail
+            .send-result-groups
+              - %w[成功 送信失敗 見送り その他].each do |group|
+                - count = chart[:groups][group].to_i
+                - next if count.zero?
+                span.send-result-group
+                  span.send-result-group__label = group
+                  strong = count
+                  | 件
+            ul.send-result-legend
+              - chart[:slices].each do |slice|
+                li
+                  span.send-result-swatch style="background: #{slice[:color]};"
+                  span.send-result-legend__status = slice[:status]
+                  strong = slice[:count]
+                  | 件
+                  span.send-result-legend__rate
+                    | （#{((slice[:count].to_f / chart[:total]) * 100).round(1)}%）
   .sc-detect__table-wrapper.mb-5
     table.sc-detect__table
       thead

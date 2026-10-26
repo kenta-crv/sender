@@ -93,7 +93,7 @@ class FormSender
     営業禁止 営業お断り セールスお断り 営業メールお断り
     営業目的のお問い合わせはお断り 営業のご連絡はお断り
     営業はご遠慮 営業のメールはご遠慮 営業等のご連絡はお控え
-    営業についてはお断り 売り込みお断り 売込みお断り 営業
+    営業についてはお断り 売り込みお断り 売込みお断り 営業はお控えください
   ].freeze
 
   attr_reader :driver, :customer, :result
@@ -185,15 +185,17 @@ class FormSender
     @result = { status: nil, message: nil }
     @alert_had_error = false
 
+    form_url = customer.usable_contact_url
+
     # NGブラックリストチェック（contact_url設定済みの場合）
-    if customer.contact_url.present? && blocked_url?(customer.contact_url)
-      @result = { status: 'NG対象', message: "ブラックリスト該当URL: #{customer.contact_url}" }
+    if form_url.present? && blocked_url?(form_url)
+      @result = { status: 'NG対象', message: "ブラックリスト該当URL: #{form_url}" }
       save_result_to_db if @save_to_db
       return @result
     end
 
     # contact_urlがない場合 → 自動検出を試みる
-    if customer.contact_url.blank?
+    if form_url.blank?
       if @skip_detection
         # バッチモード: 自動検出をスキップして即座に結果を返す（事前に一括検出を実行済み前提）
         @result = { status: 'フォーム未検出', message: 'contact_url未設定（事前に一括検出を実行してください）' }
@@ -210,9 +212,11 @@ class FormSender
             save_result_to_db if @save_to_db
             return @result
           end
-          customer.update_column(:contact_url, detection[:contact_url])
+          customer.mark_contact_detected!(detection[:contact_url])
+          form_url = detection[:contact_url]
           log "自動検出成功: #{detection[:contact_url]}"
         else
+          customer.mark_contact_not_detected!
           @result = { status: 'フォーム未検出', message: "自動検出失敗: #{detection[:message]}" }
           save_result_to_db if @save_to_db
           return @result
@@ -228,8 +232,8 @@ class FormSender
       setup_driver
 
       # フォームにアクセス
-      log "アクセス中: #{customer.contact_url}"
-      driver.navigate.to(customer.contact_url)
+      log "アクセス中: #{form_url}"
+      driver.navigate.to(form_url)
       # ページ読み込み待機（body+form存在で早期完了）
       wait_for(min_seconds: 1, max_seconds: 10) do
         body = driver.find_element(:css, 'body') rescue nil

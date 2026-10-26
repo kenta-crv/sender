@@ -26,12 +26,36 @@
         = f.label :wait_text, '待ち', class: 'sc-detect__label'
         = f.text_area :wait_text, class: 'sc-detect__input', rows: 3
       .sc-detect__form-group
-        = f.label :repeat_text, '聞き直し', class: 'sc-detect__label'
+        = f.label :repeat_text, '聞き直し(互換)', class: 'sc-detect__label'
         = f.text_area :repeat_text, class: 'sc-detect__input', rows: 3
-      - Call.StatuItems.each do |label|
+      .sc-detect__form-group
+        = f.label :smalltalk_text, '挨拶・雑談への受け返し', class: 'sc-detect__label'
+        = f.text_area :smalltalk_text, class: 'sc-detect__input', rows: 3
+      .sc-detect__form-group
+        = f.label :clarify_text, '不明1回目', class: 'sc-detect__label'
+        = f.text_area :clarify_text, class: 'sc-detect__input', rows: 3
+      .sc-detect__form-group
+        = f.label :clarify_alt_text, '不明1回目(別表現)', class: 'sc-detect__label'
+        = f.text_area :clarify_alt_text, class: 'sc-detect__input', rows: 3
+      .sc-detect__form-group
+        = f.label :clarify_simple_text, '不明2回目(はい/いいえ)', class: 'sc-detect__label'
+        = f.text_area :clarify_simple_text, class: 'sc-detect__input', rows: 3
+      .sc-detect__form-group
+        = f.label :callback_text, '折り返し終話', class: 'sc-detect__label'
+        = f.text_area :callback_text, class: 'sc-detect__input', rows: 3
+      - Call::AI_STATUS_ITEMS.each do |label|
         .sc-detect__form-group
           = label_tag "status_text_#{label}", label, class: 'sc-detect__label'
           = text_area_tag "dial_script[status_texts][#{label}]", @dial_script.status_text(label), id: "status_text_#{label}", class: 'sc-detect__input', rows: 3
+
+  .sc-detect__card.mb-4
+    .sc-detect__card-header
+      | 固定文バンク（改行区切り・複数あると毎回同じ台詞を避けます）
+    .sc-detect__card-body
+      - DialScript::BANK_EDIT_KEYS.each do |key|
+        .sc-detect__form-group
+          = label_tag "bank_#{key}", "#{DialScript::SCRIPT_LABELS[key] || key}バンク", class: 'sc-detect__label'
+          = text_area_tag "dial_script[bank_#{key}]", @dial_script.bank_field(key).join("\n"), id: "bank_#{key}", class: 'sc-detect__input', rows: 4
 
   .d-flex.gap-3.mb-5
     = f.submit @dial_script.persisted? ? '更新する' : '作成する', class: 'sc-detect__btn sc-detect__btn--warning'

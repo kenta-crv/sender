@@ -7,6 +7,8 @@ class DialUtterancesController < ApplicationController
     if @dial_utterance.save
       redirect_to @dial_script, notice: '想定の返事を追加しました。'
     else
+      @dial_faq = DialFaq.new
+      @unknown_utterances = @dial_script.dial_unknown_utterances.order(created_at: :desc).limit(50)
       @dial_script.reload
       render 'dial_scripts/show'
     end

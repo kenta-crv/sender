@@ -10,8 +10,8 @@ class Dashboard::DashboardsController < ApplicationController
     insights_scope = customer_insights_scope
     assign_selected_month!
 
-    @total_customers_count = Customer.unscoped.where.not(contact_url: [nil, '', 'not_detected']).count
-    @not_detected_count = insights_scope.where(contact_url: 'not_detected').count
+    @total_customers_count = Customer.unscoped.with_real_contact_url.count
+    @not_detected_count = insights_scope.contact_form_not_detected.count
     @no_url_customers_count = insights_scope.where(contact_url: [nil, '']).where(url: [nil, '']).count
 
     notification_scope = if acting_as_admin?
@@ -104,17 +104,15 @@ class Dashboard::DashboardsController < ApplicationController
     filtered = @q.result(distinct: true)
     filtered = filtered.filter_by_last_form_call(params[:last_call]) if acting_as_admin?
 
-    excluded_statuses = ['フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected', 'CAPTCHA NG']
+    excluded_statuses = Customer::FORM_SEND_HIDDEN_CALL_STATUSES
 
     @customers = filtered
-                   .where.not(contact_url: [nil, '', 'not_detected'])
-                   .left_joins(:calls)
-                   .where("calls.status NOT IN (?) OR calls.id IS NULL", excluded_statuses)
-                   .distinct
+                   .with_real_contact_url
+                   .visible_on_form_send_list
                    .page(params[:customers_page]).per(50)
 
     @detectable_customers = filtered
-                              .where(contact_url: [nil, ''])
+                              .awaiting_contact_detection
                               .where.not(url: [nil, ''])
                               .with_legal_entity
                               .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
@@ -128,7 +126,7 @@ class Dashboard::DashboardsController < ApplicationController
 
     query_scope = @base_customers.left_joins(:calls)
     @not_detected_count = query_scope
-                            .where(contact_url: 'not_detected')
+                            .contact_form_not_detected
                             .or(query_scope.where(calls: { status: excluded_statuses }))
                             .distinct.count
 
@@ -154,17 +152,17 @@ def searching_form
   end
 
   @detectable_customers = filtered
-                            .where(contact_url: [nil, ''])
+                            .awaiting_contact_detection
                             .where.not(url: [nil, ''])
                             .with_legal_entity
                             .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
                             .page(params[:detectable_page]).per(50)
 
-  @not_detected_count = @base_customers.where(contact_url: 'not_detected').count
+  @not_detected_count = @base_customers.contact_form_not_detected.count
   @no_url_customers_count = @base_customers.where(contact_url: [nil, '']).where(url: [nil, '']).count
 
   detectable_base = @q.result(distinct: true)
-                      .where(contact_url: [nil, ''])
+                      .awaiting_contact_detection
                       .where.not(url: [nil, ''])
                       .with_legal_entity
                       .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)

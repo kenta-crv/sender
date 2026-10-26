@@ -13,6 +13,9 @@
 //= require rails-ujs
 //= require activestorage
 //= require turbolinks
+//= require action_cable
+//= require cable
+//= require_tree ./channels
 
 (function() {
   if (window.Turbolinks && typeof window.Turbolinks.pagesCached === 'function') {

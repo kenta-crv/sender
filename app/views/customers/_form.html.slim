@@ -60,17 +60,36 @@
                     th お問い合わせフォームURL
                     td
                       = f.text_field :contact_url, placeholder: 'https://example.com/contact', class: "form-control"
-                      - if @customer.contact_url.blank? && @customer.url.blank?
+                      - if @customer.usable_contact_url.blank? && @customer.url.blank?
                         div style="margin-top: 8px; font-size: 0.8rem; color: rgba(255, 80, 80, 0.8);"
                           | URLが未設定です。HPのURLまたはお問い合わせフォームURLを設定してください。
-                      - elsif @customer.contact_url.blank? && @customer.url.present?
+                      - elsif @customer.contact_detection_status == 'not_detected'
+                        div style="margin-top: 8px; font-size: 0.8rem; color: #94a3b8;"
+                          | 未検出です。再検出するには、フォーム検出を未確認に戻してください。
+                      - elsif @customer.usable_contact_url.blank? && @customer.url.present?
                         div style="margin-top: 8px; font-size: 0.8rem; color: var(--electric-blue);"
                           | HPから自動検出可能です（フォーム送信時に自動検出されます）
+                  tr
+                    th フォーム検出
+                    td
+                      = f.select :contact_detection_status,
+                        [['未確認', ''], ['検出済み', 'detected'], ['未検出', 'not_detected'], ['メーラー起動', 'mailer']],
+                        {},
+                        class: 'form-control'
                   tr
                     th フォーム送信の状態
                     td style="padding-top: 15px; padding-bottom: 15px;"
                       - status = customer_delivery_status(@customer)
                       span class="delivery-status-badge #{status[:css]}" = status[:label]
+
+                      - if acting_as_admin? || !client_signed_in?
+                        .delivery-status-note
+                          | 下のチェックをオンにすると、
+                          strong 全クライアント共通
+                          | で送信禁止になります（管理者専用）。
+                        label style="display: inline-flex; align-items: center; cursor: pointer; color: var(--text-muted); font-size: 0.9rem; margin-top: 12px;"
+                          = f.check_box :fobbiden, { style: "margin-right: 8px; width: 16px; height: 16px; accent-color: var(--electric-blue);" }, "true", "0"
+                          span 全クライアント共通で送信禁止
 
                       - if acting_as_admin?
                         - opted_out_labels = customer_opted_out_client_labels(@customer)

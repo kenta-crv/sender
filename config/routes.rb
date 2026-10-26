@@ -103,17 +103,26 @@ Rails.application.routes.draw do
   end
 
   namespace :twilio do
+    get 'ping', to: 'ping#show'
+    post 'ping', to: 'ping#show'
     post 'voice', to: 'voice#voice'
     post 'greeting', to: 'voice#greeting'
     post 'gather', to: 'voice#gather'
     post 'stream_result', to: 'voice#stream_result'
     post 'stream_fallback', to: 'voice#stream_fallback'
+    post 'transfer', to: 'voice#transfer'
+    post 'operator_join', to: 'voice#operator_join'
+    post 'conference_wait', to: 'voice#conference_wait'
+    post 'conference_status', to: 'voice#conference_status'
     post 'status', to: 'status#update'
     post 'recording_status', to: 'status#recording'
+    post 'amd', to: 'status#amd'
   end
 
   resources :dial_scripts do
     resources :dial_utterances, only: [:create, :destroy]
+    resources :dial_faqs, only: [:create, :destroy]
+    resources :dial_unknown_utterances, only: [:destroy]
   end
 
   resources :call_batches do
@@ -126,6 +135,7 @@ Rails.application.routes.draw do
     collection do
       get :dashboard
       get :analytics
+      post :test_dial
     end
   end
 

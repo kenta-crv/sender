@@ -6,12 +6,21 @@ class CallBatchesController < ApplicationController
   def dashboard
     @dial_scripts = DialScript.order(:id)
     @dial_script = DialScript.find_by(id: params[:dial_script_id])
-    @dial_script ||= DialScript.order(:id).first
+    @dial_script ||= DialScript.find_by(id: 1) || DialScript.order(:id).first
     script_calls = if @dial_script
                      Call.auto_calls.where(dial_script_id: @dial_script.id)
                    else
                      Call.none
                    end
+    live_scope = script_calls.where(twilio_status: %w[queued initiated ringing in-progress])
+    @watch_call = script_calls.includes(:customer).find_by(id: params[:call_id]) if params[:call_id].present?
+    @watch_call ||= live_scope.includes(:customer).order(started_at: :desc, id: :desc).first
+
+    if request.format.json?
+      render json: { watch_call: live_call_payload(@watch_call) }
+      return
+    end
+
     @active_calls = script_calls.active_twilio.includes(:customer).order(started_at: :desc)
     @current_batch = CallBatch.where(status: 'processing', dial_script_id: @dial_script.id).order(id: :desc).first if @dial_script
     @recent_calls = script_calls
@@ -21,12 +30,50 @@ class CallBatchesController < ApplicationController
                         .includes(:customer)
     today = script_calls.call_count_today
     @stats = { today_total: today.count }
-    @status_counts = Call.StatuItems.index_with { |label| today.where(status: label).count }
-
-    respond_to do |format|
-      format.html
-      format.json { render json: { active_calls: @active_calls.as_json(include: :customer), stats: @stats } }
+    @status_counts = Call::AI_STATUS_ITEMS.index_with { |label| today.where(status: label).count }
+    @test_to_display = TwilioConfig::TEST_TO_DISPLAY
+    @operator_display = TwilioConfig::OPERATOR_DISPLAY
+    begin
+      TwilioPublicUrl.ensure_ready!
+      @public_url_ready = true
+      @public_url_message = '公開接続は通っています。'
+    rescue StandardError => e
+      @public_url_ready = false
+      @public_url_message = e.message
     end
+  end
+
+  # POST /call_batches/test_dial — 固定番号への試験発信
+  def test_dial
+    dial_script = DialScript.find_by(id: 1)
+    unless dial_script
+      redirect_to dashboard_call_batches_path, alert: '試験発信は原稿 ID 1 を使います。先に ID 1 の原稿を作ってください。'
+      return
+    end
+
+    TwilioConfig.apply_test_numbers!
+    base_url = TwilioPublicUrl.ensure_ready!
+    customer = find_or_create_test_customer!
+
+    call = Call.create!(
+      customer: customer,
+      call_type: 'auto_phone',
+      dial_script_id: dial_script.id,
+      twilio_status: 'queued',
+      flow_phase: 'initiating',
+      started_at: Time.current,
+      worker_id: current_admin&.id
+    )
+
+    sid = TwilioService.new.initiate_call(customer, call, base_url)
+    call.update!(twilio_call_sid: sid, twilio_status: 'initiated')
+
+    redirect_to dashboard_call_batches_path(dial_script_id: 1, call_id: call.id),
+                notice: "試験発信を開始しました。会話は下の「今の会話」に出ます。相手 #{TwilioConfig::TEST_TO_DISPLAY} / 転送先 #{TwilioConfig::OPERATOR_DISPLAY}"
+  rescue => e
+    Rails.logger.error("[CallBatches#test_dial] #{e.class}: #{e.message}")
+    redirect_to dashboard_call_batches_path(dial_script_id: 1),
+                alert: test_dial_error_message(e)
   end
 
   # GET /call_batches/analytics
@@ -175,6 +222,52 @@ class CallBatchesController < ApplicationController
   end
 
   private
+
+  def live_call_payload(call)
+    return nil unless call
+
+    {
+      id: call.id,
+      speech_result: call.speech_result.to_s,
+      twilio_status: call.twilio_status,
+      flow_phase: call.flow_phase,
+      company: call.customer&.company,
+      tel: call.customer&.tel
+    }
+  end
+
+  def find_or_create_test_customer!
+    tel = TwilioConfig::TEST_TO_DISPLAY
+    customer = Customer.find_by(tel: tel)
+    customer ||= Customer.find_by(tel: TwilioConfig.test_to_number)
+    customer ||= Customer.find_by(company: '試験発信')
+    if customer
+      customer.update!(tel: tel, company: '試験発信')
+      customer
+    else
+      Customer.create!(company: '試験発信', tel: tel)
+    end
+  end
+
+  def test_dial_error_message(error)
+    msg = error.message.to_s
+    return msg if msg.include?('公開用') || msg.include?('原稿')
+
+    if msg.match?(/Authenticate|20003/i)
+      return 'Twilioの認証に失敗しました。アカウント設定を確認してください。'
+    end
+    if msg.match?(/not a valid phone|21211|21214/i)
+      return '電話番号の形式が正しくありません。'
+    end
+    if msg.match?(/unverified|21219/i)
+      return '試験用の発信先番号がTwilioで未確認です。確認済み番号を使ってください。'
+    end
+    if msg.match?(/URL|webhook|21205|21609/i)
+      return '通話の受け口URLに問題があります。ngrok を起動し直してください。'
+    end
+
+    '試験発信に失敗しました。公開接続と電話設定を確認してください。'
+  end
 
   def set_batch
     @batch =

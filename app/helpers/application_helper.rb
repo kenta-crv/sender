@@ -1,17 +1,9 @@
 module ApplicationHelper
   def default_meta_tags
     {
-      site: "豊富な人材集客力で企業の人材不足を解消|『J Work』",
-      description: "豊富な人材集客力で企業の人材不足を解消|『J Work』。軽貨物・警備・建設・清掃業等様々な業界で活躍しています。",
-      canonical: request.original_url,  # 優先されるurl
-      charset: "UTF-8",
-      reverse: true,
-      separator: '|',
-      icon: [
-        { href: image_url('favicon.ico') },
-        { href: image_url('favicon.ico'),  rel: 'apple-touch-icon' },
-      ],
-
+      title: "フォーム営業・問い合わせフォーム送信ならOkurite",
+      description: "株式会社J Workが運営する問い合わせフォーム送信ツールOkuriteと、営業パッケージのサービス名Ri-Plusを案内します。",
+      canonical: "#{request.base_url}#{request.path}"
     }
   end
 
@@ -87,7 +79,9 @@ module ApplicationHelper
     client_id ||= current_client&.id if client_signed_in?
     admin_id ||= current_admin&.id if acting_as_admin?
 
-    if client_id.present? && customer.opted_out_for?(client_id)
+    if %w[true t 1].include?(customer.fobbiden.to_s)
+      { label: "全クライアント共通で送信禁止", css: "delivery-status-badge--global-ng" }
+    elsif client_id.present? && customer.opted_out_for?(client_id)
       { label: "このクライアントから配信停止済み", css: "delivery-status-badge--client-opt-out" }
     elsif admin_id.present? && customer.delivery_opt_outs.exists?(admin_id: admin_id)
       { label: "この管理者から配信停止済み", css: "delivery-status-badge--client-opt-out" }

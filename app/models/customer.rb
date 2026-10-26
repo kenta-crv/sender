@@ -1,5 +1,10 @@
 class Customer < ApplicationRecord
   DUPLICATE_CLEANUP_ATTRIBUTES = %w[company tel url contact_url].freeze
+  CONTACT_URL_PLACEHOLDERS = ['not_detected', 'メーラー起動リンクのため検出不可'].freeze
+  # 送信一覧に出さない通話・フォーム結果。一覧とバッチ開始で同じ条件に使う。
+  FORM_SEND_HIDDEN_CALL_STATUSES = [
+    'フォーム未検出', 'アクセス失敗', 'エラー', 'not_detected', 'CAPTCHA NG'
+  ].freeze
   LEGAL_ENTITY_TERMS = %w[
     株式会社 有限会社 合同会社 一般社団法人 一般財団法人 社会福祉法人 医療法人 学校法人
   ].freeze
@@ -25,9 +30,69 @@ class Customer < ApplicationRecord
     "(#{col} IS NULL OR TRIM(#{col}) = '' OR #{col} = ' ' OR #{col} = ' ' OR TRIM(#{col}) IN (#{dash_list}))"
   end
 
+  scope :with_real_contact_url, -> {
+    where.not(contact_url: [nil, ''] + CONTACT_URL_PLACEHOLDERS)
+  }
+
+  # 送信一覧と同じ顧客だけを残す。
+  # 結果が無い顧客は残す。結果がある顧客は、除外ステータス以外の結果が1件でもあれば残す。
+  scope :visible_on_form_send_list, -> {
+    hidden_customer_ids = Call.where.not(customer_id: nil)
+      .group(:customer_id)
+      .having(
+        "COUNT(CASE WHEN calls.status NOT IN (?) THEN 1 END) = 0",
+        FORM_SEND_HIDDEN_CALL_STATUSES
+      )
+      .select(:customer_id)
+
+    where.not(id: hidden_customer_ids)
+  }
+
+  scope :awaiting_contact_detection, -> {
+    where(contact_url: [nil, ''])
+      .where(contact_detection_status: [nil, ''])
+  }
+
+  scope :contact_form_not_detected, -> {
+    where(
+      "customers.contact_detection_status = :status OR customers.contact_url = :status",
+      status: "not_detected"
+    )
+  }
+
   scope :between_created_at, ->(from, to) {
     where(created_at: from..to).where.not(tel: nil)
   }
+
+  def contact_detection_label
+    case contact_detection_status
+    when 'detected' then '検出済み'
+    when 'not_detected' then '未検出'
+    when 'mailer' then 'メーラー起動'
+    else '未確認'
+    end
+  end
+
+  def usable_contact_url
+    value = contact_url.to_s.strip
+    return if value.blank? || CONTACT_URL_PLACEHOLDERS.include?(value)
+
+    value
+  end
+
+  def mark_contact_detected!(url)
+    update_columns(
+      contact_url: url,
+      contact_detection_status: 'detected',
+      updated_at: Time.current
+    )
+  end
+
+  def mark_contact_not_detected!
+    attrs = { contact_detection_status: 'not_detected', updated_at: Time.current }
+    attrs[:contact_url] = nil if CONTACT_URL_PLACEHOLDERS.include?(contact_url)
+    update_columns(attrs)
+  end
 
   scope :between_called_at, ->(from, to) {
     where(created_at: from..to)
@@ -71,7 +136,7 @@ class Customer < ApplicationRecord
   end
 
   scope :deliverable_for, ->(client_id = nil, admin_id = nil) {
-    scope = all
+    scope = where("customers.fobbiden IS NULL OR customers.fobbiden NOT IN (?)", %w[true t 1])
     if client_id.present?
       opted_out_ids = DeliveryOptOut.where(client_id: client_id).select(:customer_id)
       scope = scope.where.not(id: opted_out_ids)
