@@ -91,7 +91,7 @@ class DialRealtimeDeciderTest < ActiveSupport::TestCase
   test '無音で発話終了を検知する' do
     vad = UtteranceVad.new
     speech = Mulaw.tone(1600, amplitude: 12000)
-    silence = Mulaw.silence(2560)
+    silence = Mulaw.silence(4000)
     assert vad.feed(speech + silence)
   end
 
@@ -118,7 +118,7 @@ class DialRealtimeDeciderTest < ActiveSupport::TestCase
     session.on_final('ちょっと待ってもらえますか', 0.9)
     assert_empty socket.sent
 
-    session.feed(Mulaw.tone(1600, amplitude: 12000) + Mulaw.silence(2560))
+    session.feed(Mulaw.tone(1600, amplitude: 12000) + Mulaw.silence(4000))
     session.wait_idle(3)
 
     assert decider.count >= 1

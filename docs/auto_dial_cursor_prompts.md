@@ -88,6 +88,8 @@ verification/front_eval/results.csv の NG 行を直す。対象は app/services
 
 ## ステップ3：待ち時間・保留状態・無音対策
 
+> 実装済み（Claude が直接修正）。確認: `ruby verification/session_eval/run_session_eval.rb`
+
 ```
 docs/auto_dial_cursor_prompts.md の共通仕様を読んでから作業して。共通仕様の「待ち時間」「保留中のルール」をそのまま実装する。
 

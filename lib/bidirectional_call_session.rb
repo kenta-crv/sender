@@ -3,13 +3,37 @@ require 'json'
 require_relative 'utterance_vad'
 
 # 原稿ID 1 の双方向ストリーム。途中の認識では再生も転送もしない。
+#
+# 通話の段階（@phase）
+#   :opening  接続直後。相手の第一声の終わりか、無音 greet_wait 秒を待って挨拶する
+#   :talk     受付との会話
+#   :hold     取り次ぎ中（保留）。何も話さず、本人・不在・断り・改めて だけに反応する
+#   :transfer 担当者へ転送中
+#   :ended    終了
 class BidirectionalCallSession
   FINAL_WAIT_SEC = 0.4
   PREVIEW_WAIT_SEC = 2.0
-  LISTEN_TIMEOUT_SEC = 8
   BARGE_MS = 200
 
-  def initialize(ws, call_id:, call_sid:, stream_sid:, call: nil, persist: true, greet: true, decider: DialRealtimeDecider)
+  # 待ち時間（秒）。docs/auto_dial_cursor_prompts.md の共通仕様。
+  TIMING = {
+    greet_wait: 1.5,   # 接続後、相手が名乗らないときに挨拶を始めるまで
+    silence_step: 2.5, # こちらが話した後の無言1段階
+    hold_max: 60,      # 保留に入ってから、人の返事がないまま切るまで
+    watchdog: 10,      # 保留以外で、こちらが何も流していない上限
+    tick: 0.5          # 見張りの確認間隔
+  }.freeze
+
+  SILENCE_KEYS = %w[silence_1 silence_2 callback].freeze
+  UNCLEAR_KEYS = %w[clarify clarify_simple callback].freeze
+  HOLD_REACT_KEYS = %w[transfer 担当者不在 フロントアウト callback].freeze
+  OPENING_REACT_KEYS = %w[着信不在 電話不通].freeze
+  HOLD_TIMEOUT_STATUS = '担当者不在'.freeze
+
+  attr_reader :phase
+
+  def initialize(ws, call_id:, call_sid:, stream_sid:, call: nil, persist: true, greet: true,
+                 decider: DialRealtimeDecider, timing: {}, hangup: nil, vad: nil)
     @ws = ws
     @call_id = call_id
     @call_sid = call_sid
@@ -18,19 +42,23 @@ class BidirectionalCallSession
     @persist = persist
     @greet = greet
     @decider = decider
+    @timing = TIMING.merge(timing)
+    @hangup = hangup || ->(sid) { TwilioService.new.hangup_call(sid) }
     @script_id = call&.dial_script_id
     @lock = Mutex.new
     @send_lock = Mutex.new
-    @vad = UtteranceVad.new
+    @vad = vad || UtteranceVad.new
     @finals = []
     @interim = ''
     @final_mono = nil
     @confidence = nil
-    @listening = !greet
+    @phase = greet ? :opening : :talk
+    @listening = true
     @playing = false
     @play_gen = 0
     @busy = false
     @turn = 0
+    @turn_gen = 0
     @preview_gen = 0
     @preview_text = nil
     @preview_decision = nil
@@ -38,19 +66,24 @@ class BidirectionalCallSession
     @quiet_since = nil
     @after = nil
     @closed = false
+    @silence_stage = 0
+    @unclear_count = 0
+    @hold_since = nil
+    @last_output_at = now
   end
 
   def start!
-    return unless @greet
-
-    play('greeting', turn_id: nil, kind: 'greeting')
+    @quiet_since = now
+    @last_output_at = now
+    start_watchdog
   end
 
   def feed(mulaw_bytes)
     return if @closed || mulaw_bytes.nil? || mulaw_bytes.empty?
 
     if @playing
-      note_barge(mulaw_bytes)
+      # 切る前・転送前の録音は、相手の声で止めない
+      note_barge(mulaw_bytes) if @after.nil? || @after == :listen
       return
     end
     return unless @listening
@@ -78,7 +111,7 @@ class BidirectionalCallSession
     @lock.synchronize do
       @finals << text
       @interim = ''
-      @final_mono = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @final_mono = now
     end
     broadcast(text, 'final')
     start_preview
@@ -96,12 +129,15 @@ class BidirectionalCallSession
     )
   end
 
+  # 音声認識が落ちたとき。保留中は何もしない。
   def on_error(_error)
     return if @closed || @busy || @playing
+    return unless %i[opening talk].include?(@phase)
 
     @busy = true
     @listening = false
-    play('clarify', turn_id: nil, kind: 'error')
+    @turn += 1
+    respond_unclear(@turn, current_call, '', path: 'stt_error')
   end
 
   def finish
@@ -118,70 +154,278 @@ class BidirectionalCallSession
 
   private
 
+  def now
+    Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  end
+
+  def log_event(event, turn_id: nil, **extra)
+    CallLatencyLog.record(@call_id, event, turn_id: turn_id, extra: extra.merge(phase: @phase.to_s))
+  end
+
   def on_utterance_end
     return if @busy
 
+    forced = @vad.forced
     @busy = true
     @listening = false
     @quiet_since = nil
     @turn += 1
     turn_id = @turn
-    CallLatencyLog.record(@call_id, 'utterance_end', turn_id: turn_id, extra: { kind: 'utterance' })
+    gen = (@turn_gen += 1)
+    log_event('utterance_end', turn_id: turn_id, kind: 'utterance')
+    log_event('forced_cut', turn_id: turn_id) if forced
     @worker = Thread.new do
-      Rails.application.executor.wrap { commit_turn(turn_id) }
+      Rails.application.executor.wrap { commit_turn(turn_id, gen) }
     end
   end
 
-  def commit_turn(turn_id)
+  def commit_turn(turn_id, gen)
     text, doubt, final_mono = wait_for_stable
     CallLatencyLog.record(
       @call_id,
       'transcript_final',
       turn_id: turn_id,
       at_mono: final_mono,
-      extra: { kind: 'utterance', doubt: doubt, text: text.to_s }
+      extra: { kind: 'utterance', doubt: doubt, text: text.to_s, phase: @phase.to_s }
     )
-    preview_thread = @preview_thread
-    if preview_thread&.alive? && @preview_text == text
-      preview_thread.join(PREVIEW_WAIT_SEC)
+    return if stale?(gen)
+
+    # 言葉が取れなかった音（雑音・保留音）は、発話ではなく無音として扱う
+    if text.blank?
+      case @phase
+      when :hold then return ignore_turn(turn_id, 'blank')
+      when :opening then return start_greeting(turn_id)
+      else return on_silence(turn_id, reason: 'blank')
+      end
     end
+
     call = current_call
-    decision = take_preview(text)
-    decision ||= @decider.decide(text, call: call, stt_confidence: doubt ? 0.3 : @confidence)
-    decision = escalate_unclear(call, decision)
-    CallLatencyLog.record(
-      @call_id,
-      'branch_confirmed',
-      turn_id: turn_id,
-      extra: {
-        kind: 'utterance',
-        branch_id: decision.branch_id,
-        recording_id: decision.recording_id,
-        transfer: decision.transfer
-      }
-    )
-    @after = after_action(decision)
-    play(decision.recording_id, turn_id: turn_id, kind: 'utterance')
-    remember_turn(call, text, decision)
-    DialTransferService.start_operator!(call) if decision.transfer && @persist
+    return commit_opening(turn_id, call, text, doubt) if @phase == :opening
+
+    decision = decide_turn(text, call, doubt)
+    return if stale?(gen)
+
+    case @phase
+    when :hold then commit_hold(turn_id, call, text, decision)
+    when :talk then commit_talk(turn_id, call, text, decision)
+    end
   rescue => e
     Rails.logger.error("[BidirectionalCall] commit call_id=#{@call_id} error: #{e.message}")
     @busy = false
     @listening = true
   end
 
+  def stale?(gen)
+    @closed || gen != @turn_gen || !%i[opening talk hold].include?(@phase)
+  end
+
+  def decide_turn(text, call, doubt)
+    preview_thread = @preview_thread
+    if preview_thread&.alive? && @preview_text == text
+      preview_thread.join(PREVIEW_WAIT_SEC)
+    end
+    take_preview(text) || @decider.decide(text, call: call, stt_confidence: doubt ? 0.3 : @confidence)
+  end
+
+  # 第一声のあとは判定を待たずにすぐ挨拶する。
+  # 判定が留守電・自動音声だったら、挨拶を止めて何も残さずに切る。
+  def commit_opening(turn_id, call, text, doubt)
+    if @persist && call&.persisted?
+      call.append_call_turn!('them', text, script: 'opening')
+    end
+    start_greeting(turn_id)
+    decision = decide_turn(text, call, doubt)
+    return unless OPENING_REACT_KEYS.include?(decision.branch_id)
+    return if @closed || %i[transfer ended].include?(@phase)
+
+    log_event('opening_machine', turn_id: turn_id, branch_id: decision.branch_id)
+    hangup_silently!('opening_machine', status: decision.branch_id)
+  end
+
+  def commit_hold(turn_id, call, text, decision)
+    if HOLD_REACT_KEYS.include?(decision.branch_id)
+      log_event('hold_end', turn_id: turn_id, branch_id: decision.branch_id)
+      @phase = :talk
+      @unclear_count = 0
+      @silence_stage = 0
+      return act(turn_id, call, text, decision)
+    end
+
+    if decision.branch_id == 'wait'
+      # 「もう少々お待ちください」など。人がいるので保留の時間を延ばす
+      @hold_since = now
+      return ignore_turn(turn_id, 'hold_wait', text: text)
+    end
+
+    ignore_turn(turn_id, 'hold_ignored', text: text, branch_id: decision.branch_id)
+  end
+
+  def commit_talk(turn_id, call, text, decision)
+    @silence_stage = 0
+    return respond_unclear(turn_id, call, text, path: decision.path) if decision.ambiguous
+
+    @unclear_count = 0
+    if decision.branch_id == 'wait'
+      @phase = :hold
+      @hold_since = now
+      log_event('hold_start', turn_id: turn_id)
+    end
+    act(turn_id, call, text, decision)
+  end
+
+  # 聞き取れないとき: 1回目 clarify → 2回目 clarify_simple → 3回目 callback で切る
+  def respond_unclear(turn_id, call, text, path:)
+    @unclear_count += 1
+    key = UNCLEAR_KEYS[[@unclear_count, UNCLEAR_KEYS.size].min - 1]
+    log_event('unclear_step', turn_id: turn_id, count: @unclear_count, recording_id: key, path: path.to_s)
+    decision = DialRealtimeDecider::Decision.new(
+      branch_id: key,
+      recording_id: key,
+      transfer: false,
+      path: path,
+      ambiguous: true
+    )
+    act(turn_id, call, text, decision)
+  end
+
+  def act(turn_id, call, text, decision)
+    CallLatencyLog.record(
+      @call_id,
+      'branch_confirmed',
+      turn_id: turn_id,
+      extra: {
+        kind: 'utterance',
+        phase: @phase.to_s,
+        branch_id: decision.branch_id,
+        recording_id: decision.recording_id,
+        transfer: decision.transfer
+      }
+    )
+    @after = after_action(decision)
+    @phase = :transfer if decision.transfer
+    play(decision.recording_id, turn_id: turn_id, kind: 'utterance')
+    remember_turn(call, text, decision)
+    DialTransferService.start_operator!(call) if decision.transfer && @persist
+  end
+
+  def ignore_turn(turn_id, reason, **extra)
+    log_event('turn_ignored', turn_id: turn_id, reason: reason, **extra)
+    arm_listen
+  end
+
+  def start_greeting(turn_id)
+    return unless @phase == :opening
+
+    @phase = :talk
+    @after = :listen
+    play('greeting', turn_id: turn_id, kind: 'greeting')
+  end
+
+  # 無言のとき: silence_1（もしもし）→ silence_2（電話が遠い）→ callback で切る
+  def on_silence(turn_id, reason:)
+    return if @closed || @playing || @phase != :talk
+
+    @busy = true
+    @listening = false
+    turn_id ||= (@turn += 1)
+    @silence_stage += 1
+    key = SILENCE_KEYS[[@silence_stage, SILENCE_KEYS.size].min - 1]
+    log_event('silence_step', turn_id: turn_id, stage: @silence_stage, reason: reason.to_s, recording_id: key)
+    @after = TwilioService.hangup_script?(key) ? :hangup : :listen
+    play(key, turn_id: turn_id, kind: 'silence')
+    record_us(key, status: key == 'callback')
+  end
+
+  def record_us(key, status: false)
+    return unless @persist
+
+    call = current_call
+    return unless call&.persisted?
+
+    call.append_call_turn!('us', TwilioService.script_text(key, call), script: key)
+    return unless status
+
+    call.save_selected_status!(key)
+    DialTransferService.cancel_operator!(call)
+  rescue => e
+    Rails.logger.error("[BidirectionalCall] record_us call_id=#{@call_id} error: #{e.message}")
+  end
+
+  # 何も流さずに切る（保留60秒・録音が無いとき）
+  def hangup_silently!(reason, status: nil)
+    return if @closed || @phase == :ended
+
+    @phase = :ended
+    log_event('silent_hangup', reason: reason.to_s)
+    @play_gen += 1
+    @playing = false
+    @listening = false
+    if @persist
+      call = current_call
+      if call&.persisted?
+        call.save_selected_status!(status) if status
+        DialTransferService.cancel_operator!(call)
+      end
+    end
+    @hangup.call(@call_sid)
+    finish
+  rescue => e
+    Rails.logger.error("[BidirectionalCall] silent hangup call_id=#{@call_id} error: #{e.message}")
+    finish
+  end
+
+  def start_watchdog
+    return if @watchdog&.alive?
+
+    @watchdog = Thread.new do
+      until @closed
+        sleep @timing[:tick]
+        begin
+          watchdog_tick
+        rescue => e
+          Rails.logger.error("[BidirectionalCall] watchdog call_id=#{@call_id} error: #{e.message}")
+        end
+      end
+    end
+  end
+
+  def watchdog_tick
+    return if @closed
+
+    t = now
+    case @phase
+    when :hold
+      return if @playing || @hold_since.nil?
+      return if t - @hold_since < @timing[:hold_max]
+
+      hangup_silently!('hold_timeout', status: HOLD_TIMEOUT_STATUS)
+    when :opening, :talk
+      return if @playing
+      return if t - @last_output_at < @timing[:watchdog]
+
+      log_event('watchdog', idle_sec: (t - @last_output_at).round(1))
+      @turn_gen += 1 # 止まっている判定の結果は捨てる
+      @busy = false
+      if @phase == :opening
+        start_greeting(nil)
+      else
+        on_silence(nil, reason: 'watchdog')
+      end
+    end
+  end
+
   def wait_for_stable
-    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + FINAL_WAIT_SEC
+    deadline = now + FINAL_WAIT_SEC
     loop do
       stable, extra, mono = snapshot
-      return [stable, false, mono || Process.clock_gettime(Process::CLOCK_MONOTONIC)] if stable.present? && extra.blank?
-      break if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+      return [stable, false, mono || now] if stable.present? && extra.blank?
+      break if now >= deadline
 
       sleep 0.02
     end
     stable, extra, mono = snapshot
     text = [stable, extra].reject(&:blank?).join
-    [text, extra.present? || stable.blank?, mono || Process.clock_gettime(Process::CLOCK_MONOTONIC)]
+    [text, extra.present? || stable.blank?, mono || now]
   end
 
   def snapshot
@@ -224,22 +468,6 @@ class BidirectionalCallSession
     end
   end
 
-  def escalate_unclear(call, decision)
-    return decision unless decision.ambiguous
-
-    next_streak = call&.unknown_streak.to_i + 1
-    return decision unless next_streak >= DialFlowEngine::MAX_UNKNOWN_STREAK
-    return decision unless DialPlaybackCache.fetch(@script_id, 'フロントアウト')
-
-    DialRealtimeDecider::Decision.new(
-      branch_id: 'フロントアウト',
-      recording_id: 'フロントアウト',
-      transfer: false,
-      path: decision.path,
-      ambiguous: true
-    )
-  end
-
   def remember_turn(call, text, decision)
     return unless @persist && call&.persisted?
 
@@ -251,7 +479,7 @@ class BidirectionalCallSession
     if decision.branch_id == 'faq' && decision.recording_id.to_s =~ /\Afaq-(\d+)\z/
       call.update(pending_faq_id: Regexp.last_match(1).to_i)
     end
-    call.append_call_turn!('them', text, script: decision.branch_id)
+    call.append_call_turn!('them', text, script: decision.branch_id) if text.present?
     us_text = TwilioService.script_text(decision.branch_id, call)
     call.append_call_turn!('us', us_text, script: decision.branch_id) unless decision.transfer
     if decision.transfer
@@ -271,6 +499,11 @@ class BidirectionalCallSession
     :listen
   end
 
+  def cached?(recording_id)
+    bytes = DialPlaybackCache.fetch(@script_id, recording_id)
+    !bytes.nil? && bytes.bytesize.positive?
+  end
+
   def play(recording_id, turn_id:, kind:)
     bytes = DialPlaybackCache.fetch(@script_id, recording_id)
     if bytes.nil? || bytes.bytesize.zero?
@@ -280,7 +513,7 @@ class BidirectionalCallSession
         turn_id: turn_id,
         extra: { kind: kind, recording_id: recording_id.to_s }
       )
-      arm_listen
+      play_fallback(recording_id, turn_id: turn_id, kind: kind)
       return
     end
 
@@ -293,6 +526,7 @@ class BidirectionalCallSession
     @playing = true
     @listening = false
     @play_gen += 1
+    @last_output_at = now
     gen = @play_gen
     send_media(frames.first)
     if turn_id
@@ -317,16 +551,42 @@ class BidirectionalCallSession
     end
   end
 
+  # 流す録音が無いとき。黙って聞く状態には戻さない。
+  def play_fallback(missing, turn_id:, kind:)
+    case @after
+    when :transfer
+      @after = nil
+      CallRedirector.new.redirect_handoff(@call_sid, @call_id, 'transfer', hangup: false)
+    when :hangup
+      if missing.to_s != 'callback' && cached?('callback')
+        play('callback', turn_id: turn_id, kind: kind)
+      else
+        hangup_silently!('audio_missing')
+      end
+    else
+      fallback = %w[clarify callback].find { |key| key != missing.to_s && cached?(key) }
+      if fallback.nil?
+        hangup_silently!('audio_missing')
+      else
+        @after = :hangup if fallback == 'callback'
+        play(fallback, turn_id: turn_id, kind: kind)
+      end
+    end
+  end
+
   def finish_playback(gen, recording_id)
     return if gen != @play_gen
 
     @playing = false
+    @last_output_at = now
     action = @after
     @after = nil
     case action
     when :hangup
+      @phase = :ended
       CallRedirector.new.redirect_handoff(@call_sid, @call_id, recording_id, hangup: true)
     when :transfer
+      @phase = :transfer
       CallRedirector.new.redirect_handoff(@call_sid, @call_id, 'transfer', hangup: false)
     else
       arm_listen
@@ -342,7 +602,7 @@ class BidirectionalCallSession
     @listening = true
     @vad.reset
     @barge_ms = 0
-    @quiet_since = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    @quiet_since = now
     @lock.synchronize do
       @finals.clear
       @interim = ''
@@ -367,6 +627,7 @@ class BidirectionalCallSession
 
       @play_gen += 1
       @playing = false
+      @last_output_at = now
       send_clear
       @vad.reset
       @vad.arm_from_barge
@@ -377,32 +638,27 @@ class BidirectionalCallSession
     end
   end
 
+  # 無音の時間で、挨拶と無言の段階を進める（保留中は見張りが60秒を見る）
   def note_quiet
-    return if @vad.in_speech?
+    return if @vad.speaking? || @busy
 
-    now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    @quiet_since ||= now
-    return if now - @quiet_since < LISTEN_TIMEOUT_SEC
+    t = now
+    @quiet_since ||= t
+    quiet = t - @quiet_since
+    case @phase
+    when :opening
+      return if quiet < @timing[:greet_wait]
 
-    @quiet_since = now
-    on_timeout
-  end
+      @quiet_since = t
+      start_greeting(nil)
+    when :talk
+      return if quiet < @timing[:silence_step]
 
-  def on_timeout
-    return if @busy || @playing
-
-    @busy = true
-    @listening = false
-    @turn += 1
-    turn_id = @turn
-    CallLatencyLog.record(@call_id, 'utterance_end', turn_id: turn_id, extra: { kind: 'timeout' })
-    call = current_call
-    key = call ? DialFlowEngine.on_listen_timeout(call) : 'clarify'
-    CallLatencyLog.record(@call_id, 'branch_confirmed', turn_id: turn_id, extra: { kind: 'timeout', branch_id: key })
-    @after = TwilioService.hangup_script?(key) ? :hangup : :listen
-    play(key, turn_id: turn_id, kind: 'timeout')
+      @quiet_since = t
+      on_silence(nil, reason: 'quiet')
+    end
   rescue => e
-    Rails.logger.error("[BidirectionalCall] timeout call_id=#{@call_id} error: #{e.message}")
+    Rails.logger.error("[BidirectionalCall] quiet call_id=#{@call_id} error: #{e.message}")
     arm_listen
   end
 

@@ -45,13 +45,19 @@ class DialScript < ApplicationRecord
       CLARIFY_SIMPLE_TEXT,
       '簡単で構いません。担当の方がいらっしゃればはい、不在なら不在とお答えください。'
     ],
+    'silence_1' => [
+      'もしもし？'
+    ],
+    'silence_2' => [
+      'お電話が少し遠いようでして…。ご担当の方はいらっしゃいますでしょうか。'
+    ],
     'callback' => [
       CALLBACK_TEXT,
       'おそれいります。改めましてご連絡いたしますので、本日は失礼いたします。'
     ]
   }.freeze
 
-  BANK_EDIT_KEYS = %w[greeting purpose wait smalltalk clarify clarify_alt clarify_simple callback].freeze
+  BANK_EDIT_KEYS = %w[greeting purpose wait smalltalk clarify clarify_alt clarify_simple silence_1 silence_2 callback].freeze
 
   CONTINUE_KEYS = %w[wait smalltalk faq].freeze
   CONTINUE_LABELS = {
@@ -59,11 +65,13 @@ class DialScript < ApplicationRecord
     'smalltalk' => '挨拶・雑談',
     'faq' => 'FAQ'
   }.freeze
-  FLOW_KEYS = %w[clarify clarify_alt clarify_simple transfer].freeze
+  FLOW_KEYS = %w[clarify clarify_alt clarify_simple silence_1 silence_2 transfer].freeze
   FLOW_LABELS = {
     'clarify' => '聞き直し1',
     'clarify_alt' => '聞き直し1別表現',
     'clarify_simple' => '聞き直し2(はい/いいえ)',
+    'silence_1' => '無言1(もしもし)',
+    'silence_2' => '無言2(電話が遠い)',
     'transfer' => '担当者転送'
   }.freeze
   INTENT_KEYS = (CONTINUE_KEYS + %w[transfer] + Call::AI_STATUS_ITEMS).freeze

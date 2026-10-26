@@ -3,10 +3,15 @@ require_relative 'mulaw'
 # 相手の音声が途切れた時刻を、こちら側の無音時間で決める。
 class UtteranceVad
   FRAME_BYTES = 160
-  HANGOVER_MS = 320
+  HANGOVER_MS = 500
   MIN_SPEECH_MS = 160
+  # 雑音や保留音で話し中のまま抜けられなくなるのを防ぐ上限。
+  MAX_UTTERANCE_MS = 8000
 
-  def initialize
+  attr_reader :forced
+
+  def initialize(max_utterance_ms: MAX_UTTERANCE_MS)
+    @max_utterance_ms = max_utterance_ms
     reset
   end
 
@@ -15,6 +20,8 @@ class UtteranceVad
     @silence_ms = 0
     @in_speech = false
     @ended = false
+    @forced = false
+    @utterance_ms = 0
     @noise = nil
   end
 
@@ -22,7 +29,9 @@ class UtteranceVad
     @in_speech = true
     @speech_ms = MIN_SPEECH_MS
     @silence_ms = 0
+    @utterance_ms = MIN_SPEECH_MS
     @ended = false
+    @forced = false
   end
 
   def ended?
@@ -31,6 +40,11 @@ class UtteranceVad
 
   def in_speech?
     @in_speech
+  end
+
+  # 話し始めの短い音も含めて、いま声が出ているか
+  def speaking?
+    @in_speech || @speech_ms.positive?
   end
 
   # 発話終了を検知したら true。
@@ -55,9 +69,20 @@ class UtteranceVad
   def feed_frame(frame)
     ms = frame.bytesize * 20.0 / FRAME_BYTES
     if voiced?(frame)
+      if @in_speech
+        @utterance_ms += ms
+        if @utterance_ms >= @max_utterance_ms
+          @ended = true
+          @forced = true
+          return true
+        end
+      end
       @speech_ms += ms
       @silence_ms = 0
-      @in_speech = true if @speech_ms >= MIN_SPEECH_MS
+      if !@in_speech && @speech_ms >= MIN_SPEECH_MS
+        @in_speech = true
+        @utterance_ms = @speech_ms
+      end
       false
     elsif @in_speech
       @silence_ms += ms
