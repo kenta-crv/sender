@@ -109,6 +109,80 @@ module ApplicationHelper
     .compact
   end
 
+
+  def google_analytics_enabled?
+    !google_analytics_excluded_request?
+  end
+
+  def google_analytics_excluded_request?
+    return true if google_analytics_management_path?
+
+    google_analytics_admin_callback?
+  end
+
+  def google_analytics_management_path?
+    segments = request.path.to_s.split("/").reject(&:blank?)
+    return false if segments.empty?
+
+    root = segments[0]
+    child = segments[1].to_s
+    return false if google_analytics_public_auth_path?(root, child)
+    return false if root == "users" && child == "thanks"
+
+    google_analytics_excluded_roots.include?(root)
+  end
+
+  def google_analytics_public_auth_path?(root, child)
+    return false unless %w[admins clients users workers].include?(root)
+
+    %w[sign_in sign_up password cancel confirmation unlock].include?(child)
+  end
+
+  def google_analytics_excluded_roots
+    %w[
+      dashboard admin admins call_batches customers calls
+      dial_scripts dial_utterances dial_faqs dial_unknown_utterances
+      sidekiq submissions form_submissions clients users
+    ]
+  end
+
+  def google_analytics_admin_callback?
+    filters = %i[
+      authenticate_admin!
+      check_admin
+      authenticate_admin_or_client!
+      authenticate_any!
+      require_admin!
+      authorize_client_record!
+    ]
+    controller.class._process_action_callbacks.any? do |callback|
+      next false unless callback.kind == :before
+      next false unless filters.include?(callback.filter)
+
+      google_analytics_callback_applies?(callback)
+    end
+  rescue StandardError
+    false
+  end
+
+  def google_analytics_callback_applies?(callback)
+    ifs = Array(callback.instance_variable_get(:@if))
+    unlesses = Array(callback.instance_variable_get(:@unless))
+    ifs.all? { |condition| google_analytics_condition_met?(condition) } &&
+      unlesses.none? { |condition| google_analytics_condition_met?(condition) }
+  end
+
+  def google_analytics_condition_met?(condition)
+    case condition
+    when Symbol, String
+      controller.__send__(condition)
+    when Proc
+      condition.arity.zero? ? controller.instance_exec(&condition) : condition.call(controller)
+    else
+      true
+    end
+  end
+
   def show_plan_upgrade_banner?
     return false unless client_signed_in?
     return false if acting_as_admin?
