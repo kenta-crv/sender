@@ -168,6 +168,57 @@ class Customer < ApplicationRecord
     where(conditions, *values)
   }
 
+  # SAPの絞り込みは、本番の「|」区切り業種と同じトークン一致を使う。
+  scope :with_business, ->(names) {
+    tokens = Array(names).flat_map { |name| parse_businesses(name) }.uniq
+    next none if tokens.empty?
+
+    with_any_business(tokens)
+  }
+
+  def self.split_business_names(value)
+    value.to_s.split(BUSINESS_SEPARATOR).map { |name| name.gsub(/\A[[:space:]]+|[[:space:]]+\z/, "") }.reject(&:blank?).uniq
+  end
+
+  def business_list
+    self.class.split_business_names(business)
+  end
+
+  def add_business!(name)
+    tokens = self.class.split_business_names(name)
+    return self if tokens.empty?
+
+    merged = business_list
+    changed = false
+    tokens.each do |token|
+      next if merged.include?(token)
+
+      merged << token
+      changed = true
+    end
+    update!(business: merged.join(",")) if changed
+    self
+  end
+
+  def self.business_name_counts(relation = all)
+    counts = Hash.new(0)
+    relation.where.not(business: [nil, ""]).pluck(:business).each do |value|
+      split_business_names(value).each { |name| counts[name] += 1 }
+    end
+    counts
+  end
+
+  def self.distinct_business_names(relation = all)
+    business_name_counts(relation).keys.sort
+  end
+
+  def self.business_select_options(relation = all, minimum: 1, always_include: nil)
+    business_name_counts(relation)
+      .select { |name, count| count >= minimum || (always_include.present? && name == always_include) }
+      .sort_by { |_name, count| -count }
+      .map { |name, count| ["#{name}（#{count}件）", name] }
+  end
+
   # プレビュー（draft画面）と実行（execute_from_db）で同じ条件を使うための共通スコープ。
   scope :serp_extraction_targets, ->(fill_filter = nil) {
     base = where(serp_status: [nil, '']).with_legal_entity
