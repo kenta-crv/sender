@@ -37,7 +37,7 @@ class FormSubmissionsController < ApplicationController
 
     if params[:business_filter].present?
       business_filters = Array(params[:business_filter]).reject(&:blank?)
-      detectable_scope = detectable_scope.where(business: business_filters) if business_filters.any?
+      detectable_scope = detectable_scope.with_business(business_filters) if business_filters.any?
     end
 
     if params[:genre_filter].present?
@@ -83,7 +83,7 @@ class FormSubmissionsController < ApplicationController
       row.merge(submission: submission)
     end
 
-    @business_options = Customer.where.not(business: [nil, '']).distinct.order(:business).pluck(:business)
+    @business_options = Customer.distinct_business_names
     @genre_options    = Customer.where.not(genre: [nil, '']).distinct.order(:genre).pluck(:genre)
   end
 
@@ -337,7 +337,7 @@ class FormSubmissionsController < ApplicationController
     # 複数選択に対応するため、配列形式で条件を指定できるように調整
     if params[:business_filter].present?
       business_filters = Array(params[:business_filter]).reject(&:blank?)
-      base_scope = base_scope.where(business: business_filters) if business_filters.any?
+      base_scope = base_scope.with_business(business_filters) if business_filters.any?
     end
 
     # 職種(genre)フィルタにも対応

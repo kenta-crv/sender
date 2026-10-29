@@ -30,6 +30,32 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     refute_includes @response.body, other.company
   end
 
+  test "draft shows a customer when filtering by any industry in a comma-separated list" do
+    listed = Customer.create!(
+      company: "株式会社複数業種フィルタ",
+      business: "情報通信、SAP",
+      status: "draft"
+    )
+    partial = Customer.create!(
+      company: "株式会社札幌業種フィルタ",
+      business: "SAPPORO",
+      status: "draft"
+    )
+
+    get draft_customers_path, params: { industry_name: "SAP" }
+
+    assert_response :success
+    assert_includes @response.body, listed.company
+    refute_includes @response.body, partial.company
+    assert_includes @response.body, "SAP（1件）"
+
+    get draft_customers_path, params: { industry_name: "情報通信" }
+
+    assert_response :success
+    assert_includes @response.body, listed.company
+    assert_includes @response.body, "情報通信（1件）"
+  end
+
   test "draft keeps selected industry visible even when all records are already processed" do
     Customer.create!(
       company: "株式会社登録支援機関テスト",

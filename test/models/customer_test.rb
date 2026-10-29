@@ -43,6 +43,35 @@ class CustomerTest < ActiveSupport::TestCase
     assert Customer.exists?(other.id)
   end
 
+  test "business list stores multiple industries separated by half-width commas" do
+    customer = Customer.create!(company: "株式会社複数業種", business: "情報通信、 SAP，製造")
+
+    assert_equal "情報通信,SAP,製造", customer.reload.business
+    assert_equal %w[情報通信 SAP 製造], customer.business_list
+  end
+
+  test "add_business! appends a missing industry and does not duplicate it" do
+    customer = Customer.create!(company: "株式会社業種追加", business: "情報通信")
+
+    customer.add_business!("SAP")
+    customer.add_business!("SAP")
+
+    assert_equal "情報通信,SAP", customer.reload.business
+  end
+
+  test "with_business matches any listed industry and avoids partial names" do
+    listed = Customer.create!(company: "株式会社エスエーピー", business: "情報通信,SAP")
+    partial = Customer.create!(company: "株式会社札幌", business: "SAPPORO")
+
+    sap_ids = Customer.with_business("SAP").pluck(:id)
+    telecom_ids = Customer.with_business("情報通信").pluck(:id)
+
+    assert_includes sap_ids, listed.id
+    assert_includes telecom_ids, listed.id
+    refute_includes sap_ids, partial.id
+    refute_includes telecom_ids, partial.id
+  end
+
   test "filter_by_last_form_call keeps unsent and matching last form calls in SQL" do
     unsent = Customer.create!(company: "未送信", tel: "03-0000-1000")
     success = Customer.create!(company: "成功", tel: "03-0000-1001")

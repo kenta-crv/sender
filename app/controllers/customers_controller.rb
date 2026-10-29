@@ -133,7 +133,7 @@ class CustomersController < ApplicationController
       end
 
       query = Customer.where(status: 'draft').where('id > ?', @customer.id)
-      query = query.where(business: params[:industry_name]) if params[:industry_name].present?
+      query = query.with_business(params[:industry_name]) if params[:industry_name].present?
 
       case params[:tel_filter]
       when "with_tel"
@@ -274,20 +274,11 @@ def draft
   @dashboard_stats = Customer.calculate_dashboard_stats(base_scope)
 
   selected_industry = params[:industry_name].presence
-  industry_scope = @industry_base_scope.with_legal_entity
-                                       .where.not(business: [nil, ''])
-                                       .group(:business)
-
-  industry_counts =
-    if selected_industry.present?
-      industry_scope.having("COUNT(*) >= 10 OR business = ?", selected_industry).count
-    else
-      industry_scope.having("COUNT(*) >= 10").count
-    end
-
-  @industry_options = industry_counts
-                        .sort_by { |_name, count| -count }
-                        .map { |name, count| ["#{name}（#{count}件）", name] }
+  @industry_options = Customer.business_select_options(
+    @industry_base_scope.with_legal_entity,
+    minimum: 10,
+    always_include: selected_industry
+  )
 
   @max_search_limit = acting_as_admin? ? @serp_target_count
                                        : [@serp_target_count, @remaining_extractable].min

@@ -9,6 +9,7 @@ class Customer < ApplicationRecord
     株式会社 有限会社 合同会社 一般社団法人 一般財団法人 社会福祉法人 医療法人 学校法人
   ].freeze
   LEGAL_ENTITY_PATTERN = /#{LEGAL_ENTITY_TERMS.join('|')}/.freeze
+  BUSINESS_SEPARATOR = /[,、，]/.freeze
 
   has_many :calls, dependent: :destroy
   has_many :click_tracking_links, dependent: :destroy
@@ -20,6 +21,7 @@ class Customer < ApplicationRecord
   belongs_to :worker, optional: true
   belongs_to :client, optional: true
   before_create :generate_unsubscribe_token
+  before_save :normalize_business_delimiters
 
   # ダッシュ系を含む「実質空値」のSQL断片を生成するユーティリティ
   # 例: blank_sql("tel") => "(tel IS NULL OR TRIM(tel) IN ('', '-', '－', '−', 'ー') OR tel = ' ')"
@@ -165,6 +167,60 @@ class Customer < ApplicationRecord
     where(conditions, *values)
   }
 
+  # カンマ区切りの業種のうち、指定した業種をどれか含む行。
+  # 「SAP」が「SAPPORO」に部分一致しないよう、両端をカンマで囲んで判定する。
+  scope :with_business, ->(names) {
+    tokens = Array(names).flat_map { |name| split_business_names(name) }.uniq
+    next none if tokens.empty?
+
+    sql = tokens.map { "(',' || COALESCE(customers.business, '') || ',') LIKE ?" }.join(" OR ")
+    binds = tokens.map { |token| "%,#{sanitize_sql_like(token)},%" }
+    where(sql, *binds)
+  }
+
+  def self.split_business_names(value)
+    value.to_s.split(BUSINESS_SEPARATOR).map { |name| name.gsub(/\A[[:space:]]+|[[:space:]]+\z/, "") }.reject(&:blank?).uniq
+  end
+
+  def business_list
+    self.class.split_business_names(business)
+  end
+
+  def add_business!(name)
+    tokens = self.class.split_business_names(name)
+    return self if tokens.empty?
+
+    merged = business_list
+    changed = false
+    tokens.each do |token|
+      next if merged.include?(token)
+
+      merged << token
+      changed = true
+    end
+    update!(business: merged.join(",")) if changed
+    self
+  end
+
+  def self.business_name_counts(relation = all)
+    counts = Hash.new(0)
+    relation.where.not(business: [nil, ""]).pluck(:business).each do |value|
+      split_business_names(value).each { |name| counts[name] += 1 }
+    end
+    counts
+  end
+
+  def self.distinct_business_names(relation = all)
+    business_name_counts(relation).keys.sort
+  end
+
+  def self.business_select_options(relation = all, minimum: 1, always_include: nil)
+    business_name_counts(relation)
+      .select { |name, count| count >= minimum || (always_include.present? && name == always_include) }
+      .sort_by { |_name, count| -count }
+      .map { |name, count| ["#{name}（#{count}件）", name] }
+  end
+
   # プレビュー（draft画面）と実行（execute_from_db）で同じ条件を使うための共通スコープ。
   scope :serp_extraction_targets, ->(fill_filter = nil) {
     base = where(serp_status: [nil, '']).with_legal_entity
@@ -206,6 +262,12 @@ class Customer < ApplicationRecord
     self.unsubscribe_token ||= SecureRandom.hex(32)
   end
 
+  def normalize_business_delimiters
+    return if business.blank?
+
+    self.business = business_list.join(",")
+  end
+
   def self.draft_base_scope(current_client_id: nil, is_admin: false, industry_name: nil)
     scope = where(serp_status: [nil, '', 'serp_queued', 'serp_done', 'serp_imported', 'serp_error', 'serp_paused'])
 
@@ -217,7 +279,7 @@ class Customer < ApplicationRecord
       scope = scope.none
     end
 
-    scope = scope.where(business: industry_name) if industry_name.present?
+    scope = scope.with_business(industry_name) if industry_name.present?
     scope
   end
 

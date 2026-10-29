@@ -100,8 +100,11 @@ class Dashboard::DashboardsController < ApplicationController
   def sending
     @base_customers = Customer.all
 
-    @q = @base_customers.ransack(params[:q])
+    q_params = params[:q].respond_to?(:to_unsafe_h) ? params[:q].to_unsafe_h : {}
+    business_filters = Array(q_params.delete("business_in") || q_params.delete(:business_in)).reject(&:blank?)
+    @q = @base_customers.ransack(q_params)
     filtered = @q.result(distinct: true)
+    filtered = filtered.with_business(business_filters) if business_filters.any?
     filtered = filtered.filter_by_last_form_call(params[:last_call]) if acting_as_admin?
 
     excluded_statuses = Customer::FORM_SEND_HIDDEN_CALL_STATUSES
@@ -118,7 +121,7 @@ class Dashboard::DashboardsController < ApplicationController
                               .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
                               .page(params[:detectable_page]).per(50)
 
-    @business_options = generate_options(:business)
+    @business_options = Customer.business_select_options(@base_customers, minimum: 30)
     @genre_options = generate_options(:genre)
 
     @customers_count = @customers.total_count
@@ -144,7 +147,7 @@ def searching_form
   filtered = @q.result(distinct: true)
 
   if params[:business_filter].present?
-    filtered = filtered.where(business: params[:business_filter])
+    filtered = filtered.with_business(params[:business_filter])
   end
 
   if params[:genre_filter].present?
@@ -167,12 +170,7 @@ def searching_form
                       .with_legal_entity
                       .deliverable_for(delivery_filter_client_id, delivery_filter_admin_id)
 
-  @business_options = detectable_base.where.not(business: [nil, ''])
-                                     .group(:business)
-                                     .count
-                                     .select { |_name, count| count >= 1 }
-                                     .sort_by { |_name, count| -count }
-                                     .map { |name, count| ["#{name}（#{count}件）", name] }
+  @business_options = Customer.business_select_options(detectable_base, minimum: 1)
 
   @genre_options = detectable_base.where.not(genre: [nil, ''])
                                   .group(:genre)
