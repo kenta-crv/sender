@@ -37,7 +37,13 @@ class FormSendJob < ApplicationJob
     sender = nil
 
     begin
-      sender_info = build_sender_info(batch, customer)
+      rendered = interpolate_submission(batch, customer)
+      if rendered&.error
+        record_interpolation_failure(batch, customer, rendered)
+        return
+      end
+
+      sender_info = build_sender_info(batch, customer, rendered)
 
       sender = FormSender.new(
         debug: true,
@@ -130,7 +136,43 @@ class FormSendJob < ApplicationJob
     end
   end
 
-  def build_sender_info(batch, customer)
+  def interpolate_submission(batch, customer)
+    submission = batch.submission
+    return nil unless submission
+
+    rendered = FormTemplateRenderer.render(
+      content: submission.content,
+      title: submission.title,
+      template_vars: customer.template_vars
+    )
+    if rendered.logged
+      Rails.logger.info(
+        "[FormSendJob] 差し込み結果: " \
+        "customer_id=#{customer.id} " \
+        "title=#{rendered.title.inspect} " \
+        "content=#{rendered.content.inspect}" \
+        "#{rendered.error ? " error=#{rendered.error}" : ""}"
+      )
+    end
+    rendered
+  end
+
+  def record_interpolation_failure(batch, customer, rendered)
+    Call.new(
+      customer_id: customer.id,
+      status: "差し込みエラー",
+      comment: "【フォーム送信】#{rendered.error}",
+      call_type: "form"
+    ).save!(validate: false)
+
+    batch.record_result!(
+      customer.id,
+      success: false,
+      message: "差し込みエラー: #{rendered.error}"
+    )
+  end
+
+  def build_sender_info(batch, customer, rendered = nil)
     submission = batch.submission
 
     return nil unless submission
@@ -211,6 +253,9 @@ class FormSendJob < ApplicationJob
 
     info[:email] = submission.email if submission.email.present?
 
+    subject = rendered ? rendered.title : submission.title.to_s
+    info[:subject] = subject if subject.present?
+
     link_options = link_url_options(submission)
 
     customer.generate_unsubscribe_token if customer.unsubscribe_token.blank?
@@ -246,9 +291,10 @@ class FormSendJob < ApplicationJob
 
     include_unsubscribe_link = submission.respond_to?(:include_unsubscribe_link) ? submission.include_unsubscribe_link : true
 
+    body = rendered ? rendered.content : submission.content
     if submission.content.present?
       message = <<~TEXT
-        #{submission.content}
+        #{body}
 
         詳細はこちら
         #{detail_link}
