@@ -51,6 +51,8 @@ module SapLead
         classified_at: Time.current
       )
       stats[:resolved] += 1
+    rescue Gbizinfo::MissingToken
+      raise
     rescue StandardError => e
       stats[:errors] += 1
       @logger.error("[SapLeadResolve] job_posting=#{posting.id} #{e.class}: #{e.message}")

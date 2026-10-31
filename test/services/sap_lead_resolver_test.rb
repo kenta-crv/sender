@@ -99,4 +99,26 @@ class SapLeadResolverTest < ActiveSupport::TestCase
     assert_equal "skipped", posting.reload.status
     assert_equal "同名複数", posting.skip_reason
   end
+
+  test "missing api token stops the job and leaves the posting new" do
+    posting = JobPosting.create!(
+      source: "kyujinbox",
+      company_raw: "株式会社テスト",
+      company_clean: "テスト",
+      job_key: "jbn:resolve-token",
+      status: "new",
+      first_seen_at: Time.current,
+      last_seen_at: Time.current
+    )
+    Gbizinfo::Client
+    api = Object.new
+    def api.search_by_name(_name)
+      raise Gbizinfo::MissingToken, "GBIZINFO_API_TOKEN が未設定です"
+    end
+
+    assert_raises(Gbizinfo::MissingToken) do
+      SapLead::Resolver.new(client: api).run
+    end
+    assert_equal "new", posting.reload.status
+  end
 end
