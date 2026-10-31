@@ -42,4 +42,14 @@ BLOCKED_URL_PATTERNS = %w[
   crowdworks.jp
   lancers.jp
   coconala.com
+  xn--pckua2a7gp15o89zb.com
+  stanby.com
+  baseconnect.in
+  openwork.jp
+  en-hyouban.com
+  hrmos.co
+  airwork.net
+  herp.careers
+  jbplt.jp
+  job-medley.com
 ].freeze
