@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_10_30_180000) do
+ActiveRecord::Schema.define(version: 2026_10_31_150000) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -322,6 +322,30 @@ ActiveRecord::Schema.define(version: 2026_10_30_180000) do
     t.index ["created_at"], name: "index_funnel_events_on_created_at"
     t.index ["event_type"], name: "index_funnel_events_on_event_type"
     t.index ["page"], name: "index_funnel_events_on_page"
+  end
+
+  create_table "job_postings", force: :cascade do |t|
+    t.string "source", default: "kyujinbox", null: false
+    t.string "company_raw"
+    t.string "company_clean"
+    t.string "title"
+    t.string "area"
+    t.string "employ_type"
+    t.text "posting_url"
+    t.string "job_key", null: false
+    t.datetime "first_seen_at"
+    t.datetime "last_seen_at"
+    t.string "status", default: "new", null: false
+    t.string "skip_reason"
+    t.string "corporate_number"
+    t.integer "customer_id"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["company_clean"], name: "index_job_postings_on_company_clean"
+    t.index ["customer_id"], name: "index_job_postings_on_customer_id"
+    t.index ["job_key"], name: "index_job_postings_on_job_key", unique: true
+    t.index ["last_seen_at"], name: "index_job_postings_on_last_seen_at"
+    t.index ["status"], name: "index_job_postings_on_status"
   end
 
   create_table "monthly_usage_logs", force: :cascade do |t|

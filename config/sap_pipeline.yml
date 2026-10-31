@@ -1,0 +1,5 @@
+# SAP営業の週次自動化。起点URLは求人ボックス「本日の新着」（?u=1）。
+kyujinbox:
+  start_urls:
+    - https://xn--pckua2a7gp15o89zb.com/SAP%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
+    - https://xn--pckua2a7gp15o89zb.com/S4HANA%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
