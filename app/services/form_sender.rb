@@ -131,7 +131,7 @@ class FormSender
     'お確かめ下さい', 'お確かめください', '内容をお確かめ',
   ].freeze
 
-  def initialize(debug: false, confirm_mode: false, save_to_db: false, headless: false, confirm_callback: nil, sender_info: nil, skip_detection: false, leave_browser_open: false, existing_driver: nil, manual_submission_id: nil, watch_token: nil, next_customer_id: nil)
+  def initialize(debug: false, confirm_mode: false, save_to_db: false, headless: false, confirm_callback: nil, sender_info: nil, skip_detection: false, leave_browser_open: false, existing_driver: nil, manual_submission_id: nil, watch_token: nil, next_customer_id: nil, ignore_forbidden_text: false)
     @driver = existing_driver
     @result = { status: nil, message: nil }
     @debug = debug
@@ -147,6 +147,7 @@ class FormSender
     @watch_token = watch_token
     @next_customer_id = next_customer_id
     @manual_watch_outcome = nil
+    @ignore_forbidden_text = ignore_forbidden_text # trueの場合、ページ上の営業禁止文言では止めない
   end
 
   # sender_info アクセサ（カスタム情報がある場合はマージ）
@@ -451,8 +452,8 @@ class FormSender
         end
       end
 
-      # 営業禁止チェック。手動入力では止めず、人が送信するかどうかを判断する
-      if !@confirm_mode && page_has_no_sales_warning?
+      # 手動入力とSAP週次バッチは、ページ上の営業禁止文言では止めない。
+      if sales_text_blocks_send?
         @result = { status: '営業禁止', message: 'ページ内に営業禁止ワードが検出されました' }
         teardown_driver
         return @result
@@ -826,6 +827,13 @@ class FormSender
     rescue StandardError => e
       log "分割フィールド検出エラー: #{e.message}"
     end
+  end
+
+  # fobbiden・配信停止・URL除外は別経路で必ず適用する。ここはページ文言だけ。
+  def sales_text_blocks_send?
+    return false if @confirm_mode || @ignore_forbidden_text
+
+    page_has_no_sales_warning?
   end
 
   # ページ内に営業禁止ワードがあるかチェック

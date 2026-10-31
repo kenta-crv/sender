@@ -47,7 +47,8 @@ module SapLead
         official_name: detail["name"].presence || matches.first["name"],
         headquarters_address: detail["location"],
         official_url: url,
-        status: "resolved"
+        status: "resolved",
+        classified_at: Time.current
       )
       stats[:resolved] += 1
     rescue StandardError => e
@@ -88,7 +89,7 @@ module SapLead
     end
 
     def skip(posting, reason)
-      posting.update!(status: "skipped", skip_reason: reason)
+      posting.update!(status: "skipped", skip_reason: reason, classified_at: Time.current)
     end
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_10_31_161000) do
+ActiveRecord::Schema.define(version: 2026_10_31_162000) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -275,6 +275,7 @@ ActiveRecord::Schema.define(version: 2026_10_31_161000) do
     t.datetime "updated_at", precision: 6, null: false
     t.integer "failure_count", default: 0
     t.integer "admin_id"
+    t.boolean "sap_pipeline", default: false, null: false
     t.index ["admin_id"], name: "index_form_detection_batches_on_admin_id"
   end
 
@@ -294,6 +295,7 @@ ActiveRecord::Schema.define(version: 2026_10_31_161000) do
     t.integer "submission_id"
     t.integer "client_id"
     t.integer "admin_id"
+    t.boolean "ignore_forbidden_text", default: false, null: false
     t.index ["admin_id"], name: "index_form_submission_batches_on_admin_id"
     t.index ["client_id"], name: "index_form_submission_batches_on_client_id"
   end
@@ -347,6 +349,7 @@ ActiveRecord::Schema.define(version: 2026_10_31_161000) do
     t.string "registration_kind"
     t.datetime "registered_at"
     t.datetime "serp_filled_at"
+    t.datetime "classified_at"
     t.index ["company_clean"], name: "index_job_postings_on_company_clean"
     t.index ["customer_id"], name: "index_job_postings_on_customer_id"
     t.index ["job_key"], name: "index_job_postings_on_job_key", unique: true

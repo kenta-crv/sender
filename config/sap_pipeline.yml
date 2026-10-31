@@ -3,3 +3,10 @@ kyujinbox:
   start_urls:
     - https://xn--pckua2a7gp15o89zb.com/SAP%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
     - https://xn--pckua2a7gp15o89zb.com/S4HANA%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
+
+# 月曜送信で使う管理者と文面。空のときは送信バッチを作らない。
+send:
+  admin_id:
+  submission_id:
+
+spreadsheet_id: 1AcWed9iwArzUUt1lzymT7bpAh1en3X1TlmXQLLtI31Q

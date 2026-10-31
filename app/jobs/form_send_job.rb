@@ -50,7 +50,8 @@ class FormSendJob < ApplicationJob
         headless: true,
         save_to_db: true,
         sender_info: sender_info,
-        skip_detection: true
+        skip_detection: true,
+        ignore_forbidden_text: batch.ignore_forbidden_text
       )
 
       result = sender.send_to_customer(customer)
