@@ -13,6 +13,9 @@ require_relative 'utterance_vad'
 class BidirectionalCallSession
   FINAL_WAIT_SEC = 0.4
   PREVIEW_WAIT_SEC = 2.0
+  # Google の認識結果は話し終わりから遅れて届く（実測 0.5〜3 秒。通話の最初は特に遅い）
+  LATE_TEXT_WAIT_SEC = 2.0  # 文字がまだ1つも届いていないとき、待つ上限
+  FINAL_RECHECK_SEC = 1.5   # 途中結果で「不明」になったとき、確定結果を待って判定し直す上限
   BARGE_MS = 200
 
   # 待ち時間（秒）。docs/auto_dial_cursor_prompts.md の共通仕様。
@@ -21,7 +24,8 @@ class BidirectionalCallSession
     silence_step: 2.5, # こちらが話した後の無言1段階
     hold_max: 60,      # 保留に入ってから、人の返事がないまま切るまで
     watchdog: 10,      # 保留以外で、こちらが何も流していない上限
-    tick: 0.5          # 見張りの確認間隔
+    tick: 0.5,         # 見張りの確認間隔
+    play_margin: 1.5   # 再生終わりの合図（mark）が届かないときに、録音の長さ＋この秒数で終わったとみなす
   }.freeze
 
   SILENCE_KEYS = %w[silence_1 silence_2 callback].freeze
@@ -118,6 +122,12 @@ class BidirectionalCallSession
   end
 
   def on_mark(name)
+    # Twilio が録音を最後まで流し終えた合図
+    if (gen = name.to_s[/\Aplay-(\d+)-end\z/, 1])
+      finish_playback(gen.to_i, @playing_id) if gen.to_i == @play_gen && @playing
+      return
+    end
+
     turn_id = name.to_s[/turn-(\d+)-first/, 1]
     return if turn_id.blank?
 
@@ -129,15 +139,13 @@ class BidirectionalCallSession
     )
   end
 
-  # 音声認識が落ちたとき。保留中は何もしない。
-  def on_error(_error)
-    return if @closed || @busy || @playing
-    return unless %i[opening talk].include?(@phase)
+  # 音声認識が落ちたとき。相手の声が一切わからないまま話すと会話が壊れるので、
+  # 何も流さずに切る（結果は付けない。システム側の失敗のため）。
+  def on_error(error)
+    return if @closed || %i[transfer ended].include?(@phase)
 
-    @busy = true
-    @listening = false
-    @turn += 1
-    respond_unclear(@turn, current_call, '', path: 'stt_error')
+    log_event('stt_error', message: error.respond_to?(:message) ? error.message.to_s[0, 200] : error.to_s[0, 200])
+    hangup_silently!('stt_error')
   end
 
   def finish
@@ -169,10 +177,12 @@ class BidirectionalCallSession
     @busy = true
     @listening = false
     @quiet_since = nil
+    @last_output_at = now # 見張りは「相手が話し終えてから」数え直す
     @turn += 1
     turn_id = @turn
     gen = (@turn_gen += 1)
     log_event('utterance_end', turn_id: turn_id, kind: 'utterance')
+    start_preview
     log_event('forced_cut', turn_id: turn_id) if forced
     @worker = Thread.new do
       Rails.application.executor.wrap { commit_turn(turn_id, gen) }
@@ -190,6 +200,18 @@ class BidirectionalCallSession
     )
     return if stale?(gen)
 
+    # 第一声のあとは文字を待たずにすぐ挨拶する（留守電かどうかは挨拶しながら確かめる）
+    if @phase == :opening
+      call = current_call
+      return commit_opening(turn_id, call, text, doubt)
+    end
+
+    if text.blank?
+      text, doubt = wait_for_text(LATE_TEXT_WAIT_SEC)
+      return if stale?(gen)
+      log_event('late_text', turn_id: turn_id, text: text.to_s) if text.present?
+    end
+
     # 言葉が取れなかった音（雑音・保留音）は、発話ではなく無音として扱う
     if text.blank?
       case @phase
@@ -200,9 +222,10 @@ class BidirectionalCallSession
     end
 
     call = current_call
-    return commit_opening(turn_id, call, text, doubt) if @phase == :opening
-
     decision = decide_turn(text, call, doubt)
+    return if stale?(gen)
+
+    text, decision = recheck_with_final(turn_id, call, text, decision) if doubt && decision.ambiguous
     return if stale?(gen)
 
     case @phase
@@ -215,6 +238,42 @@ class BidirectionalCallSession
     @listening = true
   end
 
+  # 文字が届くまで待つ（届いた分をつなげて返す）
+  def wait_for_text(seconds)
+    deadline = now + seconds
+    loop do
+      stable, extra, = snapshot
+      text = [stable, extra].reject(&:blank?).join
+      return [text, stable.blank? || extra.present?] if text.present?
+      return ['', true] if now >= deadline || @closed
+
+      sleep 0.05
+    end
+  end
+
+  # 途中結果（例:「はい、私です」の途中の「私」）で判定すると誤るため、
+  # 「不明」になったときだけ確定結果を待って判定し直す
+  def recheck_with_final(turn_id, call, text, decision)
+    deadline = now + FINAL_RECHECK_SEC
+    final = nil
+    before, = snapshot
+    loop do
+      stable, = snapshot
+      if stable.present? && stable != before
+        final = stable
+        break
+      end
+      break if now >= deadline || @closed
+
+      sleep 0.05
+    end
+    return [text, decision] if final.nil? || final == text
+
+    redo_decision = @decider.decide(final, call: call, stt_confidence: @confidence)
+    log_event('final_recheck', turn_id: turn_id, text: final, branch_id: redo_decision.branch_id)
+    [final, redo_decision]
+  end
+
   def stale?(gen)
     @closed || gen != @turn_gen || !%i[opening talk hold].include?(@phase)
   end
@@ -224,17 +283,25 @@ class BidirectionalCallSession
     if preview_thread&.alive? && @preview_text == text
       preview_thread.join(PREVIEW_WAIT_SEC)
     end
-    take_preview(text) || @decider.decide(text, call: call, stt_confidence: doubt ? 0.3 : @confidence)
+    # 確定前の途中結果（interim）しか届いていなくても、文字が取れていれば十分使える。
+    # 以前は 0.3 を渡して「聞き取りが怪しい」扱いにしており、AI に聞く前に必ず聞き返していた。
+    take_preview(text) || @decider.decide(text, call: call, stt_confidence: doubt ? nil : @confidence)
   end
 
   # 第一声のあとは判定を待たずにすぐ挨拶する。
   # 判定が留守電・自動音声だったら、挨拶を止めて何も残さずに切る。
   def commit_opening(turn_id, call, text, doubt)
+    start_greeting(turn_id)
+    if text.blank?
+      text, doubt = wait_for_text(LATE_TEXT_WAIT_SEC)
+      log_event('late_text', turn_id: turn_id, text: text.to_s) if text.present?
+      return if text.blank?
+    end
     if @persist && call&.persisted?
       call.append_call_turn!('them', text, script: 'opening')
     end
-    start_greeting(turn_id)
     decision = decide_turn(text, call, doubt)
+    text, decision = recheck_with_final(turn_id, call, text, decision) if doubt && !OPENING_REACT_KEYS.include?(decision.branch_id)
     return unless OPENING_REACT_KEYS.include?(decision.branch_id)
     return if @closed || %i[transfer ended].include?(@phase)
 
@@ -262,6 +329,15 @@ class BidirectionalCallSession
 
   def commit_talk(turn_id, call, text, decision)
     @silence_stage = 0
+    # 挨拶の途中で相手が名乗った・話し出した場合は、聞き返さずに挨拶を言い直す
+    if @greeting_interrupted
+      @greeting_interrupted = false
+      if decision.ambiguous || decision.branch_id == 'smalltalk'
+        log_event('greeting_retry', turn_id: turn_id, text: text)
+        @after = :listen
+        return play('greeting', turn_id: turn_id, kind: 'greeting')
+      end
+    end
     return respond_unclear(turn_id, call, text, path: decision.path) if decision.ambiguous
 
     @unclear_count = 0
@@ -333,7 +409,8 @@ class BidirectionalCallSession
     log_event('silence_step', turn_id: turn_id, stage: @silence_stage, reason: reason.to_s, recording_id: key)
     @after = TwilioService.hangup_script?(key) ? :hangup : :listen
     play(key, turn_id: turn_id, kind: 'silence')
-    record_us(key, status: key == 'callback')
+    # DB への書き込みは音声の処理と別スレッドで（DB が混んでいると音声の送受信が止まるため）
+    Thread.new { Rails.application.executor.wrap { record_us(key, status: key == 'callback') } } if @persist
   end
 
   def record_us(key, status: false)
@@ -401,6 +478,10 @@ class BidirectionalCallSession
       hangup_silently!('hold_timeout', status: HOLD_TIMEOUT_STATUS)
     when :opening, :talk
       return if @playing
+      if @listening && @vad.speaking? # 相手が話している間は止まっていない
+        @last_output_at = t
+        return
+      end
       return if t - @last_output_at < @timing[:watchdog]
 
       log_event('watchdog', idle_sec: (t - @last_output_at).round(1))
@@ -437,8 +518,11 @@ class BidirectionalCallSession
     end
   end
 
+  # 確定結果（final）が届いたとき、または話し終わった瞬間に、先に AI の判定を始めておく。
+  # 確定結果は話し終わりから遅れて届くことが多いため、話し終わりの時点の途中結果でも始める。
   def start_preview
-    text, = snapshot
+    stable, extra, = snapshot
+    text = [stable, extra].reject(&:blank?).join
     return if text.blank?
     return if @preview_text == text && (@preview_decision || @preview_thread&.alive?)
 
@@ -517,18 +601,12 @@ class BidirectionalCallSession
       return
     end
 
-    frames = []
-    offset = 0
-    while offset < bytes.bytesize
-      frames << bytes.byteslice(offset, 160)
-      offset += 160
-    end
     @playing = true
     @listening = false
     @play_gen += 1
     @last_output_at = now
     gen = @play_gen
-    send_media(frames.first)
+    send_media(bytes.byteslice(0, 160))
     if turn_id
       CallLatencyLog.record(
         @call_id,
@@ -538,16 +616,24 @@ class BidirectionalCallSession
       )
     end
     send_mark("turn-#{turn_id}-first") if turn_id
+    # 録音はまとめて送る。Twilio が受け取った順に実時間で流す。
+    # 以前は 20 ミリ秒ずつ待ちながら送っていたが、待ちの誤差が積み重なって
+    # 実時間より遅れ（音の途切れ）、再生の終わりも実際より遅く判断していた。
+    @playing_id = recording_id
+    rest = bytes.byteslice(160, bytes.bytesize - 160).to_s
     @play_thread = Thread.new do
-      frames.drop(1).each do |frame|
-        break if gen != @play_gen
-        sleep 0.02
+      # 0.1 秒分ずつ送る（1フレームずつだと送る回数が多く、混んでいるときに途切れる）
+      offset = 0
+      while offset < rest.bytesize
         break if gen != @play_gen
 
-        send_media(frame)
+        send_media(rest.byteslice(offset, 800))
+        offset += 800
       end
-      sleep 0.02 if gen == @play_gen
-      finish_playback(gen, recording_id) if gen == @play_gen
+      send_mark("play-#{gen}-end") if gen == @play_gen
+      # 合図が届かない場合の保険
+      sleep(bytes.bytesize / 8000.0 + @timing[:play_margin])
+      finish_playback(gen, recording_id) if gen == @play_gen && @playing
     end
   end
 
@@ -575,7 +661,11 @@ class BidirectionalCallSession
   end
 
   def finish_playback(gen, recording_id)
-    return if gen != @play_gen
+    @lock.synchronize do
+      return if gen != @play_gen || @finished_gen == gen
+
+      @finished_gen = gen
+    end
 
     @playing = false
     @last_output_at = now
@@ -628,6 +718,7 @@ class BidirectionalCallSession
       @play_gen += 1
       @playing = false
       @last_output_at = now
+      @greeting_interrupted = true if @playing_id == 'greeting'
       send_clear
       @vad.reset
       @vad.arm_from_barge

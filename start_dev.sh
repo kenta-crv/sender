@@ -228,10 +228,32 @@ check_all() {
   echo "  - 電話は掛かるが会話が続かない → ngrok と NGROK_URL"
   echo "  - 裏作業の失敗一覧 → 管理者でログイン後に /sidekiq"
   echo ""
+  show_next_steps
   if [ "$ng_count" -gt 0 ]; then
     return 1
   fi
   return 0
+}
+
+# 架電ページをブラウザで自動で開く
+open_dashboard() {
+  local url="http://127.0.0.1:${PORT}/call_batches/dashboard"
+  if rails_up; then
+    echo "架電ページをブラウザで開きます: ${url}"
+    open "$url"
+  else
+    echo "Rails がまだ起動していないため、架電ページを開けません。少し待って ./start_dev.sh open を実行してください。"
+  fi
+}
+
+show_next_steps() {
+  echo "===== 架電のやり方 ====="
+  echo "  1. 発信前の点検（すべて OK になるまで発信しない）"
+  echo "       ruby bin/rails runner 'puts DialPreflight.report'"
+  echo "  2. 架電ページ（./start_dev.sh で自動で開きます。開き直すときは ./start_dev.sh open）"
+  echo "       http://127.0.0.1:${PORT}/call_batches/dashboard"
+  echo "  3. 画面上部の「試験発信する」を押す"
+  echo ""
 }
 
 cmd="${1:-start}"
@@ -245,13 +267,18 @@ case "$cmd" in
     start_rails
     start_sidekiq
     start_ngrok
+    wait_for "Rails" "rails_up"
     wait_for "Sidekiq" "sidekiq_up"
     wait_for "ngrok" "[ -n \"\$(ngrok_public_url)\" ]"
     sync_ngrok_url
     check_all
+    open_dashboard
+    ;;
+  open)
+    open_dashboard
     ;;
   *)
-    echo "使い方: ./start_dev.sh  または  ./start_dev.sh check"
+    echo "使い方: ./start_dev.sh（起動して架電ページを開く） / ./start_dev.sh check（確認だけ） / ./start_dev.sh open（架電ページを開く）"
     exit 1
     ;;
 esac

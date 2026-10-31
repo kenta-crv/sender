@@ -52,6 +52,11 @@ class CallBatchesController < ApplicationController
     end
 
     TwilioConfig.apply_test_numbers!
+    preflight_error = DialPreflight.failure_message(DialPreflight.run(public_ping: false, script: dial_script, cache: true))
+    if preflight_error
+      redirect_to dashboard_call_batches_path(dial_script_id: 1), alert: preflight_error
+      return
+    end
     base_url = TwilioPublicUrl.ensure_ready!
     customer = find_or_create_test_customer!
 
@@ -165,6 +170,14 @@ class CallBatchesController < ApplicationController
         last_call_result: params[:last_call_result]
       ), alert: '発信対象の顧客が選択されていません。'
       return
+    end
+
+    if TwilioService.bidirectional_call_script?(@dial_script)
+      preflight_error = DialPreflight.failure_message(DialPreflight.run(public_ping: false, script: @dial_script, cache: true))
+      if preflight_error
+        redirect_to new_call_batch_path(dial_script_id: @dial_script.id), alert: preflight_error
+        return
+      end
     end
 
     concurrent_lines = 1

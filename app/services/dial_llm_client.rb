@@ -53,6 +53,19 @@ class DialLlmClient
     nil
   end
 
+  # 発信前の点検用。失敗したら理由つきで例外を投げる（chat_json と違い握りつぶさない）。
+  def self.ping!(read_timeout: 5)
+    raise 'APIキーがありません（.env の GPT_API_KEY）' unless enabled?
+
+    body = {
+      model: CHAT_MODEL,
+      max_tokens: 5,
+      messages: [{ role: 'user', content: 'ok と返して' }]
+    }
+    data = post_json('/chat/completions', body, read_timeout: read_timeout, open_timeout: 3)
+    data['model'].presence || CHAT_MODEL
+  end
+
   def self.cosine(a, b)
     return 0.0 if a.blank? || b.blank? || a.size != b.size
 

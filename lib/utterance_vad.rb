@@ -44,7 +44,7 @@ class UtteranceVad
 
   # 話し始めの短い音も含めて、いま声が出ているか
   def speaking?
-    @in_speech || @speech_ms.positive?
+    !@ended && (@in_speech || @speech_ms.positive?)
   end
 
   # 発話終了を検知したら true。

@@ -20,20 +20,22 @@ class CallLatencyLog
         'wall' => Time.now.utc.iso8601(3),
         'extra' => extra || {}
       }
-      path = file_path(call_id)
-      FileUtils.mkdir_p(File.dirname(path))
-      mutex.synchronize do
-        rows = read_rows(path)
-        rows << entry
-        File.write(path, JSON.generate(rows))
-      end
+      # 通話の音声を扱う処理を止めないよう、書き込みは別スレッドで行う（時刻はこの時点のもの）
+      enqueue(file_path(call_id), entry)
       entry
     rescue => e
       Rails.logger.error("[CallLatency] record error: #{e.message}")
       nil
     end
 
+    # 書き込み待ちがなくなるまで待つ（読む前に呼ぶ）
+    def flush(timeout = 3)
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+      sleep 0.01 while pending.positive? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+    end
+
     def events(call_id)
+      flush
       path = file_path(call_id)
       return [] unless File.exist?(path)
 
@@ -41,6 +43,7 @@ class CallLatencyLog
     end
 
     def clear!(call_id)
+      flush
       path = file_path(call_id)
       FileUtils.rm_f(path)
     end
@@ -89,6 +92,36 @@ class CallLatencyLog
 
     def mutex
       @mutex ||= Mutex.new
+    end
+
+    def pending
+      mutex.synchronize { @pending.to_i }
+    end
+
+    def enqueue(path, entry)
+      mutex.synchronize do
+        @pending = @pending.to_i + 1
+        @queue ||= Queue.new
+        @writer = nil unless @writer&.alive?
+        @writer ||= Thread.new { write_loop }
+      end
+      @queue << [path, entry]
+    end
+
+    def write_loop
+      loop do
+        path, entry = @queue.pop
+        begin
+          FileUtils.mkdir_p(File.dirname(path))
+          rows = read_rows(path)
+          rows << entry
+          File.write(path, JSON.generate(rows))
+        rescue => e
+          Rails.logger.error("[CallLatency] write error: #{e.message}")
+        ensure
+          mutex.synchronize { @pending -= 1 }
+        end
+      end
     end
 
     def file_path(call_id)

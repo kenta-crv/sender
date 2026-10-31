@@ -130,13 +130,32 @@ class DialPlaybackCache
         voice = kyoko_voice
         args += ['-v', voice] if voice
         args << text
-        unless system(*args, out: File::NULL, err: File::NULL) && File.exist?(aiff)
+        unless run_with_timeout(args) && File.exist?(aiff)
           raise NotReady, '通話前の読み上げ生成に失敗しました'
         end
-        unless system('afconvert', '-f', 'WAVE', '-d', 'LEI16@8000', '-c', '1', aiff, wav, out: File::NULL, err: File::NULL) && File.exist?(wav)
+        unless run_with_timeout(['afconvert', '-f', 'WAVE', '-d', 'LEI16@8000', '-c', '1', aiff, wav]) && File.exist?(wav)
           raise NotReady, 'Twilio再生形式への変換に失敗しました'
         end
         File.binwrite(dest, Mulaw.pcm16_to_mulaw(pcm16_from_wav(wav)))
+      end
+    end
+
+    # say / afconvert が止まると発信全体が止まるため、時間を区切る
+    SYNTH_TIMEOUT_SEC = 15
+
+    def run_with_timeout(args, seconds = SYNTH_TIMEOUT_SEC)
+      pid = Process.spawn(*args, out: File::NULL, err: File::NULL)
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
+      loop do
+        done, status = Process.waitpid2(pid, Process::WNOHANG)
+        return status.success? if done
+        if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+          Process.kill('KILL', pid) rescue nil
+          Process.wait(pid) rescue nil
+          Rails.logger.error("[DialPlaybackCache] #{args.first} が#{seconds}秒で終わらないため止めました")
+          return false
+        end
+        sleep 0.05
       end
     end
 

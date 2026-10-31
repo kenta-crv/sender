@@ -26,6 +26,8 @@ class DialRealtimeDecider
   SMALLTALK_RE = /もしもし|こんにちは|こんばんは|おはよう|お世話になって|失礼します/.freeze
   NEGATION_RE = /いません|いない|おりません|不在|結構|不要|いらない|お断り|ではない|じゃない|違います|必要(?:は)?ない|必要ありません|間に合/.freeze
   SOFT_RE = /かもしれません|かもしれない|難しい|厳しい|検討します|考えておきます/.freeze
+  # 「ご担当の方は」に対して、自分が担当だと答える言い方（10/10 の実通話「私です。」）
+  SELF_ID_RE = /(?:私|わたし|わたくし|僕|ぼく|自分)(?:です|でございます|が担当|が承ります)|本人です|担当(?:の者|者)?(?:です|でございます)|担当の.{1,8}(?:です|でございます)/.freeze
   SHORT_RE = /\A(?:はい|ええ|うん|あー|えーと)(?:です|。)?\z/.freeze
 
   def self.decide(text, call:, stt_confidence: nil, llm: :auto)
@@ -48,8 +50,9 @@ class DialRealtimeDecider
   end
 
   def self.recognition_doubt?(confidence)
+    # 電話音声は確信度が低めに出るため、明らかに怪しいときだけ聞き返す
     value = confidence.to_f
-    value.positive? && value < 0.5
+    value.positive? && value < 0.3
   end
 
   def self.request_judgment(text, call, context, llm)
@@ -74,13 +77,13 @@ class DialRealtimeDecider
     system = <<~PROMPT
       あなたは電話の相手の発話を分類します。録音の名前は返さないでください。
       返す分類は次の9つだけです。
-      - 本人: 相手が担当者本人として出た。名乗りか、電話を代わって出たという言葉がある。
+      - 本人: 相手が担当者本人として出た。電話を代わって出たという言葉がある、または「ご担当の方は」と聞かれて「私です」「私が担当です」と自分のことだと答えた。会社名を名乗っただけでは本人ではない。
       - 取り次ぎ: これから呼ぶ、つなぐ、待ってほしい、または担当者がいると答えた。「つなぎます」「代わります」は本人ではなく取り次ぎ。
       - 不在: 担当者が今いない。休み、出張、会議、外出、他の電話、テレワーク、直帰など。
       - 断り: 取り次がない、または必要ない。
       - 改めて: かけ直してほしい、時間を指定された、または折り返すと言われた。
       - 用件確認: 用件、会社名、関係を聞かれた。
-      - 挨拶: 呼びかけや挨拶だけで、取り次ぎも断りも不在もない。
+      - 挨拶: 呼びかけや挨拶、または会社名・自分の名前を名乗っただけ（「はい、〇〇でございます」「〇〇です」「もしもし」）で、取り次ぎも断りも不在もない。
       - 留守電: 留守番電話や自動音声の案内。
       - 不明: 上のどれにも当てはまらない、または聞き取りが怪しい。
       迷ったときは「本人」より「取り次ぎ」を選ぶ。
@@ -99,7 +102,8 @@ class DialRealtimeDecider
     branch_id = branch_for_category(category, DialPlaybackCache.allowlist(call&.dial_script_id))
     return nil if branch_id.blank?
 
-    if category == '本人' && branch_id == 'transfer' && !passed_through_wait?(context)
+    # 取り次ぎを経ずに「本人」になるのは、自分が担当だとはっきり言ったときだけ
+    if category == '本人' && branch_id == 'transfer' && !passed_through_wait?(context) && !text.to_s.match?(SELF_ID_RE)
       branch_id = 'clarify'
     end
 

@@ -45,17 +45,25 @@ root = File.expand_path('../..', __dir__)
 require File.join(root, 'lib/mulaw')
 require File.join(root, 'lib/bidirectional_call_session')
 
+# Twilio と同じく、受け取った音声を実時間で流し終えたところで mark を返す
 class FakeWs
   attr_reader :plays
-  def initialize; @plays = []; @last = nil; end
+  attr_accessor :session
+  def initialize; @plays = []; @last = nil; @until = 0; @gen = 0; end
+  def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   def send(data)
     msg = JSON.parse(data)
     if msg['event'] == 'media'
-      key = KEYS[Base64.decode64(msg['media']['payload']).bytes.first - 1]
+      bytes = Base64.decode64(msg['media']['payload'])
+      key = KEYS[bytes.bytes.first - 1]
       @plays << key if key != @last
       @last = key
+      @until = [@until, now].max + bytes.bytesize / 8000.0
+    elsif msg['event'] == 'mark'
+      at = @until; gen = @gen; name = msg['mark']['name']
+      Thread.new { sleep [at - now, 0].max; @session&.on_mark(name) if gen == @gen }
     elsif msg['event'] == 'clear'
-      @last = nil
+      @last = nil; @until = now; @gen += 1
     end
   end
 end
@@ -72,14 +80,18 @@ TABLE = {
   'ご用件は' => ['purpose', false]
 }
 class TableDecider
-  def self.decide(text, **)
+  # 本物の判定と同じく、確信度 0.3 未満は「聞き取りが怪しい」として聞き返す
+  def self.decide(text, stt_confidence: nil, **)
+    if stt_confidence.to_f.positive? && stt_confidence.to_f < 0.3
+      return DialRealtimeDecider::Decision.new(branch_id: 'clarify', recording_id: 'clarify', transfer: false, path: 'recognition_doubt', ambiguous: true)
+    end
     sleep 4 if text == 'SLOW'
     b, amb = TABLE.fetch(text, ['wait', false])
     DialRealtimeDecider::Decision.new(branch_id: b, recording_id: b, transfer: b == 'transfer', path: 'test', ambiguous: amb)
   end
 end
 
-TIMING = { greet_wait: 0.3, silence_step: 0.5, hold_max: 6.0, watchdog: 1.5, tick: 0.1 }
+TIMING = { greet_wait: 0.3, silence_step: 0.5, hold_max: 9.0, watchdog: 1.5, tick: 0.1 }
 
 class Run
   attr_reader :ws, :s, :hangups
@@ -91,6 +103,7 @@ class Run
     @s = BidirectionalCallSession.new(@ws, call_id: 1, call_sid: 'CA', stream_sid: 'MZ', persist: false,
                                       decider: TableDecider, timing: TIMING, hangup: ->(sid) { @hangups << sid },
                                       vad: UtteranceVad.new(max_utterance_ms: 1000))
+    @ws.session = @s
     @s.start!
   end
   def frame(tone) = tone ? Mulaw.tone(160, amplitude: 12000) : Mulaw.silence(160)
@@ -101,6 +114,12 @@ class Run
   def speak(text, sec = 0.6)
     feed_for(sec, true)
     @s.on_final(text, 0.9) if text # 認識結果は話し終わりの直後に届く
+    quiet(0.6)
+  end
+  # 確定結果が届かず、途中結果（interim）だけで話し終わる場合
+  def speak_interim(text, sec = 0.6)
+    feed_for(sec, true)
+    @s.on_interim(text, 0.0)
     quiet(0.6)
   end
   def wait_play
@@ -143,12 +162,12 @@ scenario('3. 第一声が留守電なら、挨拶を止めて何も残さず切�
   r.speak('ただいま電話に出ることができません'); r.quiet(1.0)
 end
 
-scenario('4. 保留中は保留音を無視し、何も言わない。「もう少々」で延長し、6秒（本番60秒）で無言切断',
+scenario('4. 保留中は保留音を無視し、何も言わない。「もう少々」で延長し、9秒（本番60秒）で無言切断',
   ->(p, red, ev, r) { { '再生は挨拶と待ちだけ' => p == %w[greeting wait], '保留音を無視' => ev.count('turn_ignored') >= 2, '延長あり' => r.events.any? { |e, x| e == 'turn_ignored' && x[:reason] == 'hold_wait' }, '無言で切断' => r.hangups.size == 1 && red.empty? } }) do |r|
   r.quiet(0.4); r.wait_play
   r.speak('少々お待ちください'); r.wait_play
   r.speak('♪♪♪', 1.2); r.speak(nil, 1.2)          # 保留音（文字あり・文字なし）
-  r.speak('もう少々お待ちください'); r.quiet(6.6)
+  r.speak('もう少々お待ちください'); r.quiet(9.6)
 end
 
 scenario('5. 保留明け「代わりました」で転送',
@@ -187,6 +206,17 @@ scenario('10. 判定が止まっても、見張りが1.5秒（本番10秒）で�
   ->(p, _red, ev, _r) { { '見張り発動' => ev.include?('watchdog'), 'もしもしへ進んだ' => p.include?('silence_1'), '遅れた判定は捨てた' => !p.include?('wait') } }) do |r|
   r.quiet(0.4); r.wait_play
   r.speak('SLOW'); r.quiet(4.5)
+end
+
+scenario('11. 音声認識が使えないときは、聞き返さずに何も流さず切る',
+  ->(p, red, ev, r) { { '無言で切断' => r.hangups.size == 1, '何も流さない' => p.empty?, '記録' => ev.include?('stt_error') } }) do |r|
+  r.quiet(0.1); r.s.on_error(StandardError.new('Authorization failed')); r.quiet(0.5)
+end
+
+scenario('12. 確定結果が間に合わず途中結果だけでも、聞き返さずに中身で判定する（10/28 の実通話で起きた不具合）',
+  ->(p, _red, _ev, _r) { { '再生順' => p == %w[greeting wait] } }) do |r|
+  r.quiet(0.4); r.wait_play
+  r.speak_interim('少々お待ちください'); r.wait_play
 end
 
 puts "\n#{$results.count(true)}/#{$results.size} 件 OK"
