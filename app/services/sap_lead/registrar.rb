@@ -1,0 +1,58 @@
+module SapLead
+  class Registrar
+    def initialize(logger: Rails.logger)
+      @logger = logger
+      @finder = DuplicateFinder.new
+    end
+
+    def run
+      stats = { created: 0, appended: 0 }
+      JobPosting.where(status: "resolved").find_each do |posting|
+        register_one(posting, stats)
+      end
+      @logger.info("[SapLeadRegister] #{stats.inspect}")
+      stats
+    end
+
+    private
+
+    def register_one(posting, stats)
+      official_name = posting.official_name.presence || posting.company_raw
+      existing = @finder.find(company: official_name, url: posting.official_url)
+      vars = {
+        "job_title" => posting.title.to_s,
+        "company" => official_name.to_s,
+        "area" => posting.area.to_s
+      }.to_json
+
+      if existing
+        existing.add_business!(Kyujinbox::INDUSTRY)
+        existing.update!(template_vars: vars)
+        existing.update!(url: posting.official_url) if existing.url.blank? && posting.official_url.present?
+        kind = "appended"
+        customer = existing
+        stats[:appended] += 1
+      else
+        customer = Customer.create!(
+          company: official_name,
+          address: posting.headquarters_address,
+          url: posting.official_url,
+          business: Kyujinbox::INDUSTRY,
+          template_vars: vars,
+          client_id: nil
+        )
+        kind = "created"
+        stats[:created] += 1
+      end
+
+      posting.update!(
+        customer_id: customer.id,
+        status: "registered",
+        registration_kind: kind,
+        registered_at: Time.current
+      )
+    rescue StandardError => e
+      @logger.error("[SapLeadRegister] job_posting=#{posting.id} #{e.class}: #{e.message}")
+    end
+  end
+end

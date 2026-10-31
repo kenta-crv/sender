@@ -184,6 +184,22 @@ class Customer < ApplicationRecord
     self.class.split_business_names(business)
   end
 
+  LEGAL_NAME_TERMS = %w[
+    株式会社 有限会社 合同会社 合資会社 一般社団法人 一般財団法人 社会福祉法人 医療法人 学校法人
+  ].freeze
+
+  def self.normalized_name(name)
+    value = name.to_s.unicode_normalize(:nfkc).gsub(/[[:space:]]+/, "")
+    LEGAL_NAME_TERMS.each { |term| value = value.gsub(term, "") }
+    value.downcase
+  end
+
+  def self.name_similarity?(left, right)
+    a = left.to_s
+    b = right.to_s
+    a.present? && a == b
+  end
+
   def add_business!(name)
     tokens = self.class.split_business_names(name)
     return self if tokens.empty?
