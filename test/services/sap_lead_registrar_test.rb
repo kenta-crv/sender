@@ -103,6 +103,27 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
     assert_equal customer.id, posting.reload.customer_id
   end
 
+  test "area is the prefecture and municipality from the headquarters" do
+    assert_equal "東京都千代田区", SapLead::HeadquartersArea.extract("東京都千代田区霞が関2-1-3")
+    assert_equal "大阪府大阪市北区", SapLead::HeadquartersArea.extract("大阪府大阪市北区中之島3丁目")
+    assert_equal "北海道札幌市中央区", SapLead::HeadquartersArea.extract("北海道札幌市中央区北1条")
+    assert_equal "東京都町田市", SapLead::HeadquartersArea.extract("東京都町田市森野")
+    assert_equal "千葉県船橋市", SapLead::HeadquartersArea.extract("千葉県船橋市湊町")
+    assert_equal "", SapLead::HeadquartersArea.extract("千代田区")
+    assert_equal "", SapLead::HeadquartersArea.extract("")
+
+    posting = resolved_posting(
+      "jbn:reg-area",
+      official_url: "https://area.example",
+      headquarters_address: "神奈川県横浜市西区みなとみらい1"
+    )
+    SapLead::Registrar.new.run
+
+    customer = Customer.find_by!(company: "株式会社テスト", url: "https://area.example")
+    assert_equal "神奈川県横浜市西区", JSON.parse(customer.template_vars)["area"]
+    assert_equal customer.id, posting.reload.customer_id
+  end
+
   test "creates a shared customer when none exists" do
     posting = resolved_posting("jbn:reg-new", official_url: "https://new.example")
 
@@ -120,7 +141,7 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
 
   private
 
-  def resolved_posting(job_key, official_url:, company: "株式会社テスト")
+  def resolved_posting(job_key, official_url:, company: "株式会社テスト", headquarters_address: "東京都千代田区1-1")
     JobPosting.create!(
       source: "kyujinbox",
       company_raw: company,
@@ -128,7 +149,7 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
       title: "SAPコンサルタント",
       area: "東京都",
       official_name: company,
-      headquarters_address: "東京都千代田区1-1",
+      headquarters_address: headquarters_address,
       official_url: official_url,
       job_key: job_key,
       status: "resolved",

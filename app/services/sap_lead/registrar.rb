@@ -26,7 +26,7 @@ module SapLead
       vars = {
         "job_title" => posting.title.to_s,
         "company" => official_name.to_s,
-        "area" => posting.area.to_s
+        "area" => HeadquartersArea.extract(posting.headquarters_address)
       }.to_json
 
       if existing
