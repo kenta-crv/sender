@@ -54,7 +54,7 @@ module SapLead
       body = Google::Apis::SheetsV4::ValueRange.new(values: [row])
       @service.append_spreadsheet_value(
         spreadsheet_id,
-        "#{quote(title)}!A:Y",
+        "#{quote(title)}!A:Z",
         body,
         value_input_option: "USER_ENTERED"
       )

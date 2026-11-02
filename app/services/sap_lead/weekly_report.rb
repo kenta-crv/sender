@@ -65,7 +65,8 @@ module SapLead
         "",
         "",
         "",
-        ""
+        "",
+        JobPosting.where(skip_reason: JobPosting::UNRELATED_SKIP_REASON, first_seen_at: from..to).count
       ]
     end
 

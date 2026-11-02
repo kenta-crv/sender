@@ -18,6 +18,7 @@ class SapWeeklyReportTest < ActiveSupport::TestCase
     posting(job_key: "jbn:report-appended", status: "registered", registration_kind: "appended", registered_at: inside, customer: customer)
     posting(job_key: "jbn:report-serp", status: "registered", serp_filled_at: inside, customer: customer)
     posting(job_key: "jbn:report-old", last_seen_at: from - 10.days, first_seen_at: from - 10.days)
+    posting(job_key: "jbn:report-unrelated", status: "skipped", skip_reason: "SAP関連外", first_seen_at: inside, last_seen_at: from - 10.days)
 
     FormDetectionBatch.create!(total_count: 3, customer_ids: [customer.id].to_json, status: "completed", started_at: inside, sap_pipeline: true, success_count: 2, failure_count: 1)
     batch = FormSubmissionBatch.create!(
@@ -46,7 +47,7 @@ class SapWeeklyReportTest < ActiveSupport::TestCase
     assert_equal "2026-10-24", row[0]
     assert_equal "2026-10-30", row[1]
     assert_equal 3, row[2]
-    assert_equal 2, row[3]
+    assert_equal 3, row[3]
     assert_equal 1, row[4]
     assert_equal 1, row[5]
     assert_equal 1, row[6]
@@ -61,6 +62,7 @@ class SapWeeklyReportTest < ActiveSupport::TestCase
     assert_equal 1, row[19]
     assert_equal 1, row[20]
     assert_equal ["", "", "", ""], row[21..24]
+    assert_equal 1, row[25]
   end
 
   test "does nothing when the week is already on the sheet" do
