@@ -89,7 +89,7 @@ module SapLead
 
       locale = LOCALE_PREFIXES.find { |prefix| path.start_with?(prefix) || path == prefix.delete_suffix("/") }
       kept_path = locale || "/"
-      URI::HTTPS.build(host: uri.host, path: kept_path).to_s
+      URI::Generic.build(scheme: uri.scheme, host: uri.host, path: kept_path).to_s
     rescue URI::InvalidURIError
       nil
     end

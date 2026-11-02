@@ -24,11 +24,17 @@ class SapLeadResolverTest < ActiveSupport::TestCase
     assert_equal "https://parent.example/group/child/about?x=1", resolver.send(:usable_url, "https://parent.example/group/child/about?x=1")
     assert_equal "https://www.pwc.com/jp/ja/", resolver.send(:usable_url, "https://www.pwc.com/jp/ja/about/services")
     assert_equal "https://www.pwc.com/jp/ja/", resolver.send(:usable_url, "https://www.pwc.com/jp/ja")
-    assert_equal "https://example.com/ja_jp/", resolver.send(:usable_url, "http://example.com/ja_jp/news")
+    assert_equal "http://example.com/ja_jp/", resolver.send(:usable_url, "http://example.com/ja_jp/news")
     assert_equal "https://example.com/global/ja/", resolver.send(:usable_url, "https://example.com/global/ja/company")
     assert_equal "https://example.com/jp/", resolver.send(:usable_url, "https://example.com/jp/company")
     assert_equal "https://example.com/ja/", resolver.send(:usable_url, "https://example.com/ja/company")
-    assert_equal "https://www.example.com/", resolver.send(:usable_url, "http://www.example.com/about/company")
+    assert_equal "http://www.example.com/", resolver.send(:usable_url, "http://www.example.com/about/company")
+  end
+
+  test "usable url keeps the original http scheme" do
+    resolver = SapLead::Resolver.new(client: FakeApi.new(search: [], detail: nil))
+
+    assert_equal "http://example.com/jp/", resolver.send(:usable_url, "http://example.com/jp/company")
   end
 
   test "tidy removes a trailing branch and a truncated last word" do
