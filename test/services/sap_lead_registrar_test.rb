@@ -109,6 +109,7 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
     assert_equal "北海道札幌市中央区", SapLead::HeadquartersArea.extract("北海道札幌市中央区北1条")
     assert_equal "東京都町田市", SapLead::HeadquartersArea.extract("東京都町田市森野")
     assert_equal "千葉県船橋市", SapLead::HeadquartersArea.extract("千葉県船橋市湊町")
+    assert_equal "沖縄県那覇市", SapLead::HeadquartersArea.extract("沖縄県那覇市旭町1-9カフーナ旭橋B街区")
     assert_equal "", SapLead::HeadquartersArea.extract("千代田区")
     assert_equal "", SapLead::HeadquartersArea.extract("")
 
