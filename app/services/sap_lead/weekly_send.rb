@@ -47,7 +47,8 @@ module SapLead
       # 画面の送信開始と同じ。form の CAPTCHA NG が1件でもある会社は送らない。
       captcha_ng_customer_ids = Call.where(call_type: "form", status: "CAPTCHA NG").distinct.select(:customer_id)
 
-      Customer.with_business(Kyujinbox::INDUSTRY)
+      Customer.where(client_id: nil)
+        .with_business(Kyujinbox::INDUSTRY)
         .with_real_contact_url
         .visible_on_form_send_list
         .where.not(id: captcha_ng_customer_ids)

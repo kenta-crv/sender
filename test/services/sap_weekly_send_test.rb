@@ -46,6 +46,59 @@ class SapWeeklySendTest < ActiveSupport::TestCase
     assert_equal [ready.id], JSON.parse(batch.customer_ids)
   end
 
+  test "does not send to a client owned company" do
+    client = Client.create!(email: "sap-send-owned-#{SecureRandom.hex(4)}@example.com", password: "password123")
+    shared = Customer.create!(company: "共有送信株式会社", business: "SAP", contact_url: "https://shared-send.example/contact", url: "https://shared-send.example")
+    Customer.create!(
+      company: "所有送信株式会社",
+      business: "SAP",
+      contact_url: "https://owned-send.example/contact",
+      url: "https://owned-send.example",
+      client: client
+    )
+
+    config = Struct.new(:admin_id, :submission_id).new(@admin.id, @submission.id)
+    batch = SapLead::WeeklySend.new(queue: @queue, config: config).run
+
+    assert_equal [shared.id], JSON.parse(batch.customer_ids)
+  end
+
+  test "sunday follow up ignores client owned companies" do
+    client = Client.create!(email: "sap-sunday-owned-#{SecureRandom.hex(4)}@example.com", password: "password123")
+    owned_blank = Customer.create!(company: "所有URLなし株式会社", business: "SAP", url: nil, contact_url: nil, client: client)
+    JobPosting.create!(
+      source: "kyujinbox",
+      company_raw: "所有URLなし株式会社",
+      company_clean: "所有URLなし",
+      title: "SAP担当",
+      job_key: "jbn:sunday-owned-#{SecureRandom.hex(4)}",
+      status: "registered",
+      official_url: nil,
+      customer_id: owned_blank.id,
+      first_seen_at: Time.current,
+      last_seen_at: Time.current
+    )
+    Customer.create!(company: "所有URLあり株式会社", business: "SAP", url: "https://owned-known.example", contact_url: nil, client: client)
+    shared = Customer.create!(company: "共有URLあり株式会社", business: "SAP", url: "https://shared-known.example", contact_url: nil)
+    pipeline = Class.new do
+      attr_reader :ids
+
+      def initialize
+        @ids = []
+      end
+
+      def execute_from_db(customer_ids:, **)
+        @ids = customer_ids
+      end
+    end.new
+
+    SapLead::SundayFollowUp.new(pipeline: pipeline, queue: @queue).run
+
+    assert_empty pipeline.ids
+    batch = FormDetectionBatch.find(@queue.detect_batches.first.first)
+    assert_equal [shared.id], JSON.parse(batch.customer_ids)
+  end
+
   test "does not send when the yml ids are blank" do
     Customer.create!(company: "対象株式会社", business: "SAP", contact_url: "https://ready.example/contact")
 
