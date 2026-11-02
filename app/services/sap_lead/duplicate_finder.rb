@@ -30,10 +30,12 @@ module SapLead
       return if @loaded
 
       @loaded = true
-      Customer.find_each { |customer| index_customer(customer) }
+      Customer.where(client_id: nil).find_each { |customer| index_customer(customer) }
     end
 
     def index_customer(customer)
+      return if customer.client_id.present?
+
       name = Customer.normalized_name(customer.company)
       keep(@by_name, name, customer) if name.present?
       tel = digits(customer.tel)

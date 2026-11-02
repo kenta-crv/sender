@@ -63,6 +63,32 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
     assert_equal earlier.id, found.id
   end
 
+  test "creates a shared customer when the same company exists only under a client" do
+    client = Client.create!(email: "sap-owned-#{SecureRandom.hex(4)}@example.com", password: "password123")
+    owned = Customer.create!(
+      company: "株式会社所有のみ",
+      business: "製造",
+      url: "https://owned-only.example",
+      tel: "0311112222",
+      client: client
+    )
+    posting = resolved_posting("jbn:reg-owned-only", official_url: "https://owned-only.example", company: "株式会社所有のみ")
+    assert_nil SapLead::DuplicateFinder.new.find(company: "株式会社所有のみ", tel: "0311112222", url: "https://owned-only.example")
+
+    stats = SapLead::Registrar.new.run
+
+    owned.reload
+    created = Customer.find_by!(company: "株式会社所有のみ", client_id: nil)
+    assert_equal 1, stats[:created]
+    assert_equal 0, stats[:appended]
+    assert_equal "製造", owned.business
+    assert_nil owned.template_vars
+    assert_equal "SAP", created.business
+    assert_equal created.id, posting.reload.customer_id
+    found = SapLead::DuplicateFinder.new.find(company: "株式会社所有のみ", tel: "0311112222", url: "https://owned-only.example")
+    assert_equal created.id, found.id
+  end
+
   test "creates a shared customer when none exists" do
     posting = resolved_posting("jbn:reg-new", official_url: "https://new.example")
 
