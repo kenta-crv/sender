@@ -28,7 +28,10 @@ module SapLead
       if existing
         existing.add_business!(Kyujinbox::INDUSTRY)
         existing.update!(template_vars: vars)
-        existing.update!(url: posting.official_url) if existing.url.blank? && posting.official_url.present?
+        if existing.url.blank? && posting.official_url.present?
+          existing.update!(url: posting.official_url)
+          @finder.remember(existing)
+        end
         kind = "appended"
         customer = existing
         stats[:appended] += 1
@@ -41,6 +44,7 @@ module SapLead
           template_vars: vars,
           client_id: nil
         )
+        @finder.remember(customer)
         kind = "created"
         stats[:created] += 1
       end

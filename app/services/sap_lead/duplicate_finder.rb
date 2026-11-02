@@ -1,24 +1,51 @@
 module SapLead
   class DuplicateFinder
-    def find(company:, tel: nil, url: nil)
-      target_name = Customer.normalized_name(company)
-      target_tel = digits(tel)
-      target_domain = domain(url)
+    def initialize
+      @loaded = false
+      @by_name = {}
+      @by_tel = {}
+      @by_domain = {}
+    end
 
-      Customer.find_each do |customer|
-        if target_domain.present? && domain(customer.url) == target_domain
-          return customer
-        end
-        if target_tel.present? && digits(customer.tel) == target_tel
-          return customer
-        end
-        candidate = Customer.normalized_name(customer.company)
-        return customer if Customer.name_similarity?(target_name, candidate)
-      end
-      nil
+    def find(company:, tel: nil, url: nil)
+      load_customers
+      candidates = []
+      domain_key = domain(url)
+      tel_key = digits(tel)
+      name_key = Customer.normalized_name(company)
+      candidates << @by_domain[domain_key] if domain_key
+      candidates << @by_tel[tel_key] if tel_key
+      candidates << @by_name[name_key] if name_key.present?
+      candidates.compact.min_by(&:id)
+    end
+
+    def remember(customer)
+      load_customers
+      index_customer(customer)
     end
 
     private
+
+    def load_customers
+      return if @loaded
+
+      @loaded = true
+      Customer.find_each { |customer| index_customer(customer) }
+    end
+
+    def index_customer(customer)
+      name = Customer.normalized_name(customer.company)
+      keep(@by_name, name, customer) if name.present?
+      tel = digits(customer.tel)
+      keep(@by_tel, tel, customer) if tel
+      host = domain(customer.url)
+      keep(@by_domain, host, customer) if host
+    end
+
+    def keep(map, key, customer)
+      current = map[key]
+      map[key] = customer if current.nil? || customer.id < current.id
+    end
 
     def digits(value)
       number = value.to_s.gsub(/\D/, "")
