@@ -34,6 +34,18 @@ class SapWeeklySendTest < ActiveSupport::TestCase
     assert_equal [[batch.id, true]], @queue.form_batches
   end
 
+  test "excludes a company that has a form CAPTCHA NG call" do
+    ready = Customer.create!(company: "送信可株式会社", business: "SAP", contact_url: "https://ok.example/contact", url: "https://ok.example")
+    blocked = Customer.create!(company: "画像認証株式会社", business: "SAP", contact_url: "https://captcha.example/contact", url: "https://captcha.example")
+    Call.create!(customer: blocked, call_type: "form", status: "自動送信失敗")
+    Call.create!(customer: blocked, call_type: "form", status: "CAPTCHA NG")
+
+    config = Struct.new(:admin_id, :submission_id).new(@admin.id, @submission.id)
+    batch = SapLead::WeeklySend.new(queue: @queue, config: config).run
+
+    assert_equal [ready.id], JSON.parse(batch.customer_ids)
+  end
+
   test "does not send when the yml ids are blank" do
     Customer.create!(company: "対象株式会社", business: "SAP", contact_url: "https://ready.example/contact")
 
