@@ -34,7 +34,8 @@ module Gbizinfo
       response = @http.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: 10, read_timeout: 20) do |http|
         http.request(request)
       end
-      unless response.is_a?(Net::HTTPSuccess)
+      return [] if response.code.to_s == "404"
+      unless response.code.to_s.start_with?("2")
         raise "gBizINFOの取得に失敗しました: #{response.code} #{url}"
       end
 

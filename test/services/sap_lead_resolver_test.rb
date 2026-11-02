@@ -142,4 +142,60 @@ class SapLeadResolverTest < ActiveSupport::TestCase
     end
     assert_equal "new", posting.reload.status
   end
+
+  test "a 404 from name search skips the posting as no corporate number" do
+    posting = new_posting("jbn:resolve-404-search", "株式会社なし")
+
+    SapLead::Resolver.new(client: sequence_client(["404"])).run
+
+    assert_equal "skipped", posting.reload.status
+    assert_equal "法人番号なし", posting.skip_reason
+  end
+
+  test "a 404 from basic info skips the posting as no corporate number" do
+    posting = new_posting("jbn:resolve-404-detail", "株式会社テスト")
+    body = {
+      "hojin-infos" => [
+        { "corporate_number" => "111", "name" => "株式会社テスト", "status" => "" }
+      ]
+    }.to_json
+
+    SapLead::Resolver.new(client: sequence_client(["200", "404"], body)).run
+
+    assert_equal "skipped", posting.reload.status
+    assert_equal "法人番号なし", posting.skip_reason
+  end
+
+  private
+
+  def new_posting(job_key, company)
+    JobPosting.create!(
+      source: "kyujinbox",
+      company_raw: company,
+      company_clean: company,
+      job_key: job_key,
+      status: "new",
+      first_seen_at: Time.current,
+      last_seen_at: Time.current
+    )
+  end
+
+  def sequence_client(codes, success_body = "{}")
+    http = Class.new do
+      def initialize(codes, success_body)
+        @codes = codes.dup
+        @success_body = success_body
+      end
+
+      def start(*)
+        code = @codes.shift || "404"
+        success_body = @success_body
+        response = Object.new
+        response.define_singleton_method(:code) { code }
+        response.define_singleton_method(:body) { code == "200" ? success_body : "" }
+        yield Object.new.tap { |connection| connection.define_singleton_method(:request) { |_req| response } }
+      end
+    end.new(codes, success_body)
+    Gbizinfo::Client.new(token: "test-token", http: http)
+  end
 end
