@@ -16,8 +16,12 @@ module SapLead
 
     private
 
+    def normalize_company(name)
+      name.to_s.unicode_normalize(:nfkc)
+    end
+
     def register_one(posting, stats)
-      official_name = posting.official_name.presence || posting.company_raw
+      official_name = normalize_company(posting.official_name.presence || posting.company_raw)
       existing = @finder.find(company: official_name, url: posting.official_url)
       vars = {
         "job_title" => posting.title.to_s,

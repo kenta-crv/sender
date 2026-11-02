@@ -89,6 +89,20 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
     assert_equal created.id, found.id
   end
 
+  test "stores the company name in NFKC" do
+    posting = resolved_posting(
+      "jbn:reg-nfkc",
+      official_url: "https://digi.example",
+      company: "ＤＩＧＩ　ＧＲＯＷＴＨ株式会社"
+    )
+
+    SapLead::Registrar.new.run
+
+    customer = Customer.find_by!(company: "DIGI GROWTH株式会社", client_id: nil)
+    assert_equal "DIGI GROWTH株式会社", JSON.parse(customer.template_vars)["company"]
+    assert_equal customer.id, posting.reload.customer_id
+  end
+
   test "creates a shared customer when none exists" do
     posting = resolved_posting("jbn:reg-new", official_url: "https://new.example")
 
