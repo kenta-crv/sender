@@ -14,9 +14,24 @@ module Kyujinbox
   Page = Struct.new(:postings, :next_url, keyword_init: true)
 
   def self.start_urls
-    config = YAML.safe_load(Rails.root.join("config/sap_pipeline.yml").read) || {}
-    Array(config.dig("kyujinbox", "start_urls")).map(&:to_s).reject(&:blank?)
+    Array(pipeline_config.dig("kyujinbox", "start_urls")).map(&:to_s).reject(&:blank?)
   end
+
+  def self.title_relevant?(title)
+    normalized = title.to_s.unicode_normalize(:nfkc).upcase
+    title_keywords.any? { |keyword| normalized.include?(keyword) }
+  end
+
+  def self.title_keywords
+    Array(pipeline_config.dig("kyujinbox", "title_keywords")).map do |keyword|
+      keyword.to_s.unicode_normalize(:nfkc).upcase
+    end.reject(&:blank?).uniq
+  end
+
+  def self.pipeline_config
+    YAML.safe_load(Rails.root.join("config/sap_pipeline.yml").read) || {}
+  end
+  private_class_method :pipeline_config
 
   def self.legal_entity?(name)
     value = name.to_s.strip

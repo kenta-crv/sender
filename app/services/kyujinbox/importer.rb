@@ -48,6 +48,12 @@ module Kyujinbox
         return
       end
 
+      unless Kyujinbox.title_relevant?(posting.title)
+        create_posting(posting, status: "skipped", skip_reason: JobPosting::UNRELATED_SKIP_REASON)
+        stats[:skipped] += 1
+        return
+      end
+
       key = Kyujinbox.company_key(posting.company_clean, posting.posting_url)
       if @seen_company_keys[key]
         stats[:dropped] += 1
@@ -69,7 +75,10 @@ module Kyujinbox
     def recent_company?(company_clean)
       return false if company_clean.blank?
 
-      JobPosting.where(company_clean: company_clean).where("last_seen_at >= ?", 30.days.ago).exists?
+      JobPosting.where(company_clean: company_clean)
+        .where("last_seen_at >= ?", 30.days.ago)
+        .where("skip_reason IS NULL OR skip_reason != ?", JobPosting::UNRELATED_SKIP_REASON)
+        .exists?
     end
 
     def create_posting(posting, status:, skip_reason:)

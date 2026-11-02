@@ -3,6 +3,16 @@ kyujinbox:
   start_urls:
     - https://xn--pckua2a7gp15o89zb.com/SAP%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
     - https://xn--pckua2a7gp15o89zb.com/S4HANA%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
+  # タイトルにこのどれも含まない求人は取り込まない。大文字小文字と全角半角は区別しない。
+  title_keywords:
+    - SAP
+    - ＳＡＰ
+    - S/4HANA
+    - S4HANA
+    - S／4
+    - ABAP
+    - BASIS
+    - Basis
 
 # 月曜送信で使う管理者と文面。空のときは送信バッチを作らない。
 send:

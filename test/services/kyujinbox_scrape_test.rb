@@ -66,7 +66,7 @@ class KyujinboxScrapeTest < ActiveSupport::TestCase
       </section>
       <section class="p-result_card">
         <a class="p-result_title_link" href="/jbn/newer"></a>
-        <span class="p-result_name">新しい求人</span>
+        <span class="p-result_name">新しいSAP求人</span>
         <p class="p-result_companyName">株式会社テスト</p>
       </section>
     HTML
@@ -85,6 +85,45 @@ class KyujinboxScrapeTest < ActiveSupport::TestCase
     assert_equal 1, stats[:seen]
     assert_equal 1, stats[:skipped]
     assert_equal 0, stats[:created]
+  end
+
+  test "title keywords ignore width and case and do not match HANA alone" do
+    assert Kyujinbox.title_relevant?("ＳＡＰ導入")
+    assert Kyujinbox.title_relevant?("s/4hanaエンジニア")
+    assert Kyujinbox.title_relevant?("S／4導入")
+    assert Kyujinbox.title_relevant?("S4HANAコンサルタント")
+    assert Kyujinbox.title_relevant?("abap開発")
+    assert Kyujinbox.title_relevant?("Basis運用")
+    refute Kyujinbox.title_relevant?("HANAコンサルタント")
+    refute Kyujinbox.title_relevant?("一般事務")
+  end
+
+  test "skips a posting whose title is unrelated to SAP" do
+    html = <<~HTML
+      <section class="p-result_card">
+        <a class="p-result_title_link" href="/jbn/plain"></a>
+        <span class="p-result_name">一般事務</span>
+        <p class="p-result_companyName">株式会社テスト</p>
+      </section>
+      <section class="p-result_card">
+        <a class="p-result_title_link" href="/jbn/sap"></a>
+        <span class="p-result_name">SAPエンジニア</span>
+        <p class="p-result_companyName">株式会社テスト</p>
+      </section>
+    HTML
+
+    stats = Kyujinbox::Importer.new(client: fake_client(html), page_interval: 0).run(
+      start_urls: [START_URL],
+      max_pages: 1
+    )
+
+    unrelated = JobPosting.find_by!(job_key: "jbn:plain")
+    related = JobPosting.find_by!(job_key: "jbn:sap")
+    assert_equal "skipped", unrelated.status
+    assert_equal "SAP関連外", unrelated.skip_reason
+    assert_equal "new", related.status
+    assert_equal 1, stats[:skipped]
+    assert_equal 1, stats[:created]
   end
 
   test "stops crawling when every posting on the page was already seen" do
@@ -161,7 +200,7 @@ class KyujinboxScrapeTest < ActiveSupport::TestCase
       </section>
       <section class="p-result_card">
         <a class="p-result_title_link" href="/jbn/abc999"></a>
-        <span class="p-result_name">別求人</span>
+        <span class="p-result_name">別のSAP求人</span>
         <p class="p-result_companyName">株式会社あいうえおかきくけこ商会</p>
       </section>
     HTML

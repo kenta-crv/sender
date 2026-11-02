@@ -1,6 +1,7 @@
 class JobPosting < ApplicationRecord
   STATUSES = %w[new resolved skipped registered].freeze
   RECENT_SKIP_REASON = "30日以内に処理済み".freeze
+  UNRELATED_SKIP_REASON = "SAP関連外".freeze
 
   belongs_to :customer, optional: true
 
