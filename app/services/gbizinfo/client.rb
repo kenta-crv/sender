@@ -5,7 +5,7 @@ module Gbizinfo
   # 検索: GET /v2/hojin?name= （部分一致）。存続判定は応答の status / close_date。
   # 基本情報: GET /v2/hojin/{法人番号} の company_url / location / name。
   class Client
-    BASE_URL = "https://info.gbiz.go.jp/hojin/v2/hojin".freeze
+    BASE_URL = "https://api.info.gbiz.go.jp/hojin/v2/hojin".freeze
 
     def initialize(token: ENV["GBIZINFO_API_TOKEN"], http: Net::HTTP)
       @token = token.to_s
