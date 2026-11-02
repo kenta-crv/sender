@@ -71,13 +71,27 @@ module SapLead
       row["status"].to_s == "閉鎖" || row["close_date"].present?
     end
 
+    # 長い方を先に見る。/jp/ が /jp/ja/ を先に切らないようにする。
+    LOCALE_PREFIXES = %w[/jp/ja/ /global/ja/ /ja_jp/ /jp/ /ja/].freeze
+
     def usable_url(url)
       value = url.to_s.strip
       return nil if value.blank?
       return nil unless value.match?(%r{\Ahttps?://}i)
       return nil if blocked_url?(value)
 
-      value
+      uri = URI.parse(value)
+      return nil if uri.host.blank?
+
+      path = uri.path.to_s
+      return nil if path.match?(/\.pdf\z/i)
+      return value if path.include?("/group/")
+
+      locale = LOCALE_PREFIXES.find { |prefix| path.start_with?(prefix) || path == prefix.delete_suffix("/") }
+      kept_path = locale || "/"
+      URI::HTTPS.build(host: uri.host, path: kept_path).to_s
+    rescue URI::InvalidURIError
+      nil
     end
 
     def blocked_url?(url)

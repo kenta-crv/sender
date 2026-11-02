@@ -16,6 +16,21 @@ class SapLeadResolverTest < ActiveSupport::TestCase
     end
   end
 
+  test "usable url drops pdfs, keeps group pages, and folds the rest to the site root" do
+    resolver = SapLead::Resolver.new(client: FakeApi.new(search: [], detail: nil))
+
+    assert_nil resolver.send(:usable_url, "https://example.com/ir/report.pdf")
+    assert_nil resolver.send(:usable_url, "https://example.com/files/report.PDF")
+    assert_equal "https://parent.example/group/child/about?x=1", resolver.send(:usable_url, "https://parent.example/group/child/about?x=1")
+    assert_equal "https://www.pwc.com/jp/ja/", resolver.send(:usable_url, "https://www.pwc.com/jp/ja/about/services")
+    assert_equal "https://www.pwc.com/jp/ja/", resolver.send(:usable_url, "https://www.pwc.com/jp/ja")
+    assert_equal "https://example.com/ja_jp/", resolver.send(:usable_url, "http://example.com/ja_jp/news")
+    assert_equal "https://example.com/global/ja/", resolver.send(:usable_url, "https://example.com/global/ja/company")
+    assert_equal "https://example.com/jp/", resolver.send(:usable_url, "https://example.com/jp/company")
+    assert_equal "https://example.com/ja/", resolver.send(:usable_url, "https://example.com/ja/company")
+    assert_equal "https://www.example.com/", resolver.send(:usable_url, "http://www.example.com/about/company")
+  end
+
   test "tidy removes a trailing branch and a truncated last word" do
     assert_equal "株式会社テスト", SapLead::CompanyName.tidy("株式会社テスト 東京オフィス")
     assert_equal "株式会社テスト", SapLead::CompanyName.tidy("株式会社テスト ソリューション...")
