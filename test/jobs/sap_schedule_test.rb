@@ -31,11 +31,11 @@ class SapScheduleTest < ActiveSupport::TestCase
     assert_equal 0, sat.min
 
     expectations = {
-      "SAP Kyujinbox scrape - daily at 2:47" => [Time.utc(2026, 11, 3, 18, 0, 0), 2, 0],
-      "SAP lead resolve and register - Saturday at 3:17" => [Time.utc(2026, 11, 7, 0, 0, 0), 4, 0],
-      "SAP sunday url and form detect - Sunday at 3:17" => [Time.utc(2026, 11, 8, 0, 0, 0), 4, 0],
-      "SAP weekly send - Monday at 9:13" => [Time.utc(2026, 11, 9, 1, 0, 0), 9, 0],
-      "SAP weekly report - Friday at 21:43" => [Time.utc(2026, 11, 6, 13, 30, 0), 22, 0]
+      "SAP Kyujinbox scrape - daily at 2:00" => [Time.utc(2026, 11, 3, 18, 0, 0), 2, 0],
+      "SAP lead resolve and register - Saturday at 4:00" => [Time.utc(2026, 11, 7, 0, 0, 0), 4, 0],
+      "SAP sunday url and form detect - Sunday at 4:00" => [Time.utc(2026, 11, 8, 0, 0, 0), 4, 0],
+      "SAP weekly send - Monday at 9:00" => [Time.utc(2026, 11, 9, 1, 0, 0), 9, 0],
+      "SAP weekly report - Friday at 22:00" => [Time.utc(2026, 11, 6, 13, 30, 0), 22, 0]
     }
     expectations.each do |name, (moment, hour, minute)|
       job = Sidekiq::Cron::Job.find(name)
