@@ -22,7 +22,7 @@ class ContactUrlDetectJob < ApplicationJob
       return
     end
 
-    if customer.usable_contact_url.present?
+    if customer.usable_contact_url.present? && !customer.blocked_contact_url?
       customer.update_column(:contact_detection_status, 'detected') if customer.contact_detection_status.blank?
       batch&.record_result!(customer_id, success: true)
       return

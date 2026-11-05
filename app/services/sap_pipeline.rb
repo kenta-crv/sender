@@ -5,15 +5,23 @@ module SapPipeline
     end
 
     def admin_id
-      config.dig(:send, :admin_id).presence
+      integer_env("SAP_SEND_ADMIN_ID")
     end
 
     def submission_id
-      config.dig(:send, :submission_id).presence
+      integer_env("SAP_SEND_SUBMISSION_ID")
     end
 
     def spreadsheet_id
       config[:spreadsheet_id].presence
+    end
+
+    private
+
+    def integer_env(key)
+      value = ENV[key].presence
+      return if value.blank?
+      Integer(value, exception: false)
     end
   end
 end

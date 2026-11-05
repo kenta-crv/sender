@@ -14,9 +14,7 @@ kyujinbox:
     - BASIS
     - Basis
 
-# 月曜送信で使う管理者と文面。空のときは送信バッチを作らない。
-send:
-  admin_id:
-  submission_id:
+# 月曜送信の管理者IDと文面IDは環境変数 SAP_SEND_ADMIN_ID / SAP_SEND_SUBMISSION_ID。
+# 開発DBのIDをこのファイルには書かない。
 
 spreadsheet_id: 1AcWed9iwArzUUt1lzymT7bpAh1en3X1TlmXQLLtI31Q

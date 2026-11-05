@@ -5,10 +5,15 @@ module SapLead
       @finder = DuplicateFinder.new
     end
 
+    LINK_SKIP_REASONS = %w[同名複数 法人番号なし].freeze
+
     def run
       stats = { created: 0, appended: 0 }
       JobPosting.where(status: "resolved").find_each do |posting|
         register_one(posting, stats)
+      end
+      JobPosting.where(status: "skipped", skip_reason: LINK_SKIP_REASONS, customer_id: nil).find_each do |posting|
+        link_skipped(posting, stats)
       end
       @logger.info("[SapLeadRegister] #{stats.inspect}")
       stats
@@ -59,6 +64,35 @@ module SapLead
         registration_kind: kind,
         registered_at: Time.current
       )
+    rescue StandardError => e
+      @logger.error("[SapLeadRegister] job_posting=#{posting.id} #{e.class}: #{e.message}")
+    end
+
+    def link_skipped(posting, stats)
+      name = posting.company_raw.presence || posting.company_clean
+      existing = @finder.find_unique_by_name(name)
+      return if existing.nil?
+
+      official_name = normalize_company(name)
+      existing.add_business!(Kyujinbox::INDUSTRY)
+      existing.update!(
+        template_vars: {
+          "job_title" => posting.title.to_s,
+          "company" => official_name.to_s,
+          "area" => HeadquartersArea.extract(posting.headquarters_address)
+        }.to_json
+      )
+      if existing.url.blank? && posting.official_url.present?
+        existing.update!(url: posting.official_url)
+        @finder.remember(existing)
+      end
+      posting.update!(
+        customer_id: existing.id,
+        status: "registered",
+        registration_kind: "appended",
+        registered_at: Time.current
+      )
+      stats[:appended] += 1
     rescue StandardError => e
       @logger.error("[SapLeadRegister] job_posting=#{posting.id} #{e.class}: #{e.message}")
     end

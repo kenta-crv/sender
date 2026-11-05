@@ -65,6 +65,18 @@ class Customer < ApplicationRecord
     value
   end
 
+  def self.blocked_url?(url)
+    value = url.to_s.strip
+    return false if value.blank?
+    return false unless defined?(BLOCKED_URL_PATTERNS)
+
+    BLOCKED_URL_PATTERNS.any? { |pattern| value.downcase.include?(pattern.downcase) }
+  end
+
+  def blocked_contact_url?
+    self.class.blocked_url?(contact_url)
+  end
+
   def mark_contact_detected!(url)
     update_columns(
       contact_url: url,

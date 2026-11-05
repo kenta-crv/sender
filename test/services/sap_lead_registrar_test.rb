@@ -63,30 +63,112 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
     assert_equal earlier.id, found.id
   end
 
-  test "creates a shared customer when the same company exists only under a client" do
+  test "appends SAP to a client owned company with the same name" do
     client = Client.create!(email: "sap-owned-#{SecureRandom.hex(4)}@example.com", password: "password123")
     owned = Customer.create!(
       company: "株式会社所有のみ",
       business: "製造",
       url: "https://owned-only.example",
       tel: "0311112222",
+      contact_url: "https://owned-only.example/contact",
       client: client
     )
     posting = resolved_posting("jbn:reg-owned-only", official_url: "https://owned-only.example", company: "株式会社所有のみ")
-    assert_nil SapLead::DuplicateFinder.new.find(company: "株式会社所有のみ", tel: "0311112222", url: "https://owned-only.example")
+    assert_equal owned.id, SapLead::DuplicateFinder.new.find(company: "株式会社所有のみ", tel: "0311112222", url: "https://owned-only.example").id
 
     stats = SapLead::Registrar.new.run
 
     owned.reload
-    created = Customer.find_by!(company: "株式会社所有のみ", client_id: nil)
+    assert_equal 0, stats[:created]
+    assert_equal 1, stats[:appended]
+    assert_equal "製造,SAP", owned.business
+    assert_equal "https://owned-only.example/contact", owned.contact_url
+    assert_nil Customer.find_by(company: "株式会社所有のみ", client_id: nil)
+    assert_equal owned.id, posting.reload.customer_id
+  end
+
+  test "does not match a company when only the legal entity position differs" do
+    security = Customer.create!(company: "アシスト株式会社", business: "警備")
+    posting = resolved_posting("jbn:reg-front-stock", official_url: "https://front-assist.example", company: "株式会社アシスト")
+
+    assert_nil SapLead::DuplicateFinder.new.find(company: "株式会社アシスト")
+    stats = SapLead::Registrar.new.run
+
+    security.reload
+    created = Customer.find_by!(company: "株式会社アシスト")
     assert_equal 1, stats[:created]
-    assert_equal 0, stats[:appended]
-    assert_equal "製造", owned.business
-    assert_nil owned.template_vars
-    assert_equal "SAP", created.business
+    assert_equal "警備", security.business
     assert_equal created.id, posting.reload.customer_id
-    found = SapLead::DuplicateFinder.new.find(company: "株式会社所有のみ", tel: "0311112222", url: "https://owned-only.example")
-    assert_equal created.id, found.id
+    refute_equal security.id, created.id
+  end
+
+  test "links a skipped posting when exactly one customer has the same full name" do
+    existing = Customer.create!(
+      company: "株式会社一意",
+      business: "製造",
+      contact_url: "https://keep.example/contact",
+      url: "https://keep.example"
+    )
+    duplicate_name = skipped_posting("jbn:skip-unique", "株式会社　一意", "同名複数")
+    missing_number = skipped_posting("jbn:skip-missing", "株式会社番号なし", "法人番号なし")
+    Customer.create!(company: "株式会社番号なし", business: "情報通信", contact_url: "https://number.example/contact")
+
+    stats = SapLead::Registrar.new.run
+
+    existing.reload
+    number_customer = Customer.find_by!(company: "株式会社番号なし")
+    assert_equal 2, stats[:appended]
+    assert_equal 0, stats[:created]
+    assert_equal "製造,SAP", existing.business
+    assert_equal "https://keep.example/contact", existing.contact_url
+    assert_equal existing.id, duplicate_name.reload.customer_id
+    assert_equal "registered", duplicate_name.status
+    assert_equal "appended", duplicate_name.registration_kind
+    assert_equal "情報通信,SAP", number_customer.business
+    assert_equal "https://number.example/contact", number_customer.contact_url
+    assert_equal number_customer.id, missing_number.reload.customer_id
+  end
+
+  test "does not link a skipped posting when the full name matches two customers or only the legal entity position differs" do
+    Customer.create!(company: "株式会社重複", business: "製造", contact_url: "https://dup-a.example/contact")
+    Customer.create!(company: "株式会社　重複", business: "製造", contact_url: "https://dup-b.example/contact")
+    security = Customer.create!(company: "アシスト株式会社", business: "警備", contact_url: "https://security.example/contact")
+    ambiguous = skipped_posting("jbn:skip-ambiguous", "株式会社重複", "同名複数")
+    different_position = skipped_posting("jbn:skip-front-stock", "株式会社アシスト", "法人番号なし")
+
+    stats = SapLead::Registrar.new.run
+
+    assert_equal 0, stats[:appended]
+    assert_equal 0, stats[:created]
+    assert_nil ambiguous.reload.customer_id
+    assert_equal "skipped", ambiguous.status
+    assert_nil different_position.reload.customer_id
+    assert_equal "skipped", different_position.status
+    assert_equal "警備", security.reload.business
+    assert_equal "https://security.example/contact", security.contact_url
+  end
+
+  test "keeps a blocked contact url and fills a blank company url from gBiz" do
+    existing = Customer.create!(
+      company: "株式会社ハロー",
+      business: "製造",
+      url: nil,
+      contact_url: "https://jinzai.hellowork.mhlw.go.jp/jobs/1"
+    )
+    posting = resolved_posting(
+      "jbn:reg-blocked-contact",
+      official_url: "https://hello-company.example",
+      company: "株式会社ハロー"
+    )
+
+    stats = SapLead::Registrar.new.run
+
+    existing.reload
+    assert_equal 1, stats[:appended]
+    assert_equal "製造,SAP", existing.business
+    assert_equal "https://jinzai.hellowork.mhlw.go.jp/jobs/1", existing.contact_url
+    assert_equal "https://hello-company.example", existing.url
+    assert_equal existing.id, posting.reload.customer_id
   end
 
   test "stores the company name in NFKC" do
@@ -141,6 +223,20 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
   end
 
   private
+
+  def skipped_posting(job_key, company, skip_reason)
+    JobPosting.create!(
+      source: "kyujinbox",
+      company_raw: company,
+      company_clean: company,
+      title: "SAPコンサルタント",
+      job_key: job_key,
+      status: "skipped",
+      skip_reason: skip_reason,
+      first_seen_at: Time.current,
+      last_seen_at: Time.current
+    )
+  end
 
   def resolved_posting(job_key, official_url:, company: "株式会社テスト", headquarters_address: "東京都千代田区1-1")
     JobPosting.create!(

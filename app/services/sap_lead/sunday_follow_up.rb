@@ -30,14 +30,14 @@ module SapLead
         .where.not(customer_id: nil)
         .distinct
         .pluck(:customer_id)
-      Customer.where(client_id: nil).with_business(Kyujinbox::INDUSTRY).where(id: customer_ids, url: [nil, ""]).pluck(:id)
+      Customer.with_business(Kyujinbox::INDUSTRY).where(id: customer_ids, url: [nil, ""]).pluck(:id)
     end
 
     def enqueue_contact_detection
-      ids = Customer.where(client_id: nil).with_business(Kyujinbox::INDUSTRY)
+      rows = Customer.with_business(Kyujinbox::INDUSTRY)
         .where.not(url: [nil, ""])
-        .where(contact_url: [nil, ""])
-        .pluck(:id)
+        .pluck(:id, :contact_url)
+      ids = rows.select { |_, contact_url| contact_url.blank? || Customer.blocked_url?(contact_url) }.map(&:first)
       if ids.empty?
         @logger.info("[SapSundayFollowUp] フォーム検出の対象なし")
         return nil
