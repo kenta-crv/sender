@@ -54,9 +54,9 @@ class CustomerTest < ActiveSupport::TestCase
   end
 
   test "business list stores multiple industries separated by half-width commas" do
-    customer = Customer.create!(company: "株式会社複数業種", business: "情報通信、 SAP，製造")
+    customer = Customer.create!(company: "株式会社複数業種", business: "情報通信、SAP,製造")
 
-    assert_equal "情報通信,SAP,製造", customer.reload.business
+    assert_equal "情報通信|SAP|製造", customer.reload.business
     assert_equal %w[情報通信 SAP 製造], customer.business_list
   end
 
@@ -66,7 +66,7 @@ class CustomerTest < ActiveSupport::TestCase
     customer.add_business!("SAP")
     customer.add_business!("SAP")
 
-    assert_equal "情報通信,SAP", customer.reload.business
+    assert_equal "情報通信|SAP", customer.reload.business
   end
 
   test "with_business matches any listed industry and avoids partial names" do

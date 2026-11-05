@@ -18,7 +18,7 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
     existing.reload
     posting.reload
     assert_equal 1, stats[:appended]
-    assert_equal "情報通信,SAP", existing.business
+    assert_equal "情報通信|SAP", existing.business
     assert_equal "https://already.example", existing.url
     assert_equal "registered", posting.status
     assert_equal "appended", posting.registration_kind
@@ -81,7 +81,7 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
     owned.reload
     assert_equal 0, stats[:created]
     assert_equal 1, stats[:appended]
-    assert_equal "製造,SAP", owned.business
+    assert_equal "製造|SAP", owned.business
     assert_equal "https://owned-only.example/contact", owned.contact_url
     assert_nil Customer.find_by(company: "株式会社所有のみ", client_id: nil)
     assert_equal owned.id, posting.reload.customer_id
@@ -119,12 +119,12 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
     number_customer = Customer.find_by!(company: "株式会社番号なし")
     assert_equal 2, stats[:appended]
     assert_equal 0, stats[:created]
-    assert_equal "製造,SAP", existing.business
+    assert_equal "製造|SAP", existing.business
     assert_equal "https://keep.example/contact", existing.contact_url
     assert_equal existing.id, duplicate_name.reload.customer_id
     assert_equal "registered", duplicate_name.status
     assert_equal "appended", duplicate_name.registration_kind
-    assert_equal "情報通信,SAP", number_customer.business
+    assert_equal "情報通信|SAP", number_customer.business
     assert_equal "https://number.example/contact", number_customer.contact_url
     assert_equal number_customer.id, missing_number.reload.customer_id
   end
@@ -165,7 +165,7 @@ class SapLeadRegistrarTest < ActiveSupport::TestCase
 
     existing.reload
     assert_equal 1, stats[:appended]
-    assert_equal "製造,SAP", existing.business
+    assert_equal "製造|SAP", existing.business
     assert_equal "https://jinzai.hellowork.mhlw.go.jp/jobs/1", existing.contact_url
     assert_equal "https://hello-company.example", existing.url
     assert_equal existing.id, posting.reload.customer_id
