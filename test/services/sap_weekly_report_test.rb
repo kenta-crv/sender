@@ -39,11 +39,11 @@ class SapWeeklyReportTest < ActiveSupport::TestCase
     link = ClickTrackingLink.create!(customer: customer, form_submission_batch: batch, target_url: "https://example.com/detail")
     ClickLog.create!(click_tracking_link: link, created_at: inside)
 
-    sheet = FakeSheet.new([])
-    result = SapLead::WeeklyReport.new(sheets: sheet, now: FRIDAY).run
+    webhook = FakeWebhook.new(:appended)
+    result = SapLead::WeeklyReport.new(webhook: webhook, now: FRIDAY).run
 
     assert_equal :appended, result
-    row = sheet.appended.first
+    row = webhook.rows.first
     assert_equal "2026-10-24", row[0]
     assert_equal "2026-10-30", row[1]
     assert_equal 3, row[2]
@@ -65,33 +65,50 @@ class SapWeeklyReportTest < ActiveSupport::TestCase
     assert_equal 1, row[25]
   end
 
-  test "does nothing when the week is already on the sheet" do
-    sheet = FakeSheet.new(["2026-10-24"])
-    result = SapLead::WeeklyReport.new(sheets: sheet, now: FRIDAY).run
+  test "accepts exists when the same week is already on the sheet" do
+    webhook = FakeWebhook.new(:exists)
+    result = SapLead::WeeklyReport.new(webhook: webhook, now: FRIDAY).run
 
-    assert_equal :skipped, result
-    assert_empty sheet.appended
+    assert_equal :exists, result
+    assert_equal 1, webhook.rows.size
     assert_equal 0, Notification.where(type: "SapWeeklyReport").count
   end
 
-  test "records a notification when the sheet write fails" do
-    sheet = FakeSheet.new([])
-    def sheet.append_unless_present(*)
-      raise "sheets down"
+  test "records a notification when the webhook write fails" do
+    webhook = FakeWebhook.new(:appended)
+    def webhook.append_row(*)
+      raise "webhook down"
     end
 
-    assert_nil SapLead::WeeklyReport.new(sheets: sheet, now: FRIDAY).run
+    assert_nil SapLead::WeeklyReport.new(webhook: webhook, now: FRIDAY).run
     notice = Notification.where(type: "SapWeeklyReport", status: "error").last
-    assert_match "sheets down", notice.message
+    assert_match "webhook down", notice.message
     assert_nil notice.client_id
   end
 
-  test "google sheet skips a duplicate start date before appending" do
-    service = FakeSheetService.new(title: "Untitled", column_a: ["週開始日", "2026-10-24"])
-    result = SapLead::GoogleSheet.new(service: service).append_unless_present("sheet-id", ["2026-10-24", "2026-10-30"])
+  test "webhook posts the row and reads the result after the redirect" do
+    row = ["2026-10-24", "2026-10-30"] + Array.new(24, 0)
+    transport = RedirectTransport.new('{"result":"appended"}')
+    result = SapLead::ReportWebhook.new(url: "https://script.google.com/macros/s/test/exec", secret: "test-secret", transport: transport).append_row(row)
 
-    assert_equal :skipped, result
-    assert_empty service.appended
+    assert_equal :appended, result
+    assert_equal "POST", transport.calls[0][:method]
+    assert_equal "GET", transport.calls[1][:method]
+    assert_equal "https://script.googleusercontent.com/macros/echo", transport.calls[1][:url]
+    body = JSON.parse(transport.calls[0][:body])
+    assert_equal "test-secret", body["secret"]
+    assert_equal row, body["row"]
+  end
+
+  test "webhook treats forbidden as a failure and does not include the secret" do
+    row = Array.new(26, "")
+    transport = RedirectTransport.new('{"result":"forbidden"}')
+    error = assert_raises(RuntimeError) do
+      SapLead::ReportWebhook.new(url: "https://script.google.com/macros/s/test/exec", secret: "test-secret", transport: transport).append_row(row)
+    end
+
+    assert_match "forbidden", error.message
+    assert_no_match "test-secret", error.message
   end
 
   private
@@ -107,41 +124,40 @@ class SapWeeklyReportTest < ActiveSupport::TestCase
     }.merge(attrs))
   end
 
-  class FakeSheet
-    attr_reader :appended
+  class FakeWebhook
+    attr_reader :rows
 
-    def initialize(existing)
-      @existing = existing
-      @appended = []
+    def initialize(result)
+      @result = result
+      @rows = []
     end
 
-    def append_unless_present(_spreadsheet_id, row)
-      return :skipped if @existing.include?(row.first)
-
-      @appended << row
-      :appended
+    def append_row(row)
+      @rows << row
+      @result
     end
   end
 
-  class FakeSheetService
-    attr_reader :appended
+  class RedirectTransport
+    attr_reader :calls
 
-    def initialize(title:, column_a:)
-      @title = title
-      @column_a = column_a
-      @appended = []
+    def initialize(body)
+      @body = body
+      @calls = []
     end
 
-    def sheet_title(_spreadsheet_id)
-      @title
-    end
-
-    def column_a(_spreadsheet_id, _title)
-      @column_a
-    end
-
-    def append(_spreadsheet_id, _title, row)
-      @appended << row
+    def call(request, uri)
+      @calls << { method: request.method, url: uri.to_s, body: request.body }
+      if @calls.size == 1
+        response = Net::HTTPFound.new("1.1", "302", "Found")
+        response["Location"] = "https://script.googleusercontent.com/macros/echo"
+        response
+      else
+        response = Net::HTTPOK.new("1.1", "200", "OK")
+        response.instance_variable_set(:@body, @body)
+        response.instance_variable_set(:@read, true)
+        response
+      end
     end
   end
 end

@@ -1,17 +1,14 @@
 module SapLead
   class WeeklyReport
-    def initialize(sheets: nil, logger: Rails.logger, now: Time.zone.now)
-      @sheets = sheets
+    def initialize(webhook: nil, logger: Rails.logger, now: Time.zone.now)
+      @webhook = webhook
       @logger = logger
       @now = now
     end
 
     def run
-      spreadsheet_id = SapPipeline.spreadsheet_id
-      raise "spreadsheet_id が未設定です" if spreadsheet_id.blank?
-
       row = build_row(@now)
-      result = (@sheets || GoogleSheet.new).append_unless_present(spreadsheet_id, row)
+      result = (@webhook || ReportWebhook.new).append_row(row)
       @logger.info("[SapWeeklyReport] #{result} #{row.first}")
       result
     rescue StandardError => e

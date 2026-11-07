@@ -148,14 +148,10 @@ cron の末尾は `Asia/Tokyo` なので、数字は日本時間である。
 ### 書き込み先
 
 - スプレッドシートID：`1AcWed9iwArzUUt1lzymT7bpAh1en3X1TlmXQLLtI31Q`（名前：「Okurite SAP週次レポート」）
-- 書き込むのは**最初のシート**。シート名は現在「Untitled」だが、名前で指定せず、先頭のシートを取得して使うこと。
-- 1行目は見出しで、すでに入っている。2行目以降に追記する（values.append）。
-
-### 認証
-
-- Google Sheets API を、サービスアカウントで呼ぶ。
-- 鍵ファイルのパスは、新しい環境変数 `SAP_REPORT_SHEETS_CREDENTIALS` で渡す。既存の `GOOGLE_APPLICATION_CREDENTIALS`（音声認識で使用中）は変更しない。
-- gem は `google-apis-sheets_v4` と `googleauth` を使う。スコープは `https://www.googleapis.com/auth/spreadsheets`。
+- アプリはスプレッドシート API を呼ばない。Apps Script のウェブアプリへ POST し、スクリプトが先頭シートへ1行追加する。
+- 送信先は `SAP_REPORT_WEBHOOK_URL`、合言葉は `SAP_REPORT_WEBHOOK_SECRET`。本文は `{"secret": 合言葉, "row": [A列からZ列の26個]}`。
+- POST のあと 302 になるので、リダイレクト先を GET で読んで JSON の `result` を見る。`appended` と `exists` 以外は失敗として通知する。
+- サービスアカウント鍵と `SAP_REPORT_SHEETS_CREDENTIALS` は週次レポートでは使わない。音声認識の `GOOGLE_APPLICATION_CREDENTIALS` は変更しない。
 
 ### 列と、集計に使うデータ（対象期間は前週土曜〜当週金曜）
 
