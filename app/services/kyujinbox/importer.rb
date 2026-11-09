@@ -28,7 +28,13 @@ module Kyujinbox
         page_no += 1
         break if max_pages && page_no > max_pages
 
-        page = Parser.extract(@client.get(url), page_url: url)
+        begin
+          html = @client.get(url)
+        rescue Client::NotFound
+          @logger.info("[Kyujinbox] page=#{page_no} url=#{url} status=404 終了")
+          break
+        end
+        page = Parser.extract(html, page_url: url)
         stats[:pages] += 1
         page.postings.each { |posting| import_posting(posting, stats) }
         @logger.info("[Kyujinbox] page=#{page_no} url=#{url} postings=#{page.postings.size} next=#{page.next_url.present?}")

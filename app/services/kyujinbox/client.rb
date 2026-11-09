@@ -1,5 +1,7 @@
 module Kyujinbox
   class Client
+    class NotFound < StandardError; end
+
     def get(url, limit: 5)
       raise "リダイレクトが多すぎます: #{url}" if limit <= 0
 
@@ -19,6 +21,8 @@ module Kyujinbox
         get(location, limit: limit - 1)
       when Net::HTTPSuccess
         response.body.to_s.dup.force_encoding("UTF-8")
+      when Net::HTTPNotFound
+        raise NotFound, url
       else
         raise "求人ボックスの取得に失敗しました: #{response.code} #{url}"
       end
