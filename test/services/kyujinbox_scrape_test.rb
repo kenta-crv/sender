@@ -126,7 +126,7 @@ class KyujinboxScrapeTest < ActiveSupport::TestCase
     assert_equal 1, stats[:created]
   end
 
-  test "stops crawling when every posting on the page was already seen" do
+  test "keeps crawling the next page when every posting on the page was already seen" do
     JobPosting.create!(
       source: "kyujinbox",
       company_raw: "株式会社テスト",
@@ -150,8 +150,9 @@ class KyujinboxScrapeTest < ActiveSupport::TestCase
 
     stats = Kyujinbox::Importer.new(client: client, page_interval: 0).run(start_urls: [START_URL])
 
-    assert_equal [START_URL], client.calls
-    assert_equal 1, stats[:pages]
+    assert_equal [START_URL, PAGE2_URL], client.calls
+    assert_equal 2, stats[:pages]
+    assert_equal 1, stats[:seen]
     assert_equal 0, stats[:created]
   end
 
