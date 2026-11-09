@@ -210,6 +210,39 @@ class SapWeeklySendTest < ActiveSupport::TestCase
     assert_includes JSON.parse(batch.customer_ids), customer.id
   end
 
+  test "sunday serp waits 15 seconds and retries an error older than 7 days" do
+    customer = Customer.create!(company: "再検索株式会社", business: "SAP", url: nil, serp_status: "serp_error")
+    customer.update_columns(updated_at: 8.days.ago)
+    JobPosting.create!(
+      source: "kyujinbox",
+      company_raw: "再検索株式会社",
+      company_clean: "再検索",
+      title: "SAP担当",
+      job_key: "jbn:sunday-retry-#{SecureRandom.hex(4)}",
+      status: "registered",
+      official_url: nil,
+      customer_id: customer.id,
+      first_seen_at: Time.current,
+      last_seen_at: Time.current
+    )
+    captured = nil
+    pipeline = Class.new do
+      define_method(:execute_from_db) do |customer_ids:, delay_between:, retry_serp_error_after:, **|
+        captured = {
+          ids: customer_ids,
+          delay_between: delay_between,
+          retry_serp_error_after: retry_serp_error_after
+        }
+      end
+    end.new
+
+    SapLead::SundayFollowUp.new(pipeline: pipeline, queue: @queue).run
+
+    assert_equal [customer.id], captured[:ids]
+    assert_equal 15, captured[:delay_between]
+    assert_equal 7.days, captured[:retry_serp_error_after]
+  end
+
   class RecordingQueue
     attr_reader :form_batches, :detect_batches
 

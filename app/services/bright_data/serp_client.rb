@@ -11,8 +11,11 @@ module BrightData
     ENDPOINT = "https://api.brightdata.com/request"
     MAX_RETRIES = 3
     BASE_DELAY = 2  # seconds（指数バックオフの基底）
+    RECENT_FAILURE_WAIT = 15
+    RECENT_FAILURE_PATTERN = /recently failed|直前に失敗した/i.freeze
 
     class AuthenticationError < StandardError; end
+    class RecentFailure < StandardError; end
 
     def initialize(api_key: nil, zone: nil)
       @api_key = api_key || ENV['BRIGHT_DATA_API_KEY']
@@ -33,17 +36,31 @@ module BrightData
       target_url = "https://www.google.com/search?q=#{encoded}&gl=#{gl}&hl=#{hl}&brd_json=1"
 
       retries = 0
+      recent_retries = 0
       begin
         raw = execute_request(target_url)
+        raise RecentFailure, raw if recent_failure?(raw)
+
         parsed = sanitize_utf8(JSON.parse(raw, symbolize_names: false))
 
         # Bright Data がエラーを返す場合のチェック
         if parsed.is_a?(Hash) && parsed["error"]
+          raise RecentFailure, parsed["error"].to_s if recent_failure?(parsed["error"])
+
           log(:warn, "API returned error for '#{query}': #{parsed['error']}")
           return { "error" => parsed["error"], "query" => query }
         end
 
         parsed
+      rescue RecentFailure
+        if recent_retries < 1
+          recent_retries += 1
+          log(:warn, "Recent failure for '#{query}', waiting #{RECENT_FAILURE_WAIT}s")
+          sleep(RECENT_FAILURE_WAIT)
+          retry
+        end
+        log(:error, "Recent failure remained for '#{query}'")
+        { "error" => "recent_failure", "query" => query }
       rescue AuthenticationError => e
         log(:error, "Authentication failed for '#{query}': #{e.message}")
         { "error" => e.message, "fatal" => true, "query" => query }
@@ -129,6 +146,10 @@ module BrightData
 
     def normalize_text(value)
       sanitize_utf8(value.to_s)
+    end
+
+    def recent_failure?(value)
+      value.to_s.match?(RECENT_FAILURE_PATTERN)
     end
 
     def execute_request(target_url)

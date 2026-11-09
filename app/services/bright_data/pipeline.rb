@@ -43,7 +43,7 @@ module BrightData
       { keywords: keywords.size, extracted: companies.size, registered: reg_stats }
     end
 
-    def self.execute_from_db(industry: nil, limit: 100, customer_ids: nil, progress_run_id: nil, jid: nil, detect_contact: false, dry_run: false, finalize_run: true)
+    def self.execute_from_db(industry: nil, limit: 100, customer_ids: nil, progress_run_id: nil, jid: nil, detect_contact: false, dry_run: false, finalize_run: true, delay_between: 1, retry_serp_error_after: nil)
       puts "=" * 60
       puts "SERP Pipeline (DB mode) 開始: #{Time.current}"
       puts "=" * 60
@@ -56,8 +56,14 @@ module BrightData
 
       selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
       if selected_ids.any?
-        # 再開時の二重課金防止: 送信済み（done/error）はスキップ
-        already_finished = Customer.where(id: selected_ids, serp_status: %w[serp_done serp_error]).pluck(:id)
+        # 再開時の二重課金防止: 送信済み（done/error）はスキップ。
+        # retry_serp_error_after があるときだけ、その期間より古い serp_error を再検索する。
+        already_finished = Customer.where(id: selected_ids, serp_status: "serp_done").pluck(:id)
+        error_scope = Customer.where(id: selected_ids, serp_status: "serp_error")
+        if retry_serp_error_after
+          error_scope = error_scope.where("updated_at > ?", Time.current - retry_serp_error_after)
+        end
+        already_finished += error_scope.pluck(:id)
         pending_ids = selected_ids - already_finished
         puts "[Pipeline] 指定ID #{selected_ids.size}件中 送信済みスキップ #{already_finished.size}件 / 残 #{pending_ids.size}件" if already_finished.any?
         ordered = pending_ids.first(limit)
@@ -119,7 +125,7 @@ module BrightData
 
       begin
         client = SerpClient.new
-        batch = client.batch_search(queries, delay_between: 1) do |event|
+        batch = client.batch_search(queries, delay_between: delay_between) do |event|
           idx = event["index"].to_i
           job = query_jobs[idx]
           customer_id = job && job[:customer_id]

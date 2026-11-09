@@ -1,5 +1,8 @@
 module SapLead
   class SundayFollowUp
+    SERP_INTERVAL = 15
+    SERP_ERROR_RETRY_AFTER = 7.days
+
     def initialize(pipeline: BrightData::Pipeline, queue: PlanPriorityQueue, logger: Rails.logger)
       @pipeline = pipeline
       @queue = queue
@@ -18,7 +21,12 @@ module SapLead
       return if ids.empty?
 
       before = Customer.where(id: ids).pluck(:id, :url).to_h
-      @pipeline.execute_from_db(customer_ids: ids, limit: ids.size)
+      @pipeline.execute_from_db(
+        customer_ids: ids,
+        limit: ids.size,
+        delay_between: SERP_INTERVAL,
+        retry_serp_error_after: SERP_ERROR_RETRY_AFTER
+      )
       filled_ids = Customer.where(id: ids).select { |customer| before[customer.id].blank? && customer.url.present? }.map(&:id)
       return if filled_ids.empty?
 

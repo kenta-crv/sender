@@ -755,6 +755,38 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     assert_equal "serp_done", customer.reload.serp_status
   end
 
+  test "execute_from_db retries serp_error only after the given period and keeps the search interval" do
+    stale = Customer.create!(company: "古いエラー株式会社", address: "Tokyo", url: nil, serp_status: "serp_error")
+    fresh = Customer.create!(company: "新しいエラー株式会社", address: "Osaka", url: nil, serp_status: "serp_error")
+    stale.update_columns(updated_at: 8.days.ago)
+    fresh.update_columns(updated_at: 1.day.ago)
+
+    captured = []
+    fake_client = Object.new
+    fake_client.define_singleton_method(:batch_search) do |queries, delay_between: 1|
+      captured << { delay_between: delay_between, queries: queries }
+      queries.map { |query| { "query" => query, "result" => {}, "timestamp" => Time.current.iso8601 } }
+    end
+
+    with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
+      with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
+        BrightData::Pipeline.execute_from_db(
+          limit: 2,
+          customer_ids: [stale.id, fresh.id],
+          dry_run: true,
+          delay_between: 15,
+          retry_serp_error_after: 7.days
+        )
+      end
+    end
+
+    assert_equal 1, captured.size
+    assert_equal 15, captured.first[:delay_between]
+    assert_equal 1, captured.first[:queries].size
+    assert_includes captured.first[:queries].first, "古いエラー株式会社"
+    refute_includes captured.first[:queries].first, "新しいエラー株式会社"
+  end
+
   test "execute_from_db marks only API-touched rows as error on fatal and leaves unsent as null" do
     first = Customer.create!(company: "Fatal First Target", address: "Tokyo")
     second = Customer.create!(company: "Fatal Second Target", address: "Osaka")
