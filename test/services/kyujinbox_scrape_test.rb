@@ -46,9 +46,10 @@ class KyujinboxScrapeTest < ActiveSupport::TestCase
 
   test "start urls come from sap pipeline config" do
     urls = Kyujinbox.start_urls
-    assert_equal 2, urls.size
-    assert urls.all? { |url| url.include?("u=1") }
-    assert urls.any? { |url| url.include?("SAP") }
+    assert_equal 2 * 47, urls.size
+    assert urls.all? { |url| url.include?("?u=1") }
+    assert_includes urls.first, "SAP"
+    assert_includes urls.first, "-%E5%8C%97%E6%B5%B7%E9%81%93"
     assert urls.any? { |url| url.include?("S4HANA") }
   end
 

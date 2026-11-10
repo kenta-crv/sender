@@ -66,7 +66,8 @@ module SapLead
         status: "processing",
         started_at: Time.current,
         admin_id: @campaign.admin_id,
-        sap_pipeline: @campaign.sap?
+        sap_pipeline: @campaign.sap?,
+        campaign_key: @campaign.key
       )
       @queue.enqueue_contact_detect_batch(batch.id, client: nil, admin: true)
       @logger.info("[SapSundayFollowUp] フォーム検出 #{ids.size}件 batch=#{batch.id}")

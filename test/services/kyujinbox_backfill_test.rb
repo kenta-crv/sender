@@ -8,6 +8,10 @@ class KyujinboxBackfillTest < ActiveSupport::TestCase
     urls = Kyujinbox.backfill_urls
     assert_equal [SAP_URL, S4_URL], urls
     assert urls.none? { |url| url.include?("u=1") }
+    historical = Pipeline::Campaign.sap.historical_urls
+    assert_equal 2 * 47, historical.size
+    assert historical.none? { |url| url.include?("u=1") }
+    assert_includes historical.first, "-%E5%8C%97%E6%B5%B7%E9%81%93"
   end
 
   test "one run stops at the page budget, waits three seconds, and the next run continues" do
@@ -23,7 +27,7 @@ class KyujinboxBackfillTest < ActiveSupport::TestCase
     slept = []
     importer.define_singleton_method(:sleep) { |seconds| slept << seconds }
 
-    first = backfill.run(max_pages: 2)
+    first = backfill.run(max_pages: 2, urls: [SAP_URL, S4_URL])
 
     assert_equal 2, first[:pages]
     assert_equal 2, first[:created]
@@ -35,7 +39,7 @@ class KyujinboxBackfillTest < ActiveSupport::TestCase
     assert_equal 2, cursor.pages_read
     assert_nil KyujinboxBackfillCursor.find_by(start_url: S4_URL)
 
-    second = Kyujinbox::Backfill.new(client: client, page_interval: 0).run(max_pages: 2)
+    second = Kyujinbox::Backfill.new(client: client, page_interval: 0).run(max_pages: 2, urls: [SAP_URL, S4_URL])
 
     assert_equal 2, second[:pages]
     assert_equal 2, second[:created]

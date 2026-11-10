@@ -12,12 +12,14 @@ module SapLead
       @transport = transport
     end
 
-    def append_row(row)
+    def append_row(row, sheet: nil)
       raise "SAP_REPORT_WEBHOOK_URL が未設定です" if @url.blank?
       raise "SAP_REPORT_WEBHOOK_SECRET が未設定です" if @secret.blank?
       raise "週次レポートの列数が26ではありません" unless row.is_a?(Array) && row.size == 26
 
-      response = post_then_get(URI(@url), JSON.generate(secret: @secret, row: row))
+      body = { secret: @secret, row: row }
+      body[:sheet] = sheet if sheet.present?
+      response = post_then_get(URI(@url), JSON.generate(body))
       payload = JSON.parse(response.body.to_s)
       result = payload["result"].to_s
       return result.to_sym if SUCCESS_RESULTS.include?(result)

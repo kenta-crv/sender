@@ -3,6 +3,15 @@ require "cgi"
 module Pipeline
   class Campaign
     HOST = "https://xn--pckua2a7gp15o89zb.com".freeze
+    PREFECTURES = %w[
+      北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県
+      茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県
+      新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県
+      静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県
+      奈良県 和歌山県 鳥取県 島根県 岡山県 広島県 山口県
+      徳島県 香川県 愛媛県 高知県 福岡県 佐賀県 長崎県
+      熊本県 大分県 宮崎県 鹿児島県 沖縄県
+    ].freeze
 
     attr_reader :key
 
@@ -29,7 +38,20 @@ module Pipeline
 
     def self.keyword_url(keyword)
       path = CGI.escape("#{keyword}の仕事").gsub("+", "%20")
-      "#{HOST}/#{path}?u=1"
+      "#{HOST}/#{path}"
+    end
+
+    def self.area_urls(urls, new_arrival: false)
+      Array(urls).flat_map do |url|
+        PREFECTURES.map { |prefecture| with_prefecture(url, prefecture, new_arrival: new_arrival) }
+      end
+    end
+
+    def self.with_prefecture(url, prefecture, new_arrival: false)
+      base = URI.decode_www_form_component(URI.parse(url).path.delete_prefix("/"))
+      path = CGI.escape("#{base}-#{prefecture}").gsub("+", "%20")
+      daily = "#{HOST}/#{path}"
+      new_arrival ? "#{daily}?u=1" : daily
     end
 
     def self.yaml
@@ -90,14 +112,23 @@ module Pipeline
     end
 
     def start_urls
-      explicit = Array(@config.dig("kyujinbox", "start_urls")).map(&:to_s).reject(&:blank?)
-      return explicit if explicit.any?
+      self.class.area_urls(search_bases, new_arrival: true)
+    end
 
-      keywords.map { |keyword| self.class.keyword_url(keyword) }
+    def historical_urls
+      self.class.area_urls(search_bases, new_arrival: false)
     end
 
     def backfill_urls
       Array(@config.dig("kyujinbox", "backfill_urls")).map(&:to_s).reject(&:blank?)
+    end
+
+    def search_bases
+      explicit = backfill_urls
+      explicit = Array(@config.dig("kyujinbox", "start_urls")).map(&:to_s).reject(&:blank?) if explicit.empty?
+      return explicit if explicit.any?
+
+      keywords.map { |keyword| self.class.keyword_url(keyword) }
     end
 
     def admin_id

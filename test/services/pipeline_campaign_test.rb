@@ -1,13 +1,18 @@
 require "test_helper"
 
 class PipelineCampaignTest < ActiveSupport::TestCase
-  test "sales keywords become today's nationwide kyujinbox urls and do not filter titles or dispatch jobs" do
+  test "sales keywords become a kyujinbox url for every prefecture and do not filter titles or dispatch jobs" do
     campaign = Pipeline::Campaign.find("okurite_sales")
     url = campaign.start_urls.first
 
-    assert_equal 9, campaign.start_urls.size
+    assert_equal 9 * 47, campaign.start_urls.size
     assert_includes url, "%E6%B3%95%E4%BA%BA%E5%96%B6%E6%A5%AD"
+    assert_includes url, "-%E5%8C%97%E6%B5%B7%E9%81%93"
+    assert_includes campaign.start_urls[1], "-%E9%9D%92%E6%A3%AE%E7%9C%8C"
+    assert_includes campaign.start_urls[46], "-%E6%B2%96%E7%B8%84%E7%9C%8C"
     assert_includes url, "?u=1"
+    assert_equal 9 * 47, campaign.historical_urls.size
+    refute_includes campaign.historical_urls.first, "u=1"
     assert_equal true, campaign.exclude_existing_clients?
     assert_equal 100, campaign.serp_daily_limit
 

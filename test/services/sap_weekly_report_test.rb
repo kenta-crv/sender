@@ -70,13 +70,14 @@ class SapWeeklyReportTest < ActiveSupport::TestCase
     result = SapLead::WeeklyReport.new(webhook: webhook, now: FRIDAY).run
 
     assert_equal :exists, result
-    assert_equal 1, webhook.rows.size
+    assert_nil webhook.sheets.first
+    assert_equal "営業代行", webhook.sheets.last
     assert_equal 0, Notification.where(type: "SapWeeklyReport").count
   end
 
   test "records a notification when the webhook write fails" do
     webhook = FakeWebhook.new(:appended)
-    def webhook.append_row(*)
+    def webhook.append_row(*, **)
       raise "webhook down"
     end
 
@@ -98,6 +99,19 @@ class SapWeeklyReportTest < ActiveSupport::TestCase
     body = JSON.parse(transport.calls[0][:body])
     assert_equal "test-secret", body["secret"]
     assert_equal row, body["row"]
+    refute body.key?("sheet")
+  end
+
+  test "webhook adds the campaign sheet and keeps the same 26 columns" do
+    row = Array.new(26, 0)
+    transport = RedirectTransport.new('{"result":"appended"}')
+    result = SapLead::ReportWebhook.new(url: "https://script.google.com/macros/s/test/exec", secret: "test-secret", transport: transport).append_row(row, sheet: "営業代行")
+
+    body = JSON.parse(transport.calls[0][:body])
+    assert_equal :appended, result
+    assert_equal "営業代行", body["sheet"]
+    assert_equal row, body["row"]
+    assert_equal 26, body["row"].size
   end
 
   test "webhook treats forbidden as a failure and does not include the secret" do
@@ -130,10 +144,14 @@ class SapWeeklyReportTest < ActiveSupport::TestCase
     def initialize(result)
       @result = result
       @rows = []
+      @sheets = []
     end
 
-    def append_row(row)
+    attr_reader :sheets
+
+    def append_row(row, sheet: nil)
       @rows << row
+      @sheets << sheet
       @result
     end
   end
