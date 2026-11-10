@@ -1,24 +1,54 @@
-# SAP営業の週次自動化。起点URLは求人ボックス「本日の新着」（?u=1）。
-kyujinbox:
-  start_urls:
-    - https://xn--pckua2a7gp15o89zb.com/SAP%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
-    - https://xn--pckua2a7gp15o89zb.com/S4HANA%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
-  # ?u=1 を付けない全件一覧。KyujinboxBackfillJob が続きのページから読む。
-  backfill_urls:
-    - https://xn--pckua2a7gp15o89zb.com/SAP%E3%81%AE%E4%BB%95%E4%BA%8B
-    - https://xn--pckua2a7gp15o89zb.com/S4HANA%E3%81%AE%E4%BB%95%E4%BA%8B
-  # タイトルにこのどれも含まない求人は取り込まない。大文字小文字と全角半角は区別しない。
-  title_keywords:
-    - SAP
-    - ＳＡＰ
-    - S/4HANA
-    - S4HANA
-    - S／4
-    - ABAP
-    - BASIS
-    - Basis
+# キャンペーンごとの営業パイプライン。
+# SAPの管理者IDと文面IDは環境変数 SAP_SEND_ADMIN_ID / SAP_SEND_SUBMISSION_ID。
+# グループをまたいだ送信間隔。同じグループの30日はコード側で固定。
+cross_send_interval_days: 14
 
-# 月曜送信の管理者IDと文面IDは環境変数 SAP_SEND_ADMIN_ID / SAP_SEND_SUBMISSION_ID。
-# 開発DBのIDをこのファイルには書かない。
+campaigns:
+  sap:
+    name: SAP
+    group: sap
+    business: SAP
+    exclude_words:
+      - 派遣
+    ignore_forbidden_text: true
+    exclude_existing_clients: false
+    kyujinbox:
+      start_urls:
+        - https://xn--pckua2a7gp15o89zb.com/SAP%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
+        - https://xn--pckua2a7gp15o89zb.com/S4HANA%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
+      backfill_urls:
+        - https://xn--pckua2a7gp15o89zb.com/SAP%E3%81%AE%E4%BB%95%E4%BA%8B
+        - https://xn--pckua2a7gp15o89zb.com/S4HANA%E3%81%AE%E4%BB%95%E4%BA%8B
+      title_keywords:
+        - SAP
+        - ＳＡＰ
+        - S/4HANA
+        - S4HANA
+        - S／4
+        - ABAP
+        - BASIS
+        - Basis
+  okurite_sales:
+    name: 営業代行
+    group: okurite_sales
+    business: 営業代行
+    keywords:
+      - 法人営業
+      - 新規営業
+      - 人材紹介
+      - 人材派遣
+      - 登録支援機関
+      - 協同組合
+      - IT企業
+      - コンサルティング
+      - マーケティング
+    title_keywords: []
+    exclude_words: []
+    ignore_forbidden_text: false
+    exclude_existing_clients: true
+    serp_daily_limit: 100
+    admin_id: 5
+    submission_id: 24
+    url: https://okurite.pro/sales
 
 spreadsheet_id: 1AcWed9iwArzUUt1lzymT7bpAh1en3X1TlmXQLLtI31Q

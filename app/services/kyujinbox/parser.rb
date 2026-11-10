@@ -1,14 +1,14 @@
 module Kyujinbox
   class Parser
-    def self.extract(html, page_url:)
+    def self.extract(html, page_url:, exclude_words: :default)
       doc = Nokogiri::HTML(html)
-      postings = doc.css("section.p-result_card").filter_map { |card| posting_from(card, page_url) }
+      postings = doc.css("section.p-result_card").filter_map { |card| posting_from(card, page_url, exclude_words) }
       next_href = doc.at_css("a.c-pager_btn--next")&.[]("href")
       next_url = next_href.present? ? URI.join(page_url, next_href).to_s : nil
       Page.new(postings: postings, next_url: next_url)
     end
 
-    def self.posting_from(card, page_url)
+    def self.posting_from(card, page_url, exclude_words = :default)
       company = Kyujinbox.base_company_name(card.at_css("p.p-result_companyName, p.p-result_company")&.text.to_s.squish)
       return nil if company.blank?
       return nil unless Kyujinbox.legal_entity?(company)
@@ -32,7 +32,7 @@ module Kyujinbox
         updated_text: updated_text,
         source_text: source_text
       )
-      return nil if Kyujinbox.excluded?(posting)
+      return nil if Kyujinbox.excluded?(posting, exclude_words)
 
       posting
     end

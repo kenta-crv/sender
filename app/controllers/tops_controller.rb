@@ -34,6 +34,8 @@ class TopsController < ApplicationController
   def short
     @contract = Contract.new
   end
+  def sales
+  end
 
   def privacy 
   end

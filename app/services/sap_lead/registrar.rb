@@ -7,19 +7,25 @@ module SapLead
 
     LINK_SKIP_REASONS = %w[同名複数 法人番号なし].freeze
 
-    def run
+    def run(campaign_key: nil)
       stats = { created: 0, appended: 0 }
-      JobPosting.where(status: "resolved").find_each do |posting|
-        register_one(posting, stats)
+      resolved = JobPosting.where(status: "resolved")
+      skipped = JobPosting.where(status: "skipped", skip_reason: LINK_SKIP_REASONS, customer_id: nil)
+      if campaign_key.present?
+        resolved = resolved.where(campaign_key: campaign_key)
+        skipped = skipped.where(campaign_key: campaign_key)
       end
-      JobPosting.where(status: "skipped", skip_reason: LINK_SKIP_REASONS, customer_id: nil).find_each do |posting|
-        link_skipped(posting, stats)
-      end
+      resolved.find_each { |posting| register_one(posting, stats) }
+      skipped.find_each { |posting| link_skipped(posting, stats) }
       @logger.info("[SapLeadRegister] #{stats.inspect}")
       stats
     end
 
     private
+
+    def business_for(posting)
+      Pipeline::Campaign.find(posting.campaign_key)&.business.presence || Kyujinbox::INDUSTRY
+    end
 
     def normalize_company(name)
       name.to_s.unicode_normalize(:nfkc)
@@ -35,7 +41,7 @@ module SapLead
       }.to_json
 
       if existing
-        existing.add_business!(Kyujinbox::INDUSTRY)
+        existing.add_business!(business_for(posting))
         existing.update!(template_vars: vars)
         if existing.url.blank? && posting.official_url.present?
           existing.update!(url: posting.official_url)
@@ -49,7 +55,7 @@ module SapLead
           company: official_name,
           address: posting.headquarters_address,
           url: posting.official_url,
-          business: Kyujinbox::INDUSTRY,
+          business: business_for(posting),
           template_vars: vars,
           client_id: nil
         )
@@ -74,7 +80,7 @@ module SapLead
       return if existing.nil?
 
       official_name = normalize_company(name)
-      existing.add_business!(Kyujinbox::INDUSTRY)
+      existing.add_business!(business_for(posting))
       existing.update!(
         template_vars: {
           "job_title" => posting.title.to_s,

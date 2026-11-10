@@ -344,7 +344,8 @@ class FormSendJob < ApplicationJob
     subject = rendered ? rendered.title : submission.title.to_s
     info[:subject] = subject if subject.present?
 
-    link_options = link_url_options(submission)
+    destination = tracking_destination(batch, submission)
+    link_options = link_url_options(submission, destination)
 
     customer.generate_unsubscribe_token if customer.unsubscribe_token.blank?
     customer.save! if customer.changed?
@@ -355,7 +356,7 @@ class FormSendJob < ApplicationJob
       admin: batch.admin,
       submission: submission,
       form_submission_batch: batch,
-      target_url: submission.url
+      target_url: destination
     )
 
     # 詳細リンクは必ず /l/:token 経由（リダイレクト。クリックは LP 可視3秒で記録）。
@@ -402,20 +403,29 @@ class FormSendJob < ApplicationJob
       info[:message] = message
     end
 
-    info[:url] = submission.url if submission.url.present?
+    info[:url] = destination if destination.present?
 
     info
   end
 
+  def tracking_destination(batch, submission)
+    campaign = Pipeline::Campaign.find(batch.campaign_key)
+    campaign&.url.presence || submission.url
+  end
+
   # 開発時は localhost（トークンはローカルDBにあるため本番ドメインだと Invalid になる）。
-  # 本番は Submission#url のホストに合わせる。未対応ホストは送らず落とす。
-  def link_url_options(submission)
+  # 本番はキャンペーンの url、なければ Submission#url のホストに合わせる。未対応ホストは送らず落とす。
+  def link_url_options(submission, override_url = nil)
     return development_link_url_options if Rails.env.development? || Rails.env.test?
 
-    defaults = { host: 'okurite.pro', protocol: 'https', port: nil }
-    return defaults if submission.url.blank?
+    production_link_options(override_url.presence || submission.url)
+  end
 
-    uri = URI.parse(submission.url)
+  def production_link_options(url)
+    defaults = { host: 'okurite.pro', protocol: 'https', port: nil }
+    return defaults if url.blank?
+
+    uri = URI.parse(url)
     return defaults if uri.host.blank?
 
     TrackingLinkHost.assert_allowed!(uri.host)

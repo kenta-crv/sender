@@ -14,28 +14,35 @@ module Kyujinbox
   Page = Struct.new(:postings, :next_url, keyword_init: true)
 
   def self.start_urls
-    Array(pipeline_config.dig("kyujinbox", "start_urls")).map(&:to_s).reject(&:blank?)
+    Pipeline::Campaign.sap.start_urls
   end
 
   def self.backfill_urls
-    Array(pipeline_config.dig("kyujinbox", "backfill_urls")).map(&:to_s).reject(&:blank?)
+    Pipeline::Campaign.sap.backfill_urls
   end
 
-  def self.title_relevant?(title)
+  def self.title_relevant?(title, keywords = :default)
+    list = keywords == :default ? title_keywords : Array(keywords)
+    return true if list.empty?
+
     normalized = title.to_s.unicode_normalize(:nfkc).upcase
-    title_keywords.any? { |keyword| normalized.include?(keyword) }
+    list.any? { |keyword| normalized.include?(keyword.to_s.unicode_normalize(:nfkc).upcase) }
   end
 
   def self.title_keywords
-    Array(pipeline_config.dig("kyujinbox", "title_keywords")).map do |keyword|
-      keyword.to_s.unicode_normalize(:nfkc).upcase
-    end.reject(&:blank?).uniq
+    Pipeline::Campaign.sap.title_keywords
   end
 
-  def self.pipeline_config
-    YAML.safe_load(Rails.root.join("config/sap_pipeline.yml").read) || {}
+  def self.excluded?(posting, words = :default)
+    list = words == :default ? [EXCLUDE_WORD] : Array(words).map(&:to_s).reject(&:blank?)
+    return false if list.empty?
+
+    fields = [
+      posting.company_raw, posting.area, posting.title, posting.employ_type,
+      posting.updated_text, posting.source_text
+    ]
+    fields.any? { |field| list.any? { |word| field.to_s.include?(word) } }
   end
-  private_class_method :pipeline_config
 
   def self.legal_entity?(name)
     value = base_company_name(name)
@@ -57,14 +64,6 @@ module Kyujinbox
 
   def self.company_key(company_clean, posting_url)
     company_clean.to_s[0, COMPANY_KEY_LENGTH].presence || posting_url.to_s
-  end
-
-  def self.excluded?(posting)
-    fields = [
-      posting.company_raw, posting.area, posting.title, posting.employ_type,
-      posting.updated_text, posting.source_text
-    ]
-    fields.any? { |field| field.to_s.include?(EXCLUDE_WORD) }
   end
 
   def self.job_key_for(url, company_raw, title)

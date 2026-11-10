@@ -5,10 +5,12 @@ module SapLead
       @logger = logger
     end
 
-    def run
+    def run(campaign_key: nil)
       api = @client || Gbizinfo::Client.new
       stats = { resolved: 0, skipped: 0, errors: 0 }
-      JobPosting.where(status: "new").find_each do |posting|
+      scope = JobPosting.where(status: "new")
+      scope = scope.where(campaign_key: campaign_key) if campaign_key.present?
+      scope.find_each do |posting|
         resolve_one(posting, api, stats)
       end
       @logger.info("[SapLeadResolve] #{stats.inspect}")

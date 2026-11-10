@@ -3,10 +3,11 @@ module SapLead
     SERP_INTERVAL = 15
     SERP_ERROR_RETRY_AFTER = 7.days
 
-    def initialize(pipeline: BrightData::Pipeline, queue: PlanPriorityQueue, logger: Rails.logger)
+    def initialize(pipeline: BrightData::Pipeline, queue: PlanPriorityQueue, logger: Rails.logger, campaign: nil)
       @pipeline = pipeline
       @queue = queue
       @logger = logger
+      @campaign = campaign || Pipeline::Campaign.sap
     end
 
     def run
@@ -34,15 +35,23 @@ module SapLead
     end
 
     def serp_customer_ids
-      customer_ids = JobPosting.where(status: "registered", official_url: [nil, ""])
-        .where.not(customer_id: nil)
-        .distinct
-        .pluck(:customer_id)
-      Customer.with_business(Kyujinbox::INDUSTRY).where(id: customer_ids, url: [nil, ""]).pluck(:id)
+      customer_ids = campaign_postings.where.not(customer_id: nil).distinct.pluck(:customer_id)
+      ids = Customer.with_business(@campaign.business).where(id: customer_ids, url: [nil, ""]).order(:id).pluck(:id)
+      limit = @campaign.serp_daily_limit
+      limit ? ids.first(limit) : ids
+    end
+
+    def campaign_postings
+      scope = JobPosting.where(status: "registered", official_url: [nil, ""])
+      if @campaign.sap?
+        scope.where("campaign_key IS NULL OR campaign_key = ?", "sap")
+      else
+        scope.where(campaign_key: @campaign.key)
+      end
     end
 
     def enqueue_contact_detection
-      rows = Customer.with_business(Kyujinbox::INDUSTRY)
+      rows = Customer.with_business(@campaign.business)
         .where.not(url: [nil, ""])
         .pluck(:id, :contact_url)
       ids = rows.select { |_, contact_url| contact_url.blank? || Customer.blocked_url?(contact_url) }.map(&:first)
@@ -56,8 +65,8 @@ module SapLead
         customer_ids: ids.to_json,
         status: "processing",
         started_at: Time.current,
-        admin_id: SapPipeline.admin_id,
-        sap_pipeline: true
+        admin_id: @campaign.admin_id,
+        sap_pipeline: @campaign.sap?
       )
       @queue.enqueue_contact_detect_batch(batch.id, client: nil, admin: true)
       @logger.info("[SapSundayFollowUp] フォーム検出 #{ids.size}件 batch=#{batch.id}")

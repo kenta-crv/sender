@@ -1,9 +1,10 @@
 module Kyujinbox
   class Importer
-    def initialize(client: Kyujinbox::Client.new, page_interval: PAGE_INTERVAL, logger: Rails.logger)
+    def initialize(client: Kyujinbox::Client.new, page_interval: PAGE_INTERVAL, logger: Rails.logger, campaign: nil)
       @client = client
       @page_interval = page_interval
       @logger = logger
+      @campaign = campaign || Pipeline::Campaign.sap
       @seen_company_keys = {}
     end
 
@@ -13,7 +14,7 @@ module Kyujinbox
         crawl(start_url, max_pages: max_pages, stats: stats)
       end
       @logger.info(
-        "[Kyujinbox] 業種=#{INDUSTRY} pages=#{stats[:pages]} created=#{stats[:created]} " \
+        "[Kyujinbox] 業種=#{@campaign.business} pages=#{stats[:pages]} created=#{stats[:created]} " \
         "seen=#{stats[:seen]} skipped=#{stats[:skipped]} dropped=#{stats[:dropped]}"
       )
       stats
@@ -30,7 +31,7 @@ module Kyujinbox
           return { pages: pages, next_url: url, stopped: "not_found" }
         end
 
-        page = Parser.extract(html, page_url: url)
+        page = Parser.extract(html, page_url: url, exclude_words: @campaign.exclude_words)
         stats[:pages] += 1
         pages += 1
         page.postings.each { |posting| import_posting(posting, stats) }
@@ -64,7 +65,7 @@ module Kyujinbox
           @logger.info("[Kyujinbox] page=#{page_no} url=#{url} status=404 終了")
           break
         end
-        page = Parser.extract(html, page_url: url)
+        page = Parser.extract(html, page_url: url, exclude_words: @campaign.exclude_words)
         stats[:pages] += 1
         page.postings.each { |posting| import_posting(posting, stats) }
         @logger.info("[Kyujinbox] page=#{page_no} url=#{url} postings=#{page.postings.size} next=#{page.next_url.present?}")
@@ -82,7 +83,7 @@ module Kyujinbox
         return
       end
 
-      unless Kyujinbox.title_relevant?(posting.title)
+      unless Kyujinbox.title_relevant?(posting.title, @campaign.title_keywords)
         create_posting(posting, status: "skipped", skip_reason: JobPosting::UNRELATED_SKIP_REASON)
         stats[:skipped] += 1
         return
@@ -109,10 +110,15 @@ module Kyujinbox
     def recent_company?(company_clean)
       return false if company_clean.blank?
 
-      JobPosting.where(company_clean: company_clean)
+      relation = JobPosting.where(company_clean: company_clean)
         .where("last_seen_at >= ?", 30.days.ago)
         .where("skip_reason IS NULL OR skip_reason != ?", JobPosting::UNRELATED_SKIP_REASON)
-        .exists?
+      relation = if @campaign.sap?
+        relation.where("campaign_key IS NULL OR campaign_key = ?", "sap")
+      else
+        relation.where(campaign_key: @campaign.key)
+      end
+      relation.exists?
     end
 
     def create_posting(posting, status:, skip_reason:)
@@ -129,7 +135,8 @@ module Kyujinbox
         first_seen_at: now,
         last_seen_at: now,
         status: status,
-        skip_reason: skip_reason
+        skip_reason: skip_reason,
+        campaign_key: @campaign.key
       )
     end
   end

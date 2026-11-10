@@ -678,3 +678,25 @@ section
 script[src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"]
 script[src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"]
 script[src="js/script.js"]
+javascript:
+  (function () {
+    if (window.__okuriteFtknStayStarted) return;
+    var params = new URLSearchParams(window.location.search);
+    var ftkn = params.get("ftkn") || sessionStorage.getItem("ftkn");
+    if (!ftkn) return;
+    sessionStorage.setItem("ftkn", ftkn);
+    if (sessionStorage.getItem("ftkn_stay_sent_" + ftkn)) return;
+    window.__okuriteFtknStayStarted = ftkn;
+    var visibleMs = 0;
+    var last = Date.now();
+    var timer = setInterval(function () {
+      var now = Date.now();
+      if (document.visibilityState === "visible") visibleMs += now - last;
+      last = now;
+      if (visibleMs < 3000) return;
+      clearInterval(timer);
+      sessionStorage.setItem("ftkn_stay_sent_" + ftkn, "1");
+      var body = new Blob(["token=" + encodeURIComponent(ftkn)], { type: "application/x-www-form-urlencoded" });
+      if (navigator.sendBeacon) navigator.sendBeacon("/ftkn_stay", body);
+    }, 250);
+  })();
