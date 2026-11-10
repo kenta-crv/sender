@@ -57,11 +57,13 @@ module BrightData
       selected_ids = Array(customer_ids).map(&:to_i).reject(&:zero?).uniq
       if selected_ids.any?
         # 再開時の二重課金防止: 送信済み（done/error）はスキップ。
-        # retry_serp_error_after があるときだけ、その期間より古い serp_error を再検索する。
+        # retry_serp_error_after があるときだけ、serp_error_at からその期間が過ぎた serp_error を再検索する。
+        # 時刻は customers.updated_at とは別。求人の紐づけで updated_at が動いても、再検索の期限は動かない。
+        # serp_error_at が空の古いエラーは、期限を確認できないので再検索する。
         already_finished = Customer.where(id: selected_ids, serp_status: "serp_done").pluck(:id)
         error_scope = Customer.where(id: selected_ids, serp_status: "serp_error")
         if retry_serp_error_after
-          error_scope = error_scope.where("updated_at > ?", Time.current - retry_serp_error_after)
+          error_scope = error_scope.where("serp_error_at > ?", Time.current - retry_serp_error_after)
         end
         already_finished += error_scope.pluck(:id)
         pending_ids = selected_ids - already_finished
@@ -564,7 +566,9 @@ module BrightData
     def self.mark_serp_status(targets, status)
       ids = Array(targets).map { |t| t.respond_to?(:id) ? t.id : t.to_i }.reject(&:zero?).uniq
       return if ids.empty?
-      Customer.where(id: ids).update_all(serp_status: status, updated_at: Time.current)
+      changes = { serp_status: status, updated_at: Time.current }
+      changes[:serp_error_at] = Time.current if status == "serp_error"
+      Customer.where(id: ids).update_all(changes)
     end
 
     def self.mark_serp_status_null(targets)

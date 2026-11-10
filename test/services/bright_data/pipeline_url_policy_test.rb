@@ -758,8 +758,10 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
   test "execute_from_db retries serp_error only after the given period and keeps the search interval" do
     stale = Customer.create!(company: "古いエラー株式会社", address: "Tokyo", url: nil, serp_status: "serp_error")
     fresh = Customer.create!(company: "新しいエラー株式会社", address: "Osaka", url: nil, serp_status: "serp_error")
-    stale.update_columns(updated_at: 8.days.ago)
-    fresh.update_columns(updated_at: 1.day.ago)
+    legacy = Customer.create!(company: "時刻なし株式会社", address: "Nagoya", url: nil, serp_status: "serp_error")
+    stale.update_columns(serp_error_at: 8.days.ago, updated_at: Time.current)
+    fresh.update_columns(serp_error_at: 1.day.ago, updated_at: 30.days.ago)
+    legacy.update_columns(serp_error_at: nil, updated_at: Time.current)
 
     captured = []
     fake_client = Object.new
@@ -771,8 +773,8 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
     with_singleton_method(BrightData::SerpClient, :new, -> { fake_client }) do
       with_singleton_method(BrightData::ResultStore, :save_batch, ->(_batch) {}) do
         BrightData::Pipeline.execute_from_db(
-          limit: 2,
-          customer_ids: [stale.id, fresh.id],
+          limit: 3,
+          customer_ids: [stale.id, fresh.id, legacy.id],
           dry_run: true,
           delay_between: 15,
           retry_serp_error_after: 7.days
@@ -782,9 +784,11 @@ class BrightData::PipelineUrlPolicyTest < ActiveSupport::TestCase
 
     assert_equal 1, captured.size
     assert_equal 15, captured.first[:delay_between]
-    assert_equal 1, captured.first[:queries].size
-    assert_includes captured.first[:queries].first, "古いエラー株式会社"
-    refute_includes captured.first[:queries].first, "新しいエラー株式会社"
+    assert_equal 2, captured.first[:queries].size
+    joined = captured.first[:queries].join("\n")
+    assert_includes joined, "古いエラー株式会社"
+    assert_includes joined, "時刻なし株式会社"
+    refute_includes joined, "新しいエラー株式会社"
   end
 
   test "execute_from_db marks only API-touched rows as error on fatal and leaves unsent as null" do
