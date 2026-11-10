@@ -1,0 +1,2 @@
+class KyujinboxBackfillCursor < ApplicationRecord
+end

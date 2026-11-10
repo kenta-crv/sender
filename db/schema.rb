@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_11_10_141000) do
+ActiveRecord::Schema.define(version: 2026_11_10_142000) do
 
   create_table "admins", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -356,6 +356,17 @@ ActiveRecord::Schema.define(version: 2026_11_10_141000) do
     t.index ["job_key"], name: "index_job_postings_on_job_key", unique: true
     t.index ["last_seen_at"], name: "index_job_postings_on_last_seen_at"
     t.index ["status"], name: "index_job_postings_on_status"
+  end
+
+  create_table "kyujinbox_backfill_cursors", force: :cascade do |t|
+    t.string "start_url", null: false
+    t.string "next_url"
+    t.integer "pages_read", default: 0, null: false
+    t.boolean "finished", default: false, null: false
+    t.string "stop_reason"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["start_url"], name: "index_kyujinbox_backfill_cursors_on_start_url", unique: true
   end
 
   create_table "monthly_usage_logs", force: :cascade do |t|

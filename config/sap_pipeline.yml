@@ -3,6 +3,10 @@ kyujinbox:
   start_urls:
     - https://xn--pckua2a7gp15o89zb.com/SAP%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
     - https://xn--pckua2a7gp15o89zb.com/S4HANA%E3%81%AE%E4%BB%95%E4%BA%8B?u=1
+  # ?u=1 を付けない全件一覧。KyujinboxBackfillJob が続きのページから読む。
+  backfill_urls:
+    - https://xn--pckua2a7gp15o89zb.com/SAP%E3%81%AE%E4%BB%95%E4%BA%8B
+    - https://xn--pckua2a7gp15o89zb.com/S4HANA%E3%81%AE%E4%BB%95%E4%BA%8B
   # タイトルにこのどれも含まない求人は取り込まない。大文字小文字と全角半角は区別しない。
   title_keywords:
     - SAP

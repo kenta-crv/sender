@@ -17,6 +17,10 @@ module Kyujinbox
     Array(pipeline_config.dig("kyujinbox", "start_urls")).map(&:to_s).reject(&:blank?)
   end
 
+  def self.backfill_urls
+    Array(pipeline_config.dig("kyujinbox", "backfill_urls")).map(&:to_s).reject(&:blank?)
+  end
+
   def self.title_relevant?(title)
     normalized = title.to_s.unicode_normalize(:nfkc).upcase
     title_keywords.any? { |keyword| normalized.include?(keyword) }

@@ -19,6 +19,36 @@ module Kyujinbox
       stats
     end
 
+    # 全件取り込み用。max_pages に達したら、次に読むURLを返す。
+    def crawl_budget(url, max_pages:, stats:)
+      pages = 0
+      while url.present? && pages < max_pages
+        begin
+          html = @client.get(url)
+        rescue Client::NotFound
+          @logger.info("[Kyujinbox] page=#{pages + 1} url=#{url} status=404 終了")
+          return { pages: pages, next_url: url, stopped: "not_found" }
+        end
+
+        page = Parser.extract(html, page_url: url)
+        stats[:pages] += 1
+        pages += 1
+        page.postings.each { |posting| import_posting(posting, stats) }
+        @logger.info("[Kyujinbox] page=#{pages} url=#{url} postings=#{page.postings.size} next=#{page.next_url.present?}")
+
+        if page.next_url.blank?
+          return { pages: pages, next_url: nil, stopped: "last_page" }
+        end
+
+        url = page.next_url
+        break if pages >= max_pages
+
+        sleep @page_interval if @page_interval.to_f.positive?
+      end
+
+      { pages: pages, next_url: url, stopped: "page_limit" }
+    end
+
     private
 
     def crawl(start_url, max_pages:, stats:)
