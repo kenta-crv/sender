@@ -34,16 +34,21 @@ module Kyujinbox
   private_class_method :pipeline_config
 
   def self.legal_entity?(name)
-    value = name.to_s.strip
+    value = base_company_name(name)
     LEGAL_ENTITY_TERMS.any? { |term| value.start_with?(term) || value.end_with?(term) }
   end
 
   def self.clean_company(name)
-    value = name.to_s.strip
+    value = base_company_name(name)
     LEGAL_ENTITY_TERMS.each do |term|
       return value.delete_prefix(term).strip if value.start_with?(term)
     end
     value
+  end
+
+  # 「株式会社／東海」「株式会社（東京）」のように、社名の後ろの地区を外す。
+  def self.base_company_name(name)
+    name.to_s.strip.split(%r{[／/(（]}, 2).first.to_s.strip
   end
 
   def self.company_key(company_clean, posting_url)

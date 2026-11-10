@@ -42,6 +42,19 @@ class SapLeadResolverTest < ActiveSupport::TestCase
     assert_equal "株式会社テスト", SapLead::CompanyName.tidy("株式会社テスト ソリューション...")
   end
 
+  test "a region suffix is removed before name matching and legal-entity position stays distinct" do
+    assert_equal "株式会社テスト", SapLead::CompanyName.tidy("株式会社テスト（東京）")
+    assert_equal "パーソルテンプスタッフ株式会社", SapLead::CompanyName.tidy("パーソルテンプスタッフ株式会社／東海")
+    assert_equal(
+      SapLead::CompanyName.normalize("パーソルテンプスタッフ株式会社"),
+      SapLead::CompanyName.normalize("パーソルテンプスタッフ株式会社/東海")
+    )
+    refute_equal(
+      SapLead::CompanyName.normalize("株式会社アシスト"),
+      SapLead::CompanyName.normalize("アシスト株式会社")
+    )
+  end
+
   test "resolves one open exact match and drops a blocked homepage" do
     posting = JobPosting.create!(
       source: "kyujinbox",

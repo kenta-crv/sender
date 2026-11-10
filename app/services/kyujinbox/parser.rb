@@ -9,7 +9,7 @@ module Kyujinbox
     end
 
     def self.posting_from(card, page_url)
-      company = card.at_css("p.p-result_companyName, p.p-result_company")&.text.to_s.squish
+      company = Kyujinbox.base_company_name(card.at_css("p.p-result_companyName, p.p-result_company")&.text.to_s.squish)
       return nil if company.blank?
       return nil unless Kyujinbox.legal_entity?(company)
 

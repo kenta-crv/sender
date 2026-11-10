@@ -5,13 +5,17 @@ module SapLead
     TRUNCATED_PATTERN = /(?:\.\.\.|…|．．．)\z/.freeze
 
     def self.tidy(name)
-      value = name.to_s.strip
+      value = strip_trailing_note(name.to_s.strip)
       value = drop_truncated_word(value) if value.match?(TRUNCATED_PATTERN)
       strip_branch(value)
     end
 
     def self.normalize(name)
-      name.to_s.unicode_normalize(:nfkc).gsub(/[[:space:]]+/, "")
+      strip_trailing_note(name.to_s.unicode_normalize(:nfkc)).gsub(/[[:space:]]+/, "")
+    end
+
+    def self.strip_trailing_note(name)
+      name.to_s.split(%r{[／/(（]}, 2).first.to_s.strip
     end
 
     def self.drop_truncated_word(name)
@@ -32,6 +36,6 @@ module SapLead
 
       value.sub(BRANCH_PATTERN, "").strip
     end
-    private_class_method :drop_truncated_word, :strip_branch
+    private_class_method :drop_truncated_word, :strip_branch, :strip_trailing_note
   end
 end

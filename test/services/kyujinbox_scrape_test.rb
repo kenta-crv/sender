@@ -21,6 +21,24 @@ class KyujinboxScrapeTest < ActiveSupport::TestCase
     refute_includes page.postings.map(&:company_raw), "合同会社アルファ"
   end
 
+  test "a region after a slash or parenthesis is removed before the legal entity check" do
+    assert_equal "パーソルテンプスタッフ株式会社", Kyujinbox.base_company_name("パーソルテンプスタッフ株式会社／東海")
+    assert Kyujinbox.legal_entity?("パーソルテンプスタッフ株式会社／東海")
+    assert_equal "パーソルテンプスタッフ株式会社", Kyujinbox.clean_company("パーソルテンプスタッフ株式会社／東海")
+    assert_equal "テスト", Kyujinbox.clean_company("株式会社テスト（東京）")
+    assert_equal "テスト", Kyujinbox.clean_company("株式会社テスト/大阪")
+    refute Kyujinbox.legal_entity?("田中商店／東京")
+
+    page = Kyujinbox::Parser.extract(<<~HTML, page_url: START_URL)
+      <section class="p-result_card">
+        <a class="p-result_title_link" href="/jbn/region1"></a>
+        <span class="p-result_name">SAPエンジニア</span>
+        <p class="p-result_companyName">パーソルテンプスタッフ株式会社／東海</p>
+      </section>
+    HTML
+    assert_equal "パーソルテンプスタッフ株式会社", page.postings.first.company_raw
+  end
+
   test "job key falls back to company and title" do
     assert_equal "jb:plain1", Kyujinbox.job_key_for("https://example.test/jb/plain1", "株式会社A", "職種")
     assert_equal "株式会社A職種", Kyujinbox.job_key_for("https://example.test/jobs/1", "株式会社A", "職種")
