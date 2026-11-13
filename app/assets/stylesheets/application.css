@@ -4999,3 +4999,162 @@ h2::after {
   text-decoration: underline;
 }
 
+
+/* 販売ページ: お役立ち記事の見出しを他セクションと同じ装飾にする */
+.tops-sales .sp-columns-seo .sp-section-header h2 {
+  font-size: 3.5rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin: 15px 0;
+  background: linear-gradient(to right, #ffffff 40%, #00aaff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(0, 170, 255, 0.4));
+}
+
+.tops-sales .sp-columns-seo .sp-section-header .desc {
+  font-size: 1.1rem;
+  color: #b0b0b0;
+}
+
+.tops-sales .sp-columns-seo__list,
+.tops-sales .sp-columns-seo__list a {
+  text-align: center;
+}
+
+/* よくあるご質問（カテゴリ付き）。未指定のSVGが画面幅まで広がるのを止める */
+.faq-japan-section .faq-search,
+.faq-japan-section .faq-layout,
+.faq-japan-section .faq-contact {
+  color: #ffffff;
+}
+
+.faq-search {
+  position: relative;
+  max-width: 640px;
+  margin: 0 auto 28px;
+}
+
+.faq-search__input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(0, 170, 255, 0.35);
+  border-radius: 12px;
+  color: #ffffff;
+  padding: 14px 48px 14px 18px;
+  font-size: 15px;
+}
+
+.faq-search__input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.faq-japan-section svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.faq-search__icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  color: #00aaff;
+  pointer-events: none;
+}
+
+.faq-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.faq-categories h3 {
+  margin: 0 0 12px;
+  color: #00aaff;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+}
+
+.faq-categories__btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.faq-categories__btn.is-active {
+  border-color: rgba(0, 170, 255, 0.65);
+  background: rgba(0, 170, 255, 0.1);
+}
+
+.faq-cat-icon {
+  display: inline-flex;
+  color: #00aaff;
+}
+
+.faq-cat-chevron {
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+.faq-panel__item {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.faq-panel__q {
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq-panel__q::-webkit-details-marker {
+  display: none;
+}
+
+.faq-panel__a {
+  margin: 12px 0 0;
+  color: #cfe0ee;
+  line-height: 1.7;
+}
+
+.faq-contact {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.faq-contact p {
+  color: #b0b0b0;
+  margin: 0;
+}
+
+.faq-contact .ok-btn-primary {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 768px) {
+  .faq-layout {
+    grid-template-columns: 1fr;
+  }
+}
+

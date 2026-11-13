@@ -17,7 +17,7 @@ section.hero-main
 
     / ボタンを右側に配置
     .hero-action-area
-      button.btn.btn-glow-blue
+      a.btn.btn-glow-blue href="#inquiry"
         span.btn-text 無料で資料ダウンロード
         span.btn-subtext かんたん30秒で入力完了
 
@@ -167,9 +167,9 @@ section.ser-mos-section[style="background-image: url('#{asset_path('bg-services.
         - services = [ \
             { img: "ser-app1.webp", title: "AIによる高精度リスト抽出", desc: "独自のAIアルゴリズムを用いて、Web上の膨大なデータから貴社商材に最適なターゲット企業を自動でリストアップ。常に最新の鮮度を保ちます。" }, \
             { img: "ser-app2.webp", title: "フォーム情報の自動検出", desc: "AIが企業HPの問い合わせフォームを自動で特定。手作業で探す必要がなく、AIが高確率でフォーム情報を取得します。" }, \
-            { img: "ser-app0.webp", title: "AI自動問い合わせフォーム送信", desc: "事前に用意したリストに対してAIが24時間365日あなたの代わりに問い合わせフォームに送信を行い、アプローチを行います。" }, \
+            { img: "ser-app0.webp", title: "自動問い合わせフォーム送信", desc: "事前に用意したリストに対してAIが24時間365日あなたの代わりに問い合わせフォームに送信を行い、アプローチを行います。" }, \
             { img: "ser-app9.webp", title: "開封データの可視化と行動解析", desc: "メールや資料の閲覧状況をリアルタイムで可視化し、開封・未開封に応じた最適なアプローチを実現します。" }, \
-            { img: "ser-app3.webp", title: "AIによるフロントテレアポ対応", desc: "テレアポのフロント対応をAIが担うことで、人では不可能な圧倒的な架電量を実現。見込み度の高いリードを確実にキャッチアップし、テレアポクローザーがアポイントを獲得" }, \
+            { img: "ser-app3.webp", title: "AIと営業プロ連携テレアポ", desc: "テレアポのフロント対応をAIが担うことで、人では不可能な圧倒的な架電量を実現。見込み度の高いリードを確実にキャッチアップし、テレアポクローザーがアポイントを獲得" }, \
             { img: "ser-app8.webp", title: "全データをリアルタイム解析", desc: "アプローチ結果による興味関心におけるそれぞれのデータをリアルタイムで保持・解析し、次回の営業アプローチデータに活かします。" } \
           ]
         - services.each do |s|
@@ -261,32 +261,29 @@ section.admin-preview-section
   { title: "ライトプラン", sub: "Light Plan", btn: "フォーム送信特化型", btn_class: "btn-gray", desc: "問い合わせフォームからのAI自動営業送信に特化した、手軽に始められるプラン", features: [ \
     ["初期費用","0円"], \
     ["月額費用","49,800円"], \
-    ["AIリスト制作","-"], \
-    ["フォーム自動検出","15,000件"], \
-    ["自動フォーム営業","15,000件"], \
-    ["AI架電フロント対応","-"], \
-    ["テレアポ代行","-"], \
-    ["定期ミーティング","-"] \
+    ["AIリスト制作","最大5,000件"], \
+    ["フォーム自動検出","最大15,000件"], \
+    ["自動フォーム営業","最大15,000件"], \
+    ["テレアポ代行","ー"], \
+    ["その他","ー"] \
   ], cta: "トライアル 〉" }, \
   { title: "スタンダードプラン", sub: "Standard Plan", btn: "AIフルパッケージ", btn_class: "btn-blue", desc: "リスト制作・フォーム送信からAIテレアポ実施まで、商談設計をトータルでAIがフルサポートする標準プラン。", features: [ \
     ["初期費用","50,000円"], \
     ["月額費用","198,000円"], \
-    ["AIリスト制作","3,000件"], \
-    ["フォーム自動検出","15,000件"], \
-    ["自動フォーム営業","20,000件"], \
-    ["AI架電フロント対応","込"], \
-    ["テレアポ代行","1000call相当"], \
-    ["定期ミーティング","1回"] \
+    ["AIリスト制作","最大20,000件"], \
+    ["フォーム自動検出","最大20,000件"], \
+    ["自動フォーム営業","最大20,000件"], \
+    ["テレアポ代行","最大2500件"], \
+    ["その他","通話料実費"] \
   ], cta: "資料ダウンロード 〉" }, \
   { title: "エンタープライズプラン", sub: "Enterprise Plan", btn: "最大活用フルパッケージ", btn_class: "btn-green", desc: "AI技術を最大限に活用し、リスト・フォーム営業・架電・商談の全てを最大化したい成長企業向け。", features: [ \
     ["初期費用","50,000円"], \
     ["月額費用","298,000円"], \
-    ["AIリスト制作","10,000件"], \
-    ["フォーム自動検出","制限なし"], \
-    ["自動フォーム営業","制限なし"], \
-    ["AI架電フロント対応","込"], \
-    ["テレアポ代行","2000call相当"], \
-    ["定期ミーティング","1回"] \
+    ["AIリスト制作","最大50,000件"], \
+    ["フォーム自動検出","最大50,000件"], \
+    ["自動フォーム営業","最大50,000件"], \
+    ["テレアポ代行","最大6000件"], \
+    ["その他","通話料実費"] \
   ], cta: "資料ダウンロード 〉" } \
 ]
 
@@ -318,7 +315,7 @@ section.pricing-cards-section
                 hr
 
             br
-            a.pricing-cards-main-btn class=plan[:btn_class] href="javascript:void(0)" data-target="inquiry"
+            a.pricing-cards-main-btn class=plan[:btn_class] href="#inquiry" data-target="inquiry"
               = plan[:cta]
       button.lp-scroll-btn.lp-scroll-next type="button" aria-label="次へ" onclick="scrollLpCards('.pricing-cards-grid', 1)"
         svg viewBox="0 0 24 24" fill="none" aria-hidden="true"
@@ -506,41 +503,11 @@ section.service-compare
 
 
 
-.sp-content-container
-    .sp-solutions
-      .sp-section-header
-        span.en-sub SERVICE PORTFOLIO
-        h2 フォーム営業・問い合わせフォーム送信
-        p.desc 問い合わせフォーム送信のOkuriteと、営業パッケージのサービス名Ri-Plusです。
-      
-      .sp-grid
-        .sp-card
-          .sp-card-image
-            =image_tag "ai-rogo-image1.webp", loading: 'lazy', decoding: 'async'
-          .sp-card-body
-            .sp-card-num 01
-            h3.en-title 営業パッケージ
-            h4.jp-title Ri-Plus
-            p.text-detail AIによる高精度リスト制作からテレアポ発信・分析まで、営業全行程を一つのツールで完結させるフルパッケージ・ソリューション。
-            = link_to sales_path, class: 'btn sp-btn-modern' do
-                span View Detail
-        
-        .sp-card
-          .sp-card-image
-            =image_tag "ai-rogo-image2.webp", loading: 'lazy', decoding: 'async'
-          .sp-card-body
-            .sp-card-num 02
-            h3.en-title 問い合わせフォーム送信
-            h4.jp-title Okurite
-            p.text-detail 専用管理画面から問い合わせフォーム送信を自由自在に実行。新規開拓の機動力を最大化するサブスクリプション型サービス。
-            = link_to okurite_path, class: 'btn sp-btn-modern' do
-                span View Detail 
-
 section.sp-columns-seo
   .sp-section-header
     span.en-sub RESOURCES
     h2 お役立ち記事
-    p.desc 営業マネジメント・KPI・トレーニングの解説
+    p.desc 営業代行・テレアポ・アウトバウンド営業の解説
   ul.sp-columns-seo__list
     - featured_columns_for(:sales).each do |item|
       li = link_to item[:title], item[:path]
@@ -584,7 +551,7 @@ section.cards-moos-section.py-5
           path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
 
 
-section
+section#inquiry
  .sp-company
   .sp-company-inner
     .sp-section-header
@@ -678,25 +645,3 @@ section
 script[src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"]
 script[src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"]
 script[src="js/script.js"]
-javascript:
-  (function () {
-    if (window.__okuriteFtknStayStarted) return;
-    var params = new URLSearchParams(window.location.search);
-    var ftkn = params.get("ftkn") || sessionStorage.getItem("ftkn");
-    if (!ftkn) return;
-    sessionStorage.setItem("ftkn", ftkn);
-    if (sessionStorage.getItem("ftkn_stay_sent_" + ftkn)) return;
-    window.__okuriteFtknStayStarted = ftkn;
-    var visibleMs = 0;
-    var last = Date.now();
-    var timer = setInterval(function () {
-      var now = Date.now();
-      if (document.visibilityState === "visible") visibleMs += now - last;
-      last = now;
-      if (visibleMs < 3000) return;
-      clearInterval(timer);
-      sessionStorage.setItem("ftkn_stay_sent_" + ftkn, "1");
-      var body = new Blob(["token=" + encodeURIComponent(ftkn)], { type: "application/x-www-form-urlencoded" });
-      if (navigator.sendBeacon) navigator.sendBeacon("/ftkn_stay", body);
-    }, 250);
-  })();
