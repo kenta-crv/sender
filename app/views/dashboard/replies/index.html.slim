@@ -1,0 +1,47 @@
+#okurite-client-portal
+  .wrapper
+    = render 'dashboard/dashboards/sidebar'
+
+    #content
+      header.top-header
+        h2 返信の仕分け
+        .user-meta
+          span.badge-electric 管理者
+
+      .glass-card style="padding: 1rem; margin-bottom: 1rem;"
+        - InboundReply::CLASSIFICATIONS.each do |key, label|
+          = link_to "#{label}（#{@counts[key]}）", dashboard_replies_path(tab: key),
+            style: "margin-right: 1.5rem; font-weight: #{@tab == key ? 'bold' : 'normal'}; #{@tab == key ? 'text-decoration: underline;' : ''}"
+
+      .glass-card style="padding: 1rem;"
+        - if @replies.any?
+          table style="width: 100%; border-collapse: collapse;"
+            thead
+              tr
+                th style="text-align:left; padding:.5rem;" 受信日時
+                th style="text-align:left; padding:.5rem;" 差出人
+                th style="text-align:left; padding:.5rem;" 件名・本文
+                th style="text-align:left; padding:.5rem;" 送信先
+                th style="text-align:left; padding:.5rem;" 判定
+                th style="text-align:left; padding:.5rem;" 分類変更
+            tbody
+              - @replies.each do |r|
+                tr style="border-top: 1px solid rgba(255,255,255,.1); vertical-align: top;"
+                  td style="padding:.5rem; white-space:nowrap;" = r.received_at&.strftime('%Y/%m/%d %H:%M')
+                  td style="padding:.5rem;" = r.from_address
+                  td style="padding:.5rem; max-width: 420px;"
+                    details
+                      summary = r.subject.presence || '（件名なし）'
+                      pre style="white-space: pre-wrap; font-size: .8rem; max-height: 300px; overflow:auto;" = r.body
+                  td style="padding:.5rem;" = r.customer&.company || '―'
+                  td style="padding:.5rem; font-size:.75rem;"
+                    - if r.intent_label && r.final_classification == 'human'
+                      div style="font-weight:bold;" = r.intent_label
+                    div #{r.score}点#{r.ai_used ? '・AI判定' : ''}#{r.manual_classification.present? ? '（手動）' : ''}
+                    div = r.reasons
+                  td style="padding:.5rem; white-space:nowrap;"
+                    - InboundReply::CLASSIFICATIONS.except(@tab).each do |key, label|
+                      = button_to label, reclassify_dashboard_reply_path(r, to: key, tab: @tab), method: :patch, style: 'margin-bottom:.25rem;'
+          = paginate @replies
+        - else
+          p 該当するメールはありません。

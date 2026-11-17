@@ -51,6 +51,11 @@ nav#sidebar
         span 問い合わせフォーム送信
 
     - if acting_as_admin?
+      li class=(current_page?(dashboard_replies_path) ? 'active' : '')
+        = link_to dashboard_replies_path do
+          i.fas.fa-envelope-open-text
+          span 返信の仕分け
+
       li class=(current_page?(dashboard_funnel_tracking_path) ? 'active' : '')
         = link_to dashboard_funnel_tracking_path do
           i.fas.fa-filter

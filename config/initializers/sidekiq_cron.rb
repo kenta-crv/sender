@@ -38,4 +38,9 @@ if defined?(Sidekiq::Cron)
     class: 'SapWeeklyReportJob',
     active_job: true
   )
+  Sidekiq::Cron::Job.create(
+    name: 'Reply fetch - daily at 1:00',
+    cron: '0 1 * * * Asia/Tokyo',
+    class: 'ReplyFetchJob'
+  )
 end

@@ -24,6 +24,11 @@ Rails.application.routes.draw do
     get 'howto', to: 'dashboards#howto'
     get 'click_tracking',   to: 'dashboards#click_tracking'
     get 'funnel_tracking',  to: 'dashboards#funnel_tracking'
+    resources :replies, only: [:index] do
+      member do
+        patch :reclassify
+      end
+    end
 
 
     root "dashboards#index"

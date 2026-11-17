@@ -57,6 +57,7 @@ class FormSendJob < ApplicationJob
       result = sender.send_to_customer(customer)
 
       success = result[:status] == '自動送信成功'
+      record_sent_message(batch, customer, rendered) if success
 
       retries = 0
       begin
@@ -222,6 +223,20 @@ class FormSendJob < ApplicationJob
       end
       sleep(0.1) if index < slice_count - 1
     end
+  end
+
+  # 返信の自動/人判定で照合するため、送信成功を記録する。失敗しても送信処理は止めない。
+  def record_sent_message(batch, customer, rendered)
+    SentMessage.create!(
+      customer_id: customer.id,
+      form_submission_batch_id: batch.id,
+      client_id: batch.client_id,
+      domain: SentMessage.domain_from(customer.url.presence || customer.contact_url.presence || customer.email),
+      body: rendered&.content.presence || batch.submission&.content,
+      sent_at: Time.current
+    )
+  rescue StandardError => e
+    Rails.logger.warn("[FormSendJob] 送信記録の保存に失敗: #{e.class} #{e.message}")
   end
 
   def interpolate_submission(batch, customer)

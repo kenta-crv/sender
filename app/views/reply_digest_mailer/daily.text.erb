@@ -1,0 +1,10 @@
+mail@j-work.jp に届いたメールの仕分け結果です。
+
+<% InboundReply::CLASSIFICATIONS.each do |key, label| -%>
+■ <%= label %>：<%= @counts[key] %>件
+<% if key == 'human' && @counts[key].to_i > 0 -%>
+（<%= InboundReply::INTENTS.map { |k, l| "#{l}#{@intents[k].to_i}件" }.join('・') %>）
+<% end -%>
+<%= @base_url %>/dashboard/replies?tab=<%= key %>
+
+<% end -%>
