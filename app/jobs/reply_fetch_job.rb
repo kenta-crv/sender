@@ -7,6 +7,7 @@ require 'net/imap'
 #   ReplyFetchJob.perform_now                 # 新しいメールの取り込み（毎日1時に自動実行）
 #   ReplyFetchJob.perform_now('reclassify')       # 取り込み済みのメールを今のルールで判定し直す（手動で直した分は変えない）
 #   ReplyFetchJob.perform_now('reclassify', 50)   # 新しい順に50件だけ判定し直す（テスト用）
+#   ReplyFetchJob.perform_now('backfill')         # 直近14日分のうち、まだ保存できていないメールだけ取り込む
 class ReplyFetchJob < ApplicationJob
   queue_as :default
 
@@ -23,6 +24,14 @@ class ReplyFetchJob < ApplicationJob
 
     if mode == 'reclassify'
       reclassify(imap, uidvalidity, limit)
+      return
+    end
+
+    if mode == 'backfill'
+      stored = InboundReply.where(imap_uidvalidity: uidvalidity).pluck(:imap_uid)
+      missing = imap.uid_search(['SINCE', FIRST_RUN_DAYS.days.ago.strftime('%d-%b-%Y')]) - stored
+      each_mail(imap, missing.sort) { |uid, raw| store(uid, uidvalidity, raw) }
+      Rails.logger.info("[ReplyFetchJob] 取りこぼし#{missing.size}件を取り込み")
       return
     end
 
@@ -103,7 +112,7 @@ class ReplyFetchJob < ApplicationJob
   end
 
   def attributes_for(mail)
-    from = mail.from.to_a.first.to_s.downcase
+    from = Array(mail.from).first.to_s.downcase
     from_domain = SentMessage.domain_from(from)
     received_at = mail.date&.to_time || Time.current
     sent = find_sent(from_domain, received_at)

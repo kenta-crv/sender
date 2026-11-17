@@ -21,7 +21,7 @@ class ReplyClassifier
 
   def call
     subject = @mail.subject.to_s
-    from = @mail.from.to_a.join(',')
+    from = Array(@mail.from).join(',')
 
     # 1. ルールで確定するもの
     if from =~ BOUNCE_FROM || subject =~ BOUNCE_SUBJECT
