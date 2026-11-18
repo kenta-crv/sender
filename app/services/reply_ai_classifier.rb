@@ -19,7 +19,7 @@ class ReplyAiClassifier
   PROMPT
 
   def self.api_key
-    ENV['OPENAI_API_KEY'].presence || ENV['OPENAI_ACCESS_TOKEN'].presence || ENV['GPT_API_KEY'].presence
+    ENV['OPENAI_API_KEY'].presence
   end
 
   def self.enabled?
